@@ -1,0 +1,26 @@
+# Core web framework
+fastapi
+
+# ASGI server
+uvicorn
+
+# LLM SDKs
+openai
+google-generativeai
+
+# Data and background jobs
+redis
+rq
+sqlalchemy
+faiss-cpu
+
+# Config and validation
+python-dotenv
+pydantic
+
+# Utilities
+requests
+loguru
+prometheus-client
+pytest
+streamlit

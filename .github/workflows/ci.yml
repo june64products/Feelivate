@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r emotion-time-travel/requirements.txt
+          pip install pytest
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          pytest -q emotion-time-travel/tests

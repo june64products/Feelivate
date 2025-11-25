@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Emotion Time Travel</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; }
+    .row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .card { border: 1px solid #ddd; border-radius: 6px; padding: 12px; min-height: 150px; }
+    textarea { width: 100%; height: 100px; }
+    input, button { padding: 8px; margin: 6px 0; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <h1>Emotion Time Travel</h1>
+  <label>User ID</label>
+  <input id="userId" placeholder="user-123" />
+  <div class="controls">
+    <button id="createSessionBtn">Create Session</button>
+    <span id="sessionInfo"></span>
+  </div>
+  <label>Journal Entry</label>
+  <textarea id="entry"></textarea>
+  <div class="controls">
+    <button id="submitBtn">Submit</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="resumeBtn">Resume</button>
+  </div>
+  <div id="status"></div>
+
+  <h2>Results</h2>
+  <div class="row">
+    <div class="card"><h3>Past</h3><pre id="past"></pre></div>
+    <div class="card"><h3>Present</h3><pre id="present"></pre></div>
+    <div class="card"><h3>Future</h3><pre id="future"></pre></div>
+    <div class="card"><h3>Integration</h3><pre id="integration"></pre></div>
+  </div>
+
+  <h2>Rate Output</h2>
+  <label>Rating (1-5)</label>
+  <input id="rating" type="number" min="1" max="5" value="5" />
+  <label>Comments</label>
+  <input id="comments" />
+  <button id="rateBtn">Submit Rating</button>
+
+  <script>
+    const api = (path, opts={}) => fetch(path, opts).then(r => r.json());
+    let sessionId = null;
+    let lastTraceId = null;
+
+    document.getElementById('createSessionBtn').onclick = async () => {
+      const userId = document.getElementById('userId').value;
+      const res = await api('/session', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user_id: userId }) });
+      sessionId = res.session_id;
+      document.getElementById('sessionInfo').textContent = `Session: ${sessionId}`;
+    };
+
+    document.getElementById('submitBtn').onclick = async () => {
+      const text = document.getElementById('entry').value;
+      const userId = document.getElementById('userId').value;
+      const res = await api('/ingest', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text, user_id: userId, session_id: sessionId }) });
+      lastTraceId = res.trace_id;
+      document.getElementById('status').textContent = `Submitted. Trace: ${lastTraceId}`;
+      pollResult();
+    };
+
+    async function pollResult(){
+      const id = lastTraceId;
+      if (!id) return;
+      const loop = async () => {
+        try {
+          const res = await api(`/result/${id}`);
+          if (res && res.past) {
+            document.getElementById('past').textContent = JSON.stringify(res.past, null, 2);
+            document.getElementById('present').textContent = JSON.stringify(res.present, null, 2);
+            document.getElementById('future').textContent = JSON.stringify(res.future, null, 2);
+            document.getElementById('integration').textContent = JSON.stringify(res.integration, null, 2);
+          }
+        } catch {}
+        setTimeout(loop, 1500);
+      };
+      loop();
+    }
+
+    document.getElementById('pauseBtn').onclick = async () => {
+      if (!sessionId) return;
+      await api(`/session/${sessionId}/pause`, { method: 'POST' });
+    };
+    document.getElementById('resumeBtn').onclick = async () => {
+      if (!sessionId) return;
+      await api(`/session/${sessionId}/resume`, { method: 'POST' });
+    };
+
+    document.getElementById('rateBtn').onclick = async () => {
+      const userId = document.getElementById('userId').value;
+      const rating = parseInt(document.getElementById('rating').value, 10);
+      const comments = document.getElementById('comments').value;
+      if (!lastTraceId) return;
+      await api('/eval', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trace_id: lastTraceId, user_id: userId, rating, comments }) });
+      alert('Thanks for your feedback!');
+    };
+  </script>
+</body>
+</html>
