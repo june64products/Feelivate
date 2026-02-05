@@ -13,7 +13,7 @@ def post(path: str, payload: dict):
         r.raise_for_status()
         return r.json()
     except requests.exceptions.ConnectionError:
-        st.error("⚠️ Cannot connect to backend. Make sure the API server is running.")
+        st.error(f"⚠️ Cannot connect to backend at {BASE}. Make sure the API server is running.")
         return None
     except Exception as e:
         st.error(f"Error: {str(e)}")
@@ -26,7 +26,7 @@ def get(path: str):
         r.raise_for_status()
         return r.json()
     except requests.exceptions.ConnectionError:
-        st.error("⚠️ Cannot connect to backend. Make sure the API server is running.")
+        st.error(f"⚠️ Cannot connect to backend at {BASE}. Make sure the API server is running.")
         return None
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 404:
@@ -58,14 +58,16 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     .step-card {
-        background: #f8f9fa;
+        background: #333333;
+        color: white;
         padding: 1.5rem;
         border-radius: 10px;
         border-left: 4px solid #667eea;
         margin: 1rem 0;
     }
     .result-section {
-        background: white;
+        background: #333333;
+        color: white;
         padding: 1.5rem;
         border-radius: 10px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);

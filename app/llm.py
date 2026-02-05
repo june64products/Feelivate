@@ -14,23 +14,30 @@ _gemini_configured = False
 def _get_llm_provider() -> str:
     """Determine which LLM provider to use based on environment variables."""
     load_dotenv()
-    if os.getenv("GEMINI_API_KEY"):
+    if os.getenv("GROQ_API_KEY"):
+        return "groq"
+    elif os.getenv("GEMINI_API_KEY"):
         return "gemini"
     elif os.getenv("OPENAI_API_KEY"):
         return "openai"
     else:
-        raise RuntimeError("No API key found. Set either GEMINI_API_KEY or OPENAI_API_KEY")
+        raise RuntimeError("No API key found. Set GROQ_API_KEY, GEMINI_API_KEY or OPENAI_API_KEY")
 
 
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
         load_dotenv()
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            logger.error("OPENAI_API_KEY is not set")
-            raise RuntimeError("OPENAI_API_KEY is required")
-        _client = OpenAI(api_key=api_key)
+        if os.getenv("GROQ_API_KEY"):
+            api_key = os.getenv("GROQ_API_KEY")
+            base_url = "https://api.groq.com/openai/v1"
+            _client = OpenAI(api_key=api_key, base_url=base_url)
+        else:
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                logger.error("OPENAI_API_KEY is not set")
+                raise RuntimeError("OPENAI_API_KEY is required")
+            _client = OpenAI(api_key=api_key)
     return _client
 
 
@@ -50,7 +57,9 @@ def _configure_gemini():
 def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 2000) -> str:
     provider = _get_llm_provider()
     
-    if provider == "gemini":
+    if provider == "groq":
+        return _call_groq(prompt, system, temperature, max_tokens)
+    elif provider == "gemini":
         return _call_gemini(prompt, system, temperature, max_tokens)
     else:
         return _call_openai(prompt, system, temperature, max_tokens)
@@ -107,6 +116,29 @@ def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float =
     except Exception as e:
         logger.exception(f"Gemini call failed: {str(e)}")
         raise RuntimeError(f"Gemini error: {e}")
+
+
+def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 2000) -> str:
+    try:
+        client = _get_client()
+        model = os.getenv("GROQ_MODEL", "llama-4-maverick")
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        content = resp.choices[0].message.content or ""
+        text = content.strip()
+        logger.info("Groq call succeeded", extra={"model": model, "tokens": resp.usage})
+        return text
+    except Exception as e:
+        logger.exception("Groq call failed")
+        raise RuntimeError(f"Groq error: {e}")
 
 
 def _call_openai(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 2000) -> str:

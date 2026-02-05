@@ -21,3 +21,6 @@ eval.db
 
 # Testing
 .pytest_cache/
+
+# Logs
+*.log

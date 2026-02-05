@@ -50,7 +50,8 @@ def _load_index(user_id: str, dim: Optional[int], db_path: str):
     try:
         import faiss  # type: ignore
     except Exception:
-        raise RuntimeError("faiss-cpu is required. Install it or use Python 3.11.")
+        logger.warning("faiss-cpu not found. Memory features will be disabled.")
+        return None
 
     path = _index_path(user_id, db_path)
     if os.path.exists(path):
@@ -66,7 +67,7 @@ def _persist_index(index, user_id: str, db_path: str) -> None:
     try:
         import faiss  # type: ignore
     except Exception:
-        raise RuntimeError("faiss-cpu is required. Install it or use Python 3.11.")
+        return
     path = _index_path(user_id, db_path)
     faiss.write_index(index, path)
 
@@ -92,10 +93,11 @@ def add_memory(user_id: str, text: str, summary: str, embedding: List[float], db
 
         dim = len(embedding)
         index = _load_index(user_id, dim, db_path)
-        vec = np.array([embedding], dtype=np.float32)
-        ids = np.array([row_id], dtype=np.int64)
-        index.add_with_ids(vec, ids)
-        _persist_index(index, user_id, db_path)
+        if index is not None:
+            vec = np.array([embedding], dtype=np.float32)
+            ids = np.array([row_id], dtype=np.int64)
+            index.add_with_ids(vec, ids)
+            _persist_index(index, user_id, db_path)
         logger.info("memory_added", extra={"user_id": user_id, "row_id": row_id})
         return int(row_id)
     finally:
@@ -109,7 +111,7 @@ def search_memory(user_id: str, query_embedding: List[float], top_k: int = 3, db
         raise RuntimeError("numpy is required for FAISS operations")
 
     index = _load_index(user_id, len(query_embedding), db_path)
-    if getattr(index, "ntotal", 0) == 0:
+    if index is None or getattr(index, "ntotal", 0) == 0:
         return []
 
     q = np.array([query_embedding], dtype=np.float32)
