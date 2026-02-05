@@ -4,7 +4,13 @@ import json
 import streamlit as st
 import requests
 
-BASE = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+# Helper to get config from env or secrets
+def get_config(key, default):
+    if key in st.secrets:
+        return st.secrets[key]
+    return os.getenv(key, default)
+
+BASE = get_config("API_BASE_URL", "http://127.0.0.1:8000")
 
 
 def post(path: str, payload: dict):
