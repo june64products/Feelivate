@@ -6,8 +6,11 @@ import requests
 
 # Helper to get config from env or secrets
 def get_config(key, default):
-    if key in st.secrets:
-        return st.secrets[key]
+    try:
+        if key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        pass
     return os.getenv(key, default)
 
 BASE = get_config("API_BASE_URL", "http://127.0.0.1:8000")

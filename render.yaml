@@ -1,0 +1,26 @@
+services:
+  # The Backend Web Service
+  - type: web
+    name: emotion-time-travel-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run_app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: emotion-time-travel-redis
+          property: connectionString
+      - key: GEMINI_API_KEY
+        sync: false  # You will be prompted to enter this in the dashboard
+      - key: PORT
+        value: 10000
+
+  # The Redis Service for background tasks (rq)
+  - type: redis
+    name: emotion-time-travel-redis
+    plan: free
+    ipAllowList: [] # internal only by default
