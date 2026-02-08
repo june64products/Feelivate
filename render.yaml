@@ -14,8 +14,10 @@ services:
           type: redis
           name: emotion-time-travel-redis
           property: connectionString
-      - key: GEMINI_API_KEY
-        sync: false  # You will be prompted to enter this in the dashboard
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: meta-llama/llama-4-maverick-17b-128e-instruct
       - key: PORT
         value: 10000
 
