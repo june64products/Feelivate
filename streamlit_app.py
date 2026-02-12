@@ -1,6 +1,6 @@
 import os
 import time
-import json
+import uuid
 import streamlit as st
 import requests
 
@@ -15,406 +15,331 @@ def get_config(key, default):
 
 BASE = get_config("API_BASE_URL", "http://127.0.0.1:8000")
 
+# --- CSS Styling ---
+STYLING = """
+<style>
+    .main-header {
+        background: linear-gradient(135deg, #1e1e2f 0%, #252540 100%);
+        padding: 2rem;
+        border-radius: 12px;
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .card-past {
+        border-left: 4px solid #ff7b7b;
+        background: #2b2b3b;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .card-present {
+        border-left: 4px solid #f9d71c;
+        background: #2b2b3b;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .card-future {
+        border-left: 4px solid #82caff;
+        background: #2b2b3b;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .card-action {
+        border: 2px solid #50fa7b;
+        background: #1e1e2f;
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+</style>
+"""
 
 def post(path: str, payload: dict):
     try:
         r = requests.post(BASE + path, json=payload, timeout=60)
         r.raise_for_status()
         return r.json()
-    except requests.exceptions.ConnectionError:
-        st.error(f"⚠️ Cannot connect to backend at {BASE}. Make sure the API server is running.")
-        return None
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error(f"Error connecting to backend: {e}")
         return None
-
 
 def get(path: str):
     try:
         r = requests.get(BASE + path, timeout=60)
-        r.raise_for_status()
         return r.json()
-    except requests.exceptions.ConnectionError:
-        st.error(f"⚠️ Cannot connect to backend at {BASE}. Make sure the API server is running.")
-        return None
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 404:
-            # Return a dict indicating processing status instead of None
-            return {"error": "Result not ready yet. Still processing...", "status": "processing"}
-        st.error(f"Error: {str(e)}")
-        return None
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
+    except Exception:
         return None
 
+# --- Main App ---
 
-# Page Configuration
-st.set_page_config(
-    page_title="Imagination to Reality | Emotion Time Travel",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="Emotion Time Travel v2", layout="wide")
+st.markdown(STYLING, unsafe_allow_html=True)
 
-# Custom CSS for better styling
-st.markdown("""
-<style>
-    .main-header {
-        text-align: center;
-        padding: 2rem 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px;
-        margin-bottom: 2rem;
-    }
-    .step-card {
-        background: #333333;
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border-left: 4px solid #667eea;
-        margin: 1rem 0;
-    }
-    .result-section {
-        background: #333333;
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin: 1rem 0;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Session State Init
+if "user_id" not in st.session_state:
+    st.session_state["user_id"] = "user_" + str(uuid.uuid4())[:8]
+if "trace_id" not in st.session_state:
+    st.session_state["trace_id"] = None
+if "processing" not in st.session_state:
+    st.session_state["processing"] = False
+if "result" not in st.session_state:
+    st.session_state["result"] = None
+
+# Input Fields State (for Auto-fill)
+if "input_focus" not in st.session_state:
+    st.session_state["input_focus"] = ""
+if "input_history" not in st.session_state:
+    st.session_state["input_history"] = ""
+if "input_vision" not in st.session_state:
+    st.session_state["input_vision"] = ""
+
 
 # Header
 st.markdown("""
 <div class="main-header">
-    <h1>🌟 Imagination to Reality</h1>
-    <p style="font-size: 1.2rem; margin: 0;">Transform your thoughts and dreams into actionable plans</p>
+    <h1>🕰️ Emotion Time Travel</h1>
+    <p>Behavioral Architecture Engine v2.0</p>
 </div>
 """, unsafe_allow_html=True)
 
-# Introduction
-with st.expander("ℹ️ How does this work?", expanded=False):
-    st.markdown("""
-    **Emotion Time Travel** helps you turn your imagination into reality by:
+
+# Sidebar (Identity)
+with st.sidebar:
+    st.header("👤 Identity")
+    uid_input = st.text_input("User ID", value=st.session_state["user_id"])
+    if uid_input:
+        st.session_state["user_id"] = uid_input
     
-    1. 🔍 **Analyzing Your Past** - Understanding patterns and experiences that shape your current state
-    2. 🎯 **Assessing Your Present** - Identifying your current emotions, needs, and context
-    3. 🚀 **Envisioning Your Future** - Creating actionable scenarios and plans
-    4. ✨ **Integration** - Synthesizing everything into a coherent action plan
+    st.info("Input friction reduced. Session is auto-managed.")
+    if st.button("Reset Session"):
+        st.session_state["trace_id"] = None
+        st.session_state["result"] = None
+        st.session_state["processing"] = False
+        st.session_state["input_focus"] = ""
+        st.session_state["input_history"] = ""
+        st.session_state["input_vision"] = ""
+        st.rerun()
+
+
+# Main Content
+if not st.session_state["processing"] and not st.session_state["result"]:
+    # --- INPUT PHASE ---
     
-    Simply share your thoughts, dreams, or ideas, and we'll help you create a path to make them real.
-    """)
-
-# Initialize session state
-if "user_id" not in st.session_state:
-    st.session_state["user_id"] = ""
-if "session_id" not in st.session_state:
-    st.session_state["session_id"] = None
-if "trace_id" not in st.session_state:
-    st.session_state["trace_id"] = None
-if "last_result" not in st.session_state:
-    st.session_state["last_result"] = None
-
-# Step 1: User Identification
-st.markdown("### 👤 Step 1: Identify Yourself")
-user_id = st.text_input(
-    "Enter your name or identifier",
-    value=st.session_state.get("user_id", ""),
-    placeholder="e.g., John Doe or user123",
-    help="This helps us personalize your experience and track your journey"
-)
-if user_id:
-    st.session_state["user_id"] = user_id
-
-# Step 2: Create Session
-if user_id:
-    st.markdown("### 🎬 Step 2: Start Your Journey")
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([2, 1])
     
     with col1:
-        if st.button("🚀 Create New Session", type="primary", use_container_width=True):
-            res = post("/session", {"user_id": user_id})
-            if res:
-                st.session_state["session_id"] = res["session_id"]
-                st.success("✅ Session created successfully!")
-                st.balloons()
+        st.subheader("Step 1: The Context")
+        # Linked to session_state for auto-fill capability
+        focus = st.text_area("1. Focus (Present)", value=st.session_state["input_focus"], placeholder="What is the single biggest goal or problem?", height=100)
+        history = st.text_area("2. History (Past)", value=st.session_state["input_history"], placeholder="What has stopped you in the past?", height=100)
+        vision = st.text_area("3. Vision (Future)", value=st.session_state["input_vision"], placeholder="What is the 6-month dream?", height=100)
+        
+        # Update state on manual edit (optional, but good practice if we allow mixed input)
+        st.session_state["input_focus"] = focus
+        st.session_state["input_history"] = history
+        st.session_state["input_vision"] = vision
     
     with col2:
-        session_id = st.session_state.get("session_id")
-        if session_id:
-            st.info(f"📋 Active Session: `{session_id}`")
+        st.subheader("Context Upload")
+        st.info("🎙️ Audio Input enabled via Groq Whisper")
+        
+        # Audio input
+        audio_value = st.audio_input("Record Voice Note")
+        
+        if audio_value:
+            if st.button("Transcribe & Smart-Fill"):
+                with st.spinner("Transcribing & Structuring (Groq)..."):
+                    try:
+                        files = {"file": ("recording.wav", audio_value, "audio/wav")}
+                        res = requests.post(BASE + "/transcribe", files=files)
+                        
+                        if res.status_code == 200:
+                            data = res.json()
+                            if "focus" in data:
+                                st.success("Analysis Complete! Auto-filling forms...")
+                                # Auto-fill values
+                                st.session_state["input_focus"] = data.get("focus", "")
+                                st.session_state["input_history"] = data.get("history", "")
+                                st.session_state["input_vision"] = data.get("vision", "")
+                                st.rerun()
+                            else:
+                                st.error("No structured data returned.")
+                        else:
+                            st.error(f"Error: {res.text}")
+                    except Exception as e:
+                        st.error(f"Transcription failed: {e}")
 
-# Step 3: Share Your Imagination
-if st.session_state.get("session_id"):
-    st.markdown("### 💭 Step 3: Share Your Thoughts & Imagination")
-    
-    st.markdown("""
-    <div class="step-card">
-    <strong>What to write:</strong>
-    <ul>
-        <li>Your dreams, goals, or aspirations</li>
-        <li>Ideas you want to bring to life</li>
-        <li>Current challenges you're facing</li>
-        <li>How you're feeling and what you envision for yourself</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    entry = st.text_area(
-        "Write your thoughts here",
-        height=200,
-        placeholder="Example: I've been dreaming about starting my own business. I love design and want to create a brand that helps people express themselves. I'm excited but also nervous about taking the first step...",
-        help="Be honest and detailed. The more you share, the better insights we can provide."
-    )
-    
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("✨ Transform My Imagination", type="primary", use_container_width=True, disabled=not entry):
-            with st.spinner("🔮 Analyzing your journey through time..."):
-                res = post("/ingest", {
-                    "text": entry,
-                    "user_id": user_id,
-                    "session_id": st.session_state["session_id"]
-                })
-                if res:
+    if st.button("🚀 Analyze Behavioral Patterns", type="primary", use_container_width=True):
+        if not focus or not history:
+            st.error("Please fill in at least Focus and History.")
+        else:
+            with st.spinner("Encrypting and sending to Behavioral Engine..."):
+                payload = {
+                    "user_id": st.session_state["user_id"],
+                    "focus": focus,
+                    "history": history,
+                    "vision": vision or "No specific vision provided."
+                }
+                res = post("/ingest", payload)
+                if res and "trace_id" in res:
                     st.session_state["trace_id"] = res["trace_id"]
                     st.session_state["processing"] = True
-                    st.session_state["auto_refresh"] = True
-                    st.success("✅ Processing your imagination! Auto-checking results...")
-                    time.sleep(2)
                     st.rerun()
 
-# Step 4: View Results
-if st.session_state.get("trace_id"):
-    st.markdown("### 🎯 Step 4: Your Personalized Journey")
+elif st.session_state["processing"]:
+    # --- PROCESSING PHASE (Polling) ---
     
-    # Auto-check results if processing
-    if st.session_state.get("processing", False) and st.session_state.get("auto_refresh", False):
-        with st.spinner("🔄 Auto-checking results..."):
-            res = get(f"/result/{st.session_state['trace_id']}")
-            if res:
-                if "error" in res and res.get("status") == "error":
-                    st.session_state["last_result"] = res
-                    st.session_state["processing"] = False
-                    st.session_state["auto_refresh"] = False
-                elif "error" in res and res.get("status") == "processing":
-                    st.session_state["processing"] = True
-                elif "past" in res or "present" in res or "future" in res:
-                    st.session_state["last_result"] = res
-                    st.session_state["processing"] = False
-                    st.session_state["auto_refresh"] = False
-                    st.success("✅ Results ready!")
-                    st.balloons()
+    st.markdown("### 🧠 The Agents are thinking...")
     
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        if st.button("🔍 Get My Results", type="primary"):
-            with st.spinner("Fetching your personalized insights..."):
-                res = get(f"/result/{st.session_state['trace_id']}")
-                if res:
-                    if "error" in res and res.get("status") == "error":
-                        # Actual error occurred
-                        st.error(f"❌ Error: {res.get('error', 'Unknown error')}")
-                        st.session_state["last_result"] = res
-                        st.session_state["processing"] = False
-                        st.session_state["auto_refresh"] = False
-                    elif "error" in res and res.get("status") == "processing":
-                        # Still processing
-                        st.session_state["processing"] = True
-                        st.session_state["auto_refresh"] = True
-                        st.warning("⏳ Still processing... Auto-refresh enabled.")
-                    elif "past" in res or "present" in res or "future" in res:
-                        # Success - we have results
-                        st.session_state["last_result"] = res
-                        st.session_state["processing"] = False
-                        st.session_state["auto_refresh"] = False
-                        st.success("✅ Results ready!")
-                    else:
-                        # Unknown response format
-                        st.warning(f"⚠️ Unexpected response format: {res}")
-                        st.session_state["last_result"] = res
-                        st.session_state["processing"] = False
-                        st.session_state["auto_refresh"] = False
-                else:
-                    st.error("❌ Failed to fetch results. Please check if the backend is running.")
+    progress_bar = st.progress(0)
+    status_text = st.empty()
     
-    with col2:
-        if st.session_state.get("processing", False):
-            st.info("💡 The AI is analyzing your past, present, and future using Gemini. This may take 30-60 seconds for quality insights!")
-            
-            # Auto-refresh option
-            auto_refresh = st.checkbox("🔄 Auto-refresh every 3 seconds", value=st.session_state.get("auto_refresh", False))
-            st.session_state["auto_refresh"] = auto_refresh
-            
-            if auto_refresh:
-                time.sleep(3)
-                st.rerun()
-            
-            if st.button("🔄 Check Again Now"):
-                with st.spinner("Checking..."):
-                    res = get(f"/result/{st.session_state['trace_id']}")
-                    if res:
-                        if "error" in res and res.get("status") == "error":
-                            st.error(f"❌ Error: {res.get('error', 'Unknown error')}")
-                            st.session_state["last_result"] = res
-                            st.session_state["processing"] = False
-                            st.session_state["auto_refresh"] = False
-                        elif "error" in res and res.get("status") == "processing":
-                            st.warning("⏳ Still processing...")
-                        elif "past" in res or "present" in res or "future" in res:
-                            st.session_state["last_result"] = res
-                            st.session_state["processing"] = False
-                            st.session_state["auto_refresh"] = False
-                            st.success("✅ Results ready!")
-                            st.rerun()
-                        else:
-                            st.session_state["last_result"] = res
-                            st.session_state["processing"] = False
-                            st.session_state["auto_refresh"] = False
-                            st.rerun()
+    steps = [
+        "🔍 Accessing Vector Memory (Qdrant)...",
+        "🕵️ PastPatternAgent is scanning for contradictions...",
+        "🛑 PresentConstraintAgent is checking energy levels...",
+        "🎲 FutureSimulatorAgent is running pre-mortems...",
+        "🏗️ IntegrationAgent is building your Micro-Plan..."
+    ]
     
-    # Display Results
-    if st.session_state.get("last_result"):
-        result = st.session_state["last_result"]
+    # Poll for result
+    max_retries = 20
+    for i in range(max_retries):
+        # Fake progress animation
+        stage = i % len(steps)
+        status_text.text(steps[stage])
+        progress_bar.progress((i + 1) * 5)
         
-        # Show error if there's one
-        if "error" in result and result.get("status") == "error":
-            st.error(f"❌ **Error occurred:** {result['error']}")
-            if "details" in result:
-                with st.expander("🔍 Error Details"):
-                    st.code(result["details"], language="text")
-            st.info("💡 **Troubleshooting:**\n- Check if GEMINI_API_KEY is set in .env file\n- Verify the API key is valid\n- Check backend logs for more details")
-        elif "error" in result and result.get("status") == "processing":
-            # Still processing, don't show results yet
-            pass
-        elif "past" in result or "present" in result or "future" in result:
-            # Success - show results
-            # Create tabs for different time periods
-            tab1, tab2, tab3, tab4 = st.tabs(["🔍 Past Analysis", "🎯 Present State", "🚀 Future Vision", "✨ Action Plan"])
-            
-            with tab1:
-                if "past" in result:
-                    past = result["past"]
-                    st.markdown("#### Understanding Your Roots")
-                    st.write(past.get("analysis_summary", "No summary available"))
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if "dominant_emotions" in past and past["dominant_emotions"]:
-                            st.markdown("**🎭 Dominant Emotions:**")
-                            for emotion in past["dominant_emotions"]:
-                                st.write(f"• {emotion}")
-                    
-                    with col2:
-                        if "triggers" in past and past["triggers"]:
-                            st.markdown("**⚡ Key Triggers:**")
-                            for trigger in past["triggers"]:
-                                st.write(f"• {trigger}")
-            
-            with tab2:
-                if "present" in result:
-                    present = result["present"]
-                    st.markdown("#### Your Current State")
-                    st.write(present.get("state_summary", "No summary available"))
-                    
-                    if "emotions" in present and present["emotions"]:
-                        st.markdown("**😊 Current Emotions:**")
-                        for emotion in present["emotions"]:
-                            st.progress(emotion.get("intensity", 0) / 10)
-                            st.write(f"{emotion.get('name', 'Unknown')}: {emotion.get('intensity', 0)}/10")
-                    
-                    if "recommended_actions" in present and present["recommended_actions"]:
-                        st.markdown("**💡 Recommended Actions:**")
-                        for action in present["recommended_actions"]:
-                            with st.expander(f"✅ {action.get('action', 'Action')}"):
-                                st.write(action.get('rationale', 'No rationale provided'))
-            
-            with tab3:
-                if "future" in result:
-                    future = result["future"]
-                    st.markdown("#### Your Future Possibilities")
-                    st.write(future.get("projection_summary", "No summary available"))
-                    
-                    if "scenarios" in future and future["scenarios"]:
-                        st.markdown("**🎲 Possible Scenarios:**")
-                        for scenario in future["scenarios"]:
-                            likelihood = scenario.get("likelihood", 0)
-                            st.write(f"**{scenario.get('scenario', 'Scenario')}**")
-                            st.progress(likelihood)
-                            st.write(f"Likelihood: {likelihood * 100:.0f}%")
-                            st.divider()
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if "opportunities" in future and future["opportunities"]:
-                            st.markdown("**🌟 Opportunities:**")
-                            for opp in future["opportunities"]:
-                                st.write(f"• {opp}")
-                    
-                    with col2:
-                        if "risks" in future and future["risks"]:
-                            st.markdown("**⚠️ Potential Risks:**")
-                            for risk in future["risks"]:
-                                st.write(f"• {risk}")
-            
-            with tab4:
-                if "integration" in result:
-                    integration = result["integration"]
-                    st.markdown("#### Your Integrated Action Plan")
-                    st.write(integration.get("integrated_summary", "No summary available"))
-                    
-                    if "plan" in integration and integration["plan"]:
-                        st.markdown("**📋 Action Steps:**")
-                        for i, step in enumerate(integration["plan"], 1):
-                            st.markdown(f"""
-                            <div class="result-section">
-                                <strong>Step {i}: {step.get('step', 'Action step')}</strong><br>
-                                ⏰ Timeframe: {step.get('timeframe', 'Not specified')}
-                            </div>
-                            """, unsafe_allow_html=True)
-                    
-                    if "themes" in integration and integration["themes"]:
-                        st.markdown("**🎨 Key Themes:**")
-                        theme_cols = st.columns(len(integration["themes"]))
-                        for i, theme in enumerate(integration["themes"]):
-                            with theme_cols[i]:
-                                st.info(theme)
-
-# Step 5: Feedback
-if st.session_state.get("last_result") and st.session_state.get("trace_id"):
-    st.markdown("### 💬 Step 5: Share Your Feedback")
+        # Check backend
+        res = get(f"/result/{st.session_state['trace_id']}")
+        if res and "integration" in res:
+            st.session_state["result"] = res
+            st.session_state["processing"] = False
+            st.rerun()
+        
+        time.sleep(1.5)
     
-    col1, col2 = st.columns([1, 2])
+    st.error("Timed out waiting for agents. Please try again.")
+    if st.button("Retry"):
+        st.session_state["processing"] = False
+        st.rerun()
+
+elif st.session_state["result"]:
+    # --- RESULT PHASE ---
+    
+    res = st.session_state["result"]
+    past = res.get("past", {})
+    present = res.get("present", {})
+    future = res.get("future", {})
+    integration = res.get("integration", {})
+    
+    st.markdown("## 🧬 Your Behavioral Blueprint")
+    
+    col1, col2, col3 = st.columns(3)
+    
     with col1:
-        rating = st.select_slider(
-            "How helpful was this?",
-            options=[1, 2, 3, 4, 5],
-            value=4,
-            format_func=lambda x: "⭐" * x
-        )
-    
+        st.markdown('<div class="card-past">', unsafe_allow_html=True)
+        st.markdown("#### 🕵️ Past Pattern")
+        st.write(past.get("pattern_detected", "No pattern detected."))
+        
+        if "predicted_context" in past:
+            st.markdown("---")
+            st.caption("**🕵️ Detective's Insight:**")
+            st.info(past["predicted_context"])
+            
+        st.caption(f"Confidence: {past.get('confidence', 0.0)}")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
     with col2:
-        comments = st.text_input(
-            "Any thoughts to share?",
-            placeholder="Optional: Tell us what you think..."
-        )
+        st.markdown('<div class="card-present">', unsafe_allow_html=True)
+        st.markdown("#### 🛑 Present Constraint")
+        st.write(present.get("primary_constraint", "None detected."))
+        st.write(f"**Energy:** {present.get('energy_level', 'Unknown')}")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with col3:
+        st.markdown('<div class="card-future">', unsafe_allow_html=True)
+        st.markdown("#### 🎲 Future Risk")
+        st.write(future.get("failure_simulation", "No simulation."))
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    if st.button("📤 Submit Feedback", type="secondary"):
-        res = post("/eval", {
-            "trace_id": st.session_state["trace_id"],
-            "user_id": user_id,
-            "rating": int(rating),
-            "comments": comments
-        })
-        if res:
-            st.success("🙏 Thank you for your feedback!")
-            st.balloons()
+    st.divider()
+    
+    st.markdown('<div class="card-action">', unsafe_allow_html=True)
+    st.markdown("### 🚀 The Dopamine Hit")
+    
+    # Display Mentor Persona & Emotion
+    if "mentor_persona" in integration and "detected_emotion" in integration:
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            st.info(f"**Detector:** {integration['detected_emotion']}")
+        with col_p2:
+            st.success(f"**Mentor Mode:** {integration['mentor_persona']}")
+    
+    # NEW: Message from Mentor (The "Proper Answer")
+    if "message_from_mentor" in integration:
+        st.markdown(f"### 💬 Message from your Mentor")
+        st.write(integration["message_from_mentor"])
+        st.markdown("---")
 
-# Footer
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #666; padding: 1rem;">
-    <p>💡 <strong>Emotion Time Travel</strong> - Turning imagination into reality, one step at a time.</p>
-</div>
-""", unsafe_allow_html=True)
+    st.subheader(integration.get("impact_statement", "Loading plan..."))
+    
+    # Micro Task Display
+    if "micro_task" in integration:
+        mt = integration["micro_task"]
+        st.info(f"👉 **{mt.get('title', 'Task')}**")
+        st.write(mt.get("description", ""))
+        st.caption(f"🎁 **Reward:** {mt.get('reward', 'Satisfaction')}")
+    
+    # Roadmap Dislay
+    if "roadmap" in integration and integration["roadmap"]:
+        st.markdown("---")
+        with st.expander("🗺️ See Your Hyper-Realistic 6-Month Path"):
+            roadmap = integration["roadmap"]
+            for phase in roadmap:
+                # Month Header
+                st.markdown(f"### 🚩 {phase.get('phase')} - *{phase.get('theme')}*")
+                if "expected_result" in phase:
+                    st.caption(f"🏁 **Goal:** {phase['expected_result']}")
+                
+                # Weeks
+                for week in phase.get("weeks", []):
+                    st.markdown(f"- **{week.get('week')}**: {week.get('focus')}")
+                    if "outcome" in week:
+                        st.caption(f"  *Result: {week['outcome']}*")
+                
+                st.write("") # Spacer
+
+    if "next_check_in" in integration:
+        st.caption(f"Next Check-in: {integration['next_check_in']}")
+        
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Feedback Section
+    with st.expander("Give Feedback on this Plan"):
+        f_rating = st.slider("Was this helpful?", 1, 5, 3)
+        f_text = st.text_input("Comments")
+        if st.button("Submit Feedback"):
+            try:
+                # trace_id is stored in session state but we need to ensure it's passed correctly
+                tid = st.session_state["trace_id"]
+                requests.post(BASE + "/feedback", json={
+                    "trace_id": tid,
+                    "rating": f_rating,
+                    "comment": f_text
+                })
+                st.success("Feedback Received!")
+            except Exception as e:
+                st.error(f"Failed to send feedback: {e}")
+    
+    if st.button("Start New Analysis"):
+        st.session_state["trace_id"] = None
+        st.session_state["result"] = None
+        st.rerun()

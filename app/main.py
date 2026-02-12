@@ -1,27 +1,29 @@
 """
-FastAPI app with ingest/session/task/metrics endpoints.
+FastAPI app with v2.0 Production Endpoints.
 """
 
 import json
 import os
-import time
+import uuid
+import threading
+import asyncio
+import io
 from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from pydantic import BaseModel
 from loguru import logger
+from sqlalchemy.orm import Session as DBSession
 
-from .observability import REQUESTS_TOTAL
+from .database import engine, SessionLocal, init_db, get_db
+from .models import User, Session
 from .orchestrator import orchestrate
-from .session_service import InMemorySessionService
-from .tasks import enqueue_long_healing_journey, _session_service
-from .eval import init_eval_db, submit_evaluation, daily_summary, set_consent
-from .memory import delete_user_data
-
+from .observability import REQUESTS_TOTAL
+from .eval import init_eval_db  # Keeping legacy eval for now, but will migrate to Postgres
 
 load_dotenv()
 
@@ -36,10 +38,14 @@ app.add_middleware(
 )
 
 
+# In-memory result store for async polling (Production: use Redis)
 result_store: Dict[str, Dict[str, Any]] = {}
-session_service = _session_service  # reuse the one in tasks
-init_eval_db()
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+@app.on_event("startup")
+def on_startup():
+    init_db()  # Create tables in Postgres if they don't exist
+    logger.info("Application startup: DB initialized.")
 
 
 @app.exception_handler(Exception)
@@ -51,156 +57,151 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 @app.get("/", tags=["health"])
 def read_root():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "v2.0-production"}
 
+
+# --- Input Models ---
+
+class IngestRequest(BaseModel):
+    user_id: str
+    focus: str
+    history: str
+    vision: str
+    session_id: Optional[str] = None
+
+
+# --- Endpoints ---
 
 @app.post("/ingest", tags=["ingest"])
-async def ingest(payload: Dict[str, Any], background_tasks: BackgroundTasks):
-    text = payload.get("text")
-    user_id = payload.get("user_id")
-    session_id = payload.get("session_id")
-    if not text or not user_id:
-        REQUESTS_TOTAL.labels(route="/ingest", method="POST", status="400").inc()
-        raise HTTPException(status_code=400, detail="text and user_id are required")
-
-    trace_id = str(os.urandom(8).hex())
+async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):
+    """
+    Main entry point for v2.0.
+    Starts the orchestration in background.
+    """
+    user_id = payload.user_id
     
-    # Initialize result_store with processing status
-    result_store[trace_id] = {"status": "processing", "trace_id": trace_id, "error": "Processing your request..."}
-    logger.info(f"Starting orchestration for trace_id: {trace_id}")
+    # Create/Get User
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        user = User(id=user_id)
+        db.add(user)
+        db.commit()
 
-    def run_orchestrate_sync(t: str, sid: Optional[str], tid: str):
+    # Create Session Record
+    session_id = payload.session_id or str(uuid.uuid4())
+    session_rec = db.query(Session).filter(Session.id == session_id).first()
+    if not session_rec:
+        session_rec = Session(
+            id=session_id,
+            user_id=user_id,
+            focus=payload.focus,
+            history=payload.history,
+            vision=payload.vision
+        )
+        db.add(session_rec)
+        db.commit()
+
+    trace_id = str(uuid.uuid4())
+    result_store[trace_id] = {"status": "processing"}
+
+    # Run orchestration in background thread (since it calls blocking sync LLM code wrapped in async)
+    def run_orchestrate(tid: str, uid: str, f: str, h: str, v: str, sid: str):
         try:
-            logger.info(f"Background thread started for trace_id: {tid}")
-            import asyncio
-            # Create new event loop for this thread
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                logger.info(f"Starting orchestration for trace_id: {tid}")
-                res = loop.run_until_complete(orchestrate(t, session_id=sid))
+                # Call the orchestrator
+                res = loop.run_until_complete(orchestrate(uid, f, h, v, sid))
+                
+                # Update DB with result (sync)
+                with SessionLocal() as db_inner:
+                    s = db_inner.query(Session).filter(Session.id == sid).first()
+                    if s:
+                        s.result_json = json.dumps(res)
+                        db_inner.commit()
+                
                 result_store[tid] = res
-                logger.info(f"Orchestration completed successfully for trace_id: {tid}, keys: {res.keys()}")
             finally:
                 loop.close()
         except Exception as e:
-            error_msg = str(e)
-            logger.exception(f"Error in orchestration for trace_id: {tid}, error: {error_msg}")
-            result_store[tid] = {
-                "error": error_msg, 
-                "trace_id": tid,
-                "status": "error",
-                "details": f"Processing failed: {error_msg}"
-            }
+            logger.exception(f"Orchestration failed for {tid}")
+            result_store[tid] = {"status": "error", "error": str(e)}
 
-    import threading
-    thread = threading.Thread(target=run_orchestrate_sync, args=(text, session_id, trace_id), daemon=True)
-    thread.start()
-    logger.info(f"Background thread started for trace_id: {trace_id}, thread_id: {thread.ident}")
-    REQUESTS_TOTAL.labels(route="/ingest", method="POST", status="202").inc()
-    return {"trace_id": trace_id, "status": "accepted"}
+    threading.Thread(
+        target=run_orchestrate, 
+        args=(trace_id, user_id, payload.focus, payload.history, payload.vision, session_id),
+        daemon=True
+    ).start()
+
+    return {"trace_id": trace_id, "session_id": session_id, "status": "accepted"}
 
 
 @app.get("/result/{trace_id}", tags=["ingest"])
 def get_result(trace_id: str):
     res = result_store.get(trace_id)
     if not res:
-        logger.warning(f"Result not found for trace_id: {trace_id}")
-        REQUESTS_TOTAL.labels(route="/result", method="GET", status="200").inc()
-        return {
-            "error": "Result not ready yet. Still processing...", 
-            "status": "processing", 
-            "trace_id": trace_id
-        }
-    
-    # Log the status for debugging
-    status = res.get("status", "completed" if "error" not in res else "error")
-    logger.info(f"Returning result for trace_id: {trace_id}, status: {status}, keys: {list(res.keys())}")
-    
-    # If there's an error in the result, log it
-    if "error" in res and res.get("status") == "error":
-        logger.error(f"Error in result for trace_id: {trace_id}: {res.get('error')}")
-    
-    REQUESTS_TOTAL.labels(route="/result", method="GET", status="200").inc()
+        return {"status": "processing", "message": "Result not found or not ready."}
     return res
-
-
-@app.post("/eval", tags=["eval"])
-def submit_eval(payload: Dict[str, Any]):
-    tid = payload.get("trace_id")
-    uid = payload.get("user_id")
-    rating = payload.get("rating")
-    comments = payload.get("comments")
-    if not tid or not uid or rating is None:
-        raise HTTPException(status_code=400, detail="trace_id, user_id, rating required")
-    rid = submit_evaluation(str(tid), str(uid), int(rating), str(comments) if comments is not None else None)
-    return {"id": rid}
-
-
-@app.get("/eval/summary/{user_id}", tags=["eval"])
-def eval_summary(user_id: str):
-    return daily_summary(user_id)
-
-
-@app.post("/session", tags=["session"])
-def create_session(payload: Dict[str, Any]):
-    user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="user_id required")
-    sid = session_service.create_session(user_id)
-    return {"session_id": sid}
-
-
-@app.post("/session/{session_id}/pause", tags=["session"])
-def pause_session(session_id: str):
-    session_service.pause_session(session_id)
-    return {"session_id": session_id, "paused": True}
-
-
-@app.post("/session/{session_id}/resume", tags=["session"])
-def resume_session(session_id: str):
-    session_service.resume_session(session_id)
-    return {"session_id": session_id, "paused": False}
-
-
-@app.post("/user/{user_id}/consent", tags=["user"])
-def user_consent(user_id: str, payload: Dict[str, Any]):
-    consent = bool(payload.get("consent", True))
-    set_consent(user_id, consent)
-    return {"user_id": user_id, "consent": consent}
-
-
-@app.delete("/user/{user_id}/data", tags=["user"])
-def user_delete(user_id: str):
-    m = delete_user_data(user_id)
-    s = session_service.delete_user(user_id)
-    return {"user_id": user_id, "memories_deleted": m, "sessions_deleted": s}
-
-
-@app.post("/tasks/journey/{session_id}", tags=["tasks"])
-def start_journey(session_id: str):
-    job = enqueue_long_healing_journey(session_id)
-    return {"job_id": job.id}
 
 
 @app.get("/metrics", tags=["observability"])
 def metrics():
-    data = generate_latest()
-    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-@app.get("/debug/result-store", tags=["debug"])
-def debug_result_store():
-    """Debug endpoint to check result_store status"""
-    return {
-        "total_results": len(result_store),
-        "trace_ids": list(result_store.keys()),
-        "results": {tid: {
-            "status": res.get("status", "unknown"),
-            "has_error": "error" in res,
-            "has_past": "past" in res,
-            "has_present": "present" in res,
-            "has_future": "future" in res,
-            "error_msg": res.get("error", "")[:100] if "error" in res else None
-        } for tid, res in result_store.items()}
-    }
+# --- Audio Endpoint ---
+
+from fastapi import UploadFile, File
+from .audio import transcriber
+
+@app.post("/transcribe", tags=["audio"])
+async def transcribe_audio(file: UploadFile = File(...)):
+    """
+    Accepts an audio file and returns structured text (Focus, History, Vision).
+    1. Transcribe with Whisper.
+    2. Structure with Llama 3 (via Groq).
+    """
+    try:
+        # 1. Read & Transcribe
+        content = await file.read()
+        file_obj = io.BytesIO(content)
+        raw_text = transcriber.transcribe(file_obj)
+        
+        if "[Error" in raw_text:
+            return JSONResponse(status_code=500, content={"error": raw_text})
+
+        # 2. Structure with LLM
+        # We reuse the orchestrator's helper or call_llm directly
+        from .llm import call_llm
+        from .prompts import build_prompt
+        from .orchestrator import _parse_json
+        
+        # Build prompt for StructureAgent
+        # We pass raw_text as 'focus' inputs just to fit the signature, or handle it custom
+        prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
+        
+        logger.info("Structuring transcript with Groq...")
+        structured_json_str = call_llm(prompt_text)
+        structured_data = _parse_json(structured_json_str)
+        
+        # If LLM failed to structure, fallback to raw text in 'focus'
+        if "error" in structured_data or not structured_data.get("focus"):
+            logger.warning("Structuring failed, returning raw text.")
+            return {
+                "raw_text": raw_text,
+                "focus": raw_text,
+                "history": "",
+                "vision": ""
+            }
+
+        return {
+            "raw_text": raw_text,
+            "focus": structured_data.get("focus", ""),
+            "history": structured_data.get("history", ""),
+            "vision": structured_data.get("vision", "")
+        }
+
+    except Exception as e:
+        logger.error(f"Audio processing failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
