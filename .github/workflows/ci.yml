@@ -18,9 +18,9 @@ jobs:
           python -m venv .venv
           source .venv/bin/activate
           pip install --upgrade pip
-          pip install -r emotion-time-travel/requirements.txt
+          pip install -r requirements.txt
           pip install pytest
       - name: Run tests
         run: |
           source .venv/bin/activate
-          pytest -q emotion-time-travel/tests
+          pytest -q tests
