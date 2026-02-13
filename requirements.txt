@@ -2,7 +2,7 @@
 fastapi
 
 # ASGI server
-uvicorn
+uvicorn[standard]
 
 # LLM SDKs
 openai
@@ -24,3 +24,4 @@ prometheus-client
 pytest
 streamlit
 groq
+python-dotenv
