@@ -9,20 +9,20 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.5
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: emotion-time-travel-redis
+      - key: DATABASE_URL
+        fromDatabase:
+          name: emotion-time-travel-db
           property: connectionString
-      - key: GROQ_API_KEY
-        sync: false
-      - key: GROQ_MODEL
-        value: meta-llama/llama-4-maverick-17b-128e-instruct
-      - key: PORT
-        value: 10000
 
   # The Redis Service for background tasks (rq)
   - type: redis
     name: emotion-time-travel-redis
     plan: free
     ipAllowList: [] # internal only by default
+
+  # The Postgres Service for persistent data
+  - type: psql
+    name: emotion-time-travel-db
+    plan: free
+    ipAllowList: [] # internal only by default
+
