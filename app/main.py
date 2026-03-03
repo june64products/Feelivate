@@ -64,9 +64,7 @@ def read_root():
 
 class IngestRequest(BaseModel):
     user_id: str
-    focus: str
-    history: str
-    vision: str
+    text: str
     session_id: Optional[str] = None
 
 
@@ -94,9 +92,9 @@ async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: 
         session_rec = Session(
             id=session_id,
             user_id=user_id,
-            focus=payload.focus,
-            history=payload.history,
-            vision=payload.vision
+            focus=payload.text, # Since focus is required on the model, we store the full text there initially
+            history="",
+            vision=""
         )
         db.add(session_rec)
         db.commit()
@@ -105,13 +103,37 @@ async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: 
     result_store[trace_id] = {"status": "processing"}
 
     # Run orchestration in background thread (since it calls blocking sync LLM code wrapped in async)
-    def run_orchestrate(tid: str, uid: str, f: str, h: str, v: str, sid: str):
+    def run_orchestrate(tid: str, uid: str, raw_text: str, sid: str):
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                # Call the orchestrator
-                res = loop.run_until_complete(orchestrate(uid, f, h, v, sid))
+                # 1. First, parse the raw unstructured text into Focus, History, Vision using StructureAgent
+                from .llm import call_llm
+                from .prompts import build_prompt
+                from .orchestrator import _parse_json
+                
+                logger.info("Structuring raw input with Groq StructureAgent...")
+                prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
+                
+                structured_json_str = call_llm(prompt_text)
+                structured_data = _parse_json(structured_json_str)
+                
+                focus = structured_data.get("focus", raw_text)
+                history = structured_data.get("history", "")
+                vision = structured_data.get("vision", "")
+
+                # Update the session with the structured data
+                with SessionLocal() as db_inner:
+                    s = db_inner.query(Session).filter(Session.id == sid).first()
+                    if s:
+                        s.focus = focus
+                        s.history = history
+                        s.vision = vision
+                        db_inner.commit()
+
+                # 2. Call the orchestrator with the newly structured inputs
+                res = loop.run_until_complete(orchestrate(uid, focus, history, vision, sid))
                 
                 # Update DB with result (sync)
                 with SessionLocal() as db_inner:
@@ -129,7 +151,7 @@ async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: 
 
     threading.Thread(
         target=run_orchestrate, 
-        args=(trace_id, user_id, payload.focus, payload.history, payload.vision, session_id),
+        args=(trace_id, user_id, payload.text, session_id),
         daemon=True
     ).start()
 
