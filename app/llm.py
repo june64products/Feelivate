@@ -54,7 +54,7 @@ def _configure_gemini():
         _gemini_configured = True
 
 
-def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 2000) -> str:
+def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000) -> str:
     provider = _get_llm_provider()
     
     if provider == "groq":
@@ -65,7 +65,7 @@ def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7
         return _call_openai(prompt, system, temperature, max_tokens)
 
 
-def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 2000) -> str:
+def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000) -> str:
     try:
         import requests
         load_dotenv()
@@ -118,7 +118,7 @@ def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float =
         raise RuntimeError(f"Gemini error: {e}")
 
 
-def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 2000) -> str:
+def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000) -> str:
     try:
         client = _get_client()
         model = os.getenv("GROQ_MODEL", "llama-4-maverick")
@@ -141,7 +141,7 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
         raise RuntimeError(f"Groq error: {e}")
 
 
-def _call_openai(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 2000) -> str:
+def _call_openai(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000) -> str:
     try:
         client = _get_client()
         model = os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")

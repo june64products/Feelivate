@@ -59,3 +59,36 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<TranscribeRespon
 
     return response.json();
 };
+
+export const generateQuestions = async (text: string): Promise<string[]> => {
+    const response = await fetch(`${API_BASE_URL}/generate_questions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to generate questions: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.questions;
+};
+
+export const submitCheckIn = async (payload: { user_id: string, session_id: string, status: string, current_plan: any }) => {
+    const response = await fetch(`${API_BASE_URL}/checkin`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Check-in failed: ${response.statusText}`);
+    }
+
+    return response.json();
+};

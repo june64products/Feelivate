@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, Loader2, Sparkles, AlertCircle } from 'lucide-react';
-import { transcribeAudio } from '../../api';
+import { Mic, Square, Loader2, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
+import { transcribeAudio, generateQuestions } from '../../api';
 
 interface InputFormProps {
     onSubmit: (text: string) => void;
@@ -9,7 +9,11 @@ interface InputFormProps {
 }
 
 const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
-    const [text, setText] = useState('');
+    type Step = 'initial' | 'generating' | 'questions';
+    const [step, setStep] = useState<Step>('initial');
+    const [initialGoal, setInitialGoal] = useState('');
+    const [questions, setQuestions] = useState<string[]>([]);
+    const [answers, setAnswers] = useState<string[]>([]);
 
     // Audio State
     const [isRecording, setIsRecording] = useState(false);
@@ -59,7 +63,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
             const data = await transcribeAudio(audioBlob);
             if (data.raw_text) {
                 // Populate the single textbox with the raw transcription
-                setText(prev => prev + (prev ? '\n\n' : '') + data.raw_text);
+                setInitialGoal(prev => prev + (prev ? '\n\n' : '') + data.raw_text);
             }
         } catch (err: any) {
             setAudioError(err.message || 'Transcription failed.');
@@ -68,10 +72,33 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleInitialSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!text.trim()) return;
-        onSubmit(text);
+        if (!initialGoal.trim()) return;
+
+        setStep('generating');
+        try {
+            const generated = await generateQuestions(initialGoal);
+            if (generated && generated.length > 0) {
+                setQuestions(generated);
+                setAnswers(new Array(generated.length).fill(''));
+                setStep('questions');
+            } else {
+                // Fallback
+                onSubmit(`Goal: ${initialGoal}`);
+                setStep('initial');
+            }
+        } catch (error) {
+            console.error("Failed to generate questions:", error);
+            onSubmit(`Goal: ${initialGoal}`);
+            setStep('initial');
+        }
+    };
+
+    const handleFinalSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const combined = `Goal: ${initialGoal}\n\n` + questions.map((q, i) => `Q: ${q}\nA: ${answers[i]}`).join('\n\n');
+        onSubmit(combined);
     };
 
     return (
@@ -89,65 +116,166 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
             }}
         >
             {/* Left Pane: The Form */}
-            <div className="glass-panel" style={{ padding: '40px' }}>
-                <h2 style={{ fontSize: '1.75rem', marginBottom: '8px', color: 'var(--text-primary)' }}>
-                    Step 1: The Context
-                </h2>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
-                    Pour your thoughts out. Tell us what you're struggling with, what you've tried, and where you want to go. The AI will figure out the rest.
-                </p>
+            <div className="glass-panel" style={{ padding: '40px', display: 'flex', flexDirection: 'column' }}>
+                <AnimatePresence mode="wait">
+                    {step === 'initial' && (
+                        <motion.div
+                            key="initial"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+                        >
+                            <h2 style={{ fontSize: '1.75rem', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                                Step 1: The Context
+                            </h2>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
+                                Tell us what you want to achieve today. We'll ask you a few targeted questions to understand your situation perfectly.
+                            </p>
 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            <form onSubmit={handleInitialSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
+                                <div className="input-group" style={{ flexGrow: 1 }}>
+                                    <textarea
+                                        value={initialGoal}
+                                        onChange={(e) => setInitialGoal(e.target.value)}
+                                        placeholder="I want to build a SaaS, but I feel stuck..."
+                                        className="premium-input text-entry"
+                                        style={{
+                                            width: '100%',
+                                            background: 'rgba(0,0,0,0.3)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '12px',
+                                            padding: '24px',
+                                            color: 'var(--text-primary)',
+                                            minHeight: '250px',
+                                            fontSize: '1.1rem',
+                                            lineHeight: '1.6',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={!initialGoal.trim()}
+                                    className="premium-button"
+                                    style={{
+                                        background: 'var(--accent-primary)',
+                                        color: 'white',
+                                        padding: '16px 32px',
+                                        borderRadius: '12px',
+                                        fontWeight: 600,
+                                        fontSize: '1.1rem',
+                                        marginTop: '16px',
+                                        opacity: !initialGoal.trim() ? 0.5 : 1,
+                                        cursor: !initialGoal.trim() ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '12px'
+                                    }}
+                                >
+                                    Next <ArrowRight size={20} />
+                                </button>
+                            </form>
+                        </motion.div>
+                    )}
 
-                    <div className="input-group" style={{ flexGrow: 1 }}>
-                        <textarea
-                            value={text}
-                            onChange={(e) => setText(e.target.value)}
-                            placeholder="I've been feeling stuck lately because..."
-                            className="premium-input text-entry"
-                            style={{
-                                width: '100%',
-                                background: 'rgba(0,0,0,0.3)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '12px',
-                                padding: '24px',
-                                color: 'var(--text-primary)',
-                                minHeight: '350px',
-                                fontSize: '1.1rem',
-                                lineHeight: '1.6',
-                                resize: 'vertical',
-                                fontFamily: 'inherit',
-                                transition: 'all 0.3s ease'
-                            }}
-                            required
-                        />
-                    </div>
+                    {step === 'generating' && (
+                        <motion.div
+                            key="generating"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}
+                        >
+                            <Loader2 className="spinner" size={48} color="var(--accent-glow)" style={{ marginBottom: '24px' }} />
+                            <h2 style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}>Formulating Context...</h2>
+                            <p style={{ color: 'var(--text-secondary)' }}>Generating specific questions based on your goal.</p>
+                        </motion.div>
+                    )}
 
-                    <button
-                        type="submit"
-                        disabled={isLoading || !text.trim()}
-                        className="premium-button"
-                        style={{
-                            background: 'var(--accent-primary)',
-                            color: 'white',
-                            padding: '16px 32px',
-                            borderRadius: '12px',
-                            fontWeight: 600,
-                            fontSize: '1.1rem',
-                            marginTop: '16px',
-                            opacity: (isLoading || !text.trim()) ? 0.5 : 1,
-                            cursor: (isLoading || !text.trim()) ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.3s ease',
-                            border: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '12px'
-                        }}
-                    >
-                        {isLoading ? <><Loader2 className="spinner" size={20} /> Encrypting Context...</> : '🚀 Analyze Behavioral Patterns'}
-                    </button>
-                </form>
+                    {step === 'questions' && (
+                        <motion.div
+                            key="questions"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+                        >
+                            <h2 style={{ fontSize: '1.75rem', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                                Step 2: The Deep Dive
+                            </h2>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
+                                Answer these specific questions so the AI can build a highly customized strategy.
+                            </p>
+
+                            <form onSubmit={handleFinalSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
+                                {questions.map((q, i) => (
+                                    <div key={i} className="input-group">
+                                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--accent-glow)', fontWeight: 500 }}>
+                                            {q}
+                                        </label>
+                                        <textarea
+                                            value={answers[i]}
+                                            onChange={(e) => {
+                                                const newAnswers = [...answers];
+                                                newAnswers[i] = e.target.value;
+                                                setAnswers(newAnswers);
+                                            }}
+                                            placeholder="Your answer..."
+                                            className="premium-input text-entry"
+                                            style={{
+                                                width: '100%',
+                                                background: 'rgba(0,0,0,0.3)',
+                                                border: '1px solid var(--border-color)',
+                                                borderRadius: '12px',
+                                                padding: '16px',
+                                                color: 'var(--text-primary)',
+                                                minHeight: '100px',
+                                                fontSize: '1rem',
+                                                lineHeight: '1.5',
+                                                resize: 'vertical',
+                                                fontFamily: 'inherit',
+                                                transition: 'all 0.3s ease'
+                                            }}
+                                            required
+                                        />
+                                    </div>
+                                ))}
+
+                                <button
+                                    type="submit"
+                                    disabled={isLoading || answers.some(a => !a.trim())}
+                                    className="premium-button"
+                                    style={{
+                                        background: 'var(--accent-primary)',
+                                        color: 'white',
+                                        padding: '16px 32px',
+                                        borderRadius: '12px',
+                                        fontWeight: 600,
+                                        fontSize: '1.1rem',
+                                        marginTop: '16px',
+                                        opacity: (isLoading || answers.some(a => !a.trim())) ? 0.5 : 1,
+                                        cursor: (isLoading || answers.some(a => !a.trim())) ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '12px'
+                                    }}
+                                >
+                                    {isLoading ? <><Loader2 className="spinner" size={20} /> Encrypting Context...</> : '🚀 Analyze Behavioral Patterns'}
+                                </button>
+                            </form>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Right Pane: Audio Recorder & Smart Fill */}

@@ -67,8 +67,58 @@ class IngestRequest(BaseModel):
     text: str
     session_id: Optional[str] = None
 
+class QuestionRequest(BaseModel):
+    text: str
+
+class CheckinRequest(BaseModel):
+    user_id: str
+    session_id: str
+    status: str
+    current_plan: Dict[str, Any]
+
 
 # --- Endpoints ---
+
+@app.post("/generate_questions", tags=["ingest"])
+async def generate_questions(payload: QuestionRequest):
+    """
+    Generates 3-4 specific follow-up questions based on the initial input.
+    """
+    from .llm import call_llm
+    from .prompts import build_prompt
+    from .orchestrator import _parse_json
+    
+    try:
+        prompt_text = build_prompt("QuestionGeneratorAgent", {"focus": payload.text}, None)
+        json_str = await asyncio.to_thread(call_llm, prompt_text)
+        data = _parse_json(json_str)
+        return {"questions": data.get("questions", [])}
+    except Exception as e:
+        logger.exception("Failed to generate questions")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/checkin", tags=["ingest"])
+async def submit_checkin(payload: CheckinRequest, db: DBSession = Depends(get_db)):
+    """
+    Dynamically recalibrates the plan based on checkin status.
+    """
+    from .llm import call_llm
+    from .prompts import build_prompt
+    from .orchestrator import _parse_json
+    
+    try:
+        context = {
+            "status": payload.status,
+            "current_plan": json.dumps(payload.current_plan)
+        }
+        prompt_text = build_prompt("RecalibrationAgent", {"focus": f"User status: {payload.status}\nCurrent plan: {json.dumps(payload.current_plan)}"}, context)
+        json_str = await asyncio.to_thread(call_llm, prompt_text)
+        recalibrated_data = _parse_json(json_str)
+        
+        return recalibrated_data
+    except Exception as e:
+        logger.exception("Failed to recalibrate plan")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ingest", tags=["ingest"])
 async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):

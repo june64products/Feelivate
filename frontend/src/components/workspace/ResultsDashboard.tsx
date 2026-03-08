@@ -1,5 +1,7 @@
-import { motion } from 'framer-motion';
-import { Calendar, CheckCircle2, Target, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, CheckCircle2, Target, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, Loader2 } from 'lucide-react';
+import { submitCheckIn } from '../../api';
 
 interface WeekDetails {
     week: string;
@@ -27,13 +29,48 @@ interface ResultsDashboardProps {
 }
 
 const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => {
+    const [localRoadmap, setLocalRoadmap] = useState<MonthPhase[]>([]);
+    const [localMicroTask, setLocalMicroTask] = useState<any>(null);
+    const [isCheckingIn, setIsCheckingIn] = useState(false);
+    const [feedbackMessage, setFeedbackMessage] = useState('');
+
+    useEffect(() => {
+        if (data?.integration) {
+            setLocalRoadmap(data.integration.roadmap || []);
+            setLocalMicroTask(data.integration.micro_task || null);
+            setFeedbackMessage('');
+        }
+    }, [data]);
+
     if (!data) return null;
 
     const past = data.past || {};
     const present = data.present || {};
     const future = data.future || {};
     const integration = data.integration || {};
-    const roadmap: MonthPhase[] = integration.roadmap || [];
+
+    const handleCheckIn = async (status: 'Completed' | 'Struggled') => {
+        setIsCheckingIn(true);
+        setFeedbackMessage('');
+        try {
+            const response = await submitCheckIn({
+                user_id: 'default_user',
+                session_id: 'default_session',
+                status,
+                current_plan: { micro_task: localMicroTask }
+            });
+
+            if (response.feedback_message) setFeedbackMessage(response.feedback_message);
+            if (response.adjusted_micro_task) setLocalMicroTask(response.adjusted_micro_task);
+
+            // If the roadmap week was adjusted, we could merge it, but for simplicity we focus on the task & feedback
+        } catch (error) {
+            console.error("Check-in failed:", error);
+            setFeedbackMessage("Failed to recalibrate plan. Please try again.");
+        } finally {
+            setIsCheckingIn(false);
+        }
+    };
 
     // Animation variants
     const containerVariants = {
@@ -153,7 +190,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                     )}
 
                     {/* Immediate Action - The Micro Task */}
-                    {integration.micro_task && (
+                    {localMicroTask && (
                         <div style={{
                             background: 'linear-gradient(145deg, rgba(80, 250, 123, 0.1) 0%, rgba(80, 250, 123, 0.02) 100%)',
                             border: '1px solid rgba(80, 250, 123, 0.2)',
@@ -167,11 +204,44 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                                 <Rocket size={24} color="#50fa7b" />
                                 <h4 style={{ color: '#50fa7b', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Immediate Micro-Action</h4>
                             </div>
-                            <h5 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '8px', fontWeight: 500 }}>{integration.micro_task.title}</h5>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: 1.5 }}>{integration.micro_task.description}</p>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(249, 215, 28, 0.1)', padding: '8px 16px', borderRadius: '20px' }}>
+                            <h5 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '8px', fontWeight: 500 }}>{localMicroTask.title}</h5>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: 1.5 }}>{localMicroTask.description}</p>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(249, 215, 28, 0.1)', padding: '8px 16px', borderRadius: '20px', marginBottom: '24px' }}>
                                 <span style={{ color: '#f9d71c', fontSize: '0.9rem', fontWeight: 600 }}>🎁 Expected Reward:</span>
-                                <span style={{ color: 'rgba(249, 215, 28, 0.9)', fontSize: '0.9rem' }}>{integration.micro_task.reward}</span>
+                                <span style={{ color: 'rgba(249, 215, 28, 0.9)', fontSize: '0.9rem' }}>{localMicroTask.reward}</span>
+                            </div>
+
+                            {/* Check-in Module */}
+                            <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '24px' }}>
+                                <h4 style={{ color: 'var(--text-primary)', fontSize: '1rem', marginBottom: '16px' }}>How did it go? Check in to dynamically adjust your plan:</h4>
+                                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                                    <button
+                                        onClick={() => handleCheckIn('Completed')}
+                                        disabled={isCheckingIn}
+                                        style={{ background: 'rgba(80, 250, 123, 0.15)', border: '1px solid #50fa7b', color: '#50fa7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease', opacity: isCheckingIn ? 0.5 : 1 }}
+                                    >
+                                        ✅ I completed this
+                                    </button>
+                                    <button
+                                        onClick={() => handleCheckIn('Struggled')}
+                                        disabled={isCheckingIn}
+                                        style={{ background: 'rgba(255, 123, 123, 0.15)', border: '1px solid #ff7b7b', color: '#ff7b7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease', opacity: isCheckingIn ? 0.5 : 1 }}
+                                    >
+                                        ❌ I struggled, adjust plan
+                                    </button>
+                                </div>
+                                <AnimatePresence>
+                                    {isCheckingIn && (
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ marginTop: '16px', color: 'var(--accent-glow)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                                            <Loader2 className="spinner" size={16} /> Recalibrating Strategy...
+                                        </motion.div>
+                                    )}
+                                    {feedbackMessage && !isCheckingIn && (
+                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '24px', padding: '16px', background: 'rgba(130, 202, 255, 0.1)', border: '1px solid rgba(130, 202, 255, 0.3)', borderRadius: '12px', color: 'var(--text-primary)', fontSize: '0.95rem', fontStyle: 'italic' }}>
+                                            "{feedbackMessage}"
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                     )}
@@ -179,8 +249,8 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
             </motion.div>
 
             {/* The 6-Month Victory Path */}
-            {roadmap && roadmap.length > 0 && (
-                <motion.div variants={itemVariants} style={{ marginTop: '32px' }}>
+            {Array.isArray(localRoadmap) && localRoadmap.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ marginTop: '32px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '40px' }}>
                         <div style={{ background: 'var(--text-primary)', padding: '12px', borderRadius: '16px' }}>
                             <Calendar size={28} color="var(--bg-primary)" />
@@ -192,7 +262,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
-                        {roadmap.map((month, idx) => (
+                        {localRoadmap.map((month, idx) => (
                             <motion.div
                                 key={idx}
                                 whileHover={{ y: -5, transition: { duration: 0.2 } }}
@@ -219,7 +289,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                                     {month.expected_result}
                                 </p>
 
-                                {month.weeks && month.weeks.length > 0 && (
+                                {Array.isArray(month.weeks) && month.weeks.length > 0 && (
                                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                         {month.weeks.map((week, wIdx) => (
                                             <div key={wIdx} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
