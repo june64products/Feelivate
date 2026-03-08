@@ -6,9 +6,11 @@
   --bg-secondary: #121212;
   --text-primary: #ffffff;
   --text-secondary: #9ca3af;
-  --text-accent: #3b82f6; /* Adjust as per actual Maze accent */
-  
-  --accent-primary: #5b21b6; /* Deep Purple */
+  --text-accent: #3b82f6;
+  /* Adjust as per actual Maze accent */
+
+  --accent-primary: #5b21b6;
+  /* Deep Purple */
   --accent-secondary: #7e22ce;
   --accent-glow: rgba(126, 34, 206, 0.4);
 
@@ -59,7 +61,12 @@ button {
   border-radius: 16px;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   line-height: 1.2;
   letter-spacing: -0.02em;
 }
@@ -81,4 +88,29 @@ h1, h2, h3, h4, h5, h6 {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
+}
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+  :root {
+    --nav-height: 60px;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .flex-col-mobile {
+    flex-direction: column !important;
+  }
+
+  .stack-on-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
 }

@@ -111,10 +111,10 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
             </motion.div>
 
             {/* Core Analysis (Past, Present, Future) - Premium Grid */}
-            <motion.div variants={itemVariants} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+            <motion.div variants={itemVariants} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '24px' }}>
 
                 {/* Past Card */}
-                <div style={{ background: 'rgba(255, 123, 123, 0.03)', border: '1px solid rgba(255, 123, 123, 0.15)', borderRadius: '24px', padding: '32px', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ background: 'rgba(255, 123, 123, 0.03)', border: '1px solid rgba(255, 123, 123, 0.15)', borderRadius: '24px', padding: 'clamp(24px, 4vw, 32px)', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'linear-gradient(to bottom, #ff7b7b, transparent)' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
                         <div style={{ background: 'rgba(255, 123, 123, 0.1)', padding: '10px', borderRadius: '12px' }}>
@@ -134,7 +134,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                 </div>
 
                 {/* Present Card */}
-                <div style={{ background: 'rgba(249, 215, 28, 0.03)', border: '1px solid rgba(249, 215, 28, 0.15)', borderRadius: '24px', padding: '32px', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ background: 'rgba(249, 215, 28, 0.03)', border: '1px solid rgba(249, 215, 28, 0.15)', borderRadius: '24px', padding: 'clamp(24px, 4vw, 32px)', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'linear-gradient(to bottom, #f9d71c, transparent)' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
                         <div style={{ background: 'rgba(249, 215, 28, 0.1)', padding: '10px', borderRadius: '12px' }}>
@@ -152,7 +152,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                 </div>
 
                 {/* Future Card */}
-                <div style={{ background: 'rgba(130, 202, 255, 0.03)', border: '1px solid rgba(130, 202, 255, 0.15)', borderRadius: '24px', padding: '32px', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ background: 'rgba(130, 202, 255, 0.03)', border: '1px solid rgba(130, 202, 255, 0.15)', borderRadius: '24px', padding: 'clamp(24px, 4vw, 32px)', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'linear-gradient(to bottom, #82caff, transparent)' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
                         <div style={{ background: 'rgba(130, 202, 255, 0.1)', padding: '10px', borderRadius: '12px' }}>
@@ -167,7 +167,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
             </motion.div>
 
             {/* Strategic Intervention (Mentor Message & Micro Task) */}
-            <motion.div variants={itemVariants} style={{ background: 'rgba(10, 10, 10, 0.6)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '32px', padding: '48px', position: 'relative', overflow: 'hidden' }}>
+            <motion.div variants={itemVariants} style={{ background: 'rgba(10, 10, 10, 0.6)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '32px', padding: 'clamp(24px, 5vw, 48px)', position: 'relative', overflow: 'hidden' }}>
                 {/* Subtle background glow */}
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', height: '100%', background: 'radial-gradient(circle at center, rgba(130, 202, 255, 0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
@@ -195,7 +195,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                             background: 'linear-gradient(145deg, rgba(80, 250, 123, 0.1) 0%, rgba(80, 250, 123, 0.02) 100%)',
                             border: '1px solid rgba(80, 250, 123, 0.2)',
                             borderRadius: '24px',
-                            padding: '32px',
+                            padding: 'clamp(24px, 4vw, 32px)',
                             maxWidth: '600px',
                             width: '100%',
                             boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
@@ -214,18 +214,18 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                             {/* Check-in Module */}
                             <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '24px' }}>
                                 <h4 style={{ color: 'var(--text-primary)', fontSize: '1rem', marginBottom: '16px' }}>How did it go? Check in to dynamically adjust your plan:</h4>
-                                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
                                     <button
                                         onClick={() => handleCheckIn('Completed')}
                                         disabled={isCheckingIn}
-                                        style={{ background: 'rgba(80, 250, 123, 0.15)', border: '1px solid #50fa7b', color: '#50fa7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease', opacity: isCheckingIn ? 0.5 : 1 }}
+                                        style={{ flex: '1 1 auto', minWidth: '150px', background: 'rgba(80, 250, 123, 0.15)', border: '1px solid #50fa7b', color: '#50fa7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease', opacity: isCheckingIn ? 0.5 : 1 }}
                                     >
                                         ✅ I completed this
                                     </button>
                                     <button
                                         onClick={() => handleCheckIn('Struggled')}
                                         disabled={isCheckingIn}
-                                        style={{ background: 'rgba(255, 123, 123, 0.15)', border: '1px solid #ff7b7b', color: '#ff7b7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease', opacity: isCheckingIn ? 0.5 : 1 }}
+                                        style={{ flex: '1 1 auto', minWidth: '150px', background: 'rgba(255, 123, 123, 0.15)', border: '1px solid #ff7b7b', color: '#ff7b7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease', opacity: isCheckingIn ? 0.5 : 1 }}
                                     >
                                         ❌ I struggled, adjust plan
                                     </button>
@@ -261,7 +261,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '24px' }}>
                         {localRoadmap.map((month, idx) => (
                             <motion.div
                                 key={idx}
@@ -270,7 +270,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                                     background: 'rgba(255,255,255,0.02)',
                                     border: '1px solid rgba(255,255,255,0.08)',
                                     borderRadius: '24px',
-                                    padding: '32px',
+                                    padding: 'clamp(24px, 4vw, 32px)',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     height: '100%'

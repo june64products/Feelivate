@@ -12,7 +12,7 @@ const Navbar = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 40px',
+            padding: '0 20px',
             zIndex: 100,
             background: 'rgba(10, 10, 10, 0.8)',
             backdropFilter: 'blur(12px)',
@@ -25,7 +25,7 @@ const Navbar = () => {
             }}>
                 Emotion Time Travel
             </div>
-            <div className="nav-links" style={{ display: 'flex', gap: '32px' }}>
+            <div className="nav-links hide-on-mobile" style={{ display: 'flex', gap: '32px' }}>
                 <a href="#architecture" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Architecture</a>
                 <a href="#demo" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Demo</a>
                 <a href="#tech" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Tech Stack</a>

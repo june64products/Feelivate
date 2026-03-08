@@ -108,7 +108,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
             className="input-form-container"
             style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))',
                 gap: '32px',
                 maxWidth: '1200px',
                 margin: '0 auto',
@@ -116,7 +116,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
             }}
         >
             {/* Left Pane: The Form */}
-            <div className="glass-panel" style={{ padding: '40px', display: 'flex', flexDirection: 'column' }}>
+            <div className="glass-panel" style={{ padding: 'clamp(24px, 5vw, 40px)', display: 'flex', flexDirection: 'column' }}>
                 <AnimatePresence mode="wait">
                     {step === 'initial' && (
                         <motion.div
@@ -280,7 +280,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
 
             {/* Right Pane: Audio Recorder & Smart Fill */}
             <div className="glass-panel audio-pane" style={{
-                padding: '40px',
+                padding: 'clamp(24px, 5vw, 40px)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
