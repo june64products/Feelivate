@@ -131,12 +131,25 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        
+        # If using the specialized openai OSS reasoning model on Groq
+        if "gpt-oss-120b" in model:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=1,
+                max_completion_tokens=max_tokens,
+                top_p=1,
+                reasoning_effort="medium"
+            )
+        else:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+        
         content = resp.choices[0].message.content or ""
         text = content.strip()
         logger.info("Groq call succeeded", extra={"model": model, "tokens": resp.usage})
