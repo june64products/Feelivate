@@ -200,7 +200,6 @@ async def generate_week_chat(req: WeekChatRequest):
     from .llm import call_llm
     from .prompts import build_prompt
     from .orchestrator import _parse_json
-    from .dependencies import get_vector_store
     
     logger.info(f"Generating week chat for user {req.user_id}")
     try:
@@ -214,11 +213,10 @@ async def generate_week_chat(req: WeekChatRequest):
         json_str = await asyncio.to_thread(call_llm, prompt_text)
         parsed_response = _parse_json(json_str)
         
-        # Save interaction to vector store
+        # Save interaction to vector store (Disabled temporarily due to missing dependency)
         try:
-            vs = get_vector_store()
             memory_text = f"User asked Week Mentor: '{req.message}'. Mentor replied: '{parsed_response.get('response_message', '')}'"
-            await asyncio.to_thread(vs.manage_memory, req.user_id, memory_text, "add", ["week_chat_interaction"])
+            logger.info(f"Chat Memory Logged: {memory_text}")
         except Exception as ve:
              logger.warning(f"Could not save chat memory: {ve}")
              
