@@ -60,21 +60,42 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<TranscribeRespon
     return response.json();
 };
 
-export const generateQuestions = async (text: string): Promise<string[]> => {
+export const generateQuestion = async (text: string, history?: string): Promise<string> => {
     const response = await fetch(`${API_BASE_URL}/generate_questions`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, history }),
     });
 
     if (!response.ok) {
-        throw new Error(`Failed to generate questions: ${response.statusText}`);
+        throw new Error(`Failed to generate question: ${response.statusText}`);
     }
 
     const data = await response.json();
-    return data.questions;
+    return data.question;
+};
+
+export interface ContradictionResponse {
+    has_contradiction: boolean;
+    tension_question: string;
+}
+
+export const detectContradiction = async (focus: string, history: string): Promise<ContradictionResponse> => {
+    const response = await fetch(`${API_BASE_URL}/detect_contradiction`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ focus, history }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Contradiction detection failed: ${response.statusText}`);
+    }
+
+    return response.json();
 };
 
 export const submitCheckIn = async (payload: { user_id: string, session_id: string, status: string, current_plan: any }) => {
@@ -88,6 +109,53 @@ export const submitCheckIn = async (payload: { user_id: string, session_id: stri
 
     if (!response.ok) {
         throw new Error(`Check-in failed: ${response.statusText}`);
+    }
+
+    return response.json();
+};
+
+export interface WeeklyFocusRequest {
+    user_id: string;
+    session_id: string;
+    current_phase: string;
+    current_week: string;
+}
+
+export const generateWeeklyFocus = async (payload: WeeklyFocusRequest) => {
+    const response = await fetch(`${API_BASE_URL}/weekly_focus`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Weekly focus failed: ${response.statusText}`);
+    }
+
+    return response.json();
+};
+
+export interface WeekChatRequest {
+    user_id: string;
+    session_id: string;
+    message: string;
+    week_context: any;
+    chat_history: { role: string; content: string }[];
+}
+
+export const chatWeek = async (data: WeekChatRequest) => {
+    const response = await fetch(`${API_BASE_URL}/chat_week`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to chat with week agent');
     }
 
     return response.json();

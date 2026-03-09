@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square, Loader2, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
-import { transcribeAudio, generateQuestions } from '../../api';
+import { transcribeAudio, generateQuestion, detectContradiction } from '../../api';
 
 interface InputFormProps {
     onSubmit: (text: string) => void;
@@ -9,11 +9,23 @@ interface InputFormProps {
 }
 
 const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
-    type Step = 'initial' | 'generating' | 'questions';
+    type Step = 'initial' | 'generating' | 'question' | 'contradiction' | 'submitting';
     const [step, setStep] = useState<Step>('initial');
     const [initialGoal, setInitialGoal] = useState('');
-    const [questions, setQuestions] = useState<string[]>([]);
-    const [answers, setAnswers] = useState<string[]>([]);
+
+    // Sequential Q&A State
+    const [qaHistory, setQaHistory] = useState<{ q: string, a: string }[]>([]);
+    const [currentQuestion, setCurrentQuestion] = useState('');
+    const [currentAnswer, setCurrentAnswer] = useState('');
+    const [questionCount, setQuestionCount] = useState(0);
+    const MAX_QUESTIONS = 3;
+
+    // Quality Check State
+    const [qualityWarning, setQualityWarning] = useState('');
+
+    // Contradiction State
+    const [contradictionQuestion, setContradictionQuestion] = useState('');
+    const [contradictionAnswer, setContradictionAnswer] = useState('');
 
     // Audio State
     const [isRecording, setIsRecording] = useState(false);
@@ -72,32 +84,94 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
         }
     };
 
-    const handleInitialSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!initialGoal.trim()) return;
+    const buildHistoryString = () => {
+        return qaHistory.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
+    };
 
+    const fetchNextQuestion = async (historyStr: string = '') => {
         setStep('generating');
         try {
-            const generated = await generateQuestions(initialGoal);
-            if (generated && generated.length > 0) {
-                setQuestions(generated);
-                setAnswers(new Array(generated.length).fill(''));
-                setStep('questions');
+            const nextQ = await generateQuestion(initialGoal, historyStr);
+            if (nextQ) {
+                setCurrentQuestion(nextQ);
+                setCurrentAnswer('');
+                setQualityWarning('');
+                setStep('question');
             } else {
-                // Fallback
-                onSubmit(`Goal: ${initialGoal}`);
-                setStep('initial');
+                finalizeInput();
             }
         } catch (error) {
-            console.error("Failed to generate questions:", error);
-            onSubmit(`Goal: ${initialGoal}`);
-            setStep('initial');
+            console.error("Failed to generate question:", error);
+            finalizeInput();
         }
     };
 
-    const handleFinalSubmit = (e: React.FormEvent) => {
+    const handleInitialSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const combined = `Goal: ${initialGoal}\n\n` + questions.map((q, i) => `Q: ${q}\nA: ${answers[i]}`).join('\n\n');
+        if (!initialGoal.trim()) return;
+        setQaHistory([]);
+        setQuestionCount(0);
+        await fetchNextQuestion();
+    };
+
+    const handleAnswerSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Quality Check
+        const wordCount = currentAnswer.trim().split(/\s+/).length;
+        if (wordCount < 5) {
+            setQualityWarning("A little more detail here will make your blueprint much more personal — even one specific example helps a lot.");
+            return;
+        }
+
+        const updatedHistory = [...qaHistory, { q: currentQuestion, a: currentAnswer }];
+        setQaHistory(updatedHistory);
+        const newCount = questionCount + 1;
+        setQuestionCount(newCount);
+
+        if (newCount >= MAX_QUESTIONS) {
+            // Move to contradiction check
+            checkForContradictions(updatedHistory);
+        } else {
+            // Fetch next question
+            const historyStr = updatedHistory.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
+            await fetchNextQuestion(historyStr);
+        }
+    };
+
+    const checkForContradictions = async (history: { q: string, a: string }[]) => {
+        setStep('generating');
+        try {
+            const historyStr = history.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
+            const res = await detectContradiction(initialGoal, historyStr);
+
+            if (res.has_contradiction && res.tension_question) {
+                setContradictionQuestion(res.tension_question);
+                setContradictionAnswer('');
+                setStep('contradiction');
+            } else {
+                finalizeInput(historyStr);
+            }
+        } catch (error) {
+            console.error("Contradiction check failed:", error);
+            const historyStr = history.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
+            finalizeInput(historyStr);
+        }
+    };
+
+    const handleContradictionSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!contradictionAnswer.trim()) return;
+
+        const historyStr = qaHistory.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n')
+            + `\n\nQ: ${contradictionQuestion}\nA: ${contradictionAnswer}`;
+
+        finalizeInput(historyStr);
+    };
+
+    const finalizeInput = (historyStr: string = buildHistoryString()) => {
+        setStep('submitting');
+        const combined = `Goal: ${initialGoal}\n\n${historyStr}`;
         onSubmit(combined);
     };
 
@@ -199,58 +273,70 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                         </motion.div>
                     )}
 
-                    {step === 'questions' && (
+                    {step === 'question' && (
                         <motion.div
-                            key="questions"
+                            key={`question-${questionCount}`}
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
                             style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}
                         >
-                            <h2 style={{ fontSize: '1.75rem', marginBottom: '8px', color: 'var(--text-primary)' }}>
-                                Step 2: The Deep Dive
-                            </h2>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <h2 style={{ fontSize: '1.75rem', color: 'var(--text-primary)', margin: 0 }}>
+                                    Step 2: The Deep Dive
+                                </h2>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>
+                                    {questionCount + 1} of {MAX_QUESTIONS}
+                                </span>
+                            </div>
                             <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
-                                Answer these specific questions so the AI can build a highly customized strategy.
+                                {currentQuestion}
                             </p>
 
-                            <form onSubmit={handleFinalSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
-                                {questions.map((q, i) => (
-                                    <div key={i} className="input-group">
-                                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--accent-glow)', fontWeight: 500 }}>
-                                            {q}
-                                        </label>
-                                        <textarea
-                                            value={answers[i]}
-                                            onChange={(e) => {
-                                                const newAnswers = [...answers];
-                                                newAnswers[i] = e.target.value;
-                                                setAnswers(newAnswers);
-                                            }}
-                                            placeholder="Your answer..."
-                                            className="premium-input text-entry"
-                                            style={{
-                                                width: '100%',
-                                                background: 'rgba(0,0,0,0.3)',
-                                                border: '1px solid var(--border-color)',
-                                                borderRadius: '12px',
-                                                padding: '16px',
-                                                color: 'var(--text-primary)',
-                                                minHeight: '100px',
-                                                fontSize: '1rem',
-                                                lineHeight: '1.5',
-                                                resize: 'vertical',
-                                                fontFamily: 'inherit',
-                                                transition: 'all 0.3s ease'
-                                            }}
-                                            required
-                                        />
-                                    </div>
-                                ))}
+                            <form onSubmit={handleAnswerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
+                                <div className="input-group" style={{ flexGrow: 1 }}>
+                                    <textarea
+                                        value={currentAnswer}
+                                        onChange={(e) => {
+                                            setCurrentAnswer(e.target.value);
+                                            if (qualityWarning) setQualityWarning('');
+                                        }}
+                                        placeholder="Your answer..."
+                                        className="premium-input text-entry"
+                                        style={{
+                                            width: '100%',
+                                            background: 'rgba(0,0,0,0.3)',
+                                            border: qualityWarning ? '1px solid #ff7b7b' : '1px solid var(--border-color)',
+                                            borderRadius: '12px',
+                                            padding: '24px',
+                                            color: 'var(--text-primary)',
+                                            minHeight: '200px',
+                                            fontSize: '1.1rem',
+                                            lineHeight: '1.6',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        required
+                                    />
+                                    <AnimatePresence>
+                                        {qualityWarning && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                style={{ color: '#ffb86c', marginTop: '12px', fontSize: '0.95rem', display: 'flex', alignItems: 'flex-start', gap: '8px' }}
+                                            >
+                                                <Sparkles size={16} style={{ marginTop: '2px', flexShrink: 0 }} color="#ffb86c" />
+                                                <span>{qualityWarning}</span>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
 
                                 <button
                                     type="submit"
-                                    disabled={isLoading || answers.some(a => !a.trim())}
+                                    disabled={!currentAnswer.trim()}
                                     className="premium-button"
                                     style={{
                                         background: 'var(--accent-primary)',
@@ -260,8 +346,84 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                                         fontWeight: 600,
                                         fontSize: '1.1rem',
                                         marginTop: '16px',
-                                        opacity: (isLoading || answers.some(a => !a.trim())) ? 0.5 : 1,
-                                        cursor: (isLoading || answers.some(a => !a.trim())) ? 'not-allowed' : 'pointer',
+                                        opacity: !currentAnswer.trim() ? 0.5 : 1,
+                                        cursor: !currentAnswer.trim() ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '12px'
+                                    }}
+                                >
+                                    {questionCount === MAX_QUESTIONS - 1 ? 'Analyze Patterns' : 'Next Question'} <ArrowRight size={20} />
+                                </button>
+                            </form>
+                        </motion.div>
+                    )}
+
+                    {step === 'contradiction' && (
+                        <motion.div
+                            key="contradiction"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                <div style={{ background: 'rgba(249, 215, 28, 0.1)', padding: '8px', borderRadius: '50%' }}>
+                                    <AlertCircle size={24} color="#f9d71c" />
+                                </div>
+                                <h2 style={{ fontSize: '1.75rem', color: 'var(--text-primary)', margin: 0 }}>
+                                    Resolving Tension
+                                </h2>
+                            </div>
+
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', borderLeft: '3px solid #f9d71c', marginBottom: '32px' }}>
+                                <p style={{ color: 'var(--text-primary)', fontSize: '1.1rem', lineHeight: 1.6, fontStyle: 'italic' }}>
+                                    "{contradictionQuestion}"
+                                </p>
+                            </div>
+
+                            <form onSubmit={handleContradictionSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
+                                <div className="input-group" style={{ flexGrow: 1 }}>
+                                    <textarea
+                                        value={contradictionAnswer}
+                                        onChange={(e) => setContradictionAnswer(e.target.value)}
+                                        placeholder="Clarify your thoughts here..."
+                                        className="premium-input text-entry"
+                                        style={{
+                                            width: '100%',
+                                            background: 'rgba(0,0,0,0.3)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '12px',
+                                            padding: '24px',
+                                            color: 'var(--text-primary)',
+                                            minHeight: '150px',
+                                            fontSize: '1.1rem',
+                                            lineHeight: '1.6',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        required
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={!contradictionAnswer.trim() || isLoading}
+                                    className="premium-button"
+                                    style={{
+                                        background: 'var(--accent-primary)',
+                                        color: 'white',
+                                        padding: '16px 32px',
+                                        borderRadius: '12px',
+                                        fontWeight: 600,
+                                        fontSize: '1.1rem',
+                                        marginTop: '16px',
+                                        opacity: (!contradictionAnswer.trim() || isLoading) ? 0.5 : 1,
+                                        cursor: (!contradictionAnswer.trim() || isLoading) ? 'not-allowed' : 'pointer',
                                         transition: 'all 0.3s ease',
                                         border: 'none',
                                         display: 'flex',

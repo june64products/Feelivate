@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import InputForm from '../components/workspace/InputForm';
 import ResultsDashboard from '../components/workspace/ResultsDashboard';
+import WeeklyPlanner from '../components/workspace/WeeklyPlanner';
 import { submitIngest, fetchResult, type IngestResponse } from '../api';
 
 const WorkspacePage = () => {
@@ -11,6 +12,7 @@ const WorkspacePage = () => {
     const [processing, setProcessing] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [pollStatus, setPollStatus] = useState('');
+    const [activeView, setActiveView] = useState<'input' | 'dashboard' | 'planner'>('input');
 
     const handleIngest = async (text: string) => {
         try {
@@ -57,6 +59,7 @@ const WorkspacePage = () => {
                     if (isMounted) {
                         setResult(data);
                         setProcessing(false);
+                        setActiveView('dashboard');
                         clearInterval(textInterval);
                     }
                 } else if (data && data.status === 'error') {
@@ -189,13 +192,59 @@ const WorkspacePage = () => {
                 )}
 
                 {result && (
-                    <ResultsDashboard
-                        data={result}
-                        resetIntegration={() => {
-                            setResult(null);
-                            setTraceId(null);
-                        }}
-                    />
+                    <div style={{ animation: 'fadeIn 0.5s ease' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '40px' }}>
+                            <button
+                                onClick={() => setActiveView('dashboard')}
+                                style={{
+                                    padding: '10px 24px',
+                                    borderRadius: '30px',
+                                    background: activeView === 'dashboard' ? 'rgba(130, 202, 255, 0.15)' : 'transparent',
+                                    border: `1px solid ${activeView === 'dashboard' ? '#82caff' : 'rgba(255,255,255,0.1)'}`,
+                                    color: activeView === 'dashboard' ? '#82caff' : 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    fontSize: '1rem',
+                                    transition: 'all 0.2s',
+                                    boxShadow: activeView === 'dashboard' ? '0 0 20px rgba(130, 202, 255, 0.2)' : 'none'
+                                }}
+                            >
+                                Phase 1: The Blueprint
+                            </button>
+                            <button
+                                onClick={() => setActiveView('planner')}
+                                style={{
+                                    padding: '10px 24px',
+                                    borderRadius: '30px',
+                                    background: activeView === 'planner' ? 'rgba(80, 250, 123, 0.15)' : 'transparent',
+                                    border: `1px solid ${activeView === 'planner' ? '#50fa7b' : 'rgba(255,255,255,0.1)'}`,
+                                    color: activeView === 'planner' ? '#50fa7b' : 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    fontSize: '1rem',
+                                    transition: 'all 0.2s',
+                                    boxShadow: activeView === 'planner' ? '0 0 20px rgba(80, 250, 123, 0.2)' : 'none'
+                                }}
+                            >
+                                Phase 2: Weekly Execution
+                            </button>
+                        </div>
+
+                        {activeView === 'dashboard' && (
+                            <ResultsDashboard
+                                data={result}
+                                resetIntegration={() => {
+                                    setResult(null);
+                                    setTraceId(null);
+                                    setActiveView('input');
+                                }}
+                            />
+                        )}
+
+                        {activeView === 'planner' && (
+                            <WeeklyPlanner data={result} />
+                        )}
+                    </div>
                 )}
             </div>
 

@@ -69,6 +69,11 @@ class IngestRequest(BaseModel):
 
 class QuestionRequest(BaseModel):
     text: str
+    history: Optional[str] = None
+
+class ContradictionRequest(BaseModel):
+    focus: str
+    history: str
 
 class CheckinRequest(BaseModel):
     user_id: str
@@ -76,25 +81,73 @@ class CheckinRequest(BaseModel):
     status: str
     current_plan: Dict[str, Any]
 
+class WeeklyFocusRequest(BaseModel):
+    user_id: str
+    session_id: str
+    current_phase: str
+    current_week: str
+
+class WeekChatRequest(BaseModel):
+    user_id: str
+    session_id: str
+    message: str
+    week_context: Dict[str, Any]
+    chat_history: List[Dict[str, str]]
 
 # --- Endpoints ---
 
 @app.post("/generate_questions", tags=["ingest"])
 async def generate_questions(payload: QuestionRequest):
     """
-    Generates 3-4 specific follow-up questions based on the initial input.
+    Generates 1 specific adaptive follow-up question based on the initial input and history.
     """
     from .llm import call_llm
     from .prompts import build_prompt
     from .orchestrator import _parse_json
     
     try:
-        prompt_text = build_prompt("QuestionGeneratorAgent", {"focus": payload.text}, None)
+        inputs = {"focus": payload.text}
+        if payload.history:
+            inputs["history"] = payload.history
+            
+        prompt_text = build_prompt("QuestionGeneratorAgent", inputs, None)
         json_str = await asyncio.to_thread(call_llm, prompt_text)
         data = _parse_json(json_str)
-        return {"questions": data.get("questions", [])}
+        
+        # Fallback to empty string if LLM fails
+        question = data.get("question", "")
+        if not question and "questions" in data and isinstance(data["questions"], list) and len(data["questions"]) > 0:
+            question = data["questions"][0] # Just in case it hallucinated the old format
+            
+        return {"question": question}
     except Exception as e:
-        logger.exception("Failed to generate questions")
+        logger.exception("Failed to generate question")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/detect_contradiction", tags=["ingest"])
+async def detect_contradiction(payload: ContradictionRequest):
+    """
+    Analyzes the user's answers for psychological contradictions before generating the blueprint.
+    """
+    from .llm import call_llm
+    from .prompts import build_prompt
+    from .orchestrator import _parse_json
+    
+    try:
+        inputs = {
+            "focus": payload.focus,
+            "history": payload.history
+        }
+        prompt_text = build_prompt("ContradictionDetectorAgent", inputs, None)
+        json_str = await asyncio.to_thread(call_llm, prompt_text)
+        data = _parse_json(json_str)
+        
+        return {
+            "has_contradiction": data.get("has_contradiction", False),
+            "tension_question": data.get("tension_question", "")
+        }
+    except Exception as e:
+        logger.exception("Failed to detect contradiction")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/checkin", tags=["ingest"])
@@ -118,6 +171,60 @@ async def submit_checkin(payload: CheckinRequest, db: DBSession = Depends(get_db
         return recalibrated_data
     except Exception as e:
         logger.exception("Failed to recalibrate plan")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/weekly_focus", tags=["planner"])
+async def get_weekly_focus(payload: WeeklyFocusRequest):
+    """
+    Generates 3 behavioral focus areas for the current week in the 6-month plan.
+    """
+    from .llm import call_llm
+    from .prompts import build_prompt
+    from .orchestrator import _parse_json
+    
+    try:
+        inputs = {
+            "focus": f"Phase: {payload.current_phase}, Week: {payload.current_week}"
+        }
+        prompt_text = build_prompt("WeeklyFocusAgent", inputs, None)
+        json_str = await asyncio.to_thread(call_llm, prompt_text)
+        data = _parse_json(json_str)
+        return data
+    except Exception as e:
+        logger.exception("Failed to generate weekly focus")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat_week", tags=["planner"])
+async def generate_week_chat(req: WeekChatRequest):
+    """Handle chat interaction for a specific week."""
+    from .llm import call_llm
+    from .prompts import build_prompt
+    from .orchestrator import _parse_json
+    from .dependencies import get_vector_store
+    
+    logger.info(f"Generating week chat for user {req.user_id}")
+    try:
+        context = {
+            "Week Context": json.dumps(req.week_context),
+            "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-5:]])
+        }
+        inputs = {"focus": req.message}
+        prompt_text = build_prompt("WeekChatAgent", inputs, context)
+        
+        json_str = await asyncio.to_thread(call_llm, prompt_text)
+        parsed_response = _parse_json(json_str)
+        
+        # Save interaction to vector store
+        try:
+            vs = get_vector_store()
+            memory_text = f"User asked Week Mentor: '{req.message}'. Mentor replied: '{parsed_response.get('response_message', '')}'"
+            await asyncio.to_thread(vs.manage_memory, req.user_id, memory_text, "add", ["week_chat_interaction"])
+        except Exception as ve:
+             logger.warning(f"Could not save chat memory: {ve}")
+             
+        return parsed_response
+    except Exception as e:
+        logger.exception("Week chat generation failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ingest", tags=["ingest"])

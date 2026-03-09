@@ -1,12 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, CheckCircle2, Target, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, Loader2 } from 'lucide-react';
-import { submitCheckIn } from '../../api';
+import { Calendar, CheckCircle2, Target, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, Loader2, ChevronDown, ChevronUp, MessageSquare, Send } from 'lucide-react';
+import { submitCheckIn, chatWeek } from '../../api';
+
+interface DayDetails {
+    day_name: string;
+    action: string;
+}
 
 interface WeekDetails {
     week: string;
     focus: string;
     outcome: string;
+    win_condition?: string;
+    days?: DayDetails[];
 }
 
 interface MonthPhase {
@@ -33,6 +40,97 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
     const [localMicroTask, setLocalMicroTask] = useState<any>(null);
     const [isCheckingIn, setIsCheckingIn] = useState(false);
     const [feedbackMessage, setFeedbackMessage] = useState('');
+    const [futureToggle, setFutureToggle] = useState<'failure' | 'success'>('failure');
+
+    // Check-in Branching Logic
+    const [checkInPhase, setCheckInPhase] = useState<'initial' | 'success_details' | 'failure_details' | 'complete'>('initial');
+    const [userFeedback, setUserFeedback] = useState('');
+
+    // Timer & Streak
+    const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+    const [timerActive, setTimerActive] = useState(false);
+    const [streak, setStreak] = useState(0); // Mock streak
+
+    // Save Gate State
+    const [email, setEmail] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+
+    // Accordion State
+    const [expandedMonths, setExpandedMonths] = useState<number[]>([0]); // Open first month by default
+
+    // Chatbot State
+    const [activeChatWeek, setActiveChatWeek] = useState<string | null>(null);
+    const [chatMessages, setChatMessages] = useState<Record<string, { role: string; content: string }[]>>({});
+    const [chatInput, setChatInput] = useState('');
+    const [isChatting, setIsChatting] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const toggleMonth = (idx: number) => {
+        setExpandedMonths(prev =>
+            prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+        );
+    };
+
+    const handleChatSubmit = async (e: React.FormEvent, weekData: any) => {
+        e.preventDefault();
+        if (!chatInput.trim() || !activeChatWeek) return;
+
+        const weekKey = `${weekData.phase}_${weekData.week}`;
+        const newUserMsg = { role: 'user', content: chatInput };
+        const updatedHistory = [...(chatMessages[weekKey] || []), newUserMsg];
+
+        setChatMessages(prev => ({ ...prev, [weekKey]: updatedHistory }));
+        setChatInput('');
+        setIsChatting(true);
+
+        try {
+            const response = await chatWeek({
+                user_id: 'default_user',
+                session_id: 'default_session',
+                message: newUserMsg.content,
+                week_context: weekData,
+                chat_history: updatedHistory.slice(0, -1)
+            });
+
+            if (response.response_message) {
+                setChatMessages(prev => ({
+                    ...prev,
+                    [weekKey]: [...updatedHistory, { role: 'assistant', content: response.response_message }]
+                }));
+            }
+        } catch (error) {
+            console.error("Chat error:", error);
+        } finally {
+            setIsChatting(false);
+        }
+    };
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        if (activeChatWeek) scrollToBottom();
+    }, [chatMessages, activeChatWeek]);
+
+    useEffect(() => {
+        let interval: any = null;
+        if (timerActive && timeLeft > 0) {
+            interval = setInterval(() => {
+                setTimeLeft(prev => prev - 1);
+            }, 1000);
+        } else if (timeLeft === 0) {
+            setTimerActive(false);
+        }
+        return () => clearInterval(interval);
+    }, [timerActive, timeLeft]);
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
 
     useEffect(() => {
         if (data?.integration) {
@@ -49,27 +147,48 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
     const future = data.future || {};
     const integration = data.integration || {};
 
-    const handleCheckIn = async (status: 'Completed' | 'Struggled') => {
+    const handleInitialCheckInClick = (type: 'success' | 'failure') => {
+        setCheckInPhase(type === 'success' ? 'success_details' : 'failure_details');
+    };
+
+    const submitFinalCheckIn = async (status: 'Completed' | 'Struggled') => {
         setIsCheckingIn(true);
         setFeedbackMessage('');
         try {
             const response = await submitCheckIn({
                 user_id: 'default_user',
                 session_id: 'default_session',
-                status,
+                status: `${status} - Feedback: ${userFeedback}`,
                 current_plan: { micro_task: localMicroTask }
             });
 
             if (response.feedback_message) setFeedbackMessage(response.feedback_message);
             if (response.adjusted_micro_task) setLocalMicroTask(response.adjusted_micro_task);
+            if (response.adjusted_roadmap) setLocalRoadmap(response.adjusted_roadmap);
 
-            // If the roadmap week was adjusted, we could merge it, but for simplicity we focus on the task & feedback
+            if (status === 'Completed') {
+                setStreak(prev => prev + 1);
+            }
+            setCheckInPhase('complete');
+            setTimerActive(false);
         } catch (error) {
             console.error("Check-in failed:", error);
             setFeedbackMessage("Failed to recalibrate plan. Please try again.");
+            setCheckInPhase('initial');
         } finally {
             setIsCheckingIn(false);
         }
+    };
+
+    const handleSaveBlueprint = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email) return;
+        setIsSaving(true);
+        // Simulate API call to save/email the blueprint
+        setTimeout(() => {
+            setIsSaving(false);
+            setSaveSuccess(true);
+        }, 1500);
     };
 
     // Animation variants
@@ -100,6 +219,12 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                     <Activity size={18} color="#50fa7b" />
                     <span style={{ color: '#50fa7b', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', fontSize: '0.9rem' }}>Analysis Complete</span>
                 </div>
+
+                <div style={{ position: 'absolute', top: 0, right: 0, display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)', padding: '8px 16px', borderRadius: '20px' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🔥</span>
+                    <span style={{ color: '#ffa500', fontWeight: 600 }}>{streak} Days Engaged</span>
+                </div>
+
                 <h2 style={{ fontSize: '3rem', fontWeight: 700, marginBottom: '16px', background: 'linear-gradient(to right, #ffffff, #82caff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                     Your Behavioral Blueprint
                 </h2>
@@ -125,6 +250,16 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                     <p style={{ color: 'var(--text-primary)', lineHeight: 1.7, fontSize: '1.05rem', marginBottom: '24px' }}>
                         {past.pattern_detected || "No historical pattern detected."}
                     </p>
+
+                    {past.origin_story && (
+                        <div style={{ marginBottom: '24px' }}>
+                            <span style={{ display: 'block', fontSize: '0.85rem', color: '#ff7b7b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 600 }}>Origin Framing</span>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', fontStyle: 'italic', lineHeight: 1.5 }}>
+                                "{past.origin_story}"
+                            </p>
+                        </div>
+                    )}
+
                     {past.predicted_context && (
                         <div style={{ background: 'rgba(255, 123, 123, 0.08)', padding: '16px', borderRadius: '12px', borderLeft: '2px solid rgba(255,123,123,0.3)' }}>
                             <span style={{ display: 'block', fontSize: '0.85rem', color: '#ff7b7b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', fontWeight: 600 }}>Deep Insight</span>
@@ -143,26 +278,86 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                         <h4 style={{ color: '#f9d71c', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Present Constraint</h4>
                     </div>
                     <p style={{ color: 'var(--text-primary)', lineHeight: 1.7, fontSize: '1.05rem', marginBottom: '24px' }}>
-                        {present.primary_constraint || "No immediate constraints identified."}
+                        <span style={{ fontWeight: 600 }}>Primary Blocker:</span> {present.primary_blocker || present.primary_constraint || "No immediate constraints identified."}
                     </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(249, 215, 28, 0.08)', padding: '12px 16px', borderRadius: '12px', width: 'fit-content' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Energy Capacity:</span>
-                        <span style={{ color: '#f9d71c', fontWeight: 600, fontSize: '0.95rem' }}>{present.energy_level || "Unknown"}</span>
-                    </div>
+
+                    {present.weekly_cost_estimate && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(249, 215, 28, 0.08)', padding: '12px 16px', borderRadius: '12px', width: 'fit-content', marginBottom: '16px' }}>
+                            <span style={{ color: '#f9d71c', fontWeight: 600, fontSize: '0.9rem' }}>Cost:</span>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{present.weekly_cost_estimate}</span>
+                        </div>
+                    )}
+
+                    {present.physical_reframe && (
+                        <div style={{ background: 'rgba(249, 215, 28, 0.08)', padding: '16px', borderRadius: '12px', borderLeft: '2px solid rgba(249, 215, 28, 0.3)' }}>
+                            <span style={{ display: 'block', fontSize: '0.85rem', color: '#f9d71c', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', fontWeight: 600 }}>Physical Reframe</span>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5 }}>{present.physical_reframe}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Future Card */}
                 <div style={{ background: 'rgba(130, 202, 255, 0.03)', border: '1px solid rgba(130, 202, 255, 0.15)', borderRadius: '24px', padding: 'clamp(24px, 4vw, 32px)', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'linear-gradient(to bottom, #82caff, transparent)' }} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                        <div style={{ background: 'rgba(130, 202, 255, 0.1)', padding: '10px', borderRadius: '12px' }}>
-                            <AlertTriangle size={24} color="#82caff" />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ background: 'rgba(130, 202, 255, 0.1)', padding: '10px', borderRadius: '12px' }}>
+                                <AlertTriangle size={24} color="#82caff" />
+                            </div>
+                            <h4 style={{ color: '#82caff', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Future Trajectory</h4>
                         </div>
-                        <h4 style={{ color: '#82caff', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Future Trajectory</h4>
                     </div>
-                    <p style={{ color: 'var(--text-primary)', lineHeight: 1.7, fontSize: '1.05rem' }}>
-                        {future.failure_simulation || "Trajectory simulation pending."}
-                    </p>
+
+                    <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '4px', marginBottom: '24px' }}>
+                        <button
+                            onClick={() => setFutureToggle('failure')}
+                            style={{
+                                flex: 1,
+                                padding: '10px',
+                                background: futureToggle === 'failure' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: futureToggle === 'failure' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                fontWeight: futureToggle === 'failure' ? 600 : 400,
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            If nothing changes
+                        </button>
+                        <button
+                            onClick={() => setFutureToggle('success')}
+                            style={{
+                                flex: 1,
+                                padding: '10px',
+                                background: futureToggle === 'success' ? 'rgba(130, 202, 255, 0.2)' : 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: futureToggle === 'success' ? '#82caff' : 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                fontWeight: futureToggle === 'success' ? 600 : 400,
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            Your future self
+                        </button>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={futureToggle}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <p style={{ color: 'var(--text-primary)', lineHeight: 1.7, fontSize: '1.05rem' }}>
+                                {futureToggle === 'failure'
+                                    ? (future.failure_simulation || "Trajectory simulation pending.")
+                                    : (future.success_simulation || "Success simulation pending.")}
+                            </p>
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
             </motion.div>
 
@@ -200,9 +395,25 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                             width: '100%',
                             boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
-                                <Rocket size={24} color="#50fa7b" />
-                                <h4 style={{ color: '#50fa7b', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Immediate Micro-Action</h4>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Rocket size={24} color="#50fa7b" />
+                                    <h4 style={{ color: '#50fa7b', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Immediate Micro-Action</h4>
+                                </div>
+                                <div style={{
+                                    background: 'rgba(0,0,0,0.5)',
+                                    padding: '6px 12px',
+                                    borderRadius: '12px',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    cursor: 'pointer'
+                                }} onClick={() => setTimerActive(!timerActive)}>
+                                    <span style={{ color: timerActive ? '#ff7b7b' : 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 600 }}>
+                                        {formatTime(timeLeft)}
+                                    </span>
+                                </div>
                             </div>
                             <h5 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '8px', fontWeight: 500 }}>{localMicroTask.title}</h5>
                             <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: 1.5 }}>{localMicroTask.description}</p>
@@ -213,32 +424,57 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
 
                             {/* Check-in Module */}
                             <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '24px' }}>
-                                <h4 style={{ color: 'var(--text-primary)', fontSize: '1rem', marginBottom: '16px' }}>How did it go? Check in to dynamically adjust your plan:</h4>
-                                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                    <button
-                                        onClick={() => handleCheckIn('Completed')}
-                                        disabled={isCheckingIn}
-                                        style={{ flex: '1 1 auto', minWidth: '150px', background: 'rgba(80, 250, 123, 0.15)', border: '1px solid #50fa7b', color: '#50fa7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease', opacity: isCheckingIn ? 0.5 : 1 }}
-                                    >
-                                        ✅ I completed this
-                                    </button>
-                                    <button
-                                        onClick={() => handleCheckIn('Struggled')}
-                                        disabled={isCheckingIn}
-                                        style={{ flex: '1 1 auto', minWidth: '150px', background: 'rgba(255, 123, 123, 0.15)', border: '1px solid #ff7b7b', color: '#ff7b7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease', opacity: isCheckingIn ? 0.5 : 1 }}
-                                    >
-                                        ❌ I struggled, adjust plan
-                                    </button>
-                                </div>
-                                <AnimatePresence>
-                                    {isCheckingIn && (
-                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ marginTop: '16px', color: 'var(--accent-glow)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-                                            <Loader2 className="spinner" size={16} /> Recalibrating Strategy...
+                                <h4 style={{ color: 'var(--text-primary)', fontSize: '1rem', marginBottom: '16px' }}>Submit Action Result:</h4>
+
+                                <AnimatePresence mode="wait">
+                                    {checkInPhase === 'initial' && (
+                                        <motion.div key="initial" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                            <button
+                                                onClick={() => handleInitialCheckInClick('success')}
+                                                style={{ flex: '1 1 auto', minWidth: '150px', background: 'rgba(80, 250, 123, 0.15)', border: '1px solid #50fa7b', color: '#50fa7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease' }}
+                                            >
+                                                ✅ I completed this
+                                            </button>
+                                            <button
+                                                onClick={() => handleInitialCheckInClick('failure')}
+                                                style={{ flex: '1 1 auto', minWidth: '150px', background: 'rgba(255, 123, 123, 0.15)', border: '1px solid #ff7b7b', color: '#ff7b7b', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease' }}
+                                            >
+                                                ❌ I struggled, adjust plan
+                                            </button>
                                         </motion.div>
                                     )}
-                                    {feedbackMessage && !isCheckingIn && (
-                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '24px', padding: '16px', background: 'rgba(130, 202, 255, 0.1)', border: '1px solid rgba(130, 202, 255, 0.3)', borderRadius: '12px', color: 'var(--text-primary)', fontSize: '0.95rem', fontStyle: 'italic' }}>
-                                            "{feedbackMessage}"
+
+                                    {checkInPhase === 'success_details' && (
+                                        <motion.form key="success" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} onSubmit={(e) => { e.preventDefault(); submitFinalCheckIn('Completed'); }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            <p style={{ color: '#50fa7b', fontSize: '0.95rem', margin: 0 }}>Awesome. What made it easier to start than usual?</p>
+                                            <input type="text" value={userFeedback} onChange={(e) => setUserFeedback(e.target.value)} required placeholder="e.g., The timer helped, or it felt small enough..." style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(80,250,123,0.3)', color: 'white', padding: '12px', borderRadius: '8px', outline: 'none' }} />
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button type="submit" disabled={isCheckingIn || !userFeedback} style={{ flex: 1, background: '#50fa7b', color: 'black', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: (!userFeedback || isCheckingIn) ? 'not-allowed' : 'pointer', opacity: (!userFeedback || isCheckingIn) ? 0.7 : 1 }}>
+                                                    {isCheckingIn ? <Loader2 className="spinner" size={16} /> : 'Submit Momentum'}
+                                                </button>
+                                                <button type="button" onClick={() => setCheckInPhase('initial')} style={{ background: 'transparent', color: 'var(--text-secondary)', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+                                            </div>
+                                        </motion.form>
+                                    )}
+
+                                    {checkInPhase === 'failure_details' && (
+                                        <motion.form key="failure" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} onSubmit={(e) => { e.preventDefault(); submitFinalCheckIn('Struggled'); }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            <p style={{ color: '#ff7b7b', fontSize: '0.95rem', margin: 0 }}>That's okay. Where exactly did it break down?</p>
+                                            <input type="text" value={userFeedback} onChange={(e) => setUserFeedback(e.target.value)} required placeholder="e.g., I got distracted by email, or I felt too tired..." style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,123,123,0.3)', color: 'white', padding: '12px', borderRadius: '8px', outline: 'none' }} />
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button type="submit" disabled={isCheckingIn || !userFeedback} style={{ flex: 1, background: '#ff7b7b', color: 'white', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: (!userFeedback || isCheckingIn) ? 'not-allowed' : 'pointer', opacity: (!userFeedback || isCheckingIn) ? 0.7 : 1 }}>
+                                                    {isCheckingIn ? <Loader2 className="spinner" size={16} /> : 'Recalibrate'}
+                                                </button>
+                                                <button type="button" onClick={() => setCheckInPhase('initial')} style={{ background: 'transparent', color: 'var(--text-secondary)', padding: '12px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+                                            </div>
+                                        </motion.form>
+                                    )}
+
+                                    {checkInPhase === 'complete' && (
+                                        <motion.div key="complete" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ background: 'rgba(130, 202, 255, 0.1)', border: '1px solid rgba(130, 202, 255, 0.3)', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+                                            <p style={{ color: 'var(--text-primary)', margin: 0, fontSize: '0.95rem', fontStyle: 'italic' }}>
+                                                {feedbackMessage || "Feedback recorded. Watch the path adjust."}
+                                            </p>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -261,75 +497,264 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '24px' }}>
-                        {localRoadmap.map((month, idx) => (
-                            <motion.div
-                                key={idx}
-                                whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                                style={{
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: '24px',
-                                    padding: 'clamp(24px, 4vw, 32px)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    height: '100%'
-                                }}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                                    <span style={{ color: 'var(--text-accent)', fontWeight: 600, fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                                        {month.phase}
-                                    </span>
-                                    <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '2rem', fontWeight: 800, lineHeight: 1 }}>0{idx + 1}</span>
-                                </div>
-                                <h4 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: 600, marginBottom: '12px', lineHeight: 1.3 }}>
-                                    {month.theme}
-                                </h4>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '24px', flexGrow: 1 }}>
-                                    {month.expected_result}
-                                </p>
+                    <div style={{ position: 'relative', paddingLeft: '40px' }}>
+                        {/* The Spine */}
+                        <div style={{ position: 'absolute', left: '14px', top: '10px', bottom: '0', width: '2px', background: 'linear-gradient(to bottom, rgba(255,255,255,0.2), rgba(255,255,255,0.05))' }} />
 
-                                {Array.isArray(month.weeks) && month.weeks.length > 0 && (
-                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                        {month.weeks.map((week, wIdx) => (
-                                            <div key={wIdx} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                                                <CheckCircle2 size={16} color="var(--text-accent)" style={{ marginTop: '4px', flexShrink: 0 }} />
-                                                <div>
-                                                    <div style={{ color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 500, marginBottom: '2px' }}>{week.week}: {week.focus}</div>
-                                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{week.outcome}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                            {localRoadmap.map((month, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    style={{ position: 'relative' }}
+                                >
+                                    {/* Spine Node */}
+                                    <div style={{ position: 'absolute', left: '-34px', top: '24px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--bg-primary)', border: '2px solid var(--text-accent)', zIndex: 2 }} />
+
+                                    <div style={{
+                                        background: 'rgba(255,255,255,0.02)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '24px',
+                                        padding: 'clamp(24px, 4vw, 32px)',
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}>
+                                        <div
+                                            onClick={() => toggleMonth(idx)}
+                                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', cursor: 'pointer', marginBottom: expandedMonths.includes(idx) ? '16px' : '0' }}
+                                        >
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                                    <span style={{ color: 'var(--text-accent)', fontWeight: 600, fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                                        {month.phase}
+                                                    </span>
+                                                    <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '1.5rem', fontWeight: 800, lineHeight: 1 }}>0{idx + 1}</span>
                                                 </div>
+                                                <h4 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: 600, marginBottom: '8px', lineHeight: 1.3 }}>
+                                                    {month.theme}
+                                                </h4>
+                                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
+                                                    {month.expected_result}
+                                                </p>
                                             </div>
-                                        ))}
+                                            <div style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', color: 'var(--text-secondary)' }}>
+                                                {expandedMonths.includes(idx) ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                            </div>
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {expandedMonths.includes(idx) && Array.isArray(month.weeks) && month.weeks.length > 0 && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    style={{ overflow: 'hidden' }}
+                                                >
+                                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                        {month.weeks.map((week, wIdx) => (
+                                                            <div key={wIdx} style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start', background: 'rgba(255,255,255,0.01)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                                                <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+                                                                    <CheckCircle2 size={18} color="rgba(255,255,255,0.3)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                                                                    <div style={{ flex: 1 }}>
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                            <div style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 600, marginBottom: '6px' }}>{week.week}: {week.focus}</div>
+                                                                            <button
+                                                                                onClick={(e) => { e.stopPropagation(); setActiveChatWeek(activeChatWeek === `${month.phase}_${week.week}` ? null : `${month.phase}_${week.week}`); }}
+                                                                                style={{ background: 'rgba(80, 250, 123, 0.1)', color: '#50fa7b', border: '1px solid rgba(80, 250, 123, 0.2)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
+                                                                            >
+                                                                                <MessageSquare size={14} /> Mentor
+                                                                            </button>
+                                                                        </div>
+                                                                        {week.win_condition ? (
+                                                                            <div style={{ color: '#50fa7b', fontSize: '0.9rem', fontWeight: 600, marginTop: '8px', marginBottom: '12px' }}>🏆 Win Condition: {week.win_condition}</div>
+                                                                        ) : (
+                                                                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '12px' }}>{week.outcome}</div>
+                                                                        )}
+
+                                                                        {/* Day-by-Day View */}
+                                                                        {Array.isArray(week.days) && week.days.length > 0 && (
+                                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-accent)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, marginBottom: '4px' }}>Day-by-Day Action Plan</span>
+                                                                                {week.days.map((day, dIdx) => (
+                                                                                    <div key={dIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', paddingBottom: '8px', borderBottom: dIdx === week.days!.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
+                                                                                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', minWidth: '45px', fontWeight: 600, marginTop: '2px' }}>{day.day_name}</span>
+                                                                                        <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem', lineHeight: 1.5 }}>{day.action}</span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Embedded Chat System */}
+                                                                        <AnimatePresence>
+                                                                            {activeChatWeek === `${month.phase}_${week.week}` && (
+                                                                                <motion.div
+                                                                                    initial={{ opacity: 0, height: 0 }}
+                                                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                                                    exit={{ opacity: 0, height: 0 }}
+                                                                                    style={{ marginTop: '16px', background: 'rgba(10,10,10,0.8)', borderRadius: '12px', border: '1px solid rgba(130, 202, 255, 0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+                                                                                >
+                                                                                    <div style={{ background: 'rgba(130, 202, 255, 0.1)', padding: '12px 16px', borderBottom: '1px solid rgba(130, 202, 255, 0.2)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                                        <BrainCircuit size={16} color="#82caff" />
+                                                                                        <span style={{ color: '#82caff', fontSize: '0.9rem', fontWeight: 600 }}>{week.week} Mentor Chat</span>
+                                                                                    </div>
+
+                                                                                    {/* Messages Area */}
+                                                                                    <div style={{ padding: '16px', maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                                                        {chatMessages[`${month.phase}_${week.week}`]?.length > 0 ? (
+                                                                                            chatMessages[`${month.phase}_${week.week}`].map((msg, mIdx) => (
+                                                                                                <div key={mIdx} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                                                                                                    <div style={{
+                                                                                                        background: msg.role === 'user' ? 'rgba(80, 250, 123, 0.1)' : 'rgba(255,255,255,0.05)',
+                                                                                                        color: msg.role === 'user' ? '#50fa7b' : 'var(--text-primary)',
+                                                                                                        padding: '10px 14px',
+                                                                                                        borderRadius: msg.role === 'user' ? '12px 12px 0 12px' : '12px 12px 12px 0',
+                                                                                                        maxWidth: '85%',
+                                                                                                        fontSize: '0.9rem',
+                                                                                                        lineHeight: 1.5,
+                                                                                                        border: `1px solid ${msg.role === 'user' ? 'rgba(80, 250, 123, 0.3)' : 'rgba(255,255,255,0.1)'}`
+                                                                                                    }}>
+                                                                                                        {msg.content}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            ))
+                                                                                        ) : (
+                                                                                            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem', padding: '20px 0', fontStyle: 'italic' }}>
+                                                                                                "How is {week.week} feeling so far? Remember, I'm here to make things impossibly easy for you. Ask me anything."
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {isChatting && (
+                                                                                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                                                                                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: '12px 12px 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                                                    <Loader2 size={14} className="spinner" color="var(--text-secondary)" />
+                                                                                                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Mentor typing...</span>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        <div ref={messagesEndRef} />
+                                                                                    </div>
+
+                                                                                    {/* Input Area */}
+                                                                                    <form onSubmit={(e) => handleChatSubmit(e, { ...week, phase: month.phase })} style={{ display: 'flex', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.3)', gap: '8px' }}>
+                                                                                        <input
+                                                                                            type="text"
+                                                                                            value={chatInput}
+                                                                                            onChange={(e) => setChatInput(e.target.value)}
+                                                                                            placeholder="Ask for help or modify the plan..."
+                                                                                            style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '10px 14px', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                                                                                        />
+                                                                                        <button
+                                                                                            type="submit"
+                                                                                            disabled={isChatting || !chatInput.trim()}
+                                                                                            style={{ background: '#82caff', color: '#000', border: 'none', borderRadius: '8px', padding: '0 16px', cursor: (isChatting || !chatInput.trim()) ? 'not-allowed' : 'pointer', opacity: (isChatting || !chatInput.trim()) ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                                                        >
+                                                                                            <Send size={18} />
+                                                                                        </button>
+                                                                                    </form>
+                                                                                </motion.div>
+                                                                            )}
+                                                                        </AnimatePresence>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
-                                )}
-                            </motion.div>
-                        ))}
+                                </motion.div>
+                            ))}
+                        </div>
                     </div>
                 </motion.div>
             )}
 
-            {/* Bottom Action */}
-            <motion.div variants={itemVariants} style={{ display: 'flex', justifyContent: 'center', marginTop: '40px' }}>
+            {/* Bottom Action / Save Gate */}
+            <motion.div variants={itemVariants} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '60px' }}>
+
+                <div style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '24px',
+                    padding: '40px',
+                    maxWidth: '500px',
+                    width: '100%',
+                    textAlign: 'center',
+                    marginBottom: '24px'
+                }}>
+                    <h3 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', marginBottom: '16px' }}>Save Your Blueprint</h3>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
+                        Don't lose this breakthough. We've built a system around this exact blueprint to keep you accountable.
+                    </p>
+
+                    {saveSuccess ? (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#50fa7b', background: 'rgba(80, 250, 123, 0.1)', padding: '12px 24px', borderRadius: '12px' }}>
+                            <CheckCircle2 size={20} /> Blueprint secured. Check your inbox.
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSaveBlueprint} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Enter your email"
+                                required
+                                style={{
+                                    width: '100%',
+                                    background: 'rgba(0,0,0,0.3)',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'white',
+                                    padding: '16px 20px',
+                                    borderRadius: '12px',
+                                    fontSize: '1rem',
+                                    outline: 'none'
+                                }}
+                            />
+                            <button
+                                type="submit"
+                                disabled={isSaving || !email}
+                                style={{
+                                    width: '100%',
+                                    background: 'var(--accent-glow)',
+                                    color: '#000',
+                                    border: 'none',
+                                    padding: '16px',
+                                    borderRadius: '12px',
+                                    fontWeight: 600,
+                                    fontSize: '1.05rem',
+                                    cursor: (isSaving || !email) ? 'not-allowed' : 'pointer',
+                                    opacity: (isSaving || !email) ? 0.7 : 1,
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                {isSaving ? <Loader2 className="spinner" size={20} /> : 'Send to my Inbox'}
+                            </button>
+                        </form>
+                    )}
+                </div>
+
                 <button
                     onClick={resetIntegration}
                     className="group"
                     style={{
-                        background: 'var(--text-primary)',
-                        color: 'var(--bg-primary)',
-                        padding: '16px 40px',
+                        background: 'transparent',
+                        color: 'var(--text-secondary)',
+                        padding: '12px 24px',
                         borderRadius: '30px',
-                        fontWeight: 600,
-                        fontSize: '1.1rem',
+                        fontWeight: 500,
+                        fontSize: '1rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        border: 'none',
+                        gap: '8px',
+                        border: '1px solid rgba(255,255,255,0.1)',
                         cursor: 'pointer',
                         transition: 'all 0.3s ease'
                     }}
                 >
                     Start New Analysis
-                    <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                    <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
                 </button>
             </motion.div>
 
