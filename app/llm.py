@@ -37,7 +37,12 @@ def _get_client() -> OpenAI:
             if not api_key:
                 logger.error("OPENAI_API_KEY is not set")
                 raise RuntimeError("OPENAI_API_KEY is required")
-            _client = OpenAI(api_key=api_key)
+            
+            base_url = os.getenv("OPENAI_BASE_URL")
+            if base_url:
+                _client = OpenAI(api_key=api_key, base_url=base_url)
+            else:
+                _client = OpenAI(api_key=api_key)
     return _client
 
 
