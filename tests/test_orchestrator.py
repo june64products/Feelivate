@@ -62,7 +62,7 @@ class TestOrchestrator(unittest.TestCase):
         orig = orch.call_llm
         try:
             orch.call_llm = _stub_call_llm
-            result = asyncio.run(orch.orchestrate("entry"))
+            result = asyncio.run(orch.orchestrate("user123", "focus", "history", "vision"))
             self.assertIn("past", result)
             self.assertIn("present", result)
             self.assertIn("future", result)

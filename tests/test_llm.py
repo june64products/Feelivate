@@ -1,21 +1,26 @@
 import os
 import unittest
+from unittest import mock
 
 
 class TestLLMWrap(unittest.TestCase):
-    def test_missing_api_key_raises(self):
+    @mock.patch("app.llm.load_dotenv")
+    def test_missing_api_key_raises(self, mock_load_dotenv):
         from app import llm
 
-        old = os.environ.get("OPENAI_API_KEY")
+        keys = ["OPENAI_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY"]
+        old_keys = {}
         try:
-            if "OPENAI_API_KEY" in os.environ:
-                del os.environ["OPENAI_API_KEY"]
+            for k in keys:
+                if k in os.environ:
+                    old_keys[k] = os.environ[k]
+                    del os.environ[k]
             llm._client = None  # force reinit
             with self.assertRaises(RuntimeError):
                 llm.call_llm("hello", max_tokens=1)
         finally:
-            if old is not None:
-                os.environ["OPENAI_API_KEY"] = old
+            for k, v in old_keys.items():
+                os.environ[k] = v
 
     @unittest.skip("Integration placeholder: requires OPENAI_API_KEY")
     def test_call_llm_integration(self):

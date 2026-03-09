@@ -23,4 +23,4 @@ jobs:
       - name: Run tests
         run: |
           source .venv/bin/activate
-          pytest -q tests
+          PYTHONPATH=. pytest -q tests
