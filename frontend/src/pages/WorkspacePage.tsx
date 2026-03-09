@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import InputForm from '../components/workspace/InputForm';
 import ResultsDashboard from '../components/workspace/ResultsDashboard';
-import WeeklyPlanner from '../components/workspace/WeeklyPlanner';
 import { submitIngest, fetchResult, type IngestResponse } from '../api';
 
 const WorkspacePage = () => {
@@ -12,7 +11,6 @@ const WorkspacePage = () => {
     const [processing, setProcessing] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [pollStatus, setPollStatus] = useState('');
-    const [activeView, setActiveView] = useState<'input' | 'dashboard' | 'planner'>('input');
 
     const handleIngest = async (text: string) => {
         try {
@@ -59,7 +57,6 @@ const WorkspacePage = () => {
                     if (isMounted) {
                         setResult(data);
                         setProcessing(false);
-                        setActiveView('dashboard');
                         clearInterval(textInterval);
                     }
                 } else if (data && data.status === 'error') {
@@ -198,7 +195,6 @@ const WorkspacePage = () => {
                             resetIntegration={() => {
                                 setResult(null);
                                 setTraceId(null);
-                                setActiveView('input');
                             }}
                         />
                     </div>
