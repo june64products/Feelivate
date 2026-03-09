@@ -8,7 +8,7 @@ import uuid
 import threading
 import asyncio
 import io
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Depends
