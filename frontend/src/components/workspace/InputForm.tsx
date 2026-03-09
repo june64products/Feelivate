@@ -74,8 +74,13 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
         try {
             const data = await transcribeAudio(audioBlob);
             if (data.raw_text) {
-                // Populate the single textbox with the raw transcription
-                setInitialGoal(prev => prev + (prev ? '\n\n' : '') + data.raw_text);
+                if (step === 'initial') {
+                    setInitialGoal(prev => prev + (prev ? '\n\n' : '') + data.raw_text);
+                } else if (step === 'question') {
+                    setCurrentAnswer(prev => prev + (prev ? ' ' : '') + data.raw_text);
+                } else if (step === 'contradiction') {
+                    setContradictionAnswer(prev => prev + (prev ? ' ' : '') + data.raw_text);
+                }
             }
         } catch (err: any) {
             setAudioError(err.message || 'Transcription failed.');
@@ -182,9 +187,9 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
             className="input-form-container"
             style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))',
+                gridTemplateColumns: step === 'initial' ? 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))' : '1fr',
                 gap: '32px',
-                maxWidth: '1200px',
+                maxWidth: step === 'initial' ? '1200px' : '800px',
                 margin: '0 auto',
                 alignItems: 'start'
             }}
@@ -294,7 +299,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                             </p>
 
                             <form onSubmit={handleAnswerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
-                                <div className="input-group" style={{ flexGrow: 1 }}>
+                                <div className="input-group" style={{ flexGrow: 1, position: 'relative' }}>
                                     <textarea
                                         value={currentAnswer}
                                         onChange={(e) => {
@@ -309,6 +314,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                                             border: qualityWarning ? '1px solid #ff7b7b' : '1px solid var(--border-color)',
                                             borderRadius: '12px',
                                             padding: '24px',
+                                            paddingRight: '60px',
                                             color: 'var(--text-primary)',
                                             minHeight: '200px',
                                             fontSize: '1.1rem',
@@ -319,6 +325,29 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                                         }}
                                         required
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={isRecording ? stopRecording : startRecording}
+                                        style={{
+                                            position: 'absolute',
+                                            bottom: '16px',
+                                            right: '16px',
+                                            background: isRecording ? 'rgba(255, 75, 75, 0.2)' : 'rgba(130, 202, 255, 0.1)',
+                                            border: isRecording ? '1px solid #ff4b4b' : '1px solid rgba(130, 202, 255, 0.3)',
+                                            color: isRecording ? '#ff4b4b' : '#82caff',
+                                            borderRadius: '50%',
+                                            width: '40px',
+                                            height: '40px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        title={isRecording ? "Stop Recording" : "Speak Answer"}
+                                    >
+                                        {isTranscribing ? <Loader2 size={18} className="spinner" /> : isRecording ? <Square size={16} fill="currentColor" /> : <Mic size={18} />}
+                                    </button>
                                     <AnimatePresence>
                                         {qualityWarning && (
                                             <motion.div
@@ -386,7 +415,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                             </div>
 
                             <form onSubmit={handleContradictionSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
-                                <div className="input-group" style={{ flexGrow: 1 }}>
+                                <div className="input-group" style={{ flexGrow: 1, position: 'relative' }}>
                                     <textarea
                                         value={contradictionAnswer}
                                         onChange={(e) => setContradictionAnswer(e.target.value)}
@@ -398,6 +427,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                                             border: '1px solid var(--border-color)',
                                             borderRadius: '12px',
                                             padding: '24px',
+                                            paddingRight: '60px',
                                             color: 'var(--text-primary)',
                                             minHeight: '150px',
                                             fontSize: '1.1rem',
@@ -408,6 +438,29 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                                         }}
                                         required
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={isRecording ? stopRecording : startRecording}
+                                        style={{
+                                            position: 'absolute',
+                                            bottom: '16px',
+                                            right: '16px',
+                                            background: isRecording ? 'rgba(255, 75, 75, 0.2)' : 'rgba(130, 202, 255, 0.1)',
+                                            border: isRecording ? '1px solid #ff4b4b' : '1px solid rgba(130, 202, 255, 0.3)',
+                                            color: isRecording ? '#ff4b4b' : '#82caff',
+                                            borderRadius: '50%',
+                                            width: '40px',
+                                            height: '40px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        title={isRecording ? "Stop Recording" : "Speak Answer"}
+                                    >
+                                        {isTranscribing ? <Loader2 size={18} className="spinner" /> : isRecording ? <Square size={16} fill="currentColor" /> : <Mic size={18} />}
+                                    </button>
                                 </div>
 
                                 <button
@@ -440,122 +493,124 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                 </AnimatePresence>
             </div>
 
-            {/* Right Pane: Audio Recorder & Smart Fill */}
-            <div className="glass-panel audio-pane" style={{
-                padding: 'clamp(24px, 5vw, 40px)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textAlign: 'center',
-                minHeight: '100%',
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.2) 100%)',
-                border: isRecording ? '1px solid var(--accent-glow)' : '1px solid var(--border-color)',
-                boxShadow: isRecording ? '0 0 30px rgba(130, 202, 255, 0.2)' : 'none',
-                transition: 'all 0.4s ease'
-            }}>
-                <div style={{
-                    background: 'rgba(130, 202, 255, 0.1)',
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
+            {/* Right Pane: Audio Recorder & Smart Fill (Only for Step 1) */}
+            {step === 'initial' && (
+                <div className="glass-panel audio-pane" style={{
+                    padding: 'clamp(24px, 5vw, 40px)',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginBottom: '24px'
+                    textAlign: 'center',
+                    minHeight: '100%',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.2) 100%)',
+                    border: isRecording ? '1px solid var(--accent-glow)' : '1px solid var(--border-color)',
+                    boxShadow: isRecording ? '0 0 30px rgba(130, 202, 255, 0.2)' : 'none',
+                    transition: 'all 0.4s ease'
                 }}>
-                    <Mic size={32} color="var(--accent-glow)" />
-                </div>
+                    <div style={{
+                        background: 'rgba(130, 202, 255, 0.1)',
+                        width: '64px',
+                        height: '64px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '24px'
+                    }}>
+                        <Mic size={32} color="var(--accent-glow)" />
+                    </div>
 
-                <h3 style={{ fontSize: '1.5rem', marginBottom: '16px', color: 'var(--text-primary)' }}>Voice Context Upload</h3>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', maxWidth: '300px', lineHeight: 1.6 }}>
-                    Speak naturally about your problem, your past attempts, and your dreams. Our AI will automatically structure it into the required fields.
-                </p>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '16px', color: 'var(--text-primary)' }}>Voice Context Upload</h3>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', maxWidth: '300px', lineHeight: 1.6 }}>
+                        Speak naturally about your problem, your past attempts, and your dreams. Our AI will automatically structure it into the required fields.
+                    </p>
 
-                <AnimatePresence mode="wait">
-                    {isTranscribing ? (
+                    <AnimatePresence mode="wait">
+                        {isTranscribing ? (
+                            <motion.div
+                                key="transcribing"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', color: 'var(--accent-glow)' }}
+                            >
+                                <Loader2 size={40} className="spinner" />
+                                <span style={{ fontWeight: 600, letterSpacing: '0.05em' }}>TRANSCRIBING & STRUCTURING...</span>
+                            </motion.div>
+                        ) : isRecording ? (
+                            <motion.button
+                                key="stop"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                onClick={stopRecording}
+                                className="recording-pulse"
+                                style={{
+                                    background: 'rgba(255, 75, 75, 0.1)',
+                                    border: '1px solid #ff4b4b',
+                                    color: '#ff4b4b',
+                                    padding: '16px 32px',
+                                    borderRadius: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    fontSize: '1.1rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <Square size={20} fill="currentColor" /> Stop Recording
+                            </motion.button>
+                        ) : (
+                            <motion.button
+                                key="start"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                onClick={startRecording}
+                                style={{
+                                    background: 'var(--text-primary)',
+                                    color: 'var(--bg-primary)',
+                                    border: 'none',
+                                    padding: '16px 32px',
+                                    borderRadius: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    fontSize: '1.1rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 14px rgba(255, 255, 255, 0.15)'
+                                }}
+                            >
+                                <Sparkles size={20} /> Start Smart-Fill
+                            </motion.button>
+                        )}
+                    </AnimatePresence>
+
+                    {audioError && (
                         <motion.div
-                            key="transcribing"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', color: 'var(--accent-glow)' }}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            style={{
+                                marginTop: '24px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                color: '#ff7b7b',
+                                background: 'rgba(255, 123, 123, 0.1)',
+                                padding: '12px 16px',
+                                borderRadius: '8px',
+                                fontSize: '0.9rem'
+                            }}
                         >
-                            <Loader2 size={40} className="spinner" />
-                            <span style={{ fontWeight: 600, letterSpacing: '0.05em' }}>TRANSCRIBING & STRUCTURING...</span>
+                            <AlertCircle size={16} />
+                            {audioError}
                         </motion.div>
-                    ) : isRecording ? (
-                        <motion.button
-                            key="stop"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            onClick={stopRecording}
-                            className="recording-pulse"
-                            style={{
-                                background: 'rgba(255, 75, 75, 0.1)',
-                                border: '1px solid #ff4b4b',
-                                color: '#ff4b4b',
-                                padding: '16px 32px',
-                                borderRadius: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                fontSize: '1.1rem',
-                                fontWeight: 600,
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <Square size={20} fill="currentColor" /> Stop Recording
-                        </motion.button>
-                    ) : (
-                        <motion.button
-                            key="start"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            onClick={startRecording}
-                            style={{
-                                background: 'var(--text-primary)',
-                                color: 'var(--bg-primary)',
-                                border: 'none',
-                                padding: '16px 32px',
-                                borderRadius: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                fontSize: '1.1rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 14px rgba(255, 255, 255, 0.15)'
-                            }}
-                        >
-                            <Sparkles size={20} /> Start Smart-Fill
-                        </motion.button>
                     )}
-                </AnimatePresence>
-
-                {audioError && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        style={{
-                            marginTop: '24px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            color: '#ff7b7b',
-                            background: 'rgba(255, 123, 123, 0.1)',
-                            padding: '12px 16px',
-                            borderRadius: '8px',
-                            fontSize: '0.9rem'
-                        }}
-                    >
-                        <AlertCircle size={16} />
-                        {audioError}
-                    </motion.div>
-                )}
-            </div>
+                </div>
+            )}
 
             <style>{`
                 .premium-input:focus {
