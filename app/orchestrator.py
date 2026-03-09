@@ -37,8 +37,8 @@ async def _call_agent(agent_name: str, inputs: Dict[str, str], context: Optional
         AGENT_CALLS_TOTAL.labels(agent=agent_name).inc()
         
         logger.info(f"Calling agent: {agent_name}")
-        # Call LLM (IO bound, run in thread)
-        text = await asyncio.to_thread(call_llm, prompt_text)
+        # Call LLM (IO bound, run in thread). Use 8000 tokens to ensure the 6-month plan fits.
+        text = await asyncio.to_thread(call_llm, prompt_text, max_tokens=8000)
         
         timer.observe()
         data = _parse_json(text)
