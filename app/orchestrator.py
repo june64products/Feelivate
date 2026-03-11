@@ -12,7 +12,12 @@ from .vector_store import vector_store
 from .observability import AGENT_CALLS_TOTAL, AgentTimer, trace_request
 
 
+import re
+
 def _parse_json(text: str) -> Dict[str, Any]:
+    # Strip <think>...</think> blocks from reasoning models like DeepSeek-R1
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+    
     try:
         return json.loads(text)
     except json.JSONDecodeError:
@@ -110,8 +115,8 @@ async def orchestrate(
 
         past, present, future = await asyncio.gather(past_task, present_task, future_task)
 
-        # 3. Integration (The Architect)
-        # ------------------------------
+        # 3. Integration (The Architect) - Iterative Generation
+        # ---------------------------------------------------
         integration_context = {
             "past_pattern": past.get("pattern_detected", "None"),
             "present_constraint": present.get("primary_constraint", "None"),
@@ -119,7 +124,45 @@ async def orchestrate(
             "energy_level": present.get("energy_level", "Unknown")
         }
         
+        # Step 3a: Generate Month 1 (and overall strategy)
+        log.info("Generating Month 1 Strategy...")
+        # Deep reasoning models need large output buffers
         integration = await _call_agent("IntegrationActionAgent", inputs, integration_context)
+        
+        # Step 3b: Iterative Generation for Months 2-6
+        if "roadmap" not in integration:
+            integration["roadmap"] = []
+            
+        # We expect IntegrationActionAgent to return Month 1 inside the roadmap array.
+        # Ensure we have at least one month, or create a placeholder if it failed.
+        if len(integration["roadmap"]) == 0:
+             integration["roadmap"].append({
+                 "phase": "Month 1",
+                 "theme": "Initiation",
+                 "expected_result": "Started",
+                 "weeks": []
+             })
+             
+        for month_num in range(2, 7):
+            log.info(f"Iteratively generating Month {month_num}...")
+            # We pass the previously generated roadmap as context so it knows what happened prior
+            month_context = integration_context.copy()
+            month_context["current_roadmap_progress"] = json.dumps(integration["roadmap"])
+            month_context["target_month"] = f"Month {month_num}"
+            
+            # The prompt dict inputs must strictly map to Focus/History/Vision, but we can overload 'focus' for this internal loop
+            month_inputs = {"focus": f"Generate exactly Month {month_num} of the 6-month plan based on the progress so far. Follow the strict 4-week, 7-day breakdown format."}
+            
+            # Use dedicated prompt for single month generation
+            month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context)
+            
+            # Append the newly generated month to the master roadmap
+            if "month_plan" in month_data and isinstance(month_data["month_plan"], dict):
+                integration["roadmap"].append(month_data["month_plan"])
+            elif "roadmap" in month_data and isinstance(month_data["roadmap"], list) and len(month_data["roadmap"]) > 0:
+                 integration["roadmap"].append(month_data["roadmap"][0])
+            else:
+                 log.warning(f"Failed to generate valid JSON for Month {month_num}. Skipping.")
 
         result = {
             "past": past,

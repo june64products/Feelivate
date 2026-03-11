@@ -59,18 +59,18 @@ def _configure_gemini():
         _gemini_configured = True
 
 
-def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000) -> str:
+def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
     provider = _get_llm_provider()
     
     if provider == "groq":
-        return _call_groq(prompt, system, temperature, max_tokens)
+        return _call_groq(prompt, system, temperature, max_tokens, model_override)
     elif provider == "gemini":
-        return _call_gemini(prompt, system, temperature, max_tokens)
+        return _call_gemini(prompt, system, temperature, max_tokens, model_override)
     else:
-        return _call_openai(prompt, system, temperature, max_tokens)
+        return _call_openai(prompt, system, temperature, max_tokens, model_override)
 
 
-def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000) -> str:
+def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
     try:
         import requests
         load_dotenv()
@@ -78,7 +78,7 @@ def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float =
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY is required")
             
-        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        model_name = model_override or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
         logger.info(f"Calling Gemini model: {model_name} via REST")
         
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
@@ -123,10 +123,10 @@ def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float =
         raise RuntimeError(f"Gemini error: {e}")
 
 
-def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000) -> str:
+def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
     try:
         client = _get_client()
-        model = os.getenv("GROQ_MODEL", "llama-4-maverick")
+        model = model_override or os.getenv("GROQ_MODEL", "llama-4-maverick")
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -159,10 +159,10 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
         raise RuntimeError(f"Groq error: {e}")
 
 
-def _call_openai(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000) -> str:
+def _call_openai(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
     try:
         client = _get_client()
-        model = os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
+        model = model_override or os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
         messages = []
         if system:
             messages.append({"role": "system", "content": system})

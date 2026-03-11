@@ -111,7 +111,7 @@ async def generate_questions(payload: QuestionRequest):
             inputs["history"] = payload.history
             
         prompt_text = build_prompt("QuestionGeneratorAgent", inputs, None)
-        json_str = await asyncio.to_thread(call_llm, prompt_text)
+        json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=1000, model_override="llama-3.3-70b-versatile")
         data = _parse_json(json_str)
         
         # Fallback to empty string if LLM fails
@@ -139,7 +139,7 @@ async def detect_contradiction(payload: ContradictionRequest):
             "history": payload.history
         }
         prompt_text = build_prompt("ContradictionDetectorAgent", inputs, None)
-        json_str = await asyncio.to_thread(call_llm, prompt_text)
+        json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=1000, model_override="llama-3.3-70b-versatile")
         data = _parse_json(json_str)
         
         return {
@@ -271,7 +271,7 @@ async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: 
                 logger.info("Structuring raw input with Groq StructureAgent...")
                 prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
                 
-                structured_json_str = call_llm(prompt_text)
+                structured_json_str = call_llm(prompt_text, max_tokens=2000, model_override="llama-3.3-70b-versatile")
                 structured_data = _parse_json(structured_json_str)
                 
                 focus = structured_data.get("focus", raw_text)
@@ -359,7 +359,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
         prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
         
         logger.info("Structuring transcript with Groq...")
-        structured_json_str = call_llm(prompt_text)
+        structured_json_str = call_llm(prompt_text, max_tokens=2000, model_override="llama-3.3-70b-versatile")
         structured_data = _parse_json(structured_json_str)
         
         # If LLM failed to structure, fallback to raw text in 'focus'
