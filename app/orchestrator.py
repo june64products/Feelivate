@@ -33,7 +33,7 @@ def _parse_json(text: str) -> Dict[str, Any]:
         return {"raw_text": text, "error": "failed_to_parse_json"}
 
 
-async def _call_agent(agent_name: str, inputs: Dict[str, str], context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+async def _call_agent(agent_name: str, inputs: Dict[str, str], context: Optional[Dict[str, Any]], model_override: Optional[str] = None) -> Dict[str, Any]:
     try:
         # Build prompt with specific inputs and retrieved context
         prompt_text = build_prompt(agent_name, inputs, context)
@@ -43,7 +43,7 @@ async def _call_agent(agent_name: str, inputs: Dict[str, str], context: Optional
         
         logger.info(f"Calling agent: {agent_name}")
         # Call LLM (IO bound, run in thread). Use 8000 tokens to ensure the 6-month plan fits.
-        text = await asyncio.to_thread(call_llm, prompt_text, max_tokens=8000)
+        text = await asyncio.to_thread(call_llm, prompt_text, max_tokens=8000, model_override=model_override)
         
         timer.observe()
         data = _parse_json(text)
