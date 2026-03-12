@@ -1,0 +1,372 @@
+{
+  "past": {
+    "agent": "PastPatternAgent",
+    "focus_period": "past",
+    "pattern_detected": "Instant Gratification Distraction Loop",
+    "predicted_context": "They grew up in an environment where phone use was encouraged as a primary source of entertainment and social connection, creating a habit of seeking quick dopamine hits whenever tasks feel demanding.",
+    "contradiction": "They state a strong desire for sustained focus while habitually reaching for their phone during work.",
+    "key_failure_point": "Lack of concrete boundaries or routines to limit phone access during focused work periods.",
+    "origin_story": "The pattern likely emerged in early adolescence when smartphones became ubiquitous and were used as a default coping tool for boredom or stress.",
+    "confidence": 0.88
+  },
+  "present": {
+    "agent": "PresentConstraintAgent",
+    "focus_period": "present",
+    "primary_blocker": "Repeated phone checking interrupts workflow and prevents sustained focus.",
+    "primary_constraint": "Digital Distraction",
+    "energy_level": "Low",
+    "emotional_blocker": "Underlying anxiety and FOMO that make the phone feel like a safety net.",
+    "weekly_cost_estimate": "Approximately 5\u20137 hours per week lost to phone interruptions and re\u2011orienting after each break.",
+    "physical_reframe": "A restless, jittery feeling in the chest and a tightness in the shoulders, like a low\u2011level alarm that spikes each time the phone buzzes.",
+    "needs_micro_task": true,
+    "confidence": 0.81
+  },
+  "future": {
+    "agent": "FutureSimulatorAgent",
+    "focus_period": "future",
+    "failure_simulation": "If you keep scrolling, the next months will slip away, and you'll never reach those four uninterrupted hours.",
+    "success_simulation": "It's September 2026, and I sit at my desk with my phone silenced and out of sight. The morning light streams in as I dive into my project, and the minutes melt into a solid four-hour block of pure focus, each task flowing into the next without a single glance at notifications. I feel a steady rhythm in my thoughts, and by the end of the session, I\u2019m energized, knowing I\u2019ve mastered the focus I once thought impossible.",
+    "impact_on_life": "Sustained focus boosts my productivity, frees up evenings for personal pursuits, and reduces stress, reshaping my work habits and confidence.",
+    "confidence": 0.92
+  },
+  "integration": {
+    "agent": "IntegrationActionAgent",
+    "impact_statement": "You are trapped in a phone\u2011pull loop that steals every day. By ripping that loop out step by step, you will finally sit four straight hours in front of your work and watch the future you imagined become real.",
+    "mentor_persona": "David Goggins meets Cal Newport",
+    "message_from_mentor": "No more excuses. Your phone is a lever you can lock down now. Each tiny win shatters the habit. Do it.",
+    "micro_task": {
+      "title": "Turn off phone for 5 minutes and start the first task",
+      "description": "Silence every notification, place the phone face down, set a 5\u2011minute timer, write the single task you will do, then work on it until the timer rings.",
+      "reward": "You feel a sudden surge of control and a clear mind."
+    },
+    "roadmap": [
+      {
+        "phase": "Month 1",
+        "theme": "Shatter the Phone Pull",
+        "expected_result": "By the end of the month you can work 4 straight hours without reaching for your phone.",
+        "weeks": [
+          {
+            "week": "Week 1",
+            "focus": "Break the instant\u2011gratification loop",
+            "outcome": "30 minutes of phone\u2011free work recorded",
+            "win_condition": "Logged 30 minutes of uninterrupted work",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Silence all phone alerts, place phone face down, set a 5\u2011minute timer, write down the exact task you will tackle, start, work until the timer ends, then write one sentence about how you felt."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Repeat Day\u202f1 but set the timer for 10\u202fminutes. Keep the same phone placement."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Increase timer to 15\u202fminutes. Choose a task that matters to your current project."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Timer 20\u202fminutes. After finishing, note any urge to check the phone and write down the exact thought."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Timer 25\u202fminutes. Record the start and end time in a simple notebook."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Timer 30\u202fminutes. If you feel the urge, count to 10 silently before returning to work."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Review the week\u2019s logs, mark the longest stretch (30\u202fmin) as a win, and plan the next week\u2019s first timer length."
+              }
+            ]
+          },
+          {
+            "week": "Week 2",
+            "focus": "Extend the window",
+            "outcome": "60 minutes of phone\u2011free work recorded",
+            "win_condition": "Logged 60 minutes of uninterrupted work",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Set phone to Do Not Disturb, face down, timer 35\u202fminutes, work on the same task from Week\u202f1 if possible."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Timer 40\u202fminutes, same phone setup, note any distraction triggers."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Timer 45\u202fminutes, write a brief summary of progress after the session."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Timer 50\u202fminutes, if urge spikes, stand, stretch 5 seconds, then resume."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Timer 55\u202fminutes, record start/end and any urge count."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Timer 60\u202fminutes, finish with a 1\u2011minute reflection on how focus feels."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Mark the 60\u2011minute session as a win, write down one concrete benefit you noticed."
+              }
+            ]
+          },
+          {
+            "week": "Week 3",
+            "focus": "Add a second session",
+            "outcome": "Two 60\u2011minute blocks in one day",
+            "win_condition": "Completed two separate 60\u2011minute phone\u2011free sessions",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Morning: 60\u2011min timer, phone silent, work on Task A. Evening: 60\u2011min timer, same phone rules, work on Task B."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Morning 60\u202fmin on Task A, afternoon 60\u202fmin on Task A continuation."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Morning 60\u202fmin on new task, evening 60\u202fmin on any lingering task."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Same as Day\u202f1, but note any drop in urge intensity."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Morning 60\u202fmin, evening 60\u202fmin, after each session write a one\u2011line win note."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Two 60\u2011min blocks, place phone in another room for the second block."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Review the two\u2011session pattern, confirm you hit 120\u202fminutes total, mark win."
+              }
+            ]
+          },
+          {
+            "week": "Week 4",
+            "focus": "Hit 4 hours straight",
+            "outcome": "One continuous 4\u2011hour focus block",
+            "win_condition": "Logged 240 minutes of uninterrupted work",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Set timer for 90\u202fminutes, phone on airplane mode, work on highest\u2011impact task."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Timer 120\u202fminutes, same phone setup, take a 2\u2011minute stretch at minute\u202f60."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Timer 150\u202fminutes, after 75\u202fminutes stand, sip water, then resume."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Timer 180\u202fminutes, split mentally into three 60\u2011minute phases, note progress after each."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Timer 210\u202fminutes, keep phone in a drawer, write a quick gratitude note at minute\u202f105."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Timer 240\u202fminutes, aim for a full 4\u2011hour block. If you feel the urge, count to 20 silently before returning."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Celebrate the 4\u2011hour win, write a short paragraph describing the new clarity you have."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "phase": "Month 2",
+        "theme": "Dual Deep\u2011Work Power Sessions & Digital Exile",
+        "expected_result": "By month\u2019s end you can reliably complete two 4\u2011hour uninterrupted deep\u2011work sessions daily (8\u202fhours total) with phone and non\u2011essential internet fully blocked, and deliver measurable project progress.",
+        "weeks": [
+          {
+            "week": "Week 1",
+            "focus": "Digital Exile Foundations \u2013 extend single block to 5\u202fhours",
+            "outcome": "One continuous 5\u2011hour phone\u2011free, internet\u2011blocked work session logged",
+            "win_condition": "Logged exactly 300\u202fminutes of uninterrupted work with all digital distractions disabled",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Install a website blocker (e.g., Freedom), set phone to Airplane mode, timer 90\u202fmin, work on core task A."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Increase timer to 120\u202fmin, keep blocker active, note any urge count."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Timer 150\u202fmin, add a 2\u2011minute stretch at minute 75, record start/end times."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Timer 180\u202fmin, place phone in a locked drawer, write a 1\u2011sentence reflection after each 60\u2011min segment."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Timer 210\u202fmin, use noise\u2011cancelling headphones, log any distraction triggers."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Timer 240\u202fmin, if urge arises count to 25 silently, then resume work."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Timer 300\u202fmin, complete the full 5\u2011hour block, document output (tasks completed) and declare win."
+              }
+            ]
+          },
+          {
+            "week": "Week 2",
+            "focus": "Dual Power Sessions \u2013 two 4\u2011hour blocks per day",
+            "outcome": "Two separate 4\u2011hour deep\u2011work sessions completed in a single day",
+            "win_condition": "Logged two distinct 240\u2011minute blocks on the same calendar day with no phone interaction",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Morning: 240\u202fmin timer, phone in another room, blocker on. Evening: same setup, different task B."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Morning block 240\u202fmin on Task C, after a 15\u2011min physical reset (walk). Evening block 240\u202fmin on Task D."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Morning 240\u202fmin, use a Pomodoro 50/10 pattern inside the block to manage fatigue. Evening 240\u202fmin, no breaks longer than 5\u202fmin."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Morning 240\u202fmin, add a 5\u2011minute visualization of end\u2011state before starting. Evening 240\u202fmin, record total output (lines of code/writing)."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Morning 240\u202fmin, experiment with ambient focus music. Evening 240\u202fmin, keep phone in a sealed bag."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Morning 240\u202fmin, include a 2\u2011minute breathing reset at minute 120. Evening 240\u202fmin, log any urge count and compare to Day\u202f1."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Review the week: confirm at least one day hit two full 4\u2011hour blocks, write a short win statement, and set next week\u2019s target for total daily hours."
+              }
+            ]
+          },
+          {
+            "week": "Week 3",
+            "focus": "Output Quantification & Energy Optimization",
+            "outcome": "360\u202fminutes of deep work with \u226580\u202f% of predefined high\u2011impact tasks completed",
+            "win_condition": "Completed at least 5 high\u2011impact tasks and logged 360\u202fminutes of uninterrupted work",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Plan 3 high\u2011impact tasks, execute first 120\u202fmin block, then 5\u2011minute hydration break, second 120\u202fmin block, track tasks finished."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Morning 180\u202fmin block, incorporate a 10\u2011minute power\u2011nap at minute 90, resume remaining 90\u202fmin."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Evening 180\u202fmin block, eat a protein\u2011rich snack before starting, log energy level (1\u201110) each hour."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Combine two 150\u202fmin blocks (morning/evening) with 15\u2011minute movement breaks, record task completion percentage."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Run a 30\u2011minute sprint: 25\u202fmin ultra\u2011focus, 5\u202fmin rapid review, repeat twice, total 60\u202fmin, then a 120\u2011min deep block."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Full 240\u202fmin block, no scheduled breaks, note any dip in focus, apply the 20\u2011second \u201curge\u2011pause\u201d technique when needed."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Summarize weekly output: count tasks completed, total minutes, and declare win if \u22655 tasks done and \u2265360\u202fmin logged."
+              }
+            ]
+          },
+          {
+            "week": "Week 4",
+            "focus": "Sustained Mastery & Automation",
+            "outcome": "Three consecutive days of 8\u202fhours (two 4\u2011hour blocks) deep work, automated routines in place",
+            "win_condition": "Achieved a 3\u2011day streak where each day includes two 240\u2011minute phone\u2011free sessions and automated start\u2011up scripts run successfully",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Create a launch script that opens work apps, activates blocker, and starts a 4\u2011hour timer. Run script for both morning and evening sessions."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Execute the script twice, log any automation failures, and complete two 240\u2011min blocks."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Repeat script, add a 5\u2011minute gratitude journal after each block, verify total 480\u202fmin logged."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Maintain the dual\u2011session pattern, introduce a 10\u2011minute \u201cfuture\u2011planning\u201d review at day\u2019s end."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Invite an accountability partner to review your logs, confirm no phone checks recorded."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Run a 4\u2011hour block with a secondary \u201cfocus\u2011buddy\u201d video call (muted) to reinforce presence, then evening block solo."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Document the 3\u2011day streak, capture screenshots of timers and blocker status, declare final win and outline Month\u202f3\u2019s next escalation."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "phase": "Month 3",
+        "theme": "Growth and Consolidation",
+        "expected_result": "Continued progress on focus area",
+        "weeks": []
+      },
+      {
+        "phase": "Month 4",
+        "theme": "Growth and Consolidation",
+        "expected_result": "Continued progress on focus area",
+        "weeks": []
+      },
+      {
+        "phase": "Month 5",
+        "theme": "Growth and Consolidation",
+        "expected_result": "Continued progress on focus area",
+        "weeks": []
+      },
+      {
+        "phase": "Month 6",
+        "theme": "Growth and Consolidation",
+        "expected_result": "Continued progress on focus area",
+        "weeks": []
+      }
+    ]
+  },
+  "trace_id": "d6294cf3-acfb-46a2-935d-365aee0ab682"
+}
