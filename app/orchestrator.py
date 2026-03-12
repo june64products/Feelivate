@@ -153,7 +153,13 @@ async def orchestrate(
                 month_context["current_roadmap_progress"] = json.dumps([last_month])
                 month_context["target_month"] = f"Month {month_num}"
                 
-                month_inputs = {"focus": f"Generate exactly Month {month_num}. You MUST label the phase as 'Month {month_num}'. Follow the 4-week, 7-day breakdown format."}
+                # Calculate correct week numbering
+                start_week = (month_num - 1) * 4 + 1
+                end_week = month_num * 4
+                
+                month_inputs = {
+                    "focus": f"Generate exactly Month {month_num}. You MUST label the weeks sequentially as Week {start_week}, Week {start_week+1}, Week {start_week+2}, and Week {end_week}. Follow the 4-week, 7-day breakdown format."
+                }
                 month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context)
                 
                 new_month = None
