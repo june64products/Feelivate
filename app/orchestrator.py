@@ -144,25 +144,39 @@ async def orchestrate(
              })
              
         for month_num in range(2, 7):
-            log.info(f"Iteratively generating Month {month_num}...")
-            # We pass the previously generated roadmap as context so it knows what happened prior
-            month_context = integration_context.copy()
-            month_context["current_roadmap_progress"] = json.dumps(integration["roadmap"])
-            month_context["target_month"] = f"Month {month_num}"
+            success = False
+            for attempt in range(2): # Simple retry
+                log.info(f"Iteratively generating Month {month_num} (Attempt {attempt + 1})...")
+                month_context = integration_context.copy()
+                # Only pass the last generated month to keep context small and avoid JSON parsing failures
+                last_month = integration["roadmap"][-1] if integration["roadmap"] else {}
+                month_context["current_roadmap_progress"] = json.dumps([last_month])
+                month_context["target_month"] = f"Month {month_num}"
+                
+                month_inputs = {"focus": f"Generate exactly Month {month_num}. You MUST label the phase as 'Month {month_num}'. Follow the 4-week, 7-day breakdown format."}
+                month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context)
+                
+                new_month = None
+                if "month_plan" in month_data and isinstance(month_data["month_plan"], dict):
+                    new_month = month_data["month_plan"]
+                elif "roadmap" in month_data and isinstance(month_data["roadmap"], list) and len(month_data["roadmap"]) > 0:
+                     new_month = month_data["roadmap"][0]
+                
+                if new_month and "phase" in new_month:
+                    integration["roadmap"].append(new_month)
+                    success = True
+                    break
+                else:
+                    log.warning(f"Attempt {attempt + 1} failed for Month {month_num}")
             
-            # The prompt dict inputs must strictly map to Focus/History/Vision, but we can overload 'focus' for this internal loop
-            month_inputs = {"focus": f"Generate exactly Month {month_num} of the 6-month plan based on the progress so far. Follow the strict 4-week, 7-day breakdown format."}
-            
-            # Use dedicated prompt for single month generation
-            month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context)
-            
-            # Append the newly generated month to the master roadmap
-            if "month_plan" in month_data and isinstance(month_data["month_plan"], dict):
-                integration["roadmap"].append(month_data["month_plan"])
-            elif "roadmap" in month_data and isinstance(month_data["roadmap"], list) and len(month_data["roadmap"]) > 0:
-                 integration["roadmap"].append(month_data["roadmap"][0])
-            else:
-                 log.warning(f"Failed to generate valid JSON for Month {month_num}. Skipping.")
+            if not success:
+                log.error(f"Failed to generate valid JSON for Month {month_num} after retries. Adding placeholder.")
+                integration["roadmap"].append({
+                    "phase": f"Month {month_num}",
+                    "theme": "Growth and Consolidation",
+                    "expected_result": "Continued progress on focus area",
+                    "weeks": []
+                })
 
         result = {
             "past": past,
