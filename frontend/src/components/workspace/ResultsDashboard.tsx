@@ -35,6 +35,64 @@ interface ResultsDashboardProps {
     resetIntegration: () => void;
 }
 
+const MarkdownRenderer = ({ text }: { text: string }) => {
+    // Split into lines to handle blocks (headers and lists)
+    const lines = text.split('\n');
+    
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {lines.map((line, idx) => {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) return <div key={idx} style={{ height: '4px' }} />;
+
+                // 1. Headers (### Title)
+                if (trimmedLine.startsWith('###')) {
+                    return (
+                        <h4 key={idx} style={{ 
+                            color: 'var(--text-accent)', 
+                            fontSize: '1.2rem', 
+                            fontWeight: 700, 
+                            marginTop: '12px',
+                            marginBottom: '4px'
+                        }}>
+                            {trimmedLine.replace(/^###\s*/, '')}
+                        </h4>
+                    );
+                }
+
+                // 2. Bullet Lists (- Item)
+                if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
+                    const content = trimmedLine.replace(/^[-•]\s*/, '');
+                    return (
+                        <div key={idx} style={{ display: 'flex', gap: '8px', paddingLeft: '8px' }}>
+                            <span style={{ color: 'var(--text-accent)', fontWeight: 800 }}>•</span>
+                            <span style={{ flex: 1 }}>{parseInline(content)}</span>
+                        </div>
+                    );
+                }
+
+                // Default Paragraph
+                return (
+                    <p key={idx} style={{ margin: 0, lineHeight: 1.6 }}>
+                        {parseInline(trimmedLine)}
+                    </p>
+                );
+            })}
+        </div>
+    );
+};
+
+// Helper for bold text (**text**)
+const parseInline = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={i} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+    });
+};
+
 const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => {
     const [localRoadmap, setLocalRoadmap] = useState<MonthPhase[]>([]);
     const [localMicroTask, setLocalMicroTask] = useState<any>(null);
@@ -615,7 +673,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                                                                                                         lineHeight: 1.5,
                                                                                                         border: `1px solid ${msg.role === 'user' ? 'rgba(80, 250, 123, 0.3)' : 'rgba(255,255,255,0.1)'}`
                                                                                                     }}>
-                                                                                                        {msg.content}
+                                                                                                        <MarkdownRenderer text={msg.content} />
                                                                                                     </div>
                                                                                                 </div>
                                                                                             ))
