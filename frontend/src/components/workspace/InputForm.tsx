@@ -34,6 +34,14 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<BlobPart[]>([]);
 
+    // VAD State (Voice Activity Detection)
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const silenceStartRef = useRef<number | null>(null);
+    const animationFrameRef = useRef<number | null>(null);
+    const SILENCE_THRESHOLD = 50; // Amplitude threshold (0-255)
+    const SILENCE_DURATION = 1500; // 1.5 seconds of silence before auto-stop
+
     const startRecording = async () => {
         try {
             setAudioError('');
@@ -49,6 +57,48 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
 
             mediaRecorderRef.current.start();
             setIsRecording(true);
+
+            // --- VAD Initialization ---
+            const audioCtx = new AudioContext();
+            const source = audioCtx.createMediaStreamSource(stream);
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+
+            audioContextRef.current = audioCtx;
+            analyserRef.current = analyser;
+            silenceStartRef.current = null;
+
+            const checkSpeech = () => {
+                if (!analyserRef.current) return;
+                const bufferLength = analyserRef.current.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyserRef.current.getByteTimeDomainData(dataArray);
+
+                let maxVal = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    const val = Math.abs(dataArray[i] - 128);
+                    if (val > maxVal) maxVal = val;
+                }
+
+                if (maxVal < SILENCE_THRESHOLD) {
+                    if (silenceStartRef.current === null) {
+                        silenceStartRef.current = Date.now();
+                    } else if (Date.now() - silenceStartRef.current > SILENCE_DURATION) {
+                        console.log("VAD: Silence detected. Auto-stopping.");
+                        stopRecording();
+                        return;
+                    }
+                } else {
+                    silenceStartRef.current = null;
+                }
+
+                animationFrameRef.current = requestAnimationFrame(checkSpeech);
+            };
+
+            animationFrameRef.current = requestAnimationFrame(checkSpeech);
+            // ---------------------------
+
         } catch (error) {
             console.error("Failed to access microphone:", error);
             setAudioError('Microphone access denied or unavailable.');
@@ -56,6 +106,17 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
     };
 
     const stopRecording = () => {
+        if (animationFrameRef.current !== null) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+        }
+
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+            analyserRef.current = null;
+        }
+
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.onstop = async () => {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });

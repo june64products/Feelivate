@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional, List
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from loguru import logger
@@ -310,7 +310,43 @@ async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: 
         daemon=True
     ).start()
 
-    return {"trace_id": trace_id, "session_id": session_id, "status": "accepted"}
+@app.post("/ingest_stream", tags=["ingest"])
+async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db)):
+    """
+    Streaming entry point for v2.0.
+    """
+    user_id = payload.user_id
+    session_id = payload.session_id or str(uuid.uuid4())
+
+    async def event_generator():
+        try:
+            # 1. First, parse the raw unstructured text into Focus, History, Vision using StructureAgent
+            from .llm import call_llm
+            from .prompts import build_prompt
+            from .orchestrator import _parse_json
+            
+            logger.info("Structuring raw input for stream...")
+            prompt_text = build_prompt("StructureAgent", {"focus": payload.text}, None)
+            
+            structured_json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=2000, model_override="llama-3.3-70b-versatile")
+            structured_data = _parse_json(structured_json_str)
+            
+            focus = structured_data.get("focus", payload.text)
+            history = structured_data.get("history", "")
+            vision = structured_data.get("vision", "")
+
+            # Yield structuring complete
+            yield f"data: {json.dumps({'type': 'structured', 'focus': focus, 'history': history, 'vision': vision})}\n\n"
+
+            # 2. Call the streaming orchestrator
+            async for chunk in orchestrate(user_id, focus, history, vision, session_id):
+                yield f"data: {json.dumps(chunk)}\n\n"
+        
+        except Exception as e:
+            logger.exception("Streaming orchestration failed")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.get("/result/{trace_id}", tags=["ingest"])
@@ -333,11 +369,11 @@ from fastapi import UploadFile, File
 from .audio import transcriber
 
 @app.post("/transcribe", tags=["audio"])
-async def transcribe_audio(file: UploadFile = File(...)):
+async def transcribe_audio(file: UploadFile = File(...), skip_structure: bool = True):
     """
-    Accepts an audio file and returns structured text (Focus, History, Vision).
-    1. Transcribe with Whisper.
-    2. Structure with Llama 3 (via Groq).
+    Accepts an audio file and returns text.
+    1. Transcribe with Whisper on Groq (Ultra-fast).
+    2. Optionally structure with LLM (Slower).
     """
     try:
         # 1. Read & Transcribe
@@ -346,35 +382,32 @@ async def transcribe_audio(file: UploadFile = File(...)):
         raw_text = transcriber.transcribe(file_obj)
         
         if "[Error" in raw_text:
+            logger.error(f"Transcription error: {raw_text}")
             return JSONResponse(status_code=500, content={"error": raw_text})
 
-        # 2. Structure with LLM
-        # We reuse the orchestrator's helper or call_llm directly
-        from .llm import call_llm
-        from .prompts import build_prompt
-        from .orchestrator import _parse_json
-        
-        # Build prompt for StructureAgent
-        # We pass raw_text as 'focus' inputs just to fit the signature, or handle it custom
-        prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
-        
-        logger.info("Structuring transcript with Groq...")
-        structured_json_str = call_llm(prompt_text, max_tokens=2000, model_override="llama-3.3-70b-versatile")
-        structured_data = _parse_json(structured_json_str)
-        
-        # If LLM failed to structure, fallback to raw text in 'focus'
-        if "error" in structured_data or not structured_data.get("focus"):
-            logger.warning("Structuring failed, returning raw text.")
+        # 2. Early Return for Speed
+        if skip_structure:
+            logger.info("Skipping LLM structuring for low-latency return.")
             return {
                 "raw_text": raw_text,
-                "focus": raw_text,
+                "focus": raw_text, # Frontend uses this as the user's primary answer
                 "history": "",
                 "vision": ""
             }
 
+        # 3. Optional Slow Structure with LLM
+        from .llm import call_llm
+        from .prompts import build_prompt
+        from .orchestrator import _parse_json
+        
+        prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
+        logger.info("Structuring transcript with Groq...")
+        structured_json_str = call_llm(prompt_text, max_tokens=2000, model_override="llama-3.3-70b-versatile")
+        structured_data = _parse_json(structured_json_str)
+
         return {
             "raw_text": raw_text,
-            "focus": structured_data.get("focus", ""),
+            "focus": structured_data.get("focus", raw_text),
             "history": structured_data.get("history", ""),
             "vision": structured_data.get("vision", "")
         }

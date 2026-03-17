@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import InputForm from '../components/workspace/InputForm';
 import ResultsDashboard from '../components/workspace/ResultsDashboard';
-import { submitIngest, fetchResult, type IngestResponse } from '../api';
+import { submitIngestStream } from '../api';
 
 const WorkspacePage = () => {
     const navigate = useNavigate();
     const [userId] = useState(() => `user_${Math.random().toString(36).substr(2, 8)}`);
-    const [traceId, setTraceId] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [pollStatus, setPollStatus] = useState('');
@@ -15,74 +14,53 @@ const WorkspacePage = () => {
     const handleIngest = async (text: string) => {
         try {
             setProcessing(true);
-            const res: IngestResponse = await submitIngest({
+            setResult(null);
+            setPollStatus("🔍 Initializing AI Agents...");
+
+            await submitIngestStream({
                 user_id: userId,
                 text
+            }, (chunk) => {
+                if (chunk.type === 'structured') {
+                    setPollStatus(`🧠 Pattern detected: ${chunk.focus.substring(0, 30)}...`);
+                } else if (chunk.type === 'initial') {
+                    setResult({
+                        past: chunk.past,
+                        present: chunk.present,
+                        future: chunk.future,
+                        integration: {
+                            ...chunk.integration_meta,
+                            roadmap: [chunk.first_month]
+                        }
+                    });
+                    setProcessing(false); // Move to dashboard as soon as we have the first piece
+                } else if (chunk.type === 'month') {
+                    setResult((prev: any) => {
+                        if (!prev) return prev;
+                        const roadmap = prev.integration.roadmap || [];
+                        // Prevent duplicates if stream reconnects
+                        if (roadmap.some((m: any) => m.phase === chunk.month.phase)) return prev;
+                        
+                        return {
+                            ...prev,
+                            integration: {
+                                ...prev.integration,
+                                roadmap: [...roadmap, chunk.month]
+                            }
+                        };
+                    });
+                } else if (chunk.type === 'error') {
+                    alert("Analysis error: " + chunk.message);
+                    setProcessing(false);
+                }
             });
-            setTraceId(res.trace_id);
+
         } catch (error) {
             console.error("Failed to start analysis:", error);
             setProcessing(false);
             alert("Failed to connect to the backend engine.");
         }
     };
-
-    useEffect(() => {
-        if (!traceId || !processing) return;
-
-        let isMounted = true;
-
-        const steps = [
-            "🔍 Accessing Vector Memory (Qdrant)...",
-            "🕵️ PastPatternAgent is scanning for contradictions...",
-            "🛑 PresentConstraintAgent is checking energy levels...",
-            "🎲 FutureSimulatorAgent is running pre-mortems...",
-            "🏗️ IntegrationAgent is building your Micro-Plan..."
-        ];
-        let stepIndex = 0;
-
-        const textInterval = setInterval(() => {
-            if (isMounted) {
-                setPollStatus(steps[stepIndex % steps.length]);
-                stepIndex++;
-            }
-        }, 1500);
-
-        const pollBackend = async () => {
-            if (!isMounted) return;
-            try {
-                const data = await fetchResult(traceId);
-
-                if (data && data.integration) {
-                    if (isMounted) {
-                        setResult(data);
-                        setProcessing(false);
-                        clearInterval(textInterval);
-                    }
-                } else if (data && data.status === 'error') {
-                    if (isMounted) {
-                        setProcessing(false);
-                        clearInterval(textInterval);
-                        alert("Agents encountered an error: " + data.error);
-                    }
-                } else {
-                    // Continue polling
-                    setTimeout(pollBackend, 2000);
-                }
-            } catch (e) {
-                console.error("Polling error:", e);
-                // Retry on network errors
-                setTimeout(pollBackend, 2000);
-            }
-        };
-
-        pollBackend();
-
-        return () => {
-            isMounted = false;
-            clearInterval(textInterval);
-        };
-    }, [traceId, processing]);
 
 
     return (
@@ -194,7 +172,6 @@ const WorkspacePage = () => {
                             data={result}
                             resetIntegration={() => {
                                 setResult(null);
-                                setTraceId(null);
                             }}
                         />
                     </div>

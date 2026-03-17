@@ -505,6 +505,9 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                             {localRoadmap.map((month, idx) => (
                                 <motion.div
                                     key={idx}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.5, delay: idx * 0.1 }}
                                     style={{ position: 'relative' }}
                                 >
                                     {/* Spine Node */}
@@ -527,7 +530,7 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                                                     <span style={{ color: 'var(--text-accent)', fontWeight: 600, fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
                                                         {month.phase}
                                                     </span>
-                                                    <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '1.5rem', fontWeight: 800, lineHeight: 1 }}>0{idx + 1}</span>
+                                                    <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '1.5rem', fontWeight: 800, lineHeight: 1 }}>{idx < 9 ? `0${idx + 1}` : idx + 1}</span>
                                                 </div>
                                                 <h4 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: 600, marginBottom: '8px', lineHeight: 1.3 }}>
                                                     {month.theme}
@@ -663,6 +666,20 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                                     </div>
                                 </motion.div>
                             ))}
+                            
+                            {/* Streaming Indicator */}
+                            {localRoadmap.length < 6 && (
+                                <motion.div 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    style={{ position: 'relative', display: 'flex', gap: '16px', alignItems: 'center', paddingLeft: '4px' }}
+                                >
+                                    <div className="spinner" style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#50fa7b' }} />
+                                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', fontStyle: 'italic' }}>
+                                        Orchestrating Month {localRoadmap.length + 1}...
+                                    </span>
+                                </motion.div>
+                            )}
                         </div>
                     </div>
                 </motion.div>

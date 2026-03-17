@@ -27,6 +27,46 @@ export const submitIngest = async (payload: IngestRequest): Promise<IngestRespon
     return response.json();
 };
 
+export const submitIngestStream = async (payload: IngestRequest, onUpdate: (data: any) => void) => {
+    const response = await fetch(`${API_BASE_URL}/ingest_stream`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Streaming request failed: ${response.statusText}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) return;
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                try {
+                    const data = JSON.parse(line.slice(6));
+                    onUpdate(data);
+                } catch (e) {
+                    console.error("Error parsing stream event:", e);
+                }
+            }
+        }
+    }
+};
+
 export const fetchResult = async (traceId: string) => {
     const response = await fetch(`${API_BASE_URL}/result/${traceId}`);
 

@@ -59,64 +59,44 @@ async def orchestrate(
     history: str,
     vision: str,
     session_id: Optional[str] = None
-) -> Dict[str, Any]:
+):
     """
-    Main v2.0 Pipeline:
+    Main v2.0 Pipeline (Streaming Generator):
     1. Embed 'Focus' + 'History'.
-    2. Retrieve Context (Strictly filtered by user_id).
+    2. Retrieve Context.
     3. Run Agents in Parallel (Past, Present, Future).
-    4. Run Integration Agent (with Constraint Logic).
-    5. Save new memory.
+    4. Yield Initial Analysis.
+    5. Yield Months 1-6 as they are generated.
     """
     trace_id = str(uuid.uuid4())
     log = logger.bind(trace_id=trace_id, user_id=user_id)
     
-    # Combined text for embedding (Capture the "Vibe")
     combined_input = f"{focus} {history} {vision}"
-    
-    log.info("orchestrate_start")
+    log.info("orchestrate_start (streaming)")
     
     try:
-        # 1. Memory Retrieval (Pattern Hunting)
-        # -------------------------------------
-        # We embed the current focus/history to find similar past issues.
-        # CRITICAL: specific user_id is passed to search_memories to prevent data leak.
+        # 1. Retrieval
         retrieved_memories = []
         embedding = []
         try:
             embedding = await asyncio.to_thread(create_embedding, combined_input)
             if embedding:
-                # Retrieve top 3 past memories
                 hits = await asyncio.to_thread(vector_store.search_memories, user_id, embedding, 3)
                 retrieved_memories = [h["text"] for h in hits]
-                log.info(f"Retrieved {len(hits)} past memories")
         except Exception as e:
             log.warning(f"Memory retrieval failed: {e}")
 
-        # Prepare context for agents
-        inputs = {
-            "focus": focus,
-            "history": history,
-            "vision": vision
-        }
-        
-        memory_context = {
-            "past_patterns": retrieved_memories if retrieved_memories else ["No past data available yet."]
-        }
+        inputs = {"focus": focus, "history": history, "vision": vision}
+        memory_context = {"past_patterns": retrieved_memories if retrieved_memories else ["No past data available yet."]}
 
-        # 2. Parallel Agent Execution
-        # ---------------------------
-        # Past -> Pattern Hunter
-        # Present -> Constraint Analyst
-        # Future -> Scenario Simulator
+        # 2. Parallel Core Agents
         past_task = _call_agent("PastPatternAgent", inputs, memory_context)
         present_task = _call_agent("PresentConstraintAgent", inputs, memory_context)
         future_task = _call_agent("FutureSimulatorAgent", inputs, memory_context)
 
         past, present, future = await asyncio.gather(past_task, present_task, future_task)
 
-        # 3. Integration (The Architect) - Iterative Generation
-        # ---------------------------------------------------
+        # 3. Integration Step 1: Strategy & Month 1
         integration_context = {
             "past_pattern": past.get("pattern_detected", "None"),
             "present_constraint": present.get("primary_constraint", "None"),
@@ -124,89 +104,76 @@ async def orchestrate(
             "energy_level": present.get("energy_level", "Unknown")
         }
         
-        # Step 3a: Generate Month 1 (and overall strategy)
         log.info("Generating Month 1 Strategy...")
-        # Deep reasoning models need large output buffers
         integration = await _call_agent("IntegrationActionAgent", inputs, integration_context)
         
-        # Step 3b: Iterative Generation for Months 2-6
-        if "roadmap" not in integration:
-            integration["roadmap"] = []
-            
-        # We expect IntegrationActionAgent to return Month 1 inside the roadmap array.
-        # Ensure we have at least one month, or create a placeholder if it failed.
-        if len(integration["roadmap"]) == 0:
-             integration["roadmap"].append({
-                 "phase": "Month 1",
-                 "theme": "Initiation",
-                 "expected_result": "Started",
-                 "weeks": []
-             })
-             
-        for month_num in range(2, 7):
-            success = False
-            for attempt in range(2): # Simple retry
-                log.info(f"Iteratively generating Month {month_num} (Attempt {attempt + 1})...")
-                month_context = integration_context.copy()
-                # Only pass the last generated month to keep context small and avoid JSON parsing failures
-                last_month = integration["roadmap"][-1] if integration["roadmap"] else {}
-                month_context["current_roadmap_progress"] = json.dumps([last_month])
-                month_context["target_month"] = f"Month {month_num}"
-                
-                # Calculate correct week numbering
-                start_week = (month_num - 1) * 4 + 1
-                end_week = month_num * 4
-                
-                month_inputs = {
-                    "focus": f"Generate exactly Month {month_num}. You MUST label the weeks sequentially as Week {start_week}, Week {start_week+1}, Week {start_week+2}, and Week {end_week}. Follow the 4-week, 7-day breakdown format."
-                }
-                month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context)
-                
-                new_month = None
-                if "month_plan" in month_data and isinstance(month_data["month_plan"], dict):
-                    new_month = month_data["month_plan"]
-                elif "roadmap" in month_data and isinstance(month_data["roadmap"], list) and len(month_data["roadmap"]) > 0:
-                     new_month = month_data["roadmap"][0]
-                
-                if new_month and "phase" in new_month:
-                    integration["roadmap"].append(new_month)
-                    success = True
-                    break
-                else:
-                    log.warning(f"Attempt {attempt + 1} failed for Month {month_num}")
-            
-            if not success:
-                log.error(f"Failed to generate valid JSON for Month {month_num} after retries. Adding placeholder.")
-                integration["roadmap"].append({
-                    "phase": f"Month {month_num}",
-                    "theme": "Growth and Consolidation",
-                    "expected_result": "Continued progress on focus area",
-                    "weeks": []
-                })
+        if "roadmap" not in integration or not integration["roadmap"]:
+            integration["roadmap"] = [{
+                "phase": "Month 1",
+                "theme": "Initiation",
+                "expected_result": "Started",
+                "weeks": []
+            }]
 
-        result = {
+        # Yield Initial Results immediately
+        yield {
+            "type": "initial",
             "past": past,
             "present": present,
             "future": future,
-            "integration": integration,
-            "trace_id": trace_id,
+            "integration_meta": {
+                "impact_statement": integration.get("impact_statement", ""),
+                "mentor_persona": integration.get("mentor_persona", ""),
+                "message_from_mentor": integration.get("message_from_mentor", ""),
+                "micro_task": integration.get("micro_task", {})
+            },
+            "first_month": integration["roadmap"][0]
         }
 
-        # 4. Save to Memory (Async background)
-        # ------------------------------------
+        # 4. Sequential Month Generation (2-6)
+        full_roadmap = [integration["roadmap"][0]]
+        
+        for month_num in range(2, 7):
+            success = False
+            for attempt in range(2):
+                log.info(f"Streaming Month {month_num}...")
+                month_context = integration_context.copy()
+                last_month = full_roadmap[-1]
+                month_context["current_roadmap_progress"] = json.dumps([last_month])
+                
+                start_week = (month_num - 1) * 4 + 1
+                end_week = month_num * 4
+                month_inputs = {
+                    "focus": f"Generate exactly Month {month_num}. Weeks {start_week}-{end_week}."
+                }
+                
+                month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context)
+                new_month = month_data.get("month_plan") or (month_data.get("roadmap") and month_data["roadmap"][0])
+                
+                if new_month and "phase" in new_month:
+                    full_roadmap.append(new_month)
+                    yield {"type": "month", "month": new_month}
+                    success = True
+                    break
+            
+            if not success:
+                placeholder = {
+                    "phase": f"Month {month_num}",
+                    "theme": "Continued Momentum",
+                    "expected_result": "Scaling habits",
+                    "weeks": []
+                }
+                full_roadmap.append(placeholder)
+                yield {"type": "month", "month": placeholder}
+
+        # Final Save to DB/Memory logic would happen in the stream handler in main.py
         if embedding:
-            # We save the *Action Plan* and the *Focus* as the memory for next time
             memory_text = f"Focus: {focus}. Plan: {integration.get('impact_statement', '')}"
             asyncio.create_task(asyncio.to_thread(
-                vector_store.add_memory, 
-                user_id, 
-                memory_text, 
-                embedding, 
-                {"session_id": session_id}
+                vector_store.add_memory, user_id, memory_text, embedding, {"session_id": session_id}
             ))
 
-        log.info("orchestrate_success")
-        return result
+        log.info("orchestrate_success (streaming complete)")
 
     except Exception as e:
         log.exception("orchestrate_error")
