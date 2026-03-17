@@ -3,54 +3,64 @@ import json
 import unittest
 
 
-def _stub_call_llm(prompt: str, system=None, temperature=0.7, max_tokens=500) -> str:
-    if "\"agent\": \"PastEmotionAgent\"" in prompt:
+def _stub_call_llm(prompt: str, **kwargs) -> str:
+    if "PastPatternAgent" in prompt:
         return json.dumps({
-            "agent": "PastEmotionAgent",
+            "agent": "PastPatternAgent",
             "focus_period": "past",
-            "analysis_summary": "past summary",
-            "key_events": [],
-            "dominant_emotions": [],
-            "triggers": [],
-            "coping_strategies": [],
-            "questions_for_user": [],
+            "pattern_detected": "pattern",
+            "predicted_context": "predicted",
+            "contradiction": "none",
+            "key_failure_point": "none",
+            "origin_story": "origin",
             "confidence": 0.9,
         })
-    if "\"agent\": \"PresentEmotionAgent\"" in prompt:
+    if "PresentConstraintAgent" in prompt:
         return json.dumps({
-            "agent": "PresentEmotionAgent",
+            "agent": "PresentConstraintAgent",
             "focus_period": "present",
-            "state_summary": "present",
-            "emotions": [],
-            "sensations": [],
-            "context": [],
-            "needs": [],
-            "recommended_actions": [],
+            "primary_blocker": "blocker",
+            "primary_constraint": "constraint",
+            "energy_level": "High",
+            "emotional_blocker": "none",
+            "weekly_cost_estimate": "0 hours",
+            "physical_reframe": "reframe",
+            "needs_micro_task": False,
             "confidence": 0.8,
         })
-    if "\"agent\": \"FutureEmotionAgent\"" in prompt:
+    if "FutureSimulatorAgent" in prompt:
         return json.dumps({
-            "agent": "FutureEmotionAgent",
+            "agent": "FutureSimulatorAgent",
             "focus_period": "future",
-            "projection_summary": "future",
-            "scenarios": [],
-            "risks": [],
-            "opportunities": [],
-            "plan_steps": [],
-            "motivation_prompts": [],
+            "failure_simulation": "failure",
+            "success_simulation": "success",
+            "impact_on_life": "impact",
             "confidence": 0.7,
         })
-    if "\"agent\": \"IntegrationAgent\"" in prompt:
+    if "IntegrationActionAgent" in prompt:
         return json.dumps({
-            "agent": "IntegrationAgent",
-            "focus_period": "integration",
-            "integrated_summary": "ok",
-            "contradictions": [],
-            "themes": [],
-            "plan": [],
-            "metrics": [],
-            "next_check_in": "2025-01-01T00:00:00Z",
-            "confidence": 0.6,
+            "agent": "IntegrationActionAgent",
+            "impact_statement": "statement",
+            "mentor_persona": "persona",
+            "message_from_mentor": "msg",
+            "micro_task": {"title": "t", "description": "d", "reward": "r"},
+            "roadmap": [
+                {
+                    "phase": "Month 1",
+                    "theme": "theme",
+                    "expected_result": "result",
+                    "weeks": [{"week": "Week 1", "focus": "f", "outcome": "o", "win_condition": "w", "days": []}]
+                }
+            ]
+        })
+    if "IntegrationMonthAgent" in prompt:
+        return json.dumps({
+            "month_plan": {
+                "phase": "Month X",
+                "theme": "theme",
+                "expected_result": "result",
+                "weeks": []
+            }
         })
     return "{}"
 
@@ -62,12 +72,25 @@ class TestOrchestrator(unittest.TestCase):
         orig = orch.call_llm
         try:
             orch.call_llm = _stub_call_llm
-            result = asyncio.run(orch.orchestrate("user123", "focus", "history", "vision"))
-            self.assertIn("past", result)
-            self.assertIn("present", result)
-            self.assertIn("future", result)
-            self.assertIn("integration", result)
-            self.assertIn("trace_id", result)
+            chunks = []
+            
+            async def run_test():
+                async for chunk in orch.orchestrate("user123", "focus", "history", "vision"):
+                    chunks.append(chunk)
+
+            asyncio.run(run_test())
+            
+            self.assertGreater(len(chunks), 0)
+            self.assertEqual(chunks[0]["type"], "initial")
+            self.assertIn("past", chunks[0])
+            self.assertIn("present", chunks[0])
+            self.assertIn("future", chunks[0])
+            self.assertIn("first_month", chunks[0])
+            
+            # Check for subsequent months
+            month_chunks = [c for c in chunks if c["type"] == "month"]
+            self.assertEqual(len(month_chunks), 5) # Months 2-6
+            
         finally:
             orch.call_llm = orig
 
