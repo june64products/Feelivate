@@ -1,7 +1,21 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 const Navbar = () => {
     const navigate = useNavigate();
+    const [userId, setUserId] = useState<string | null>(localStorage.getItem('user_id'));
+
+    useEffect(() => {
+        // Simple polling or events could be better, but for now we'll check on mount
+        // and handle via the logout function local state
+        setUserId(localStorage.getItem('user_id'));
+    }, []);
+
+    const handleLogout = () => {
+        localStorage.removeItem('user_id');
+        setUserId(null);
+        navigate('/');
+    };
     return (
         <nav className="navbar" style={{
             position: 'fixed',
@@ -31,21 +45,54 @@ const Navbar = () => {
                 <a href="#tech" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Tech Stack</a>
             </div>
             <div className="nav-actions" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <Link to="/login" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textDecoration: 'none' }}>Log in</Link>
-                <button
-                    onClick={() => navigate('/app')}
-                    style={{
-                        background: 'var(--text-primary)',
-                        color: 'var(--bg-primary)',
-                        padding: '10px 20px',
-                        borderRadius: '24px',
-                        fontWeight: 600,
-                        fontSize: '0.9rem',
-                        border: 'none',
-                        cursor: 'pointer'
-                    }}>
-                    Start Journey
-                </button>
+                {userId ? (
+                    <>
+                        <button
+                            onClick={handleLogout}
+                            style={{ 
+                                fontSize: '0.9rem', 
+                                color: 'var(--text-secondary)', 
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Log out
+                        </button>
+                        <button
+                            onClick={() => navigate('/app')}
+                            style={{
+                                background: 'var(--text-primary)',
+                                color: 'var(--bg-primary)',
+                                padding: '10px 20px',
+                                borderRadius: '24px',
+                                fontWeight: 600,
+                                fontSize: '0.9rem',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}>
+                            Open Engine
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <Link to="/login" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textDecoration: 'none' }}>Log in</Link>
+                        <button
+                            onClick={() => navigate('/login')}
+                            style={{
+                                background: 'var(--text-primary)',
+                                color: 'var(--bg-primary)',
+                                padding: '10px 20px',
+                                borderRadius: '24px',
+                                fontWeight: 600,
+                                fontSize: '0.9rem',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}>
+                            Start Journey
+                        </button>
+                    </>
+                )}
             </div>
         </nav>
     );

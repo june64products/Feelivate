@@ -97,6 +97,7 @@ const WorkspacePage = () => {
                 height: 'var(--nav-height)',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'space-between',
                 padding: '0 40px',
                 background: 'rgba(10, 10, 10, 0.7)',
                 backdropFilter: 'blur(16px)',
@@ -122,6 +123,24 @@ const WorkspacePage = () => {
                 >
                     <span style={{ color: 'var(--text-secondary)' }}>←</span> Leave Workspace
                 </div>
+                
+                <button
+                    onClick={() => {
+                        localStorage.removeItem('user_id');
+                        navigate('/');
+                    }}
+                    style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'var(--text-secondary)',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem'
+                    }}
+                >
+                    Log Out
+                </button>
             </nav>
 
             <div style={{ position: 'relative', zIndex: 1, marginTop: '40px' }}>

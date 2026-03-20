@@ -78,7 +78,11 @@ const HeroSection = () => {
                 style={{ display: 'flex', gap: '24px' }}
             >
                 <button
-                    onClick={() => navigate('/app')}
+                    onClick={() => {
+                        const userId = localStorage.getItem('user_id');
+                        if (userId) navigate('/app');
+                        else navigate('/login');
+                    }}
                     style={{
                         background: 'var(--text-primary)',
                         color: 'var(--bg-primary)',
