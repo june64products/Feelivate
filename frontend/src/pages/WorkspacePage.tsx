@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import InputForm from '../components/workspace/InputForm';
 import ResultsDashboard from '../components/workspace/ResultsDashboard';
@@ -6,8 +6,14 @@ import { submitIngestStream } from '../api';
 
 const WorkspacePage = () => {
     const navigate = useNavigate();
-    const [userId] = useState(() => `user_${Math.random().toString(36).substr(2, 8)}`);
+    const [userId] = useState<string | null>(localStorage.getItem('user_id'));
     const [processing, setProcessing] = useState(false);
+    
+    useEffect(() => {
+        if (!userId) {
+            navigate('/login');
+        }
+    }, [userId, navigate]);
     const [result, setResult] = useState<any>(null);
     const [pollStatus, setPollStatus] = useState('');
 
@@ -18,13 +24,15 @@ const WorkspacePage = () => {
             setPollStatus("🔍 Initializing AI Agents...");
 
             await submitIngestStream({
-                user_id: userId,
+                user_id: userId || 'anonymous',
                 text
             }, (chunk) => {
                 if (chunk.type === 'structured') {
                     setPollStatus(`🧠 Pattern detected: ${chunk.focus.substring(0, 30)}...`);
                 } else if (chunk.type === 'initial') {
                     setResult({
+                        user_id: userId,
+                        session_id: chunk.session_id,
                         past: chunk.past,
                         present: chunk.present,
                         future: chunk.future,
@@ -33,7 +41,7 @@ const WorkspacePage = () => {
                             roadmap: [chunk.first_month]
                         }
                     });
-                    setProcessing(false); // Move to dashboard as soon as we have the first piece
+                    setProcessing(false); 
                 } else if (chunk.type === 'month') {
                     setResult((prev: any) => {
                         if (!prev) return prev;
@@ -170,6 +178,8 @@ const WorkspacePage = () => {
                     <div style={{ animation: 'fadeIn 0.5s ease' }}>
                         <ResultsDashboard
                             data={result}
+                            userId={result.user_id}
+                            sessionId={result.session_id}
                             resetIntegration={() => {
                                 setResult(null);
                             }}

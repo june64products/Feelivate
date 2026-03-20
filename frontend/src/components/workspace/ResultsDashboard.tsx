@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, CheckCircle2, Target, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, Loader2, ChevronDown, ChevronUp, MessageSquare, Send } from 'lucide-react';
-import { submitCheckIn, chatWeek } from '../../api';
+import { submitCheckIn, chatWeek, chatGlobal } from '../../api';
 
 interface DayDetails {
     day_name: string;
@@ -32,6 +32,8 @@ interface ResultData {
 
 interface ResultsDashboardProps {
     data: ResultData | null;
+    userId: string;
+    sessionId: string;
     resetIntegration: () => void;
 }
 
@@ -93,7 +95,7 @@ const parseInline = (text: string) => {
     });
 };
 
-const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => {
+const ResultsDashboard = ({ data, userId, sessionId, resetIntegration }: ResultsDashboardProps) => {
     const [localRoadmap, setLocalRoadmap] = useState<MonthPhase[]>([]);
     const [localMicroTask, setLocalMicroTask] = useState<any>(null);
     const [isCheckingIn, setIsCheckingIn] = useState(false);
@@ -122,12 +124,62 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
     const [chatMessages, setChatMessages] = useState<Record<string, { role: string; content: string }[]>>({});
     const [chatInput, setChatInput] = useState('');
     const [isChatting, setIsChatting] = useState(false);
+    
+    // Global Mentor State
+    const [globalChatMessages, setGlobalChatMessages] = useState<{ role: string; content: string }[]>([]);
+    const [globalChatInput, setGlobalChatInput] = useState('');
+    const [isGlobalChatting, setIsGlobalChatting] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const globalMessagesEndRef = useRef<HTMLDivElement>(null);
 
     const toggleMonth = (idx: number) => {
         setExpandedMonths(prev =>
             prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
         );
+    };
+
+
+    const handleGlobalChatSubmitManual = async (text: string) => {
+        if (!text.trim()) return;
+        const newUserMsg = { role: 'user', content: text };
+        const updatedHistory = [...globalChatMessages, newUserMsg];
+        setGlobalChatMessages(updatedHistory);
+        setGlobalChatInput('');
+        setIsGlobalChatting(true);
+        try {
+            const response = await chatGlobal({
+                user_id: userId,
+                session_id: sessionId,
+                message: text,
+                full_roadmap: localRoadmap,
+                chat_history: updatedHistory.slice(0, -1)
+            });
+            if (response.response_message) {
+                setGlobalChatMessages([...updatedHistory, { role: 'assistant', content: response.response_message }]);
+            }
+        } catch (error) {
+            console.error("Global chat error:", error);
+        } finally {
+            setIsGlobalChatting(false);
+        }
+    };
+
+    const quickActions = [
+        "What's my biggest risk?",
+        "Summarize Month 3 goals",
+        "How do I stay consistent?",
+        "Explain the 'Root Pattern'"
+    ];
+
+    const handleQuickAction = (text: string) => {
+        handleGlobalChatSubmitManual(text);
+    };
+
+    const handleGlobalChatSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        handleGlobalChatSubmitManual(globalChatInput);
     };
 
     const handleChatSubmit = async (e: React.FormEvent, weekData: any) => {
@@ -144,8 +196,8 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
 
         try {
             const response = await chatWeek({
-                user_id: 'default_user',
-                session_id: 'default_session',
+                user_id: userId,
+                session_id: sessionId,
                 message: newUserMsg.content,
                 week_context: weekData,
                 chat_history: updatedHistory.slice(0, -1)
@@ -171,6 +223,10 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
     useEffect(() => {
         if (activeChatWeek) scrollToBottom();
     }, [chatMessages, activeChatWeek]);
+
+    useEffect(() => {
+        globalMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [globalChatMessages, isSidebarOpen]);
 
     useEffect(() => {
         let interval: any = null;
@@ -214,8 +270,8 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
         setFeedbackMessage('');
         try {
             const response = await submitCheckIn({
-                user_id: 'default_user',
-                session_id: 'default_session',
+                user_id: userId,
+                session_id: sessionId,
                 status: `${status} - Feedback: ${userFeedback}`,
                 current_plan: { micro_task: localMicroTask }
             });
@@ -264,13 +320,25 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
     };
 
     return (
-        <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            className="results-dashboard"
-            style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '48px', paddingBottom: '80px' }}
-        >
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-primary)', position: 'relative' }}>
+            {/* Main Content Area */}
+            <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={containerVariants}
+                className="results-dashboard"
+                style={{ 
+                    flex: 1, 
+                    maxWidth: isSidebarOpen ? 'calc(100vw - 400px)' : '1200px', 
+                    margin: isSidebarOpen ? '0' : '0 auto',
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '48px', 
+                    padding: '40px clamp(20px, 5vw, 60px)',
+                    paddingBottom: '80px',
+                    transition: 'max-width 0.3s ease'
+                }}
+            >
             {/* Header Section */}
             <motion.div variants={itemVariants} style={{ textAlign: 'center', marginBottom: '16px' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: 'rgba(80, 250, 123, 0.1)', padding: '8px 24px', borderRadius: '30px', border: '1px solid rgba(80, 250, 123, 0.2)', marginBottom: '24px' }}>
@@ -833,7 +901,190 @@ const ResultsDashboard = ({ data, resetIntegration }: ResultsDashboardProps) => 
                 </button>
             </motion.div>
 
-        </motion.div>
+            </motion.div>
+
+            {/* Global Mentor Sidebar UI */}
+            <AnimatePresence>
+                {isSidebarOpen && (
+                    <motion.div
+                        initial={{ x: 400, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: 400, opacity: 0 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        style={{
+                            width: '400px',
+                            height: '100vh',
+                            position: 'sticky',
+                            top: 0,
+                            right: 0,
+                            background: 'rgba(10, 10, 10, 0.95)',
+                            backdropFilter: 'blur(16px)',
+                            borderLeft: '1px solid rgba(130, 202, 255, 0.2)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            zIndex: 100,
+                            boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
+                        }}
+                    >
+                        <div style={{ background: 'rgba(130, 202, 255, 0.05)', padding: '24px', borderBottom: '1px solid rgba(130, 202, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ background: 'rgba(130, 202, 255, 0.1)', padding: '8px', borderRadius: '10px' }}>
+                                    <BrainCircuit size={24} color="#82caff" />
+                                </div>
+                                <div>
+                                    <div style={{ color: '#82caff', fontSize: '1.1rem', fontWeight: 600 }}>Common Mentor</div>
+                                    <div style={{ color: 'rgba(130, 202, 255, 0.5)', fontSize: '0.8rem' }}>Strategic Journey Guide</div>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setIsSidebarOpen(false)} 
+                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: 'var(--text-secondary)', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                            >
+                                <ChevronRight size={20} />
+                            </button>
+                        </div>
+
+                        <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }} className="custom-scrollbar">
+                            {globalChatMessages.length === 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '40px 0' }}>
+                                    <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.6, fontStyle: 'italic', opacity: 0.8 }}>
+                                        "I have indexed your full 6-month blueprint. I see the peaks and the valleys ahead. How can I help you navigate the big picture today?"
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        {quickActions.map(action => (
+                                            <button 
+                                                key={action}
+                                                onClick={() => handleQuickAction(action)}
+                                                style={{ 
+                                                    background: 'rgba(130, 202, 255, 0.05)', 
+                                                    border: '1px solid rgba(130, 202, 255, 0.1)', 
+                                                    color: 'rgba(130, 202, 255, 0.8)', 
+                                                    padding: '12px 10px', 
+                                                    borderRadius: '10px', 
+                                                    fontSize: '0.75rem', 
+                                                    cursor: 'pointer',
+                                                    textAlign: 'left',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(130, 202, 255, 0.1)')}
+                                                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(130, 202, 255, 0.05)')}
+                                            >
+                                                {action}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                globalChatMessages.map((msg, idx) => (
+                                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                                        <div style={{
+                                            background: msg.role === 'user' ? '#82caff' : 'rgba(255,255,255,0.05)',
+                                            color: msg.role === 'user' ? '#000' : 'var(--text-primary)',
+                                            padding: '14px 18px',
+                                            borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                                            maxWidth: '90%',
+                                            fontSize: '0.95rem',
+                                            lineHeight: 1.6,
+                                            boxShadow: msg.role === 'user' ? '0 4px 15px rgba(130, 202, 255, 0.3)' : 'none',
+                                            border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.1)'
+                                        }}>
+                                            <MarkdownRenderer text={msg.content} />
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                            {isGlobalChatting && (
+                                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                    <div style={{ background: 'rgba(130, 202, 255, 0.05)', padding: '12px 18px', borderRadius: '18px 18px 18px 2px', display: 'flex', alignItems: 'center', gap: '10px', border: '1px solid rgba(130, 202, 255, 0.1)' }}>
+                                        <Loader2 size={16} className="spinner" color="#82caff" />
+                                        <span style={{ color: 'rgba(130, 202, 255, 0.7)', fontSize: '0.9rem' }}>Analyzing journey...</span>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={globalMessagesEndRef} />
+                        </div>
+
+                        <form onSubmit={handleGlobalChatSubmit} style={{ padding: '24px', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '12px' }}>
+                            <div style={{ flex: 1, position: 'relative' }}>
+                                <input
+                                    type="text"
+                                    value={globalChatInput}
+                                    onChange={(e) => setGlobalChatInput(e.target.value)}
+                                    placeholder="Message Common Mentor..."
+                                    style={{ 
+                                        width: '100%', 
+                                        background: 'rgba(255,255,255,0.03)', 
+                                        border: '1px solid rgba(255,255,255,0.1)', 
+                                        color: 'white', 
+                                        padding: '14px 16px', 
+                                        borderRadius: '14px', 
+                                        fontSize: '0.95rem', 
+                                        outline: 'none',
+                                        transition: 'border-color 0.2s'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = 'rgba(130, 202, 255, 0.4)'}
+                                    onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isGlobalChatting || !globalChatInput.trim()}
+                                style={{ 
+                                    background: '#82caff', 
+                                    color: '#000', 
+                                    border: 'none', 
+                                    borderRadius: '14px', 
+                                    width: '48px', 
+                                    height: '48px', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    cursor: (isGlobalChatting || !globalChatInput.trim()) ? 'not-allowed' : 'pointer', 
+                                    opacity: (isGlobalChatting || !globalChatInput.trim()) ? 0.5 : 1,
+                                    transition: 'transform 0.2s'
+                                }}
+                                onMouseEnter={(e) => !isGlobalChatting && (e.currentTarget.style.transform = 'scale(1.05)')}
+                                onMouseLeave={(e) => !isGlobalChatting && (e.currentTarget.style.transform = 'scale(1)')}
+                            >
+                                <Send size={20} />
+                            </button>
+                        </form>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Floating Toggle (when sidebar closed) */}
+            <AnimatePresence>
+                {!isSidebarOpen && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        onClick={() => setIsSidebarOpen(true)}
+                        style={{
+                            position: 'fixed',
+                            bottom: '32px',
+                            right: '32px',
+                            width: '64px',
+                            height: '64px',
+                            borderRadius: '50%',
+                            background: 'var(--text-primary)',
+                            color: 'var(--bg-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                            border: 'none',
+                            zIndex: 1000
+                        }}
+                    >
+                        <BrainCircuit size={32} />
+                        <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ff7b7b', color: 'white', fontSize: '0.7rem', padding: '4px 8px', borderRadius: '10px', fontWeight: 800 }}>M</span>
+                    </motion.button>
+                )}
+            </AnimatePresence>
+        </div>
     );
 };
 

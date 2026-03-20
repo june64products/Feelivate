@@ -185,6 +185,14 @@ export interface WeekChatRequest {
     chat_history: { role: string; content: string }[];
 }
 
+export interface GlobalChatRequest {
+    user_id: string;
+    session_id: string;
+    message: string;
+    full_roadmap: any[];
+    chat_history: { role: string; content: string }[];
+}
+
 export const chatWeek = async (data: WeekChatRequest) => {
     const response = await fetch(`${API_BASE_URL}/chat_week`, {
         method: 'POST',
@@ -198,5 +206,41 @@ export const chatWeek = async (data: WeekChatRequest) => {
         throw new Error('Failed to chat with week agent');
     }
 
+    return response.json();
+};
+
+export const chatGlobal = async (data: GlobalChatRequest) => {
+    const response = await fetch(`${API_BASE_URL}/chat_global`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to chat with global agent');
+    }
+
+    return response.json();
+};
+
+export const login = async (data: any) => {
+    const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Login failed');
+    return response.json();
+};
+
+export const signup = async (data: any) => {
+    const response = await fetch(`${API_BASE_URL}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Signup failed');
     return response.json();
 };

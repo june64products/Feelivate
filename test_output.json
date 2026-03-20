@@ -2,190 +2,190 @@
   "past": {
     "agent": "PastPatternAgent",
     "focus_period": "past",
-    "pattern_detected": "Instant Gratification Distraction Loop",
-    "predicted_context": "They grew up in an environment where phone use was encouraged as a primary source of entertainment and social connection, creating a habit of seeking quick dopamine hits whenever tasks feel demanding.",
-    "contradiction": "They state a strong desire for sustained focus while habitually reaching for their phone during work.",
-    "key_failure_point": "Lack of concrete boundaries or routines to limit phone access during focused work periods.",
-    "origin_story": "The pattern likely emerged in early adolescence when smartphones became ubiquitous and were used as a default coping tool for boredom or stress.",
-    "confidence": 0.88
+    "pattern_detected": "The Instant Gratification\u2011Attention Fragmentation Loop",
+    "predicted_context": "During formative years, frequent exposure to mobile devices and a lack of structured, uninterrupted work periods cultivated a habit of seeking immediate dopamine hits from phone notifications.",
+    "contradiction": "A strong desire to sustain four hours of deep work clashes with a well\u2011established habit of instantly reaching for the phone at the slightest distraction.",
+    "key_failure_point": "The moment a notification appears, the automatic phone\u2011check interrupts the flow and reinforces the cycle.",
+    "origin_story": "This pattern likely originated from early environments where constant digital stimuli were paired with reward, teaching the mind that focus must compete with instant gratification.",
+    "confidence": 0.87
   },
   "present": {
     "agent": "PresentConstraintAgent",
     "focus_period": "present",
-    "primary_blocker": "Repeated phone checking interrupts workflow and prevents sustained focus.",
-    "primary_constraint": "Digital Distraction",
+    "primary_blocker": "Frequent phone checking and notification-driven interruptions",
+    "primary_constraint": "High Digital Distraction",
     "energy_level": "Low",
-    "emotional_blocker": "Underlying anxiety and FOMO that make the phone feel like a safety net.",
-    "weekly_cost_estimate": "Approximately 5\u20137 hours per week lost to phone interruptions and re\u2011orienting after each break.",
-    "physical_reframe": "A restless, jittery feeling in the chest and a tightness in the shoulders, like a low\u2011level alarm that spikes each time the phone buzzes.",
+    "emotional_blocker": "Anxiety and fear of missing out that drives compulsive phone use",
+    "weekly_cost_estimate": "Estimated 9\u201311 hours per week lost to phone\u2011related distractions and task switching",
+    "physical_reframe": "You likely feel a restless, jittery sensation in your chest and a light\u2011headed pull in your hands, as if your nervous system is on high alert\u2014not laziness, but a stress response to perceived loss of information.",
     "needs_micro_task": true,
-    "confidence": 0.81
+    "confidence": 0.86
   },
   "future": {
     "agent": "FutureSimulatorAgent",
     "focus_period": "future",
-    "failure_simulation": "If you keep scrolling, the next months will slip away, and you'll never reach those four uninterrupted hours.",
-    "success_simulation": "It's September 2026, and I sit at my desk with my phone silenced and out of sight. The morning light streams in as I dive into my project, and the minutes melt into a solid four-hour block of pure focus, each task flowing into the next without a single glance at notifications. I feel a steady rhythm in my thoughts, and by the end of the session, I\u2019m energized, knowing I\u2019ve mastered the focus I once thought impossible.",
-    "impact_on_life": "Sustained focus boosts my productivity, frees up evenings for personal pursuits, and reduces stress, reshaping my work habits and confidence.",
-    "confidence": 0.92
+    "failure_simulation": "If you keep letting your phone hijack your attention, the scattered hours will add up and you\u2019ll never reach a solid four\u2011hour work block.",
+    "success_simulation": "It\u2019s September, and I\u2019m already deep into my project, eyes fixed on the screen, the phone silent on the desk. For four hours straight I ride a wave of focus, ticking tasks off without a single glance at notifications. My mind feels sharp, the work flows, and the satisfaction of sustained concentration fuels the rest of my day.",
+    "impact_on_life": "Sustained focus boosts my productivity, frees up evenings for personal pursuits, reduces stress, and restores confidence in my ability to tackle complex tasks.",
+    "confidence": 0.87
   },
   "integration": {
     "agent": "IntegrationActionAgent",
-    "impact_statement": "You are trapped in a phone\u2011pull loop that steals every day. By ripping that loop out step by step, you will finally sit four straight hours in front of your work and watch the future you imagined become real.",
+    "impact_statement": "Your phone is stealing every minute, keeping you in an instant\u2011gratification loop that blocks any chance of a solid four\u2011hour work block. By forcing a tiny, safe failure\u2014letting a single 30\u2011minute sprint slip if you check the phone\u2014you\u2019ll break that reflex, build real focus muscle, and move toward the 4\u2011hour stretch you crave.",
     "mentor_persona": "David Goggins meets Cal Newport",
-    "message_from_mentor": "No more excuses. Your phone is a lever you can lock down now. Each tiny win shatters the habit. Do it.",
+    "message_from_mentor": "Stop talking about focus. Start a timer, lock the phone, and prove to yourself you can own the next half hour. Every second you win is a brick in the wall you\u2019re building.",
     "micro_task": {
-      "title": "Turn off phone for 5 minutes and start the first task",
-      "description": "Silence every notification, place the phone face down, set a 5\u2011minute timer, write the single task you will do, then work on it until the timer rings.",
-      "reward": "You feel a sudden surge of control and a clear mind."
+      "title": "30\u2011Minute Phone\u2011Free Sprint",
+      "description": "Set a 30\u2011minute timer, place your phone face\u2011down in a bowl on the desk, open a blank document titled \u201cFocus Sprint #1\u201d, and write nonstop until the timer rings.",
+      "reward": "Immediate sense of control and proof that you can hold attention."
     },
     "roadmap": [
       {
         "phase": "Month 1",
-        "theme": "Shatter the Phone Pull",
-        "expected_result": "By the end of the month you can work 4 straight hours without reaching for your phone.",
+        "theme": "Crush the Distraction Loop",
+        "expected_result": "By month\u2019s end you will have completed a 4\u2011hour work block prototype and have a reliable routine for extending focus in real time.",
         "weeks": [
           {
             "week": "Week 1",
-            "focus": "Break the instant\u2011gratification loop",
-            "outcome": "30 minutes of phone\u2011free work recorded",
-            "win_condition": "Logged 30 minutes of uninterrupted work",
+            "focus": "Destroy the reflex to grab the phone",
+            "outcome": "Complete a 30\u2011minute work sprint without unlocking the phone",
+            "win_condition": "Finished 30 minutes of work with phone face\u2011down and no unlocks",
             "days": [
               {
                 "day_name": "Day 1",
-                "action": "Silence all phone alerts, place phone face down, set a 5\u2011minute timer, write down the exact task you will tackle, start, work until the timer ends, then write one sentence about how you felt."
+                "action": "Set a 30\u2011minute timer, put your phone in a bowl face\u2011down, turn the screen off, open a new document named \u201cFocus Sprint #1\u201d, write anything until the timer rings, then write down how many times you thought about the phone."
               },
               {
                 "day_name": "Day 2",
-                "action": "Repeat Day\u202f1 but set the timer for 10\u202fminutes. Keep the same phone placement."
+                "action": "Repeat Day 1, then after the timer take a 2\u2011minute stretch and immediately start a second 30\u2011minute sprint using the same phone placement."
               },
               {
                 "day_name": "Day 3",
-                "action": "Increase timer to 15\u202fminutes. Choose a task that matters to your current project."
+                "action": "Do a 5\u2011minute warm\u2011up: read one paragraph of your work material, then launch a 30\u2011minute sprint exactly as Day 1."
               },
               {
                 "day_name": "Day 4",
-                "action": "Timer 20\u202fminutes. After finishing, note any urge to check the phone and write down the exact thought."
+                "action": "Increase the timer to 35 minutes, keep the phone in the bowl, and write continuously until the timer ends."
               },
               {
                 "day_name": "Day 5",
-                "action": "Timer 25\u202fminutes. Record the start and end time in a simple notebook."
+                "action": "Run a 30\u2011minute sprint, then record a 1\u2011minute voice note saying \u201cI stayed focused today\u201d and store it for later review."
               },
               {
                 "day_name": "Day 6",
-                "action": "Timer 30\u202fminutes. If you feel the urge, count to 10 silently before returning to work."
+                "action": "Before your coffee, place the phone in another room, set a 30\u2011minute timer, and work on the same document without any interruptions."
               },
               {
                 "day_name": "Day 7",
-                "action": "Review the week\u2019s logs, mark the longest stretch (30\u202fmin) as a win, and plan the next week\u2019s first timer length."
+                "action": "Do two back\u2011to\u2011back 30\u2011minute sprints with a 5\u2011minute break in between; keep the phone in the bowl the whole time."
               }
             ]
           },
           {
             "week": "Week 2",
-            "focus": "Extend the window",
-            "outcome": "60 minutes of phone\u2011free work recorded",
-            "win_condition": "Logged 60 minutes of uninterrupted work",
+            "focus": "Stretch the block to 45 minutes",
+            "outcome": "Complete a 45\u2011minute uninterrupted work session",
+            "win_condition": "Finished 45 minutes of work with phone face\u2011down and no unlocks",
             "days": [
               {
                 "day_name": "Day 1",
-                "action": "Set phone to Do Not Disturb, face down, timer 35\u202fminutes, work on the same task from Week\u202f1 if possible."
+                "action": "Set a 45\u2011minute timer, put phone in bowl, start writing on \u201cFocus Sprint #2\u201d and keep going until the timer ends."
               },
               {
                 "day_name": "Day 2",
-                "action": "Timer 40\u202fminutes, same phone setup, note any distraction triggers."
+                "action": "Same as Day 1, but after the sprint take a 3\u2011minute walk before closing the document."
               },
               {
                 "day_name": "Day 3",
-                "action": "Timer 45\u202fminutes, write a brief summary of progress after the session."
+                "action": "Begin with a 2\u2011minute breathing reset, then a 45\u2011minute sprint, phone still in bowl."
               },
               {
                 "day_name": "Day 4",
-                "action": "Timer 50\u202fminutes, if urge spikes, stand, stretch 5 seconds, then resume."
+                "action": "Do a 45\u2011minute sprint, then write a single sentence summarizing what you achieved."
               },
               {
                 "day_name": "Day 5",
-                "action": "Timer 55\u202fminutes, record start/end and any urge count."
+                "action": "Place the phone on \u201cDo Not Disturb\u201d, set a 45\u2011minute timer, and work on any task you\u2019ve been avoiding."
               },
               {
                 "day_name": "Day 6",
-                "action": "Timer 60\u202fminutes, finish with a 1\u2011minute reflection on how focus feels."
+                "action": "Morning: 45\u2011minute sprint with phone in a different room; note any urges and how you handled them."
               },
               {
                 "day_name": "Day 7",
-                "action": "Mark the 60\u2011minute session as a win, write down one concrete benefit you noticed."
+                "action": "Two 45\u2011minute sprints back\u2011to\u2011back with a 5\u2011minute stretch break; keep phone out of sight the entire day."
               }
             ]
           },
           {
             "week": "Week 3",
-            "focus": "Add a second session",
-            "outcome": "Two 60\u2011minute blocks in one day",
-            "win_condition": "Completed two separate 60\u2011minute phone\u2011free sessions",
+            "focus": "Hit a 2\u2011hour focus window",
+            "outcome": "Finish a 2\u2011hour work session without checking the phone",
+            "win_condition": "Completed 2 hours of work with phone on Do Not Disturb and no unlocks",
             "days": [
               {
                 "day_name": "Day 1",
-                "action": "Morning: 60\u2011min timer, phone silent, work on Task A. Evening: 60\u2011min timer, same phone rules, work on Task B."
+                "action": "Set two consecutive 60\u2011minute timers, put phone on Do Not Disturb, work straight through both intervals, only stand up for a 2\u2011minute stretch at the 60\u2011minute mark."
               },
               {
                 "day_name": "Day 2",
-                "action": "Morning 60\u202fmin on Task A, afternoon 60\u202fmin on Task A continuation."
+                "action": "Repeat Day 1, but after the first hour write a brief 30\u2011second summary before starting the second hour."
               },
               {
                 "day_name": "Day 3",
-                "action": "Morning 60\u202fmin on new task, evening 60\u202fmin on any lingering task."
+                "action": "Morning: place phone in another room, set a single 120\u2011minute timer, and work on the same document until it rings."
               },
               {
                 "day_name": "Day 4",
-                "action": "Same as Day\u202f1, but note any drop in urge intensity."
+                "action": "Do a 2\u2011hour sprint, then record a 30\u2011second audio note: \u201cI held focus for two hours.\u201d"
               },
               {
                 "day_name": "Day 5",
-                "action": "Morning 60\u202fmin, evening 60\u202fmin, after each session write a one\u2011line win note."
+                "action": "Set two 55\u2011minute timers with a 5\u2011minute micro\u2011break in between; phone stays on Do Not Disturb."
               },
               {
                 "day_name": "Day 6",
-                "action": "Two 60\u2011min blocks, place phone in another room for the second block."
+                "action": "Evening: after dinner, put phone on Airplane mode, set a 2\u2011hour timer, and finish a specific task chunk."
               },
               {
                 "day_name": "Day 7",
-                "action": "Review the two\u2011session pattern, confirm you hit 120\u202fminutes total, mark win."
+                "action": "Two 1\u2011hour blocks separated by a 10\u2011minute walk; keep phone out of sight the whole day."
               }
             ]
           },
           {
             "week": "Week 4",
-            "focus": "Hit 4 hours straight",
-            "outcome": "One continuous 4\u2011hour focus block",
-            "win_condition": "Logged 240 minutes of uninterrupted work",
+            "focus": "Prototype a 4\u2011hour work block",
+            "outcome": "Complete your first 4\u2011hour uninterrupted work day",
+            "win_condition": "Worked 4 hours straight (with only micro\u2011breaks) and phone locked away",
             "days": [
               {
                 "day_name": "Day 1",
-                "action": "Set timer for 90\u202fminutes, phone on airplane mode, work on highest\u2011impact task."
+                "action": "Lock your phone in a drawer, set a 4\u2011hour timer, break it into two 2\u2011hour segments with a 5\u2011minute stretch in between, and work continuously until the timer ends."
               },
               {
                 "day_name": "Day 2",
-                "action": "Timer 120\u202fminutes, same phone setup, take a 2\u2011minute stretch at minute\u202f60."
+                "action": "Same as Day 1, but after each hour take a 2\u2011minute eye\u2011rest break; phone remains locked."
               },
               {
                 "day_name": "Day 3",
-                "action": "Timer 150\u202fminutes, after 75\u202fminutes stand, sip water, then resume."
+                "action": "Morning: lock phone, set a 120\u2011minute timer, work, then a short 5\u2011minute break, followed by another 120\u2011minute timer; no phone checks."
               },
               {
                 "day_name": "Day 4",
-                "action": "Timer 180\u202fminutes, split mentally into three 60\u2011minute phases, note progress after each."
+                "action": "Do a single 4\u2011hour sprint with the phone in a sealed box; after finishing, write a short reflection on energy levels."
               },
               {
                 "day_name": "Day 5",
-                "action": "Timer 210\u202fminutes, keep phone in a drawer, write a quick gratitude note at minute\u202f105."
+                "action": "Two 2\u2011hour blocks with a 10\u2011minute walk break; phone stays locked in a bag."
               },
               {
                 "day_name": "Day 6",
-                "action": "Timer 240\u202fminutes, aim for a full 4\u2011hour block. If you feel the urge, count to 20 silently before returning."
+                "action": "Evening: lock phone, set a 4\u2011hour timer, and finish the biggest pending task you have."
               },
               {
                 "day_name": "Day 7",
-                "action": "Celebrate the 4\u2011hour win, write a short paragraph describing the new clarity you have."
+                "action": "Celebrate: lock phone, run a 4\u2011hour sprint on any creative work, then reward yourself with a favorite low\u2011energy activity."
               }
             ]
           }
@@ -193,150 +193,150 @@
       },
       {
         "phase": "Month 2",
-        "theme": "Dual Deep\u2011Work Power Sessions & Digital Exile",
-        "expected_result": "By month\u2019s end you can reliably complete two 4\u2011hour uninterrupted deep\u2011work sessions daily (8\u202fhours total) with phone and non\u2011essential internet fully blocked, and deliver measurable project progress.",
+        "theme": "Scale the Deep Work Engine",
+        "expected_result": "By month\u2019s end you will sustain two 4\u2011hour deep\u2011work blocks per day, master task batching with energy peaks, complete a tangible deliverable, and operate 24\u2011hour without phone unlocks.",
         "weeks": [
           {
-            "week": "Week 1",
-            "focus": "Digital Exile Foundations \u2013 extend single block to 5\u202fhours",
-            "outcome": "One continuous 5\u2011hour phone\u2011free, internet\u2011blocked work session logged",
-            "win_condition": "Logged exactly 300\u202fminutes of uninterrupted work with all digital distractions disabled",
+            "week": "Week 5",
+            "focus": "Double\u2011Down 4\u2011Hour Blocks",
+            "outcome": "Complete two separate 4\u2011hour deep\u2011work sessions in a single day with zero phone interaction.",
+            "win_condition": "Logged two distinct 4\u2011hour blocks and phone remained locked for the entire day.",
             "days": [
               {
                 "day_name": "Day 1",
-                "action": "Install a website blocker (e.g., Freedom), set phone to Airplane mode, timer 90\u202fmin, work on core task A."
+                "action": "Morning: lock phone in a zip\u2011lock bag, set Timer A for 4\u202fhours (8\u2011am\u201312\u202fpm). Work on Task\u202fA. After Timer A, take a 30\u2011minute active break, then set Timer B for 4\u202fhours (12:30\u20114:30\u202fpm) on Task\u202fB. No phone unlocks."
               },
               {
                 "day_name": "Day 2",
-                "action": "Increase timer to 120\u202fmin, keep blocker active, note any urge count."
+                "action": "Repeat Day\u202f1 but swap tasks: start with writing a draft (Task\u202fC) then switch to data analysis (Task\u202fD). Record a brief log after each block."
               },
               {
                 "day_name": "Day 3",
-                "action": "Timer 150\u202fmin, add a 2\u2011minute stretch at minute 75, record start/end times."
+                "action": "Introduce a 5\u2011minute breathing reset before each block. Keep a water bottle nearby. No phone contact from 7\u202fam to 5\u202fpm."
               },
               {
                 "day_name": "Day 4",
-                "action": "Timer 180\u202fmin, place phone in a locked drawer, write a 1\u2011sentence reflection after each 60\u2011min segment."
+                "action": "Add a 2\u2011minute eye\u2011rest micro\u2011break every 45\u202fminutes during both blocks. Use a timer app on a separate laptop."
               },
               {
                 "day_name": "Day 5",
-                "action": "Timer 210\u202fmin, use noise\u2011cancelling headphones, log any distraction triggers."
+                "action": "Evening focus: start first 4\u2011hour block at 2\u202fpm, finish by 6\u202fpm. Afterward, write a 1\u2011minute voice note summarizing progress."
               },
               {
                 "day_name": "Day 6",
-                "action": "Timer 240\u202fmin, if urge arises count to 25 silently, then resume work."
+                "action": "Weekend deep work: lock phone overnight, begin first block at 9\u202fam, second block at 2\u202fpm. Include a 10\u2011minute walk between blocks."
               },
               {
                 "day_name": "Day 7",
-                "action": "Timer 300\u202fmin, complete the full 5\u2011hour block, document output (tasks completed) and declare win."
+                "action": "Reflection day: review logs from the week, identify the most productive task type, and adjust the next week\u2019s task list accordingly."
               }
             ]
           },
           {
-            "week": "Week 2",
-            "focus": "Dual Power Sessions \u2013 two 4\u2011hour blocks per day",
-            "outcome": "Two separate 4\u2011hour deep\u2011work sessions completed in a single day",
-            "win_condition": "Logged two distinct 240\u2011minute blocks on the same calendar day with no phone interaction",
+            "week": "Week 6",
+            "focus": "Strategic Task Batching & Energy Peaks",
+            "outcome": "Align work with natural energy peaks to achieve 6\u202fhours of focused output using two 3\u2011hour blocks.",
+            "win_condition": "Logged 6\u202fhours of work, each block \u2265\u202f3\u202fhours, with phone locked for the entire day and tasks completed as batched.",
             "days": [
               {
                 "day_name": "Day 1",
-                "action": "Morning: 240\u202fmin timer, phone in another room, blocker on. Evening: same setup, different task B."
+                "action": "Identify personal energy peak (e.g., 9\u201112\u202fam). Schedule Block\u202f1 (3\u202fhrs) during peak for high\u2011cognitive tasks, Block\u202f2 (3\u202fhrs) at 2\u20115\u202fpm for execution tasks. Phone stays in a locked drawer."
               },
               {
                 "day_name": "Day 2",
-                "action": "Morning block 240\u202fmin on Task C, after a 15\u2011min physical reset (walk). Evening block 240\u202fmin on Task D."
+                "action": "Batch similar tasks: Block\u202f1 \u2013 research & outline; Block\u202f2 \u2013 coding & implementation. No email or messaging checks."
               },
               {
                 "day_name": "Day 3",
-                "action": "Morning 240\u202fmin, use a Pomodoro 50/10 pattern inside the block to manage fatigue. Evening 240\u202fmin, no breaks longer than 5\u202fmin."
+                "action": "Add a 10\u2011minute nutrition break between blocks (protein snack, hydrate). Record energy levels before and after each block."
               },
               {
                 "day_name": "Day 4",
-                "action": "Morning 240\u202fmin, add a 5\u2011minute visualization of end\u2011state before starting. Evening 240\u202fmin, record total output (lines of code/writing)."
+                "action": "Introduce a 3\u2011minute visualization ritual at the start of each block to prime focus."
               },
               {
                 "day_name": "Day 5",
-                "action": "Morning 240\u202fmin, experiment with ambient focus music. Evening 240\u202fmin, keep phone in a sealed bag."
+                "action": "Swap block order to test flexibility: start with execution tasks at peak, then move research to afternoon."
               },
               {
                 "day_name": "Day 6",
-                "action": "Morning 240\u202fmin, include a 2\u2011minute breathing reset at minute 120. Evening 240\u202fmin, log any urge count and compare to Day\u202f1."
+                "action": "Weekend: extend each block to 3.5\u202fhours while maintaining a 30\u2011minute break. Verify phone remained untouched."
               },
               {
                 "day_name": "Day 7",
-                "action": "Review the week: confirm at least one day hit two full 4\u2011hour blocks, write a short win statement, and set next week\u2019s target for total daily hours."
+                "action": "Compile a summary of output volume (pages, lines of code, etc.) and compare against baseline from Week\u202f5."
               }
             ]
           },
           {
-            "week": "Week 3",
-            "focus": "Output Quantification & Energy Optimization",
-            "outcome": "360\u202fminutes of deep work with \u226580\u202f% of predefined high\u2011impact tasks completed",
-            "win_condition": "Completed at least 5 high\u2011impact tasks and logged 360\u202fminutes of uninterrupted work",
+            "week": "Week 7",
+            "focus": "Digital Minimalism Immersion",
+            "outcome": "Execute a full 24\u2011hour phone\u2011free day while delivering at least 2\u202fhours of deep work.",
+            "win_condition": "No phone unlocks recorded for 24\u202fhours and \u2265\u202f2\u202fhours of documented deep work completed.",
             "days": [
               {
                 "day_name": "Day 1",
-                "action": "Plan 3 high\u2011impact tasks, execute first 120\u202fmin block, then 5\u2011minute hydration break, second 120\u202fmin block, track tasks finished."
+                "action": "Place phone in a sealed box with a timed lock for 24\u202fhours. Begin the day with a 15\u2011minute meditation, then start a 2\u2011hour deep\u2011work block on the highest\u2011priority project."
               },
               {
                 "day_name": "Day 2",
-                "action": "Morning 180\u202fmin block, incorporate a 10\u2011minute power\u2011nap at minute 90, resume remaining 90\u202fmin."
+                "action": "Repeat the phone\u2011in\u2011box routine, but split deep work into two 1\u2011hour blocks (morning & afternoon) to test intermittent focus."
               },
               {
                 "day_name": "Day 3",
-                "action": "Evening 180\u202fmin block, eat a protein\u2011rich snack before starting, log energy level (1\u201110) each hour."
+                "action": "Add analog tools: use paper notebook for ideas, a timer on the kitchen clock for intervals. No digital notifications allowed."
               },
               {
                 "day_name": "Day 4",
-                "action": "Combine two 150\u202fmin blocks (morning/evening) with 15\u2011minute movement breaks, record task completion percentage."
+                "action": "Incorporate a 20\u2011minute outdoor walk before the first block to boost alertness. Maintain phone lock throughout."
               },
               {
                 "day_name": "Day 5",
-                "action": "Run a 30\u2011minute sprint: 25\u202fmin ultra\u2011focus, 5\u202fmin rapid review, repeat twice, total 60\u202fmin, then a 120\u2011min deep block."
+                "action": "Extend deep work to 3\u202fhours total (1\u202fhr + 2\u202fhr). Log any urges to check the phone and how you redirected them."
               },
               {
                 "day_name": "Day 6",
-                "action": "Full 240\u202fmin block, no scheduled breaks, note any dip in focus, apply the 20\u2011second \u201curge\u2011pause\u201d technique when needed."
+                "action": "Weekend immersion: stay phone\u2011free for the entire Saturday. Complete a 4\u2011hour creative sprint, then take a low\u2011energy leisure activity (reading) without digital devices."
               },
               {
                 "day_name": "Day 7",
-                "action": "Summarize weekly output: count tasks completed, total minutes, and declare win if \u22655 tasks done and \u2265360\u202fmin logged."
+                "action": "Reflect: write a 500\u2011word journal entry on mental clarity, productivity gains, and any challenges faced during the week."
               }
             ]
           },
           {
-            "week": "Week 4",
-            "focus": "Sustained Mastery & Automation",
-            "outcome": "Three consecutive days of 8\u202fhours (two 4\u2011hour blocks) deep work, automated routines in place",
-            "win_condition": "Achieved a 3\u2011day streak where each day includes two 240\u2011minute phone\u2011free sessions and automated start\u2011up scripts run successfully",
+            "week": "Week 8",
+            "focus": "Output Sprint & Review",
+            "outcome": "Deliver a concrete, shareable deliverable (e.g., 5\u2011page report or prototype) within a single 4\u2011hour block and conduct a performance review.",
+            "win_condition": "Deliverable completed, exported, and reviewed; final performance metrics logged and compared to Month\u202f1 baseline.",
             "days": [
               {
                 "day_name": "Day 1",
-                "action": "Create a launch script that opens work apps, activates blocker, and starts a 4\u2011hour timer. Run script for both morning and evening sessions."
+                "action": "Plan the deliverable: outline sections, set success criteria, and lock phone in a drawer. Execute a 4\u2011hour sprint to finish the first draft."
               },
               {
                 "day_name": "Day 2",
-                "action": "Execute the script twice, log any automation failures, and complete two 240\u2011min blocks."
+                "action": "Edit and polish the draft within a second 4\u2011hour block. No email or messaging interruptions."
               },
               {
                 "day_name": "Day 3",
-                "action": "Repeat script, add a 5\u2011minute gratitude journal after each block, verify total 480\u202fmin logged."
+                "action": "Export the deliverable (PDF/PNG), share with a peer for feedback, and log the time spent on revisions."
               },
               {
                 "day_name": "Day 4",
-                "action": "Maintain the dual\u2011session pattern, introduce a 10\u2011minute \u201cfuture\u2011planning\u201d review at day\u2019s end."
+                "action": "Conduct a 30\u2011minute performance review: compare total deep\u2011work hours, output volume, and win\u2011condition success rates against Month\u202f1."
               },
               {
                 "day_name": "Day 5",
-                "action": "Invite an accountability partner to review your logs, confirm no phone checks recorded."
+                "action": "Create a visual dashboard of key metrics (hours, tasks completed, phone\u2011free minutes) using a spreadsheet."
               },
               {
                 "day_name": "Day 6",
-                "action": "Run a 4\u2011hour block with a secondary \u201cfocus\u2011buddy\u201d video call (muted) to reinforce presence, then evening block solo."
+                "action": "Celebrate the milestone with a low\u2011energy activity (e.g., walk in nature) while keeping the phone on Airplane mode."
               },
               {
                 "day_name": "Day 7",
-                "action": "Document the 3\u2011day streak, capture screenshots of timers and blocker status, declare final win and outline Month\u202f3\u2019s next escalation."
+                "action": "Write a 1\u2011page action plan for Month\u202f3, focusing on scaling output to 8\u2011hour blocks and integrating collaborative work."
               }
             ]
           }
@@ -344,29 +344,609 @@
       },
       {
         "phase": "Month 3",
-        "theme": "Growth and Consolidation",
-        "expected_result": "Continued progress on focus area",
-        "weeks": []
+        "theme": "Deep\u2011Work Amplification & Controlled Collaboration",
+        "expected_result": "By month\u2019s end you will reliably sustain one 8\u2011hour deep\u2011work block per day, integrate ultra\u2011disciplined collaborative sprints with \u22642 phone unlocks, double your output metrics versus Month\u202f2, and produce a concrete scaling blueprint for Month\u202f4 while keeping daily phone unlocks under 5 minutes.",
+        "weeks": [
+          {
+            "week": "Week 9",
+            "focus": "8\u2011Hour Deep\u2011Work Block Integration",
+            "outcome": "Complete a single uninterrupted 8\u2011hour deep\u2011work session each day, delivering a functional prototype module for the core project.",
+            "win_condition": "Logged 8 continuous hours of work, phone remained locked for the full block, and the prototype module passed a basic functional test.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Morning: place phone in a sealed box with a 24\u2011hour timed lock. Set an analog kitchen timer for 8\u202fhours (7\u202fam\u20113\u202fpm). Begin work on Core Module\u202fA. No digital interruptions."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Repeat the 8\u2011hour block, this time focusing on Core Module\u202fB. Insert a 5\u2011minute standing stretch every hour using a wristwatch timer."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Add a 10\u2011minute nutrition break at hour\u202f4 (protein snack, hydration). Record energy level before and after the break in a paper journal."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Start block at 6\u202fam to test early\u2011day peak. Use a red\u2011light lamp for eye\u2011strain reduction. No phone contact until 3\u202fpm."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Introduce a 2\u2011minute breathing reset at the top of each hour. Continue working on Module\u202fC, aiming for a compile\u2011ready state."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Weekend deep work: invite an accountability partner to observe (via video call scheduled *after* the block). Complete a full 8\u2011hour sprint on integration testing."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Reflection: tally total hours, log phone\u2011free minutes, and write a 300\u2011word journal entry on mental stamina and any urge\u2011management tactics used."
+              }
+            ]
+          },
+          {
+            "week": "Week 10",
+            "focus": "Controlled Collaborative Sprint & Communication Discipline",
+            "outcome": "Deliver a joint feature with a teammate while restricting phone unlocks to two 15\u2011minute windows per day.",
+            "win_condition": "Feature merged and passing CI tests; phone unlock count \u22642 and total unlock time \u22645\u202fminutes recorded for the week.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Define communication windows: 9:30\u20119:45\u202fam and 4:00\u20114:15\u202fpm via Slack. Lock phone in drawer; use a separate laptop for all messaging during windows."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Sprint on collaborative API endpoint (30\u202f% of feature). Work in a 3\u2011hour block, then a 3\u2011hour block after lunch, respecting windows."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Implement unit tests for the API. No phone access until after the second communication window."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Peer review session scheduled at 4:05\u202fpm (within window). Afterwards, finalize documentation in a 2\u2011hour deep\u2011work slot."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Integrate feedback and push to repository. Conduct a 30\u2011minute offline code walk\u2011through using printed diagrams."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Weekend: conduct a live demo with the teammate at 10\u202fam (pre\u2011agreed window). Keep phone locked for the rest of the day."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Metrics review: count unlocks, total collaborative output (lines of code, test coverage), and write a brief success\u2011failure analysis."
+              }
+            ]
+          },
+          {
+            "week": "Week 11",
+            "focus": "Digital Minimalism Mastery & Energy Cycle Optimization",
+            "outcome": "Align every deep\u2011work block with personal circadian peaks, achieve a 20\u202f% increase in output versus Week\u202f9, and operate a phone\u2011free micro\u2011environment for 6\u202fhours daily.",
+            "win_condition": "Output metrics (pages, code lines, or prototype iterations) exceed Week\u202f9 baseline by \u226520\u202f%; phone\u2011free micro\u2011environment logged for at least 6\u202fhours each day.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Track energy via a paper chart for the morning peak (8\u201111\u202fam). Schedule a 4\u2011hour block during this peak; lock phone in a zip\u2011lock bag."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Afternoon peak (2\u20115\u202fpm) dedicated to execution tasks. Use a mechanical timer for 25\u2011minute focus intervals."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Introduce a 15\u2011minute sunlight exposure ritual before each block to boost alertness. Keep phone out of sight."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Swap task types between peaks to test flexibility and record productivity impact in a handwritten log."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Add a 5\u2011minute cold\u2011shower burst after the morning block to reset nervous system, then resume work on refinement tasks."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Weekend: create a \u201cdigital\u2011free cabin\u201d by moving work to a park bench with a portable solar charger for laptop only; phone remains sealed."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Compile weekly metrics, calculate % increase vs Week\u202f9, and draft a 2\u2011page insight report on energy\u2011aligned productivity."
+              }
+            ]
+          },
+          {
+            "week": "Week 12",
+            "focus": "Final Review, Scaling Blueprint & Automation",
+            "outcome": "Produce a comprehensive 6\u2011page scaling report, automate the phone\u2011lock routine, and set concrete goals for Month\u202f4.",
+            "win_condition": "Report completed, automation script tested successfully (phone locked for 8\u202fhours automatically), and next\u2011month roadmap documented and approved.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Outline the scaling report: sections on deep\u2011work architecture, collaboration protocols, energy optimization, and automation plan."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Write Sections\u202f1\u20112 (deep\u2011work architecture & collaboration) in a focused 3\u2011hour block; phone locked in drawer."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Write Sections\u202f3\u20114 (energy optimization & automation) using another 3\u2011hour block; test a simple Bash script that locks the phone via Android ADB."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Run the automation script for a trial 8\u2011hour period, record any failures, and adjust parameters."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Finalize the report, add visual dashboards of monthly metrics, and export as PDF."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Peer review of the report via scheduled 15\u2011minute video call (within communication window). Incorporate feedback."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Create a concrete Month\u202f4 action plan (goal list, weekly themes, phone\u2011free protocols) and celebrate completion with a nature walk, phone on airplane mode."
+              }
+            ]
+          }
+        ]
       },
       {
         "phase": "Month 4",
-        "theme": "Growth and Consolidation",
-        "expected_result": "Continued progress on focus area",
-        "weeks": []
+        "theme": "Scale & Deploy \u2013 From Prototype to Market with Zero Distraction",
+        "expected_result": "Launch a production\u2011ready MVP, secure three early adopters, process the first revenue transaction, automate deployment and monitoring, and deliver a 5\u2011page scaling blueprint while keeping daily phone unlocks at two or fewer.",
+        "weeks": [
+          {
+            "week": "Week 13",
+            "focus": "MVP Finalization & Automated Deployment",
+            "outcome": "Produce a production\u2011ready MVP, implement a CI/CD pipeline, and deploy the app to a live environment without manual phone interaction.",
+            "win_condition": "MVP passes user\u2011acceptance test, deployment script runs end\u2011to\u2011end successfully, and total phone unlocks for the week \u2264 2.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Seal phone in a timed lockbox (24\u202fh). Review MVP checklist on paper and draft the deployment Bash script outline on a notebook."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Set up GitHub Actions CI pipeline on the laptop; run a local dry\u2011run. Phone stays locked in a drawer."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Provision staging environment via Terraform scripts; record all commands in a handwritten log."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Execute automated unit and integration tests through the CI script; verify zero failures. Phone remains sealed."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Run the one\u2011click production deployment script; monitor logs for 2\u202fhours and note any manual interventions."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Weekend audit: run an offline OWASP security scan, document findings on paper, and keep phone on airplane mode."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Reflection: write a 300\u2011word journal on automation confidence, tally phone\u2011free minutes (target 0 unlocks), and outline next week\u2019s priorities."
+              }
+            ]
+          },
+          {
+            "week": "Week 14",
+            "focus": "Acquisition Sprint \u2013 Early User Outreach",
+            "outcome": "Sign up at least three qualified early adopters, collect actionable feedback, and iterate the MVP accordingly.",
+            "win_condition": "Three signed agreement emails or PDFs received, feedback logged, and total phone unlocks for the week \u2264 2.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Print outreach email template; schedule two 15\u2011minute phone\u2011free outreach windows (09:00\u201109:15, 16:00\u201116:15) using the laptop only."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Send personalized email to Target\u202f1; conduct a brief follow\u2011up call via web\u2011based VOIP after the second window; log response in a paper journal."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Email Target\u202f2; schedule a demo meeting for the next day; keep phone locked away."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Run live demo for Target\u202f2 via web conference on the laptop; record the session and capture feedback on printed sheets."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Email Target\u202f3; negotiate terms and capture a signed PDF agreement using the laptop\u2019s e\u2011signature tool."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Weekend: draft a short case\u2011study for Early Adopter\u202f1 using only laptop and paper; phone stays in airplane mode."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Metrics review: count signed agreements (\u22653), verify phone unlock count (\u22642), and write a brief success\u2011failure analysis."
+              }
+            ]
+          },
+          {
+            "week": "Week 15",
+            "focus": "Revenue Engine & KPI Dashboard",
+            "outcome": "Integrate a payment gateway, process the first real transaction, and deploy a live KPI dashboard tracking core metrics.",
+            "win_condition": "First real payment successfully processed, KPI dashboard live with real\u2011time data, and phone unlocks for the week \u2264 2.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Integrate Stripe (or equivalent) payment gateway in the backend; test with sandbox credentials; phone locked in drawer."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Create automated invoice generation script; run a test transaction and verify receipt email delivery."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Design a KPI dashboard (Grafana/Metabase) showing Daily Active Users, Revenue, Latency, and Error Rate; connect to live database."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Deploy the dashboard to a public URL; monitor for 1\u202fhour, note any alerts, and adjust queries as needed."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Process the first real payment from an early adopter; confirm receipt in the dashboard and log revenue figure."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Weekend: run performance profiling on the app, document bottlenecks on paper, and keep phone on airplane mode."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Review KPI data versus baseline; write a 2\u2011page insight report; ensure phone unlock count remains \u22642."
+              }
+            ]
+          },
+          {
+            "week": "Week 16",
+            "focus": "Review, Optimization, & Next\u2011Scale Blueprint",
+            "outcome": "Conduct a full retrospective, identify top friction points, and produce a 5\u2011page scaling blueprint for Month\u202f5+ while maintaining ultra\u2011low distraction.",
+            "win_condition": "Blueprint completed and approved, average daily phone unlocks across the month \u2264 2, and overall output increase \u2265\u202f30\u202f% versus Month\u202f3 baseline.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Gather all metrics from Weeks\u202f13\u201115 into a master spreadsheet; print for tactile review."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Run a 30\u2011minute retrospective video call with accountability partner (scheduled after work block); phone stays locked."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Identify the three biggest friction points; create actionable items with deadlines on a paper Kanban board."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Draft the 5\u2011page scaling blueprint covering market expansion, hiring plan, automation upgrades, and risk mitigation."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Share the blueprint via a shared document for mentor feedback; incorporate comments without using the phone."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Finalize blueprint, obtain self\u2011sign\u2011off checklist, and celebrate with a 2\u2011hour nature hike; phone set to airplane mode."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Monthly audit: calculate average daily phone unlocks, total output increase vs. Month\u202f3, verify \u226530\u202f% uplift, and write final journal entry."
+              }
+            ]
+          }
+        ]
       },
       {
         "phase": "Month 5",
-        "theme": "Growth and Consolidation",
-        "expected_result": "Continued progress on focus area",
-        "weeks": []
+        "theme": "Aggressive Expansion & Sustainable Automation",
+        "expected_result": "Acquire 1,000 active users, generate $10,000 ARR, launch two strategic partnerships with live integrations, deploy an AI\u2011driven recommendation engine that lifts conversion by 15%, and keep daily phone unlocks at one or fewer.",
+        "weeks": [
+          {
+            "week": "Week 17",
+            "focus": "Strategic Partnerships & Integration",
+            "outcome": "Sign two partnership agreements, integrate partner APIs into the product, and generate joint traffic.",
+            "win_condition": "Two signed MoU PDFs, live API integration verified, and total phone unlocks for the week <= 1.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Research target partners, create outreach deck on laptop, and seal phone in a timed lockbox (24h)."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Send personalized partnership proposals via email from laptop only; schedule 15\u2011minute video call using web conference."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Conduct first partnership video meeting, capture notes on paper, and keep phone locked away."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Draft integration technical specification, print and file in a binder."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Implement partner API sandbox integration on development environment; log commands in a handwritten notebook."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Run end\u2011to\u2011end automated tests for the integration; phone set to airplane mode."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Review integration status, obtain signed MoU via e\u2011signature tool on laptop, and tally phone unlock count."
+              }
+            ]
+          },
+          {
+            "week": "Week 18",
+            "focus": "Growth Marketing Sprint",
+            "outcome": "Launch paid acquisition campaigns, acquire at least 500 new sign\u2011ups, and deploy a referral system.",
+            "win_condition": "\u2265500 new user registrations, CAC within target, and total phone unlocks for the week <= 1.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Design paid ad creatives and copy on laptop; lock phone in drawer."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Set up ad campaign budgets and tracking pixels via web dashboard; schedule launch time."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Launch campaigns, monitor spend and CTR in real\u2011time dashboard; phone remains sealed."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Analyze early performance data, adjust targeting and bids; document changes on paper."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Implement referral program code, generate share links, and run internal smoke test."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Run weekend A/B test on landing page variants; record results offline."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Consolidate acquisition metrics, verify \u2265500 new sign\u2011ups, and record phone unlock count."
+              }
+            ]
+          },
+          {
+            "week": "Week 19",
+            "focus": "Advanced Analytics & AI Optimization",
+            "outcome": "Deploy an AI\u2011driven recommendation engine, improve conversion by 15%, and launch a real\u2011time analytics dashboard.",
+            "win_condition": "Recommendation engine live, conversion uplift >=15%, and total phone unlocks for the week <= 1.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Research recommendation algorithms and select model; document decision on laptop."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Build data pipeline for user behavior logs using Python scripts; phone locked in drawer."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Train AI model on historical data, evaluate precision, and store metrics in notebook."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Deploy model to production via CI/CD pipeline; run smoke tests to verify output."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Integrate model into app UI, monitor conversion impact, and note uplift percentage."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Create real\u2011time analytics dashboard (Grafana) showing conversion, DAU, and revenue; phone on airplane mode."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Review dashboard data, confirm conversion uplift >=15%, finalize documentation, and tally phone unlocks."
+              }
+            ]
+          },
+          {
+            "week": "Week 20",
+            "focus": "Revenue Scaling & Process Automation",
+            "outcome": "Reach $10,000 ARR, automate billing and support workflows, and produce SOPs for sustained scaling.",
+            "win_condition": "$10k ARR achieved, \u226580% core processes automated, and total phone unlocks for the week <= 1.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Audit current revenue streams, identify upsell opportunities, and outline plan on paper."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Implement automated billing via subscription service API; test with sandbox credentials."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Launch upsell offers to existing users via email campaign; track acceptance rates on laptop."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Set up AI\u2011powered support chatbot, configure ticket triage workflows, and run pilot tests."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Measure ARR, confirm $10,000 threshold reached, and record revenue figure."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Draft SOPs for deployment, billing, and support; print and bind into a reference manual."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Final audit: verify \u226580% processes automated, average daily phone unlocks <=1, and write reflective journal entry."
+              }
+            ]
+          }
+        ]
       },
       {
         "phase": "Month 6",
-        "theme": "Growth and Consolidation",
-        "expected_result": "Continued progress on focus area",
-        "weeks": []
+        "theme": "Dominance & Resilience: From Startup to Enterprise Powerhouse",
+        "expected_result": "Close $50k MRR, onboard 5,000 active users, launch an enterprise tier with $20k ARR, secure 3 strategic channel partners, and maintain zero phone unlocks for the entire month.",
+        "weeks": [
+          {
+            "week": "Week 21",
+            "focus": "Enterprise Sales Engine",
+            "outcome": "Sign three enterprise contracts worth a combined $20k ARR and set up a dedicated sales funnel.",
+            "win_condition": "Three signed contracts (PDF), enterprise funnel live, and total phone unlocks for the week = 0.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Identify top 10 target enterprises, compile a value\u2011prop deck on laptop, and lock phone in a timed lockbox (48h)."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Personalize outreach emails using mail merge on laptop; schedule 30\u2011minute discovery calls via web calendar."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Conduct first discovery call, take notes on paper, and keep phone sealed in drawer."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Prepare custom proposal PDFs, print and hand\u2011deliver to decision\u2011makers (or use secure email client on laptop)."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Negotiate terms in a 15\u2011minute video conference (web only), record agreement points in notebook."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Finalize contracts, capture e\u2011signatures on laptop, and store signed PDFs in encrypted folder."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Update CRM with pipeline status, verify three contracts signed, tally phone unlock count (must be 0)."
+              }
+            ]
+          },
+          {
+            "week": "Week 22",
+            "focus": "Global Market Penetration",
+            "outcome": "Launch localized versions for two new regions, acquire 1,000 users per region, and establish local channel affiliates.",
+            "win_condition": "Two localized product releases live, \u22652,000 new users acquired, affiliate agreements signed, and phone unlocks = 0.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Select target regions, research localization requirements on laptop, and place phone in a lockbox (24h)."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Translate UI strings, update locale files offline, and test on staging environment without phone."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Deploy region\u2011specific builds to production, monitor rollout via dashboard on laptop."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Identify 5 potential local affiliates per region, draft partnership briefs on paper."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Reach out to affiliates via email, schedule 15\u2011minute intro calls using web video; keep phone locked."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Negotiate affiliate revenue share, capture signed MoU PDFs on laptop."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Verify user sign\u2011up numbers in analytics, confirm \u22652,000 new users, and log phone unlock count (0)."
+              }
+            ]
+          },
+          {
+            "week": "Week 23",
+            "focus": "Product Ecosystem & API Marketplace",
+            "outcome": "Expose core functionality via a public API, onboard 5 third\u2011party developers, and generate $5k incremental revenue.",
+            "win_condition": "API docs published, 5 developers with active keys, $5k revenue recorded, and phone unlocks = 0.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Design API spec for core recommendation engine on laptop, lock phone in drawer."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Implement API endpoints in sandbox, write automated tests, and log results on paper."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Deploy API gateway, set rate limits, and publish Swagger docs on internal site."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Create developer onboarding flow (sign\u2011up, key generation) using only laptop tools."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Reach out to 10 potential dev partners via email, invite them to beta test the API."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Onboard first 5 developers, provide sandbox keys, and collect usage metrics offline."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Invoice beta developers for usage, confirm $5k revenue, and verify phone unlock count (0)."
+              }
+            ]
+          },
+          {
+            "week": "Week 24",
+            "focus": "Organizational Resilience & Mental Mastery",
+            "outcome": "Codify SOPs for all core processes, implement a weekly deep\u2011focus ritual, and achieve a full month of zero phone unlocks.",
+            "win_condition": "All SOPs version\u2011controlled, deep\u2011focus ritual executed 4\u00d7, phone unlocks for the week = 0, and a reflective performance report completed.",
+            "days": [
+              {
+                "day_name": "Day 1",
+                "action": "Audit existing SOPs, consolidate into a single Git repository, lock phone in timed lockbox (72h)."
+              },
+              {
+                "day_name": "Day 2",
+                "action": "Write detailed runbooks for sales, engineering, and support; print and bind for offline reference."
+              },
+              {
+                "day_name": "Day 3",
+                "action": "Design a 90\u2011minute deep\u2011focus block (Pomodoro \u00d76) schedule, implement with a laptop timer, no phone."
+              },
+              {
+                "day_name": "Day 4",
+                "action": "Conduct first deep\u2011focus block, work on high\u2011impact backlog item, record progress in notebook."
+              },
+              {
+                "day_name": "Day 5",
+                "action": "Repeat deep\u2011focus block targeting a different department, capture outcomes on paper."
+              },
+              {
+                "day_name": "Day 6",
+                "action": "Hold a team retrospective (video conference via laptop), document improvement actions, and lock phone away."
+              },
+              {
+                "day_name": "Day 7",
+                "action": "Compile monthly performance report (ARR, users, contracts, API revenue), verify phone unlocks = 0, and celebrate with a digital\u2011detox reward."
+              }
+            ]
+          }
+        ]
       }
     ]
   },
-  "trace_id": "d6294cf3-acfb-46a2-935d-365aee0ab682"
+  "trace_id": "57fceb26-91df-4bd7-9fab-33ba2527a74e"
 }

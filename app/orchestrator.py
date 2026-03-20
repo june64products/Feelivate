@@ -118,6 +118,7 @@ async def orchestrate(
         # Yield Initial Results immediately
         yield {
             "type": "initial",
+            "session_id": session_id,
             "past": past,
             "present": present,
             "future": future,

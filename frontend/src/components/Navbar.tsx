@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Navbar = () => {
     const navigate = useNavigate();
@@ -31,7 +31,7 @@ const Navbar = () => {
                 <a href="#tech" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Tech Stack</a>
             </div>
             <div className="nav-actions" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <a href="#login" style={{ fontSize: '0.9rem' }}>Log in</a>
+                <Link to="/login" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textDecoration: 'none' }}>Log in</Link>
                 <button
                     onClick={() => navigate('/app')}
                     style={{
@@ -40,7 +40,9 @@ const Navbar = () => {
                         padding: '10px 20px',
                         borderRadius: '24px',
                         fontWeight: 600,
-                        fontSize: '0.9rem'
+                        fontSize: '0.9rem',
+                        border: 'none',
+                        cursor: 'pointer'
                     }}>
                     Start Journey
                 </button>
