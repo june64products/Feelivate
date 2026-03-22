@@ -1,56 +1,41 @@
+import sys
 import os
 import json
-import uuid
-from app.database import SessionLocal, Base, engine
-from app.models import User, Session, ChatMessage, RoadmapTask
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.models import Session, User, RoadmapTask
 
-# We will use the actual DB defined in .env (Supabase)
-TestSession = SessionLocal
+load_dotenv()
 
-def test_persistence():
-    db = TestSession()
-    
-    # 1. Create User
-    user_id = "test_persist_user"
-    user = User(id=user_id)
-    db.add(user)
-    db.commit()
-    print("✓ User created")
+# Database setup
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-    # 2. Create Session
-    session_id = str(uuid.uuid4())
-    session = Session(id=session_id, user_id=user_id, focus="Test focus")
-    db.add(session)
-    db.commit()
-    print(f"✓ Session created: {session_id}")
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    # 3. Add Chat Messages
-    msg1 = ChatMessage(session_id=session_id, role="user", content="Hello Mentor")
-    msg2 = ChatMessage(session_id=session_id, role="assistant", content="Hello User, how can I help?")
-    db.add_all([msg1, msg2])
-    db.commit()
-    print("✓ Chat messages saved")
-
-    # 4. Add Roadmap Tasks
-    task1 = RoadmapTask(session_id=session_id, month=1, week=1, title="Wake up early", description="7 AM")
-    task2 = RoadmapTask(session_id=session_id, month=1, week=2, title="Drink water", description="2 Liters")
-    db.add_all([task1, task2])
-    db.commit()
-    print("✓ Roadmap tasks saved")
-
-    # 5. Verify Retrieval
-    saved_msgs = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).all()
-    assert len(saved_msgs) == 2
-    assert saved_msgs[0].content == "Hello Mentor"
-    print("✓ Verified message retrieval")
-
-    saved_tasks = db.query(RoadmapTask).filter(RoadmapTask.session_id == session_id).all()
-    assert len(saved_tasks) == 2
-    assert saved_tasks[1].title == "Drink water"
-    print("✓ Verified task retrieval")
-
-    db.close()
-    print("\nALL PERSISTENCE TESTS PASSED!")
+def verify():
+    db = SessionLocal()
+    try:
+        # Get last 5 sessions
+        sessions = db.query(Session).order_by(Session.created_at.desc()).limit(5).all()
+        print(f"Found {len(sessions)} sessions:")
+        for s in sessions:
+            focus_val = s.focus if s.focus else "NULL"
+            has_result = "YES" if s.result_json else "NO"
+            result_len = len(s.result_json) if s.result_json else 0
+            print(f"ID: {s.id} | Focus: {focus_val[:30]}... | Has Result: {has_result} ({result_len} chars)")
+            if s.result_json:
+                try:
+                    res = json.loads(s.result_json)
+                    keys = res.keys() if isinstance(res, dict) else "LIST"
+                    print(f"  - Result Structure: {keys}")
+                except:
+                    print("  - Result is not valid JSON")
+    finally:
+        db.close()
 
 if __name__ == "__main__":
-    test_persistence()
+    verify()

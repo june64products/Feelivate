@@ -89,10 +89,10 @@ async def orchestrate(
         inputs = {"focus": focus, "history": history, "vision": vision}
         memory_context = {"past_patterns": retrieved_memories if retrieved_memories else ["No past data available yet."]}
 
-        # 2. Parallel Core Agents
-        past_task = _call_agent("PastPatternAgent", inputs, memory_context)
-        present_task = _call_agent("PresentConstraintAgent", inputs, memory_context)
-        future_task = _call_agent("FutureSimulatorAgent", inputs, memory_context)
+        # 2. Parallel Core Agents (using gpt-oss-120b for deep reasoning)
+        past_task = _call_agent("PastPatternAgent", inputs, memory_context, model_override="openai/gpt-oss-120b")
+        present_task = _call_agent("PresentConstraintAgent", inputs, memory_context, model_override="openai/gpt-oss-120b")
+        future_task = _call_agent("FutureSimulatorAgent", inputs, memory_context, model_override="openai/gpt-oss-120b")
 
         past, present, future = await asyncio.gather(past_task, present_task, future_task)
 
@@ -105,7 +105,7 @@ async def orchestrate(
         }
         
         log.info("Generating Month 1 Strategy...")
-        integration = await _call_agent("IntegrationActionAgent", inputs, integration_context)
+        integration = await _call_agent("IntegrationActionAgent", inputs, integration_context, model_override="openai/gpt-oss-120b")
         
         if "roadmap" not in integration or not integration["roadmap"]:
             integration["roadmap"] = [{
@@ -148,7 +148,7 @@ async def orchestrate(
                     "focus": f"Generate exactly Month {month_num}. Weeks {start_week}-{end_week}."
                 }
                 
-                month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context)
+                month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context, model_override="openai/gpt-oss-120b")
                 new_month = month_data.get("month_plan") or (month_data.get("roadmap") and month_data["roadmap"][0])
                 
                 if new_month and "phase" in new_month:

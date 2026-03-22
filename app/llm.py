@@ -4,11 +4,44 @@ from typing import List, Optional
 from dotenv import load_dotenv
 from loguru import logger
 from openai import OpenAI
-import google.generativeai as genai
+# import google.generativeai as genai (Moved inside functions to prevent hang)
 
 
-_client: Optional[OpenAI] = None
+_groq_client: Optional[OpenAI] = None
+_openai_client: Optional[OpenAI] = None
 _gemini_configured = False
+
+
+def _get_groq_client() -> OpenAI:
+    global _groq_client
+    if _groq_client is None:
+        load_dotenv()
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            logger.error("GROQ_API_KEY is not set")
+            raise RuntimeError("GROQ_API_KEY is required for Groq")
+        base_url = "https://api.groq.com/openai/v1"
+        _groq_client = OpenAI(api_key=api_key, base_url=base_url)
+    return _groq_client
+
+
+def _get_openai_client() -> OpenAI:
+    global _openai_client
+    if _openai_client is None:
+        load_dotenv()
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            logger.error("OPENAI_API_KEY is not set")
+            # We don't raise here yet in case only Groq is needed, 
+            # but create_embedding will fail if it calls this.
+            return None
+        
+        base_url = os.getenv("OPENAI_BASE_URL")
+        if base_url:
+            _openai_client = OpenAI(api_key=api_key, base_url=base_url)
+        else:
+            _openai_client = OpenAI(api_key=api_key)
+    return _openai_client
 
 
 def _get_llm_provider() -> str:
@@ -24,28 +57,6 @@ def _get_llm_provider() -> str:
         raise RuntimeError("No API key found. Set GROQ_API_KEY, GEMINI_API_KEY or OPENAI_API_KEY")
 
 
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        load_dotenv()
-        if os.getenv("GROQ_API_KEY"):
-            api_key = os.getenv("GROQ_API_KEY")
-            base_url = "https://api.groq.com/openai/v1"
-            _client = OpenAI(api_key=api_key, base_url=base_url)
-        else:
-            api_key = os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                logger.error("OPENAI_API_KEY is not set")
-                raise RuntimeError("OPENAI_API_KEY is required")
-            
-            base_url = os.getenv("OPENAI_BASE_URL")
-            if base_url:
-                _client = OpenAI(api_key=api_key, base_url=base_url)
-            else:
-                _client = OpenAI(api_key=api_key)
-    return _client
-
-
 def _configure_gemini():
     """Configure Google Gemini API."""
     global _gemini_configured
@@ -55,6 +66,7 @@ def _configure_gemini():
         if not api_key:
             logger.error("GEMINI_API_KEY is not set")
             raise RuntimeError("GEMINI_API_KEY is required")
+        import google.generativeai as genai
         genai.configure(api_key=api_key)
         _gemini_configured = True
 
@@ -125,7 +137,7 @@ def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float =
 
 def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
     try:
-        client = _get_client()
+        client = _get_groq_client()
         model = model_override or os.getenv("GROQ_MODEL", "llama-4-maverick")
         messages = []
         if system:
@@ -161,7 +173,9 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
 
 def _call_openai(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
     try:
-        client = _get_client()
+        client = _get_openai_client()
+        if not client:
+            raise RuntimeError("OpenAI client not configured (missing API key)")
         model = model_override or os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
         messages = []
         if system:
@@ -184,7 +198,9 @@ def _call_openai(prompt: str, system: Optional[str] = None, temperature: float =
 
 def create_embedding(text: str) -> List[float]:
     try:
-        client = _get_client()
+        client = _get_openai_client()
+        if not client:
+            raise RuntimeError("OpenAI client not configured for embeddings")
         model = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
         resp = client.embeddings.create(model=model, input=text)
         vec = resp.data[0].embedding

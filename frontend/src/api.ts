@@ -189,7 +189,7 @@ export interface GlobalChatRequest {
     user_id: string;
     session_id: string;
     message: string;
-    full_roadmap: any[];
+    full_roadmap: any;
     chat_history: { role: string; content: string }[];
 }
 
@@ -242,5 +242,17 @@ export const signup = async (data: any) => {
         body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Signup failed');
+    return response.json();
+};
+
+export const getUserSessions = async (userId: string) => {
+    const response = await fetch(`${API_BASE_URL}/sessions/${userId}`);
+    if (!response.ok) throw new Error('Failed to fetch sessions');
+    return response.json();
+};
+
+export const getSessionDetail = async (sessionId: string) => {
+    const response = await fetch(`${API_BASE_URL}/sessions/detail/${sessionId}`);
+    if (!response.ok) throw new Error('Failed to fetch session details');
     return response.json();
 };

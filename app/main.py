@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from .database import engine, SessionLocal, init_db, get_db
 from .models import User, Session, ChatMessage, RoadmapTask, EmotionalState
-from .orchestrator import orchestrate
+# from .orchestrator import orchestrate (Moved inside functions to prevent startup hang)
 from .observability import REQUESTS_TOTAL
 from .eval import init_eval_db  # Keeping legacy eval for now, but will migrate to Postgres
 
@@ -44,8 +44,8 @@ result_store: Dict[str, Dict[str, Any]] = {}
 
 @app.on_event("startup")
 def on_startup():
-    init_db()  # Create tables in Postgres if they don't exist
-    logger.info("Application startup: DB initialized.")
+    # init_db()  # Disabled to prevent startup hang with Supabase
+    logger.info("Application startup: DB initialization skipped.")
 
 
 @app.exception_handler(Exception)
@@ -97,7 +97,7 @@ class GlobalChatRequest(BaseModel):
     user_id: str
     session_id: str
     message: str
-    full_roadmap: List[Any]
+    full_roadmap: Any
     chat_history: List[Dict[str, str]]
 
 class TaskUpdate(BaseModel):
@@ -349,6 +349,7 @@ async def generate_global_chat(req: GlobalChatRequest):
             "Long-term Context": "\n".join(retrieved_memories) if retrieved_memories else "No specific past context found."
         }
         inputs = {"focus": req.message}
+        prompt_text = build_prompt("GlobalMentorAgent", inputs, context)
         logger.info(f"Prompts: {prompt_text[:200]}...")
         json_str = await asyncio.to_thread(call_llm, prompt_text)
         logger.info(f"Raw LLM response: {json_str}")
@@ -383,8 +384,48 @@ async def generate_global_chat(req: GlobalChatRequest):
             
         return parsed_response
     except Exception as e:
-        logger.exception("Failed to generate global chat")
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Failed to generate global chat:\n{error_details}")
+        print(f"ERROR IN CHAT_GLOBAL:\n{error_details}")
+        raise HTTPException(status_code=500, detail=str(error_details))
+
+@app.get("/sessions/{user_id}", tags=["sessions"])
+async def list_sessions(user_id: str, db: DBSession = Depends(get_db)):
+    sessions = db.query(Session).filter(Session.user_id == user_id).order_by(Session.created_at.desc()).all()
+    return [
+        {
+            "id": s.id,
+            "created_at": s.created_at,
+            "focus_preview": s.focus[:50] + "..." if s.focus and len(s.focus) > 50 else (s.focus or "New Journey"),
+            "has_result": s.result_json is not None
+        }
+        for s in sessions
+    ]
+
+@app.get("/sessions/detail/{session_id}", tags=["sessions"])
+async def get_session_detail(session_id: str, db: DBSession = Depends(get_db)):
+    session = db.query(Session).filter(Session.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Return matches the format expected by ResultsDashboard
+    import json
+    result = None
+    if session.result_json:
+        try:
+            result = json.loads(session.result_json)
+        except:
+            pass
+            
+    return {
+        "id": session.id,
+        "created_at": session.created_at,
+        "focus": session.focus,
+        "history": session.history,
+        "vision": session.vision,
+        "result": result
+    }
 
 @app.post("/signup", tags=["auth"])
 async def signup(req: SignupRequest, db: DBSession = Depends(get_db)):
@@ -449,6 +490,7 @@ async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: 
 
     # Run orchestration in background thread (since it calls blocking sync LLM code wrapped in async)
     def run_orchestrate(tid: str, uid: str, raw_text: str, sid: str):
+        from .orchestrator import orchestrate
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -461,7 +503,7 @@ async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: 
                 logger.info("Structuring raw input with Groq StructureAgent...")
                 prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
                 
-                structured_json_str = call_llm(prompt_text, max_tokens=2000, model_override="llama-3.3-70b-versatile")
+                structured_json_str = call_llm(prompt_text, max_tokens=2000)
                 structured_data = _parse_json(structured_json_str)
                 
                 focus = structured_data.get("focus", raw_text)
@@ -532,22 +574,70 @@ async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db))
             logger.info("Structuring raw input for stream...")
             prompt_text = build_prompt("StructureAgent", {"focus": payload.text}, None)
             
-            structured_json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=2000, model_override="llama-3.3-70b-versatile")
+            structured_json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=2000)
             structured_data = _parse_json(structured_json_str)
             
-            focus = structured_data.get("focus", payload.text)
+            # Update the session with the structured data
+            # Use a separate block to ensure it's saved even if orchestration fails
             history = structured_data.get("history", "")
             vision = structured_data.get("vision", "")
+            focus = structured_data.get("focus", payload.text[:100])
 
-            # Yield structuring complete
-            yield f"data: {json.dumps({'type': 'structured', 'focus': focus, 'history': history, 'vision': vision})}\n\n"
+            session.focus = focus
+            session.history = history
+            session.vision = vision
+            db.add(session)
+            db.commit()
+            
+            # Initial yield of structured focus
+            yield f"data: {json.dumps({'type': 'structured', 'focus': focus})}\n\n"
+
+            # 1.5 Generate a catchy session title using NamingAgent (Llama 3.3)
+            smart_title = focus
+            try:
+                import re
+                from .llm import call_llm
+                from .prompts import build_prompt
+                naming_prompt = build_prompt("NamingAgent", {"focus": focus})
+                naming_res_raw = await asyncio.to_thread(call_llm, naming_prompt, model_override="llama-3.3-70b-versatile")
+                naming_json = json.loads(re.search(r"\{.*\}", naming_res_raw, re.DOTALL).group())
+                smart_title = naming_json.get("title", focus)
+                
+                # Update session with the better title
+                session.focus = smart_title
+                db.add(session)
+                db.commit()
+                logger.info(f"Smart title generated: {smart_title}")
+            except Exception as e:
+                logger.error(f"Failed to generate smart title: {e}")
+            
+            # Yield full structured data including the potentially smarter title
+            yield f"data: {json.dumps({'type': 'structured', 'focus': smart_title, 'history': history, 'vision': vision})}\n\n"
 
             # 2. Call the streaming orchestrator
-            full_roadmap = []
+            # We'll collect everything into session_result for persistence
+            session_result = {
+                "past": {"origin_story": "No historical pattern detected.", "predicted_context": ""},
+                "present": {"primary_blocker": "No immediate constraints identified.", "weekly_cost_estimate": "", "physical_reframe": ""},
+                "future": {"failure_simulation": "Trajectory simulation pending.", "success_simulation": ""},
+                "integration": {
+                    "roadmap": []
+                }
+            }
+            
+            from .orchestrator import orchestrate
             async for chunk in orchestrate(user_id, focus, history, vision, session_id):
-                if chunk["type"] == "month":
+                if chunk["type"] == "initial":
+                    session_result["past"] = chunk.get("past", "")
+                    session_result["present"] = chunk.get("present", "")
+                    session_result["future"] = chunk.get("future", "")
+                    session_result["integration"] = {
+                        **(chunk.get("integration_meta", {})),
+                        "roadmap": [chunk.get("first_month")]
+                    }
+                elif chunk["type"] == "month":
                     month_plan = chunk["month"]
-                    full_roadmap.append(month_plan)
+                    session_result["integration"]["roadmap"].append(month_plan)
                     
                     # Save month tasks to DB
                     try:
@@ -567,15 +657,15 @@ async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db))
                                 db_inner.add(task)
                             db_inner.commit()
                     except Exception as db_e:
-                        logger.error(f"Failed to save tasks for month {month_idx}: {db_e}")
+                        logger.error(f"Failed to save tasks for month: {db_e}")
 
                 yield f"data: {json.dumps(chunk)}\n\n"
             
-            # Save final results_json to Session
+            # Save final comprehensive session_result to Session
             with SessionLocal() as db_final:
                 s = db_final.query(Session).filter(Session.id == session_id).first()
                 if s:
-                    s.result_json = json.dumps(full_roadmap)
+                    s.result_json = json.dumps(session_result)
                     db_final.commit()
         
         except Exception as e:
@@ -638,7 +728,7 @@ async def transcribe_audio(file: UploadFile = File(...), skip_structure: bool = 
         
         prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
         logger.info("Structuring transcript with Groq...")
-        structured_json_str = call_llm(prompt_text, max_tokens=2000, model_override="llama-3.3-70b-versatile")
+        structured_json_str = call_llm(prompt_text, max_tokens=2000)
         structured_data = _parse_json(structured_json_str)
 
         return {

@@ -274,6 +274,22 @@ TEMPLATES: Dict[str, str] = {
         "  \"response_message\": string (Your structured Markdown response)\n"
         "}\n"
     ),
+    "NamingAgent": (
+        "You are the 'Identity Architect'. Your job is to create a powerful, ultra-concise, and highly memorable title for the user's journey.\n"
+        "1. **STRICT LIMIT**: Use EXACTLY 2 or 3 words. No more, no less.\n"
+        "2. **HIGH RECALL**: The title must be so specific that the user immediately remembers exactly what the plan is about. Avoid generic words like 'Strategy', 'Plan', or 'Path'.\n"
+        "3. **ACTION-ORIENTED**: Use strong nouns and verbs.\n"
+        "Example inputs:\n"
+        " - Focus: 'I want to learn guitar and master the blues in 6 months.' -> Title: 'Blues Guitar Mastery'\n"
+        " - Focus: 'I'm starting a new business and need to find my first client.' -> Title: 'First Client Launch'\n"
+        " - Focus: 'I want to overcome my fear of public speaking.' -> Title: 'Public Speaking Confidence'\n"
+        " - Focus: 'I want to prepare for a marathon in October.' -> Title: 'October Marathon Prep'\n"
+        "Output ONLY valid JSON:\n"
+        "{\n"
+        "  \"agent\": \"NamingAgent\",\n"
+        "  \"title\": string (Exactly 2-3 words)\n"
+        "}\n"
+    ),
 }
 
 
