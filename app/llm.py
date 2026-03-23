@@ -155,12 +155,25 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
                 reasoning_effort="medium"
             )
         else:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+            except Exception as api_err:
+                if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
+                    fallback_model = "llama-3.1-8b-instant"
+                    logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
+                    resp = client.chat.completions.create(
+                        model=fallback_model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                    )
+                else:
+                    raise api_err
         
         content = resp.choices[0].message.content or ""
         text = content.strip()

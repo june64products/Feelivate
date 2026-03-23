@@ -6,7 +6,7 @@ def test_chat_global():
     payload = {
         "user_id": "test_user_recall",
         "session_id": "3c126a22-53f0-4404-b3c5-c6f1e5966d05",
-        "message": "Hello Common Mentor, can you give me a wise tip for my blues guitar journey?",
+        "message": "What am I supposed to do on Day 1 of Week 1? Also, what is your opinion on Python vs JavaScript?",
         "chat_history": [],
         "full_roadmap": [
             {"month": 1, "task": "Test Task"}
