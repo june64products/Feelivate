@@ -44,8 +44,8 @@ result_store: Dict[str, Dict[str, Any]] = {}
 
 @app.on_event("startup")
 def on_startup():
-    # init_db()  # Disabled to prevent startup hang with Supabase
-    logger.info("Application startup: DB initialization skipped.")
+    init_db()  # Re-enabled to allow SQLite table creation on Render
+    logger.info("Application startup: DB initialization done.")
 
 
 @app.exception_handler(Exception)
