@@ -72,6 +72,10 @@ def _configure_gemini():
 
 
 def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
+    # If model_override starts with 'gemini', force use of Gemini provider
+    if model_override and ("gemini" in model_override.lower()):
+        return _call_gemini(prompt, system, temperature, max_tokens, model_override)
+        
     provider = _get_llm_provider()
     
     if provider == "groq":
@@ -84,51 +88,44 @@ def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7
 
 def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
     try:
-        import requests
         load_dotenv()
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY is required")
             
-        model_name = model_override or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-        logger.info(f"Calling Gemini model: {model_name} via REST")
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
         
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        # Determine model name
+        model_name = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
         
-        # Combine system and user prompt
-        full_prompt = prompt
-        if system:
-            full_prompt = f"{system}\n\n{prompt}"
+        # Remove "models/" prefix if present for consistency
+        if model_name.startswith("models/"):
+            model_name = model_name.replace("models/", "")
+            
+        logger.info(f"Calling Gemini model: {model_name} via SDK")
         
-        headers = {"Content-Type": "application/json"}
-        data = {
-            "contents": [{
-                "parts": [{"text": full_prompt}]
-            }],
-            "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": max_tokens
-            }
+        model = genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=system
+        )
+        
+        generation_config = {
+            "temperature": temperature,
+            "max_output_tokens": max_tokens,
         }
         
-        logger.info("Sending request to Gemini API...")
-        response = requests.post(url, headers=headers, json=data, timeout=60)
+        response = model.generate_content(
+            prompt,
+            generation_config=generation_config
+        )
         
-        if response.status_code != 200:
-            logger.error(f"Gemini API failed: {response.status_code} - {response.text}")
-            raise RuntimeError(f"Gemini API failed: {response.status_code} - {response.text}")
+        if not response.text:
+            logger.error(f"Gemini returned empty response: {response}")
+            raise RuntimeError("Gemini returned empty response")
             
-        res_json = response.json()
-        
-        if "candidates" in res_json and res_json["candidates"]:
-            candidate = res_json["candidates"][0]
-            if "content" in candidate and "parts" in candidate["content"]:
-                text = candidate["content"]["parts"][0]["text"]
-                logger.info(f"Gemini call succeeded, response length: {len(text)}")
-                return text
-                
-        logger.error(f"Unexpected Gemini response format: {res_json}")
-        raise RuntimeError(f"Unexpected Gemini response format: {res_json}")
+        logger.info(f"Gemini call succeeded, response length: {len(response.text)}")
+        return response.text
 
     except Exception as e:
         logger.exception(f"Gemini call failed: {str(e)}")
