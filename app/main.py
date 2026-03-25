@@ -326,12 +326,18 @@ async def generate_global_chat(req: GlobalChatRequest):
     try:
         # 1. Semantic Retrieval
         retrieved_memories = []
+        retrieved_roadmap = []
         embedding = None
         try:
             embedding = await asyncio.to_thread(create_embedding, req.message)
             if embedding:
+                # Fetch explicit roadmap chunks
+                roadmap_hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 2, {"source": "roadmap_chunk"})
+                retrieved_roadmap = [h["text"] for h in roadmap_hits]
+                
+                # Fetch past general memories
                 hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 3)
-                retrieved_memories = [h["text"] for h in hits]
+                retrieved_memories = [h["text"] for h in hits if h.get("metadata", {}).get("source") != "roadmap_chunk"]
         except Exception as re:
             logger.warning(f"Global memory retrieval failed: {re}")
 
@@ -344,7 +350,7 @@ async def generate_global_chat(req: GlobalChatRequest):
                 db_check.commit()
 
         context = {
-            "Full Roadmap": json.dumps(req.full_roadmap),
+            "Relevant Roadmap Sections (RAG)": "\n".join(retrieved_roadmap) if retrieved_roadmap else json.dumps(req.full_roadmap),
             "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-5:]]),
             "Long-term Context": "\n".join(retrieved_memories) if retrieved_memories else "No specific past context found."
         }
@@ -392,13 +398,20 @@ async def generate_global_chat(req: GlobalChatRequest):
 
 @app.get("/sessions/{user_id}", tags=["sessions"])
 async def list_sessions(user_id: str, db: DBSession = Depends(get_db)):
-    sessions = db.query(Session).filter(Session.user_id == user_id).order_by(Session.created_at.desc()).all()
+    # Optimized query: avoids fetching the giant result_json blob for all sessions
+    sessions = db.query(
+        Session.id,
+        Session.created_at,
+        Session.focus,
+        Session.result_json.isnot(None).label('has_result')
+    ).filter(Session.user_id == user_id).order_by(Session.created_at.desc()).all()
+    
     return [
         {
             "id": s.id,
             "created_at": s.created_at,
             "focus_preview": s.focus[:50] + "..." if s.focus and len(s.focus) > 50 else (s.focus or "New Journey"),
-            "has_result": s.result_json is not None
+            "has_result": s.has_result
         }
         for s in sessions
     ]
@@ -639,6 +652,23 @@ async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db))
                     month_plan = chunk["month"]
                     session_result["integration"]["roadmap"].append(month_plan)
                     
+                    # Store roadmap chunk in Qdrant for RAG
+                    try:
+                        month_text = json.dumps(month_plan)
+                        from .llm import create_embedding
+                        month_embedding = await asyncio.to_thread(create_embedding, month_text)
+                        if month_embedding:
+                            from .vector_store import vector_store
+                            await asyncio.to_thread(
+                                vector_store.add_memory,
+                                user_id,
+                                month_text,
+                                month_embedding,
+                                {"source": "roadmap_chunk", "session_id": session_id, "phase": month_plan.get("phase", "Unknown")}
+                            )
+                    except Exception as ve:
+                        logger.error(f"Failed to store roadmap chunk in RAG: {ve}")
+
                     # Save month tasks to DB
                     try:
                         with SessionLocal() as db_inner:

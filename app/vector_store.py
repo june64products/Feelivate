@@ -79,23 +79,27 @@ class VectorStore:
             logger.error(f"Failed to add memory to Qdrant: {e}")
             return False
 
-    def search_memories(self, user_id: str, embedding: List[float], limit: int = 5) -> List[Dict[str, Any]]:
+    def search_memories(self, user_id: str, embedding: List[float], limit: int = 5, extra_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Search for similar memories for a specific user."""
         if not self.enabled or not self.client:
             return []
 
         try:
+            must_conditions = [
+                models.FieldCondition(
+                    key="user_id",
+                    match=models.MatchValue(value=user_id)
+                )
+            ]
+            
+            if extra_filter:
+                for k, v in extra_filter.items():
+                    must_conditions.append(models.FieldCondition(key=k, match=models.MatchValue(value=v)))
+
             hits = self.client.search(
                 collection_name=COLLECTION_NAME,
                 query_vector=embedding,
-                query_filter=models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="user_id",
-                            match=models.MatchValue(value=user_id)
-                        )
-                    ]
-                ),
+                query_filter=models.Filter(must=must_conditions),
                 limit=limit
             )
             
