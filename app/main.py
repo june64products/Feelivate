@@ -357,7 +357,7 @@ async def generate_global_chat(req: GlobalChatRequest):
         inputs = {"focus": req.message}
         prompt_text = build_prompt("GlobalMentorAgent", inputs, context)
         logger.info(f"Prompts: {prompt_text[:200]}...")
-        json_str = await asyncio.to_thread(call_llm, prompt_text, model_override="gemini-1.5-pro")
+        json_str = await asyncio.to_thread(call_llm, prompt_text, model_override="gpt-4o-mini")
         logger.info(f"Raw LLM response: {json_str}")
         parsed_response = _parse_json(json_str)
         logger.info(f"Parsed response: {parsed_response}")
