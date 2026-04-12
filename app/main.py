@@ -341,24 +341,50 @@ async def generate_global_chat(req: GlobalChatRequest):
         except Exception as re:
             logger.warning(f"Global memory retrieval failed: {re}")
 
-        # Ensure session exists in SQL
-        with SessionLocal() as db_check:
-            s = db_check.query(Session).filter(Session.id == req.session_id).first()
-            if not s:
-                s = Session(id=req.session_id, user_id=req.user_id)
-                db_check.add(s)
-                db_check.commit()
+        # 1.5 Fetch Session Details for Persona & Context
+        with SessionLocal() as db_session:
+            session_rec = db_session.query(Session).filter(Session.id == req.session_id).first()
+            
+            # If session missing, create placeholder so chat can still function/save
+            if not session_rec:
+                logger.info(f"Creating missing session {req.session_id} for user {req.user_id}")
+                session_rec = Session(
+                    id=req.session_id, 
+                    user_id=req.user_id,
+                    focus="Direct Mentor Query",
+                    history="",
+                    vision=""
+                )
+                db_session.add(session_rec)
+                db_session.commit()
+                # Refresh to avoid detached instance issues if needed, 
+                # but we only need it for this block
+            
+            mentor_persona = "A generic but helpful AI mentor."
+            impact_statement = "Help the user achieve their goal through small, consistent steps."
+            
+            if session_rec.result_json:
+                try:
+                    res_data = json.loads(session_rec.result_json)
+                    integration = res_data.get("integration", {})
+                    mentor_persona = integration.get("mentor_persona", mentor_persona)
+                    impact_statement = integration.get("impact_statement", impact_statement)
+                except Exception as je:
+                    logger.warning(f"Failed to parse result_json for persona: {je}")
 
         context = {
+            "mentor_persona": mentor_persona,
+            "impact_statement": impact_statement,
             "Relevant Roadmap Sections (RAG)": "\n".join(retrieved_roadmap) if retrieved_roadmap else json.dumps(req.full_roadmap),
             "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-5:]]),
             "Long-term Context": "\n".join(retrieved_memories) if retrieved_memories else "No specific past context found."
         }
         inputs = {"focus": req.message}
         prompt_text = build_prompt("GlobalMentorAgent", inputs, context)
-        logger.info(f"Prompts: {prompt_text[:200]}...")
+        logger.info(f"Global Chat Prompt (Persona: {mentor_persona[:50]}...)")
+        
         json_str = await asyncio.to_thread(call_llm, prompt_text, model_override="gpt-4o-mini")
-        logger.info(f"Raw LLM response: {json_str}")
+        logger.debug(f"Raw LLM response: {json_str}")
         parsed_response = _parse_json(json_str)
         logger.info(f"Parsed response: {parsed_response}")
         

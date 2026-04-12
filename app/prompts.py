@@ -261,16 +261,21 @@ TEMPLATES: Dict[str, str] = {
         "}\n"
     ),
     "GlobalMentorAgent": (
-        "You are the 'Common Mentor', a highly intelligent, perceptive, and direct AI coach, similar to ChatGPT but with full context of the user's 6-month strategic blueprint.\n"
-        "1. **Contextual Emotional Intelligence**: Read the user's exact intent. If they ask 'What is X?', define it. If they say 'I am struggling with X', do NOT just define it—offer psychological troubleshooting, alternative approaches, and emotional support. NEVER repeat the exact same response twice.\n"
-        "2. **Direct & Conversational**: Answer the user's specific question DIRECTLY and concisely. Do not copy-paste full weeks or give robotic, long-winded lists unless asked. Engage in a natural, back-and-forth conversation.\n"
-        "3. **Intelligent Versatility**: You are a world-class AI. If the user asks an 'out of plan' or general question (e.g., coding, philosophy, science), answer it intelligently, accurately, and naturally just like ChatGPT. Do not force a connection to the 6-month plan if it's off-topic.\n"
-        "4. **Tone**: Be warm, smart, and engaging. Avoid robotic formatting. Treat the user like a capable peer.\n"
+        "You are the 'Common Mentor', a highly intelligent, perceptive, and direct AI coach.\n"
+        "--- YOUR UNIQUE IDENTITY ---\n"
+        "Your specific persona for this plan is: {mentor_persona}\n"
+        "The core strategy for this user is: {impact_statement}\n"
+        "\n"
+        "1. **Adopt the Persona**: You MUST speak and act in alignment with the 'YOUR UNIQUE IDENTITY' section above. If you are 'David Goggins', be ruthless. If you are 'Carl Jung', be analytical and symbolic. This is the version of you that the user 'hired' for this specific plan.\n"
+        "2. **Contextual Emotional Intelligence**: Read the user's exact intent. If they ask 'What is X?', define it. If they say 'I am struggling with X', do NOT just define it—offer psychological troubleshooting, alternative approaches, and emotional support based on YOUR IDENTITY.\n"
+        "3. **Direct & Conversational**: Answer the user's specific question DIRECTLY and concisely. Do not copy-paste full weeks or give robotic, long-winded lists unless asked.\n"
+        "4. **Intelligent Versatility**: You are a world-class AI. If the user asks an 'out of plan' or general question, answer it intelligently, accurately, and naturally, but still manteniendo your assigned persona.\n"
+        "5. **Tone**: Be warm, smart, and engaging. Avoid robotic formatting. Treat the user like a capable peer.\n"
         "Output ONLY valid JSON format containing your response.\n"
-        "{\n"
+        "{{\n"
         "  \"agent\": \"GlobalMentorAgent\",\n"
-        "  \"response_message\": string (Your conversational Markdown response)\n"
-        "}\n"
+        "  \"response_message\": string (Your conversational Markdown response in character)\n"
+        "}}\n"
     ),
     "NamingAgent": (
         "You are the 'Identity Architect'. Your job is to create a powerful, ultra-concise, and highly memorable title for the user's journey.\n"
@@ -327,6 +332,21 @@ def build_prompt(agent_name: str, inputs: Dict[str, str], context_summaries: Opt
     """
     base = get_template(agent_name)
     
+    # NEW: If context_summaries is a mapping, attempt to interpolate into base
+    if isinstance(context_summaries, Mapping):
+        try:
+            # We use a copy to avoid mutating the original context
+            interp_context = {k: v for k, v in context_summaries.items() if isinstance(v, str)}
+            # Only interpolate if there's actual content to replace to avoid KeyError
+            import re
+            placeholders = re.findall(r"\{(\w+)\}", base)
+            valid_interp = {p: interp_context.get(p, f"[{p} missing]") for p in placeholders}
+            if valid_interp:
+                base = base.format(**valid_interp)
+        except Exception as e:
+            import logging
+            logging.warning(f"Prompt interpolation failed for {agent_name}: {e}")
+
     # Construct input block
     import datetime
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")
