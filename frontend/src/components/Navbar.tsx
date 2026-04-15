@@ -77,7 +77,7 @@ const Navbar = () => {
                     </>
                 ) : (
                     <>
-                        <Link to="/login" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textDecoration: 'none' }}>Log in</Link>
+                        <Link href="/login" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textDecoration: 'none' }}>Log in</Link>
                         <button
                             onClick={() => router.push('/login')}
                             style={{
