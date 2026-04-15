@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, CheckCircle2, Target, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, Loader2, ChevronDown, ChevronUp, MessageSquare, Send } from 'lucide-react';
-import { submitCheckIn, chatWeek, chatGlobal } from '../../api';
+import { submitCheckIn, chatWeek, chatGlobal } from '@/lib/api';
 
 interface DayDetails {
     day_name: string;

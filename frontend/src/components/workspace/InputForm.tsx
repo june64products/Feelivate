@@ -1,20 +1,31 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, Loader2, Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
-import { transcribeAudio } from '@/lib/api';
+import { Mic, Square, Loader2, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
+import { transcribeAudio, generateQuestion, detectContradiction } from '@/lib/api';
 
 interface InputFormProps {
     onSubmit: (text: string) => void;
     isLoading: boolean;
 }
 
-export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
-    type Step = 'focus' | 'history' | 'vision' | 'review' | 'submitting';
-    const [step, setStep] = useState<Step>('focus');
-    
-    const [focus, setFocus] = useState('');
-    const [history, setHistory] = useState('');
-    const [vision, setVision] = useState('');
+const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
+    type Step = 'initial' | 'generating' | 'question' | 'contradiction' | 'submitting';
+    const [step, setStep] = useState<Step>('initial');
+    const [initialGoal, setInitialGoal] = useState('');
+
+    // Sequential Q&A State
+    const [qaHistory, setQaHistory] = useState<{ q: string, a: string }[]>([]);
+    const [currentQuestion, setCurrentQuestion] = useState('');
+    const [currentAnswer, setCurrentAnswer] = useState('');
+    const [questionCount, setQuestionCount] = useState(0);
+    const MAX_QUESTIONS = 1;
+
+    // Quality Check State
+    const [qualityWarning, setQualityWarning] = useState('');
+
+    // Contradiction State
+    const [contradictionQuestion, setContradictionQuestion] = useState('');
+    const [contradictionAnswer, setContradictionAnswer] = useState('');
 
     // Audio State
     const [isRecording, setIsRecording] = useState(false);
@@ -22,6 +33,14 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
     const [audioError, setAudioError] = useState('');
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<BlobPart[]>([]);
+
+    // VAD State (Voice Activity Detection)
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const silenceStartRef = useRef<number | null>(null);
+    const animationFrameRef = useRef<number | null>(null);
+    const SILENCE_THRESHOLD = 50; // Amplitude threshold (0-255)
+    const SILENCE_DURATION = 1500; // 1.5 seconds of silence before auto-stop
 
     const startRecording = async () => {
         try {
@@ -38,6 +57,48 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
 
             mediaRecorderRef.current.start();
             setIsRecording(true);
+
+            // --- VAD Initialization ---
+            const audioCtx = new AudioContext();
+            const source = audioCtx.createMediaStreamSource(stream);
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+
+            audioContextRef.current = audioCtx;
+            analyserRef.current = analyser;
+            silenceStartRef.current = null;
+
+            const checkSpeech = () => {
+                if (!analyserRef.current) return;
+                const bufferLength = analyserRef.current.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyserRef.current.getByteTimeDomainData(dataArray);
+
+                let maxVal = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    const val = Math.abs(dataArray[i] - 128);
+                    if (val > maxVal) maxVal = val;
+                }
+
+                if (maxVal < SILENCE_THRESHOLD) {
+                    if (silenceStartRef.current === null) {
+                        silenceStartRef.current = Date.now();
+                    } else if (Date.now() - silenceStartRef.current > SILENCE_DURATION) {
+                        console.log("VAD: Silence detected. Auto-stopping.");
+                        stopRecording();
+                        return;
+                    }
+                } else {
+                    silenceStartRef.current = null;
+                }
+
+                animationFrameRef.current = requestAnimationFrame(checkSpeech);
+            };
+
+            animationFrameRef.current = requestAnimationFrame(checkSpeech);
+            // ---------------------------
+
         } catch (error) {
             console.error("Failed to access microphone:", error);
             setAudioError('Microphone access denied or unavailable.');
@@ -45,10 +106,23 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
     };
 
     const stopRecording = () => {
+        if (animationFrameRef.current !== null) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+        }
+
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+            analyserRef.current = null;
+        }
+
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.onstop = async () => {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                // Stop all tracks to release microphone
                 mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+
                 await handleTranscription(audioBlob);
             };
             mediaRecorderRef.current.stop();
@@ -61,12 +135,12 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
         try {
             const data = await transcribeAudio(audioBlob);
             if (data.raw_text) {
-                if (step === 'focus') {
-                    setFocus(prev => prev + (prev ? '\n\n' : '') + data.raw_text);
-                } else if (step === 'history') {
-                    setHistory(prev => prev + (prev ? '\n\n' : '') + data.raw_text);
-                } else if (step === 'vision') {
-                    setVision(prev => prev + (prev ? '\n\n' : '') + data.raw_text);
+                if (step === 'initial') {
+                    setInitialGoal(prev => prev + (prev ? '\n\n' : '') + data.raw_text);
+                } else if (step === 'question') {
+                    setCurrentAnswer(prev => prev + (prev ? ' ' : '') + data.raw_text);
+                } else if (step === 'contradiction') {
+                    setContradictionAnswer(prev => prev + (prev ? ' ' : '') + data.raw_text);
                 }
             }
         } catch (err: any) {
@@ -76,159 +150,557 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
         }
     };
 
-    const handleNext = (e: React.FormEvent) => {
+    const buildHistoryString = () => {
+        return qaHistory.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
+    };
+
+    const fetchNextQuestion = async (historyStr: string = '') => {
+        setStep('generating');
+        try {
+            const nextQ = await generateQuestion(initialGoal, historyStr);
+            if (nextQ) {
+                setCurrentQuestion(nextQ);
+                setCurrentAnswer('');
+                setQualityWarning('');
+                setStep('question');
+            } else {
+                finalizeInput();
+            }
+        } catch (error) {
+            console.error("Failed to generate question:", error);
+            finalizeInput();
+        }
+    };
+
+    const handleInitialSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (step === 'focus') setStep('history');
-        else if (step === 'history') setStep('vision');
-        else if (step === 'vision') setStep('review');
+        if (!initialGoal.trim()) return;
+        setQaHistory([]);
+        setQuestionCount(0);
+        await fetchNextQuestion();
     };
 
-    const finalizeInput = () => {
+    const handleAnswerSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Quality Check
+        const wordCount = currentAnswer.trim().split(/\s+/).length;
+        if (wordCount < 5) {
+            setQualityWarning("A little more detail here will make your blueprint much more personal — even one specific example helps a lot.");
+            return;
+        }
+
+        const updatedHistory = [...qaHistory, { q: currentQuestion, a: currentAnswer }];
+        setQaHistory(updatedHistory);
+        const newCount = questionCount + 1;
+        setQuestionCount(newCount);
+
+        if (newCount >= MAX_QUESTIONS) {
+            // Move to contradiction check
+            checkForContradictions(updatedHistory);
+        } else {
+            // Fetch next question
+            const historyStr = updatedHistory.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
+            await fetchNextQuestion(historyStr);
+        }
+    };
+
+    const checkForContradictions = async (history: { q: string, a: string }[]) => {
+        setStep('generating');
+        try {
+            const historyStr = history.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
+            const res = await detectContradiction(initialGoal, historyStr);
+
+            if (res.has_contradiction && res.tension_question) {
+                setContradictionQuestion(res.tension_question);
+                setContradictionAnswer('');
+                setStep('contradiction');
+            } else {
+                finalizeInput(historyStr);
+            }
+        } catch (error) {
+            console.error("Contradiction check failed:", error);
+            const historyStr = history.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
+            finalizeInput(historyStr);
+        }
+    };
+
+    const handleContradictionSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!contradictionAnswer.trim()) return;
+
+        const historyStr = qaHistory.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n')
+            + `\n\nQ: ${contradictionQuestion}\nA: ${contradictionAnswer}`;
+
+        finalizeInput(historyStr);
+    };
+
+    const finalizeInput = (historyStr: string = buildHistoryString()) => {
         setStep('submitting');
-        const combined = `FOCUS_REQUEST: ${focus}\nHISTORY: ${history}\nVISION: ${vision}`;
+        const combined = `Goal: ${initialGoal}\n\n${historyStr}`;
         onSubmit(combined);
-    };
-
-    const getStepTitle = () => {
-        if (step === 'focus') return "Step 1: The Focus";
-        if (step === 'history') return "Step 2: The History";
-        if (step === 'vision') return "Step 3: The Vision";
-        if (step === 'review') return "Final Review";
-        return "";
-    };
-
-    const getStepPrompt = () => {
-        if (step === 'focus') return "What is the specific goal, problem, or pattern you want to orchestrate today?";
-        if (step === 'history') return "What have you tried in the past regarding this, and why do you think it broke down?";
-        if (step === 'vision') return "If we succeed in the next 6 months, what does your ideal reality look like?";
-        return "Review your inputs before we generate the neural blueprint.";
-    };
-
-    const getCurrentValue = () => {
-        if (step === 'focus') return focus;
-        if (step === 'history') return history;
-        if (step === 'vision') return vision;
-        return "";
-    };
-
-    const setCurrentValue = (val: string) => {
-        if (step === 'focus') setFocus(val);
-        if (step === 'history') setHistory(val);
-        if (step === 'vision') setVision(val);
     };
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-4xl mx-auto"
+            className="input-form-container"
+            style={{
+                display: 'grid',
+                gridTemplateColumns: step === 'initial' ? 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))' : '1fr',
+                gap: '32px',
+                maxWidth: step === 'initial' ? '1200px' : '800px',
+                margin: '0 auto',
+                alignItems: 'start'
+            }}
         >
-            <div className="glass-panel p-8 md:p-12 w-full bg-black/40 rounded-3xl border border-white/5">
+            {/* Left Pane: The Form */}
+            <div className="glass-panel" style={{ padding: 'clamp(24px, 5vw, 40px)', display: 'flex', flexDirection: 'column' }}>
                 <AnimatePresence mode="wait">
-                    {step === 'review' || step === 'submitting' ? (
+                    {step === 'initial' && (
                         <motion.div
-                            key="review"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            className="flex flex-col gap-8 w-full"
-                        >
-                            <h2 className="text-2xl font-bold text-white mb-2">Review Your Context</h2>
-                            
-                            <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                                <span className="text-neon-cyan text-xs uppercase tracking-widest font-bold">1. Focus</span>
-                                <p className="text-white mt-3 leading-relaxed whitespace-pre-wrap">{focus}</p>
-                            </div>
-                            
-                            <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                                <span className="text-neon-cyan text-xs uppercase tracking-widest font-bold">2. History</span>
-                                <p className="text-white mt-3 leading-relaxed whitespace-pre-wrap">{history}</p>
-                            </div>
-                            
-                            <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                                <span className="text-neon-cyan text-xs uppercase tracking-widest font-bold">3. Vision</span>
-                                <p className="text-white mt-3 leading-relaxed whitespace-pre-wrap">{vision}</p>
-                            </div>
-
-                            <div className="flex flex-col items-center gap-4 mt-4">
-                                <button
-                                    onClick={finalizeInput}
-                                    disabled={isLoading || step === 'submitting'}
-                                    className="w-full md:w-auto bg-gradient-to-r from-neon-cyan to-vivid-purple text-white px-10 py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isLoading ? <><Loader2 className="animate-spin" size={24} /> Initiating 13 Agents</> : <><Sparkles size={24} /> Generate Strategic Blueprint</>}
-                                </button>
-                                
-                                {step !== 'submitting' && !isLoading && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setStep('focus')}
-                                        className="text-white/50 hover:text-white transition-colors text-sm"
-                                    >
-                                        Edit my answers
-                                    </button>
-                                )}
-                            </div>
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            key={step}
+                            key="initial"
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
-                            className="flex flex-col flex-grow"
+                            style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}
                         >
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-3xl font-bold text-white">
-                                    {getStepTitle()}
-                                </h2>
-                                <span className="text-white/50 text-sm font-bold tracking-widest">
-                                    {step === 'focus' ? '1' : step === 'history' ? '2' : '3'} / 3
-                                </span>
-                            </div>
-                            <p className="text-white/60 mb-8 text-lg">
-                                {getStepPrompt()}
+                            <h2 style={{ fontSize: '1.75rem', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                                Step 1: The Context
+                            </h2>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
+                                Tell us what you want to achieve today. We'll ask you a few targeted questions to understand your situation perfectly.
                             </p>
 
-                            <form onSubmit={handleNext} className="flex flex-col gap-6 flex-grow">
-                                <div className="relative flex-grow min-h-[250px]">
+                            <form onSubmit={handleInitialSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
+                                <div className="input-group" style={{ flexGrow: 1 }}>
                                     <textarea
-                                        value={getCurrentValue()}
-                                        onChange={(e) => setCurrentValue(e.target.value)}
-                                        placeholder="Speak or type your answer..."
-                                        className="w-full h-full bg-black/30 border border-white/10 rounded-2xl p-6 pb-20 text-white text-lg leading-relaxed focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan outline-none transition-all resize-none min-h-[250px]"
+                                        value={initialGoal}
+                                        onChange={(e) => setInitialGoal(e.target.value)}
+                                        placeholder="I want to build a SaaS, but I feel stuck..."
+                                        className="premium-input text-entry"
+                                        style={{
+                                            width: '100%',
+                                            background: 'rgba(0,0,0,0.3)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '12px',
+                                            padding: '24px',
+                                            color: 'var(--text-primary)',
+                                            minHeight: '250px',
+                                            fontSize: '1.1rem',
+                                            lineHeight: '1.6',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        required
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={!initialGoal.trim()}
+                                    className="premium-button"
+                                    style={{
+                                        background: 'var(--accent-primary)',
+                                        color: 'white',
+                                        padding: '16px 32px',
+                                        borderRadius: '12px',
+                                        fontWeight: 600,
+                                        fontSize: '1.1rem',
+                                        marginTop: '16px',
+                                        opacity: !initialGoal.trim() ? 0.5 : 1,
+                                        cursor: !initialGoal.trim() ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '12px'
+                                    }}
+                                >
+                                    Next <ArrowRight size={20} />
+                                </button>
+                            </form>
+                        </motion.div>
+                    )}
+
+                    {step === 'generating' && (
+                        <motion.div
+                            key="generating"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}
+                        >
+                            <Loader2 className="spinner" size={48} color="var(--accent-glow)" style={{ marginBottom: '24px' }} />
+                            <h2 style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}>Formulating Context...</h2>
+                            <p style={{ color: 'var(--text-secondary)' }}>Generating specific questions based on your goal.</p>
+                        </motion.div>
+                    )}
+
+                    {step === 'question' && (
+                        <motion.div
+                            key={`question-${questionCount}`}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <h2 style={{ fontSize: '1.75rem', color: 'var(--text-primary)', margin: 0 }}>
+                                    Step 2: The Deep Dive
+                                </h2>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>
+                                    {questionCount + 1} of {MAX_QUESTIONS}
+                                </span>
+                            </div>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
+                                {currentQuestion}
+                            </p>
+
+                            <form onSubmit={handleAnswerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
+                                <div className="input-group" style={{ flexGrow: 1, position: 'relative' }}>
+                                    <textarea
+                                        value={currentAnswer}
+                                        onChange={(e) => {
+                                            setCurrentAnswer(e.target.value);
+                                            if (qualityWarning) setQualityWarning('');
+                                        }}
+                                        placeholder="Your answer..."
+                                        className="premium-input text-entry"
+                                        style={{
+                                            width: '100%',
+                                            background: 'rgba(0,0,0,0.3)',
+                                            border: qualityWarning ? '1px solid #ff7b7b' : '1px solid var(--border-color)',
+                                            borderRadius: '12px',
+                                            padding: '24px',
+                                            paddingRight: '60px',
+                                            color: 'var(--text-primary)',
+                                            minHeight: '200px',
+                                            fontSize: '1.1rem',
+                                            lineHeight: '1.6',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit',
+                                            transition: 'all 0.3s ease'
+                                        }}
                                         required
                                     />
                                     <button
                                         type="button"
                                         onClick={isRecording ? stopRecording : startRecording}
-                                        className={`absolute bottom-6 right-6 w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                                            isRecording 
-                                                ? 'bg-rose-pink/20 border border-rose-pink text-rose-pink' 
-                                                : 'bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20'
-                                        }`}
+                                        style={{
+                                            position: 'absolute',
+                                            bottom: '16px',
+                                            right: '16px',
+                                            background: isRecording ? 'rgba(255, 75, 75, 0.2)' : 'rgba(130, 202, 255, 0.1)',
+                                            border: isRecording ? '1px solid #ff4b4b' : '1px solid rgba(130, 202, 255, 0.3)',
+                                            color: isRecording ? '#ff4b4b' : '#82caff',
+                                            borderRadius: '50%',
+                                            width: '40px',
+                                            height: '40px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
                                         title={isRecording ? "Stop Recording" : "Speak Answer"}
                                     >
-                                        {isTranscribing ? <Loader2 size={20} className="animate-spin" /> : isRecording ? <Square size={18} fill="currentColor" /> : <Mic size={20} />}
+                                        {isTranscribing ? <Loader2 size={18} className="spinner" /> : isRecording ? <Square size={16} fill="currentColor" /> : <Mic size={18} />}
                                     </button>
+                                    <AnimatePresence>
+                                        {qualityWarning && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                style={{ color: '#ffb86c', marginTop: '12px', fontSize: '0.95rem', display: 'flex', alignItems: 'flex-start', gap: '8px' }}
+                                            >
+                                                <Sparkles size={16} style={{ marginTop: '2px', flexShrink: 0 }} color="#ffb86c" />
+                                                <span>{qualityWarning}</span>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
+
                                 <button
                                     type="submit"
-                                    disabled={!getCurrentValue().trim()}
-                                    className="bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 px-8 py-4 rounded-xl font-bold text-lg mt-4 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neon-cyan hover:text-black transition-all flex items-center justify-center gap-3 self-end"
+                                    disabled={!currentAnswer.trim()}
+                                    className="premium-button"
+                                    style={{
+                                        background: 'var(--accent-primary)',
+                                        color: 'white',
+                                        padding: '16px 32px',
+                                        borderRadius: '12px',
+                                        fontWeight: 600,
+                                        fontSize: '1.1rem',
+                                        marginTop: '16px',
+                                        opacity: !currentAnswer.trim() ? 0.5 : 1,
+                                        cursor: !currentAnswer.trim() ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '12px'
+                                    }}
                                 >
-                                    {step === 'vision' ? 'Review Answers' : 'Next Step'} <ArrowRight size={20} />
+                                    {questionCount === MAX_QUESTIONS - 1 ? 'Analyze Patterns' : 'Next Question'} <ArrowRight size={20} />
+                                </button>
+                            </form>
+                        </motion.div>
+                    )}
+
+                    {step === 'contradiction' && (
+                        <motion.div
+                            key="contradiction"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                <div style={{ background: 'rgba(249, 215, 28, 0.1)', padding: '8px', borderRadius: '50%' }}>
+                                    <AlertCircle size={24} color="#f9d71c" />
+                                </div>
+                                <h2 style={{ fontSize: '1.75rem', color: 'var(--text-primary)', margin: 0 }}>
+                                    Resolving Tension
+                                </h2>
+                            </div>
+
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', borderLeft: '3px solid #f9d71c', marginBottom: '32px' }}>
+                                <p style={{ color: 'var(--text-primary)', fontSize: '1.1rem', lineHeight: 1.6, fontStyle: 'italic' }}>
+                                    "{contradictionQuestion}"
+                                </p>
+                            </div>
+
+                            <form onSubmit={handleContradictionSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flexGrow: 1 }}>
+                                <div className="input-group" style={{ flexGrow: 1, position: 'relative' }}>
+                                    <textarea
+                                        value={contradictionAnswer}
+                                        onChange={(e) => setContradictionAnswer(e.target.value)}
+                                        placeholder="Clarify your thoughts here..."
+                                        className="premium-input text-entry"
+                                        style={{
+                                            width: '100%',
+                                            background: 'rgba(0,0,0,0.3)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '12px',
+                                            padding: '24px',
+                                            paddingRight: '60px',
+                                            color: 'var(--text-primary)',
+                                            minHeight: '150px',
+                                            fontSize: '1.1rem',
+                                            lineHeight: '1.6',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={isRecording ? stopRecording : startRecording}
+                                        style={{
+                                            position: 'absolute',
+                                            bottom: '16px',
+                                            right: '16px',
+                                            background: isRecording ? 'rgba(255, 75, 75, 0.2)' : 'rgba(130, 202, 255, 0.1)',
+                                            border: isRecording ? '1px solid #ff4b4b' : '1px solid rgba(130, 202, 255, 0.3)',
+                                            color: isRecording ? '#ff4b4b' : '#82caff',
+                                            borderRadius: '50%',
+                                            width: '40px',
+                                            height: '40px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        title={isRecording ? "Stop Recording" : "Speak Answer"}
+                                    >
+                                        {isTranscribing ? <Loader2 size={18} className="spinner" /> : isRecording ? <Square size={16} fill="currentColor" /> : <Mic size={18} />}
+                                    </button>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={!contradictionAnswer.trim() || isLoading}
+                                    className="premium-button"
+                                    style={{
+                                        background: 'var(--accent-primary)',
+                                        color: 'white',
+                                        padding: '16px 32px',
+                                        borderRadius: '12px',
+                                        fontWeight: 600,
+                                        fontSize: '1.1rem',
+                                        marginTop: '16px',
+                                        opacity: (!contradictionAnswer.trim() || isLoading) ? 0.5 : 1,
+                                        cursor: (!contradictionAnswer.trim() || isLoading) ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '12px'
+                                    }}
+                                >
+                                    {isLoading ? <><Loader2 className="spinner" size={20} /> Encrypting Context...</> : '🚀 Analyze Behavioral Patterns'}
                                 </button>
                             </form>
                         </motion.div>
                     )}
                 </AnimatePresence>
             </div>
-            {audioError && (
-                <div className="mt-4 bg-rose-pink/10 border border-rose-pink text-rose-pink p-4 rounded-xl flex items-center gap-3">
-                    <AlertCircle size={20} /> {audioError}
+
+            {/* Right Pane: Audio Recorder & Smart Fill (Only for Step 1) */}
+            {step === 'initial' && (
+                <div className="glass-panel audio-pane" style={{
+                    padding: 'clamp(24px, 5vw, 40px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    minHeight: '100%',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.2) 100%)',
+                    border: isRecording ? '1px solid var(--accent-glow)' : '1px solid var(--border-color)',
+                    boxShadow: isRecording ? '0 0 30px rgba(130, 202, 255, 0.2)' : 'none',
+                    transition: 'all 0.4s ease'
+                }}>
+                    <div style={{
+                        background: 'rgba(130, 202, 255, 0.1)',
+                        width: '64px',
+                        height: '64px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '24px'
+                    }}>
+                        <Mic size={32} color="var(--accent-glow)" />
+                    </div>
+
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '16px', color: 'var(--text-primary)' }}>Voice Context Upload</h3>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', maxWidth: '300px', lineHeight: 1.6 }}>
+                        Speak naturally about your problem, your past attempts, and your dreams. Our AI will automatically structure it into the required fields.
+                    </p>
+
+                    <AnimatePresence mode="wait">
+                        {isTranscribing ? (
+                            <motion.div
+                                key="transcribing"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', color: 'var(--accent-glow)' }}
+                            >
+                                <Loader2 size={40} className="spinner" />
+                                <span style={{ fontWeight: 600, letterSpacing: '0.05em' }}>TRANSCRIBING & STRUCTURING...</span>
+                            </motion.div>
+                        ) : isRecording ? (
+                            <motion.button
+                                key="stop"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                onClick={stopRecording}
+                                className="recording-pulse"
+                                style={{
+                                    background: 'rgba(255, 75, 75, 0.1)',
+                                    border: '1px solid #ff4b4b',
+                                    color: '#ff4b4b',
+                                    padding: '16px 32px',
+                                    borderRadius: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    fontSize: '1.1rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <Square size={20} fill="currentColor" /> Stop Recording
+                            </motion.button>
+                        ) : (
+                            <motion.button
+                                key="start"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                onClick={startRecording}
+                                style={{
+                                    background: 'var(--text-primary)',
+                                    color: 'var(--bg-primary)',
+                                    border: 'none',
+                                    padding: '16px 32px',
+                                    borderRadius: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    fontSize: '1.1rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 14px rgba(255, 255, 255, 0.15)'
+                                }}
+                            >
+                                <Sparkles size={20} /> Start Smart-Fill
+                            </motion.button>
+                        )}
+                    </AnimatePresence>
+
+                    {audioError && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            style={{
+                                marginTop: '24px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                color: '#ff7b7b',
+                                background: 'rgba(255, 123, 123, 0.1)',
+                                padding: '12px 16px',
+                                borderRadius: '8px',
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            <AlertCircle size={16} />
+                            {audioError}
+                        </motion.div>
+                    )}
                 </div>
             )}
+
+            <style>{`
+                .premium-input:focus {
+                    outline: none;
+                    border-color: var(--accent-glow) !important;
+                    box-shadow: 0 0 15px rgba(130, 202, 255, 0.1);
+                }
+                .premium-button:hover:not(:disabled) {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 20px rgba(100, 100, 255, 0.4);
+                }
+                .spinner {
+                    animation: spin 1s linear infinite;
+                }
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                .recording-pulse {
+                    animation: pulse 2s infinite;
+                }
+                @keyframes pulse {
+                    0% { box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.4); }
+                    70% { box-shadow: 0 0 0 15px rgba(255, 75, 75, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(255, 75, 75, 0); }
+                }
+            `}</style>
         </motion.div>
     );
-}
+};
+
+export default InputForm;
