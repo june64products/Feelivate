@@ -1,106 +1,219 @@
-"use client";
+import { useState, useEffect } from 'react';
+import { PlusCircle, History, Calendar, ChevronRight, Brain } from 'lucide-react';
+import { getUserSessions } from '../../api';
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, History, ChevronRight, Loader2, BrainCircuit } from 'lucide-react';
-import { getUserSessions } from '@/lib/api';
+interface Session {
+    id: string;
+    created_at: string;
+    focus_preview: string;
+    has_result: boolean;
+}
 
 interface SessionSidebarProps {
     userId: string;
     activeSessionId: string | null;
-    onSelectSession: (id: string) => void;
+    onSelectSession: (sessionId: string) => void;
     onNewJourney: () => void;
 }
 
-export default function SessionSidebar({ userId, activeSessionId, onSelectSession, onNewJourney }: SessionSidebarProps) {
-    const [sessions, setSessions] = useState<any[]>([]);
+const SessionSidebar = ({ userId, activeSessionId, onSelectSession, onNewJourney }: SessionSidebarProps) => {
+    const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchSessions = async () => {
+        const loadSessions = async () => {
             try {
                 const data = await getUserSessions(userId);
-                setSessions(data.sessions || []);
-            } catch (err) {
-                console.error("Failed to load sessions", err);
+                setSessions(data);
+            } catch (error) {
+                console.error("Failed to load sessions:", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchSessions();
+
+        if (userId) {
+            loadSessions();
+        }
     }, [userId]);
 
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    };
+
     return (
-        <aside className="fixed left-6 top-[108px] bottom-10 w-[320px] bg-deep-cosmic/40 backdrop-blur-3xl border border-white/5 rounded-[3rem] z-40 hidden md:flex flex-col shadow-2xl overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
-            <div className="p-8 relative z-10">
+        <div style={{
+            width: '280px',
+            height: 'calc(100vh - var(--nav-height))',
+            background: 'rgba(10, 10, 10, 0.4)',
+            backdropFilter: 'blur(20px)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'fixed',
+            left: 0,
+            top: 'var(--nav-height)',
+            zIndex: 40,
+            transition: 'transform 0.3s ease',
+        }}>
+            <div style={{ padding: '24px' }}>
                 <button
                     onClick={onNewJourney}
-                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white text-deep-cosmic font-black text-[10px] uppercase tracking-[0.2em] hover:bg-neon-cyan transition-all active:scale-[0.98] shadow-lg shadow-white/5"
+                    style={{
+                        width: '100%',
+                        background: 'var(--text-primary)',
+                        color: 'var(--bg-primary)',
+                        padding: '12px',
+                        borderRadius: '12px',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(255, 255, 255, 0.1)',
+                        transition: 'transform 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                    <Plus className="w-4 h-4" />
-                    Initialize Evolution
+                    <PlusCircle size={18} />
+                    New Journey
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 pb-8 custom-scrollbar relative z-10">
-                <div className="flex items-center gap-2 px-2 mb-6 mt-4">
-                    <History className="w-3.5 h-3.5 text-white/20" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Temporal Logs</span>
+            <div style={{ 
+                flex: 1, 
+                overflowY: 'auto', 
+                padding: '0 12px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px'
+            }}>
+                <div style={{ 
+                    padding: '0 12px 12px', 
+                    fontSize: '0.75rem', 
+                    fontWeight: 600, 
+                    color: 'var(--text-secondary)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    <History size={14} />
+                    Past Journeys
                 </div>
 
                 {loading ? (
-                    <div className="flex justify-center p-8">
-                        <Loader2 className="w-5 h-5 animate-spin text-neon-cyan opacity-20" />
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        <div className="spinner" style={{ width: '20px', height: '20px', margin: '0 auto 10px' }} />
+                        Loading...
+                    </div>
+                ) : sessions.length === 0 ? (
+                    <div style={{ 
+                        padding: '24px', 
+                        textAlign: 'center', 
+                        color: 'var(--text-secondary)',
+                        background: 'rgba(255,255,255,0.02)',
+                        borderRadius: '12px',
+                        margin: '0 12px',
+                        fontSize: '0.9rem'
+                    }}>
+                        No past journeys found. Start your first one!
                     </div>
                 ) : (
-                    <div className="space-y-2">
-                        {sessions.map((session) => (
-                            <motion.button
-                                key={session.id}
-                                whileHover={{ x: 4 }}
-                                onClick={() => onSelectSession(session.id)}
-                                className={`w-full text-left p-4 rounded-2xl border transition-all group relative overflow-hidden ${
-                                    activeSessionId === session.id
-                                        ? 'bg-white/10 border-white/10 ring-1 ring-neon-cyan/20'
-                                        : 'bg-transparent border-transparent hover:bg-white/5'
-                                }`}
-                            >
-                                <div className="flex flex-col gap-1 relative z-10">
-                                    <div className={`text-[10px] font-black uppercase tracking-wider mb-1 ${
-                                        activeSessionId === session.id ? 'text-neon-cyan' : 'text-white/60'
-                                    }`}>
-                                        {new Date(session.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                    </div>
-                                    <div className="text-xs text-white/40 group-hover:text-white transition-colors line-clamp-2 font-space-mono lowercase leading-relaxed">
-                                        {session.context || "No description loaded."}
-                                    </div>
+                    sessions.map((session) => (
+                        <div
+                            key={session.id}
+                            onClick={() => onSelectSession(session.id)}
+                            style={{
+                                padding: '12px',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                background: activeSessionId === session.id ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                                border: '1px solid',
+                                borderColor: activeSessionId === session.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                                transition: 'all 0.2s',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                            onMouseEnter={(e) => {
+                                if (activeSessionId !== session.id) {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (activeSessionId !== session.id) {
+                                    e.currentTarget.style.background = 'transparent';
+                                }
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                                <div style={{ 
+                                    fontSize: '0.85rem', 
+                                    fontWeight: 600, 
+                                    color: activeSessionId === session.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    maxWidth: '80%'
+                                }}>
+                                    {session.focus_preview}
                                 </div>
-                                <ChevronRight className={`absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all ${
-                                    activeSessionId === session.id ? 'text-neon-cyan opacity-100' : 'text-white/10 opacity-0 group-hover:opacity-40'
-                                }`} />
-                                
-                                {activeSessionId === session.id && (
-                                    <motion.div 
-                                        layoutId="active-pill"
-                                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-neon-cyan rounded-r-full shadow-[0_0_20px_rgba(34,211,238,0.5)]"
-                                    />
+                                <ChevronRight 
+                                    size={14} 
+                                    style={{ 
+                                        opacity: activeSessionId === session.id ? 1 : 0,
+                                        transition: 'opacity 0.2s',
+                                        color: 'var(--text-accent)'
+                                    }} 
+                                />
+                            </div>
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '12px',
+                                fontSize: '0.7rem', 
+                                color: 'rgba(255,255,255,0.4)' 
+                            }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Calendar size={10} />
+                                    {formatDate(session.created_at)}
+                                </span>
+                                {session.has_result && (
+                                    <span style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '4px',
+                                        color: 'rgba(130, 202, 255, 0.6)'
+                                    }}>
+                                        <Brain size={10} />
+                                        Analyzed
+                                    </span>
                                 )}
-                            </motion.button>
-                        ))}
-                    </div>
+                            </div>
+                        </div>
+                    ))
                 )}
             </div>
-
-            <div className="p-6 border-t border-white/5">
-                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/5">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-neon-cyan to-vivid-purple" />
-                    <div>
-                        <div className="text-[10px] font-black text-white/60 uppercase">NEURAL_ID</div>
-                        <div className="text-[9px] text-neon-cyan font-bold truncate max-w-[140px] lowercase">{userId.substring(0, 16)}...</div>
-                    </div>
-                </div>
-            </div>
-        </aside>
+            
+            <style>{`
+                .spinner {
+                    border: 2px solid rgba(255, 255, 255, 0.1);
+                    border-top: 2px solid var(--text-accent);
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                }
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `}</style>
+        </div>
     );
-}
+};
+
+export default SessionSidebar;

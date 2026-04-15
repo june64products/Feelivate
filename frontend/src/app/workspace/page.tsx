@@ -2,31 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Navbar } from '@/components/Navbar';
-import SessionSidebar from '@/components/workspace/SessionSidebar';
 import InputForm from '@/components/workspace/InputForm';
 import ResultsDashboard from '@/components/workspace/ResultsDashboard';
+import SessionSidebar from '@/components/workspace/SessionSidebar';
 import { submitIngestStream, getSessionDetail } from '@/lib/api';
-import { Loader2, Sparkles, BrainCircuit } from 'lucide-react';
 
-export default function Workspace() {
+const WorkspacePage = () => {
     const router = useRouter();
     const [userId, setUserId] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [sidebarKey, setSidebarKey] = useState(0);
-    const [result, setResult] = useState<any>(null);
-    const [pollStatus, setPollStatus] = useState('');
-
+    
     useEffect(() => {
-        const storedUserId = localStorage.getItem('user_id');
-        if (!storedUserId) {
+        const stored = localStorage.getItem('user_id');
+        if (!stored) {
             router.push('/login');
         } else {
-            setUserId(storedUserId);
+            setUserId(stored);
         }
     }, [router]);
+
+    const [result, setResult] = useState<any>(null);
+    const [pollStatus, setPollStatus] = useState('');
 
     const handleSelectSession = async (sessionId: string) => {
         try {
@@ -34,11 +32,16 @@ export default function Workspace() {
             setActiveSessionId(sessionId);
             const data = await getSessionDetail(sessionId);
             
-            if (data.session?.result) {
+            // NextJS route backend or API format check
+            // backend usually returns { result: { ... }, id: "..." } or { session: { result: ... } }
+            // Let's handle both:
+            const sessionData = data.session || data; 
+            
+            if (sessionData.result) {
                 setResult({
                     user_id: userId,
-                    session_id: data.session.id,
-                    ...data.session.result
+                    session_id: sessionData.id,
+                    ...sessionData.result
                 });
             } else {
                 setResult(null);
@@ -62,15 +65,14 @@ export default function Workspace() {
         try {
             setProcessing(true);
             setResult(null);
-            setPollStatus("🔍 INITIALIZING AGENTS...");
+            setPollStatus("🔍 Initializing AI Agents...");
 
             await submitIngestStream({
                 user_id: userId || 'anonymous',
                 text
             }, (chunk) => {
                 if (chunk.type === 'structured') {
-                    const focusText = chunk.focus || "UNDEFINED PATTERN";
-                    setPollStatus(`🧠 PATTERN DETECTED: ${focusText.substring(0, 30).toUpperCase()}...`);
+                    setPollStatus(`🧠 Pattern detected: ${chunk.focus.substring(0, 30)}...`);
                 } else if (chunk.type === 'initial') {
                     setResult({
                         user_id: userId,
@@ -85,11 +87,12 @@ export default function Workspace() {
                     });
                     setProcessing(false); 
                     setActiveSessionId(chunk.session_id);
-                    setSidebarKey(prev => prev + 1);
+                    setSidebarKey(prev => prev + 1); // Refresh sidebar list
                 } else if (chunk.type === 'month') {
                     setResult((prev: any) => {
                         if (!prev) return prev;
                         const roadmap = prev.integration.roadmap || [];
+                        // Prevent duplicates if stream reconnects
                         if (roadmap.some((m: any) => m.phase === chunk.month.phase)) return prev;
                         
                         return {
@@ -113,107 +116,180 @@ export default function Workspace() {
         }
     };
 
-    if (!userId) {
-        return (
-            <div className="min-h-screen bg-deep-cosmic flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-neon-cyan" />
-            </div>
-        );
-    }
+    if (!userId) return null; // wait for redirect
 
     return (
-        <main className="relative min-h-screen bg-deep-cosmic overflow-x-hidden selection:bg-rose-pink selection:text-white">
-            <div className="aurora-bg" />
-            <div className="noise-overlay" />
-            <Navbar />
+        <div style={{
+            minHeight: '100vh',
+            background: 'var(--bg-primary)',
+            display: 'flex',
+            flexDirection: 'column'
+        }}>
+            {/* Ambient Background Glow */}
+            <div style={{
+                position: 'fixed',
+                top: '-10%',
+                right: '-10%',
+                width: '50vw',
+                height: '50vw',
+                background: 'radial-gradient(circle, rgba(130, 202, 255, 0.05) 0%, transparent 70%)',
+                zIndex: 0,
+                pointerEvents: 'none'
+            }} />
 
-            <div className="flex pt-[88px] min-h-screen relative z-10">
-                <SessionSidebar 
-                    key={sidebarKey}
-                    userId={userId} 
-                    activeSessionId={activeSessionId}
-                    onSelectSession={handleSelectSession}
-                    onNewJourney={handleNewJourney}
-                />
-
-                <div className="flex-1 px-6 py-12 md:px-12 md:pl-[380px] transition-all duration-700">
-                    <div className="max-w-6xl mx-auto w-full">
-                        <AnimatePresence mode="wait">
-                            {!processing && !result && (
-                                <motion.div
-                                    key="welcome"
-                                    initial={{ opacity: 0, y: 30 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    className="flex flex-col items-center justify-center min-h-[60vh] text-center"
-                                >
-                                    <div className="inline-flex items-center gap-3 mb-8 px-4 py-2 rounded-full bg-white/5 border border-white/5">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
-                                        <span className="text-[9px] uppercase font-black tracking-[0.4em] text-neon-cyan">
-                                            Behavioral Engine v2.0
-                                        </span>
-                                    </div>
-                                    <h1 className="font-syncopate text-4xl md:text-6xl font-black text-white mb-6 leading-tight max-w-4xl">
-                                        UNTANGLE YOUR <span className="text-neon-cyan">REALITY</span>
-                                    </h1>
-                                    <p className="font-space-mono text-white/40 max-w-xl mb-12 text-sm leading-relaxed">
-                                        Translate your unstructured thoughts and recurring patterns into a strategic emotional roadmap.
-                                    </p>
-                                    <InputForm onSubmit={handleIngest} isLoading={processing} />
-                                </motion.div>
-                            )}
-
-                            {processing && !result && (
-                                <motion.div
-                                    key="processing"
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="flex flex-col items-center justify-center min-h-[60vh] text-center bg-glass border border-white/5 backdrop-blur-3xl rounded-[3rem] p-16 max-w-2xl mx-auto"
-                                >
-                                    <div className="relative w-24 h-24 mb-12">
-                                        <div className="absolute inset-0 rounded-full border-2 border-neon-cyan/10 animate-ping" />
-                                        <div className="absolute inset-2 rounded-full border-2 border-vivid-purple/20 animate-ping [animation-delay:0.5s]" />
-                                        <div className="absolute inset-4 rounded-full border-2 border-white/10 flex items-center justify-center">
-                                            <BrainCircuit className="w-8 h-8 text-neon-cyan animate-pulse" />
-                                        </div>
-                                    </div>
-                                    <h3 className="font-syncopate text-2xl font-bold mb-4 text-white uppercase tracking-tighter">
-                                        Orchestrating 13 Agents
-                                    </h3>
-                                    <div className="h-6 overflow-hidden">
-                                        <AnimatePresence mode="wait">
-                                            <motion.p
-                                                key={pollStatus}
-                                                initial={{ y: 20, opacity: 0 }}
-                                                animate={{ y: 0, opacity: 1 }}
-                                                exit={{ y: -20, opacity: 0 }}
-                                                className="text-neon-cyan font-black text-[10px] tracking-[0.4em] font-space-mono uppercase"
-                                            >
-                                                {pollStatus || "Initializing sequence..."}
-                                            </motion.p>
-                                        </AnimatePresence>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {result && (
-                                <motion.div
-                                    key="results"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                >
-                                    <ResultsDashboard
-                                        data={result}
-                                        userId={userId}
-                                        sessionId={activeSessionId || ''}
-                                        resetIntegration={handleNewJourney}
-                                    />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+            {/* Workspace Navbar */}
+            <nav style={{
+                position: 'fixed',
+                top: 0, left: 0, right: 0,
+                height: 'var(--nav-height)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 40px',
+                background: 'rgba(10, 10, 10, 0.7)',
+                backdropFilter: 'blur(16px)',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                zIndex: 100
+            }}>
+                <div
+                    onClick={() => router.push('/')}
+                    style={{
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        background: 'rgba(255,255,255,0.05)',
+                        transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                >
+                    <span style={{ color: 'var(--text-secondary)' }}>←</span> Leave Workspace
                 </div>
+                
+                <button
+                    onClick={() => {
+                        localStorage.removeItem('user_id');
+                        router.push('/');
+                    }}
+                    style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'var(--text-secondary)',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem'
+                    }}
+                >
+                    Log Out
+                </button>
+            </nav>
+
+            <div style={{ display: 'flex', flex: 1, marginTop: 'var(--nav-height)' }}>
+                {/* Sidebar */}
+                {userId && (
+                    <SessionSidebar 
+                        key={sidebarKey}
+                        userId={userId} 
+                        activeSessionId={activeSessionId}
+                        onSelectSession={handleSelectSession}
+                        onNewJourney={handleNewJourney}
+                    />
+                )}
+
+                {/* Main Content Area */}
+                <main style={{ 
+                    flex: 1, 
+                    marginLeft: userId ? '280px' : 0, 
+                    padding: '40px 24px 80px',
+                    position: 'relative',
+                    zIndex: 1 
+                }}>
+                    <div style={{ maxWidth: result ? '100%' : '1000px', margin: '0 auto' }}>
+                        {!processing && !result && (
+                            <div style={{ animation: 'fadeIn 0.5s ease' }}>
+                                <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+                                    <h1 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', marginBottom: '16px', fontWeight: 700 }} className="text-gradient">
+                                        Behavioral Architecture Engine v2.0
+                                    </h1>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>
+                                        Transform unstructured thoughts into a high-fidelity emotional blueprint.
+                                    </p>
+                                </div>
+                                <InputForm onSubmit={handleIngest} isLoading={processing} />
+                            </div>
+                        )}
+
+                        {processing && !result && (
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '100px auto',
+                                maxWidth: '600px',
+                                background: 'rgba(0,0,0,0.3)',
+                                padding: '60px 40px',
+                                borderRadius: '24px',
+                                border: '1px solid var(--border-color)',
+                                boxShadow: '0 0 40px rgba(130, 202, 255, 0.05)'
+                            }}>
+                                <div className="spinner" style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    borderRadius: '50%',
+                                    border: '3px solid rgba(130, 202, 255, 0.1)',
+                                    borderTopColor: 'var(--accent-glow)',
+                                    marginBottom: '32px'
+                                }} />
+                                <h3 style={{ fontSize: '1.5rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    The Agents are orchestrating...
+                                </h3>
+                                <p style={{
+                                    color: 'var(--text-accent)',
+                                    fontSize: '1.1rem',
+                                    height: '24px',
+                                    transition: 'opacity 0.3s'
+                                }}>
+                                    {pollStatus || "Initializing agents..."}
+                                </p>
+                            </div>
+                        )}
+
+                        {result && (
+                            <div style={{ animation: 'fadeIn 0.5s ease' }}>
+                                <ResultsDashboard
+                                    data={result}
+                                    userId={result.user_id}
+                                    sessionId={result.session_id}
+                                    resetIntegration={handleNewJourney}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </main>
             </div>
-        </main>
+
+            <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .spinner {
+                    animation: spin 1s linear infinite;
+                }
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+            `}</style>
+        </div>
     );
-}
+};
+
+export default WorkspacePage;

@@ -1,19 +1,12 @@
 import type { Metadata } from "next";
-import { Syncopate, Space_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import { SmoothScroll } from "@/components/SmoothScroll";
 import { cn } from "@/lib/utils";
 
-const syncopate = Syncopate({
-  variable: "--font-syncopate",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "700"],
-});
-
-const spaceMono = Space_Mono({
-  variable: "--font-space-mono",
-  subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -27,15 +20,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark h-full">
-      <body
-        className={cn(
-          syncopate.variable,
-          spaceMono.variable,
-          "antialiased bg-deep-indigo text-white font-space-mono min-h-full selection:bg-neon-cyan selection:text-deep-indigo"
-        )}
-      >
-        <SmoothScroll>{children}</SmoothScroll>
+    <html lang="en">
+      <body className={inter.variable}>
+        {children}
       </body>
     </html>
   );

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square, Loader2, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
-import { transcribeAudio, generateQuestion, detectContradiction } from '@/lib/api';
+import { transcribeAudio, generateQuestion, detectContradiction } from '../../api';
 
 interface InputFormProps {
     onSubmit: (text: string) => void;
@@ -18,7 +18,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
     const [currentQuestion, setCurrentQuestion] = useState('');
     const [currentAnswer, setCurrentAnswer] = useState('');
     const [questionCount, setQuestionCount] = useState(0);
-    const MAX_QUESTIONS = 1;
+    const MAX_QUESTIONS = 3;
 
     // Quality Check State
     const [qualityWarning, setQualityWarning] = useState('');

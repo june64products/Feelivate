@@ -1,78 +1,116 @@
-@import "tailwindcss";
-
-@theme {
-  --color-neon-cyan: #22D3EE;
-  --color-vivid-purple: #8B5CF6;
-  --color-rose-pink: #F472B6;
-  --color-deep-cosmic: #020617;
-  --color-glass: rgba(15, 23, 42, 0.4);
-  
-  --font-syncopate: "Syncopate", sans-serif;
-  --font-space-mono: "Space Mono", monospace;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --background: #020617;
-  --foreground: #FFFFFF;
-  --bg-primary: transparent;
-  --text-primary: #FFFFFF;
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-accent: #82caff;
-  --accent-glow: linear-gradient(135deg, #82caff, #2196f3);
+  /* Maze Color Palette */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #121212;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --text-accent: #3b82f6;
+  /* Adjust as per actual Maze accent */
+
+  --accent-primary: #5b21b6;
+  /* Deep Purple */
+  --accent-secondary: #7e22ce;
+  --accent-glow: rgba(126, 34, 206, 0.4);
+
   --border-color: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+
+  --nav-height: 80px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-space-mono);
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Aurora Mesh Background */
-.aurora-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-color: #020617;
-  background-image: 
-    radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(244, 114, 182, 0.05) 0%, transparent 50%);
-  filter: blur(80px);
-  animation: aurora 20s ease-in-out infinite alternate;
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-@keyframes aurora {
-  0% { transform: scale(1) translate(0, 0); }
-  50% { transform: scale(1.1) translate(5%, 5%); }
-  100% { transform: scale(1) translate(0, 0); }
+ul {
+  list-style: none;
 }
 
-/* Noise/Grain Overlay */
-.noise-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  pointer-events: none;
-  opacity: 0.05;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+button {
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  background: none;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
 }
 
-::-webkit-scrollbar-track {
-  background: #020617;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #1E293B;
-  border-radius: 3px;
+/* Gradients */
+.text-gradient {
+  background: linear-gradient(135deg, #ffffff 0%, #9ca3af 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #22D3EE;
+.bg-gradient-accent {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+  :root {
+    --nav-height: 60px;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .flex-col-mobile {
+    flex-direction: column !important;
+  }
+
+  .stack-on-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
 }
