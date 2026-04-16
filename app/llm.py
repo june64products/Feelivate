@@ -150,14 +150,27 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
         
         # If using the specialized openai OSS reasoning model on Groq
         if "gpt-oss-120b" in model:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=1,
-                max_completion_tokens=max_tokens,
-                top_p=1,
-                reasoning_effort="medium"
-            )
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=1,
+                    max_completion_tokens=max_tokens,
+                    top_p=1,
+                    reasoning_effort="medium"
+                )
+            except Exception as api_err:
+                if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
+                    fallback_model = "llama-3.3-70b-versatile"
+                    logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
+                    resp = client.chat.completions.create(
+                        model=fallback_model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                    )
+                else:
+                    raise api_err
         else:
             try:
                 resp = client.chat.completions.create(
@@ -168,7 +181,7 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
                 )
             except Exception as api_err:
                 if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
-                    fallback_model = "llama-3.1-8b-instant"
+                    fallback_model = "llama-3.3-70b-versatile"
                     logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
                     resp = client.chat.completions.create(
                         model=fallback_model,
