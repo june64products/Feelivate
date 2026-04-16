@@ -366,9 +366,9 @@ async def generate_global_chat(req: GlobalChatRequest):
         effective_roadmap = req.full_roadmap if req.full_roadmap else roadmap_from_db
         
         context = {
-            "Relevant Roadmap Sections (RAG)": "\n".join(retrieved_roadmap) if (needs_context and retrieved_roadmap) else json.dumps(effective_roadmap),
-            "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-8:]]),
-            "Long-term Context": "\n".join(retrieved_memories) if (needs_context and retrieved_memories) else "No specific past context found."
+            "STRATEGIC_BLUEPRINT_DATA": "\n".join(retrieved_roadmap) if (needs_context and retrieved_roadmap) else json.dumps(effective_roadmap),
+            "CONVERSATION_HISTORY": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-8:]]),
+            "PAST_CONTEXT_MEMORIES": "\n".join(retrieved_memories) if (needs_context and retrieved_memories) else "No specific past context found."
         }
         inputs = {"focus": req.message}
         prompt_text = build_prompt("GlobalMentorAgent", inputs, context)
