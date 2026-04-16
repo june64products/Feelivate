@@ -72,10 +72,17 @@ def _configure_gemini():
 
 
 def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
-    # If model_override starts with 'gemini', force use of Gemini provider
-    if model_override and ("gemini" in model_override.lower()):
-        return _call_gemini(prompt, system, temperature, max_tokens, model_override)
-        
+    # If model_override is provided, use it to force the correct provider
+    if model_override:
+        model_lower = model_override.lower()
+        if "gemini" in model_lower:
+            return _call_gemini(prompt, system, temperature, max_tokens, model_override)
+        elif "llama" in model_lower or "mixtral" in model_lower or "gemma" in model_lower or "oss" in model_lower:
+            return _call_groq(prompt, system, temperature, max_tokens, model_override)
+        elif "gpt" in model_lower and "oss" not in model_lower:
+            return _call_openai(prompt, system, temperature, max_tokens, model_override)
+            
+    # Fallback to default provider
     provider = _get_llm_provider()
     
     if provider == "groq":
