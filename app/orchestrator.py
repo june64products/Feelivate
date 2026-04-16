@@ -89,17 +89,18 @@ async def orchestrate(
         inputs = {"focus": focus, "history": history, "vision": vision}
         memory_context = {"past_patterns": retrieved_memories if retrieved_memories else ["No past data available yet."]}
 
-        # 2. Parallel Core Agents (using gpt-oss-120b for deep reasoning)
-        past_task = _call_agent("PastPatternAgent", inputs, memory_context, model_override="openai/gpt-oss-120b")
-        present_task = _call_agent("PresentConstraintAgent", inputs, memory_context, model_override="openai/gpt-oss-120b")
-        future_task = _call_agent("FutureSimulatorAgent", inputs, memory_context, model_override="openai/gpt-oss-120b")
-
-        past, present, future = await asyncio.gather(past_task, present_task, future_task)
+        # 2. Sequential Core Agents (using gpt-oss-120b for deep reasoning)
+        # Bypassing the concurrency/rate limit issue by sending one combined request
+        core_analysis = await _call_agent("CoreAnalysisAgent", inputs, memory_context, model_override="openai/gpt-oss-120b")
+        
+        past = core_analysis.get("past", {"error": "Failed to parse past"})
+        present = core_analysis.get("present", {"error": "Failed to parse present"})
+        future = core_analysis.get("future", {"error": "Failed to parse future"})
 
         # 3. Integration Step 1: Strategy & Month 1
         integration_context = {
             "past_pattern": past.get("pattern_detected", "None"),
-            "present_constraint": present.get("primary_constraint", "None"),
+            "present_constraint": present.get("primary_constraint", present.get("primary_blocker", "None")),
             "future_risk": future.get("failure_simulation", "None"),
             "energy_level": present.get("energy_level", "Unknown")
         }
