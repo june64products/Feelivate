@@ -189,7 +189,7 @@ export interface GlobalChatRequest {
     user_id: string;
     session_id: string;
     message: string;
-    full_roadmap: any;
+    full_roadmap?: any;
     chat_history: { role: string; content: string }[];
 }
 

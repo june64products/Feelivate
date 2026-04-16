@@ -97,7 +97,7 @@ class GlobalChatRequest(BaseModel):
     user_id: str
     session_id: str
     message: str
-    full_roadmap: Any
+    full_roadmap: Optional[Any] = None
     chat_history: List[Dict[str, str]]
 
 class TaskUpdate(BaseModel):
@@ -350,18 +350,25 @@ async def generate_global_chat(req: GlobalChatRequest):
             except Exception as re:
                 logger.warning(f"Global memory retrieval failed: {re}")
 
-        # Ensure session exists in SQL
-        with SessionLocal() as db_check:
-            s = db_check.query(Session).filter(Session.id == req.session_id).first()
-            if not s:
+        # 3. Ensure session exists and fetch roadmap if needed
+        roadmap_from_db = None
+        with SessionLocal() as db_query:
+            s = db_query.query(Session).filter(Session.id == req.session_id).first()
+            if s:
+                roadmap_from_db = s.result_json
+            else:
                 s = Session(id=req.session_id, user_id=req.user_id)
-                db_check.add(s)
-                db_check.commit()
+                db_query.add(s)
+                db_query.commit()
 
+        # 4. Construct context for the AI
+        # Prefer provided roadmap, fallback to database
+        effective_roadmap = req.full_roadmap if req.full_roadmap else roadmap_from_db
+        
         context = {
-            "Relevant Roadmap Sections (RAG)": "\n".join(retrieved_roadmap) if retrieved_roadmap else json.dumps(req.full_roadmap),
-            "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-5:]]),
-            "Long-term Context": "\n".join(retrieved_memories) if retrieved_memories else "No specific past context found."
+            "Relevant Roadmap Sections (RAG)": "\n".join(retrieved_roadmap) if (needs_context and retrieved_roadmap) else json.dumps(effective_roadmap),
+            "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-8:]]),
+            "Long-term Context": "\n".join(retrieved_memories) if (needs_context and retrieved_memories) else "No specific past context found."
         }
         inputs = {"focus": req.message}
         prompt_text = build_prompt("GlobalMentorAgent", inputs, context)

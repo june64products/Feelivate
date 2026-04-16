@@ -159,7 +159,6 @@ const ResultsDashboard = ({ data, userId, sessionId, resetIntegration }: Results
                 user_id: userId,
                 session_id: sessionId,
                 message: text,
-                full_roadmap: localRoadmap,
                 chat_history: updatedHistory.slice(0, -1)
             });
             if (response.response_message) {
