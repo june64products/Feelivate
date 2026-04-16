@@ -148,7 +148,7 @@ const ResultsDashboard = ({ data, userId, sessionId, resetIntegration }: Results
 
 
     const handleGlobalChatSubmitManual = async (text: string) => {
-        if (!text.trim()) return;
+        if (!text.trim() || isGlobalChatting) return;
         const newUserMsg = { role: 'user', content: text };
         const updatedHistory = [...globalChatMessages, newUserMsg];
         setGlobalChatMessages(updatedHistory);
@@ -1029,6 +1029,7 @@ const ResultsDashboard = ({ data, userId, sessionId, resetIntegration }: Results
                                     }}
                                     onFocus={(e) => e.target.style.borderColor = 'rgba(130, 202, 255, 0.4)'}
                                     onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                                    disabled={isGlobalChatting}
                                 />
                             </div>
                             <button

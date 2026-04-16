@@ -71,7 +71,15 @@ def _configure_gemini():
         _gemini_configured = True
 
 
-def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
+def call_llm(
+    prompt: str, 
+    system: Optional[str] = None, 
+    temperature: float = 0.7, 
+    max_tokens: int = 4000, 
+    model_override: Optional[str] = None,
+    presence_penalty: float = 0.0,
+    frequency_penalty: float = 0.0
+) -> str:
     # If model_override is provided, use it to force the correct provider
     if model_override:
         model_lower = model_override.lower()
@@ -80,7 +88,10 @@ def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7
         elif "llama" in model_lower or "mixtral" in model_lower or "gemma" in model_lower or "oss" in model_lower:
             return _call_groq(prompt, system, temperature, max_tokens, model_override)
         elif "gpt" in model_lower and "oss" not in model_lower:
-            return _call_openai(prompt, system, temperature, max_tokens, model_override)
+            return _call_openai(
+                prompt, system, temperature, max_tokens, model_override, 
+                presence_penalty, frequency_penalty
+            )
             
     # Fallback to default provider
     provider = _get_llm_provider()
@@ -90,7 +101,10 @@ def call_llm(prompt: str, system: Optional[str] = None, temperature: float = 0.7
     elif provider == "gemini":
         return _call_gemini(prompt, system, temperature, max_tokens, model_override)
     else:
-        return _call_openai(prompt, system, temperature, max_tokens, model_override)
+        return _call_openai(
+            prompt, system, temperature, max_tokens, model_override,
+            presence_penalty, frequency_penalty
+        )
 
 
 def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
@@ -201,7 +215,15 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
         raise RuntimeError(f"Groq error: {e}")
 
 
-def _call_openai(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
+def _call_openai(
+    prompt: str, 
+    system: Optional[str] = None, 
+    temperature: float = 0.7, 
+    max_tokens: int = 4000, 
+    model_override: Optional[str] = None,
+    presence_penalty: float = 0.0,
+    frequency_penalty: float = 0.0
+) -> str:
     try:
         client = _get_openai_client()
         if not client:
@@ -216,6 +238,8 @@ def _call_openai(prompt: str, system: Optional[str] = None, temperature: float =
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty
         )
         content = resp.choices[0].message.content or ""
         text = content.strip()
