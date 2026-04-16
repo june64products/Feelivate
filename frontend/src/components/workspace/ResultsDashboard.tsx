@@ -134,6 +134,12 @@ const ResultsDashboard = ({ data, userId, sessionId, resetIntegration }: Results
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const globalMessagesEndRef = useRef<HTMLDivElement>(null);
 
+    // Reset global chat when switching plans
+    useEffect(() => {
+        setGlobalChatMessages([]);
+        setGlobalChatInput('');
+    }, [sessionId]);
+
     const toggleMonth = (idx: number) => {
         setExpandedMonths(prev =>
             prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]

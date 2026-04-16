@@ -324,22 +324,31 @@ async def generate_global_chat(req: GlobalChatRequest):
     
     logger.info(f"Generating global chat for user {req.user_id}")
     try:
-        # 1. Semantic Retrieval
+        # 1. Intent Classification (Fast Routing)
+        intent_prompt = build_prompt("IntentClassifierAgent", {"focus": req.message})
+        intent_json = await asyncio.to_thread(call_llm, intent_prompt, model_override="gpt-4o-mini")
+        intent_data = _parse_json(intent_json)
+        needs_context = intent_data.get("needs_context", True) # Default to true for safety
+        logger.info(f"Intent classified: needs_context={needs_context}")
+
+        # 2. Semantic Retrieval
         retrieved_memories = []
         retrieved_roadmap = []
         embedding = None
-        try:
-            embedding = await asyncio.to_thread(create_embedding, req.message)
-            if embedding:
-                # Fetch explicit roadmap chunks
-                roadmap_hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 2, {"source": "roadmap_chunk"})
-                retrieved_roadmap = [h["text"] for h in roadmap_hits]
-                
-                # Fetch past general memories
-                hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 3)
-                retrieved_memories = [h["text"] for h in hits if h.get("metadata", {}).get("source") != "roadmap_chunk"]
-        except Exception as re:
-            logger.warning(f"Global memory retrieval failed: {re}")
+        
+        if needs_context:
+            try:
+                embedding = await asyncio.to_thread(create_embedding, req.message)
+                if embedding:
+                    # Fetch explicit roadmap chunks
+                    roadmap_hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 2, {"source": "roadmap_chunk"})
+                    retrieved_roadmap = [h["text"] for h in roadmap_hits]
+                    
+                    # Fetch past general memories
+                    hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 3)
+                    retrieved_memories = [h["text"] for h in hits if h.get("metadata", {}).get("source") != "roadmap_chunk"]
+            except Exception as re:
+                logger.warning(f"Global memory retrieval failed: {re}")
 
         # Ensure session exists in SQL
         with SessionLocal() as db_check:
