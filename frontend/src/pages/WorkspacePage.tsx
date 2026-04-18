@@ -203,10 +203,10 @@ const WorkspacePage = () => {
                             <div style={{ animation: 'fadeIn 0.5s ease' }}>
                                 <div style={{ textAlign: 'center', marginBottom: '60px' }}>
                                     <h1 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', marginBottom: '16px', fontWeight: 700 }} className="text-gradient">
-                                        Behavioral Architecture Engine v2.0
+                                        Temporal Core: Behavioral Architecture
                                     </h1>
                                     <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>
-                                        Transform unstructured thoughts into a high-fidelity emotional blueprint.
+                                        Architect your emotional blueprint through deep behavioral synthesis.
                                     </p>
                                 </div>
                                 <InputForm onSubmit={handleIngest} isLoading={processing} />
