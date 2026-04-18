@@ -386,7 +386,7 @@ const InputForm = ({ onSubmit, isLoading }: InputFormProps) => {
                                             {card.q}
                                         </div>
                                         <div style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontStyle: 'italic', borderLeft: '2px solid rgba(130, 202, 255, 0.3)', paddingLeft: '16px' }}>
-                                            {card.a.substring(0, 80)}{card.a.length > 80 ? '...' : ''}
+                                            {(card.a || '').substring(0, 80)}{(card.a || '').length > 80 ? '...' : ''}
                                         </div>
                                     </div>
                                 )}
