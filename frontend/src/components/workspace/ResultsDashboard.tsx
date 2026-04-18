@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, CheckCircle2, Target, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, ChevronLeft, Loader2, MessageSquare, Send, X } from 'lucide-react';
+import { Calendar, CheckCircle2, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, ChevronLeft, Loader2, MessageSquare, Send, X, RefreshCcw } from 'lucide-react';
 import { submitCheckIn, chatWeek, chatGlobal } from '../../api';
 
 interface DayDetails {
@@ -216,6 +216,12 @@ export default function ResultsDashboard({ data, userId, sessionId, resetIntegra
                     <span style={{ color: '#50fa7b', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>Core Analysis Active</span>
                 </div>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <button 
+                        onClick={resetIntegration}
+                        style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-secondary)', padding: '8px 16px', borderRadius: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                        <RefreshCcw size={16} /> New Journey
+                    </button>
                     <span style={{ fontSize: '1rem', color: '#ffa500', fontWeight: 600 }}>🔥 {streak} Streak</span>
                     <button 
                         onClick={() => setIsGlobalChatOpen(true)}

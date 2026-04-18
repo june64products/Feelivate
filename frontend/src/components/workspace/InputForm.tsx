@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square, Loader2, ArrowRight } from 'lucide-react';
 import { transcribeAudio, generateQuestion, detectContradiction } from '../../api';
@@ -65,12 +65,15 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
             const newHistory = [...qaHistory, { q: currentQuestion, a: currentAnswer }];
             let nextQ = "";
 
+            // Construct history string from qaHistory
+            const historyStr = newHistory.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
+            const focus = newHistory[newHistory.length - 1].a;
+
             if (newHistory.length <= MAX_QUESTIONS) {
-                const response = await generateQuestion(newHistory);
-                nextQ = response.question || "Can you elaborate further?";
+                nextQ = await generateQuestion(focus, historyStr);
             } else {
-                const response = await detectContradiction(newHistory);
-                nextQ = response.question || "Does anything feel off about this?";
+                const response = await detectContradiction(focus, historyStr);
+                nextQ = response.tension_question || "Does anything feel off about this?";
             }
 
             setQaHistory(newHistory);
@@ -110,7 +113,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                 setIsThinking(true);
                 try {
                     const data = await transcribeAudio(audioBlob);
-                    setCurrentAnswer(data.text);
+                    setCurrentAnswer(data.raw_text);
                 } catch (error) {
                     console.error("Transcription error:", error);
                     alert("Could not transcribe audio. Please try typing instead.");
