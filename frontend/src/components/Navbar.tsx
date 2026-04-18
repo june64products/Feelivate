@@ -6,8 +6,6 @@ const Navbar = () => {
     const [userId, setUserId] = useState<string | null>(localStorage.getItem('user_id'));
 
     useEffect(() => {
-        // Simple polling or events could be better, but for now we'll check on mount
-        // and handle via the logout function local state
         setUserId(localStorage.getItem('user_id'));
     }, []);
 
@@ -16,6 +14,7 @@ const Navbar = () => {
         setUserId(null);
         navigate('/');
     };
+
     return (
         <nav className="navbar" style={{
             position: 'fixed',
@@ -26,70 +25,109 @@ const Navbar = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 20px',
+            padding: '0 60px',
             zIndex: 100,
-            background: 'rgba(10, 10, 10, 0.8)',
-            backdropFilter: 'blur(12px)',
-            borderBottom: '1px solid var(--border-color)',
+            background: 'rgba(3, 3, 3, 0.6)',
+            backdropFilter: 'blur(30px)',
+            borderBottom: '1px solid var(--border-subtle)',
         }}>
             <div className="logo" style={{
-                fontWeight: 700,
-                fontSize: '1.5rem',
-                letterSpacing: '-0.05em'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                cursor: 'pointer'
+            }} onClick={() => navigate('/')}>
+                <img 
+                    src="/LOGO.png" 
+                    alt="Logo" 
+                    style={{ 
+                        height: '32px', 
+                        width: 'auto',
+                        filter: 'invert(1) brightness(2)', /* Makes black logo white/visible */
+                        opacity: 0.9
+                    }} 
+                />
+                <div style={{
+                    fontFamily: 'var(--font-serif)',
+                    fontSize: '1.2rem',
+                    color: 'var(--text-primary)',
+                    marginTop: '2px'
+                }}>
+                    Emotion <span style={{ fontStyle: 'italic', fontWeight: 300 }}>Time Travel</span>
+                </div>
+            </div>
+
+            <div className="nav-links hide-on-mobile" style={{ 
+                display: 'flex', 
+                gap: '40px', 
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)'
             }}>
-                Emotion Time Travel
+                {['The Journey', 'Mechanism', 'Clarity'].map((item) => (
+                    <a 
+                        key={item} 
+                        href={`#${item.toLowerCase().replace(' ', '-')}`} 
+                        className="text-mono nav-link-hover"
+                        style={{ 
+                            color: 'var(--text-secondary)', 
+                            transition: 'color 0.4s cubic-bezier(0.19, 1, 0.22, 1)',
+                            cursor: 'pointer',
+                            opacity: 0.8
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                            e.currentTarget.style.opacity = '1';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                            e.currentTarget.style.opacity = '0.8';
+                        }}
+                    >
+                        {item}
+                    </a>
+                ))}
             </div>
-            <div className="nav-links hide-on-mobile" style={{ display: 'flex', gap: '32px' }}>
-                <a href="#architecture" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Architecture</a>
-                <a href="#demo" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Demo</a>
-                <a href="#tech" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Tech Stack</a>
-            </div>
-            <div className="nav-actions" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+
+            <div className="nav-actions" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
                 {userId ? (
                     <>
                         <button
                             onClick={handleLogout}
+                            className="text-mono"
                             style={{ 
-                                fontSize: '0.9rem', 
-                                color: 'var(--text-secondary)', 
-                                background: 'transparent',
+                                color: 'var(--text-muted)', 
                                 border: 'none',
-                                cursor: 'pointer'
+                                background: 'none'
                             }}
                         >
-                            Log out
+                            End Session
                         </button>
                         <button
                             onClick={() => navigate('/app')}
-                            style={{
-                                background: 'var(--text-primary)',
-                                color: 'var(--bg-primary)',
-                                padding: '10px 20px',
-                                borderRadius: '24px',
-                                fontWeight: 600,
-                                fontSize: '0.9rem',
-                                border: 'none',
-                                cursor: 'pointer'
-                            }}>
-                            Open Engine
+                            className="action-pill primary"
+                            style={{ fontSize: '0.75rem', padding: '12px 28px' }}
+                        >
+                            Go to Core
                         </button>
                     </>
                 ) : (
                     <>
-                        <Link to="/login" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textDecoration: 'none' }}>Log in</Link>
+                        <Link 
+                            to="/login" 
+                            className="text-mono"
+                            style={{ 
+                                color: 'var(--text-secondary)',
+                            }}
+                        >
+                            Access
+                        </Link>
                         <button
                             onClick={() => navigate('/login')}
-                            style={{
-                                background: 'var(--text-primary)',
-                                color: 'var(--bg-primary)',
-                                padding: '10px 20px',
-                                borderRadius: '24px',
-                                fontWeight: 600,
-                                fontSize: '0.9rem',
-                                border: 'none',
-                                cursor: 'pointer'
-                            }}>
-                            Start Journey
+                            className="action-pill primary"
+                            style={{ fontSize: '0.75rem', padding: '12px 28px' }}
+                        >
+                            Begin
                         </button>
                     </>
                 )}
@@ -99,3 +137,6 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
+
+
