@@ -112,16 +112,6 @@ const Navbar = () => {
                         </button>
                     </>
                 ) : (
-                    <>
-                        <Link 
-                            to="/login" 
-                            className="text-mono"
-                            style={{ 
-                                color: 'var(--text-secondary)',
-                            }}
-                        >
-                            Access
-                        </Link>
                     <motion.button 
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

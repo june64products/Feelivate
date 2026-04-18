@@ -134,7 +134,7 @@ const LoginPage = () => {
                 <div style={{
                     background: 'rgba(255, 255, 255, 0.02)',
                     backdropFilter: 'blur(40px)',
-                    -webkit-backdropFilter: 'blur(40px)',
+                    WebkitBackdropFilter: 'blur(40px)',
                     border: '1px solid var(--border-subtle)',
                     borderRadius: '32px',
                     padding: '48px',
