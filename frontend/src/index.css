@@ -62,6 +62,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.zoom-90 {
+  zoom: 0.9;
+  -moz-transform: scale(0.9);
+  -moz-transform-origin: top center;
+}
+
 /* Redefined Typography */
 h1, h2 {
   font-family: var(--font-serif);

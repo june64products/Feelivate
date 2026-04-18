@@ -122,14 +122,15 @@ const Navbar = () => {
                         >
                             Access
                         </Link>
-                        <button
-                            onClick={() => navigate('/login')}
-                            className="action-pill primary"
-                            style={{ fontSize: '0.75rem', padding: '12px 28px' }}
-                        >
-                            Begin
-                        </button>
-                    </>
+                    <motion.button 
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => navigate('/login')}
+                        className="action-pill primary"
+                        style={{ padding: '10px 24px', fontSize: '0.75rem' }}
+                    >
+                        Login
+                    </motion.button>
                 )}
             </div>
         </nav>

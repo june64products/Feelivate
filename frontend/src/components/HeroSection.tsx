@@ -79,7 +79,7 @@ const HeroSection = () => {
                         background: 'rgba(255,255,255,0.03)',
                         color: 'rgba(255,255,255,0.6)'
                     }}>
-                        Active Emotional Intelligence
+                        Results you'll feel in 1-2 months
                     </span>
                 </motion.div>
 
@@ -135,7 +135,7 @@ const HeroSection = () => {
                     {[
                         { label: 'Past', desc: 'Audit emotional debts', detail: 'Resolve what lingers' },
                         { label: 'Present', desc: 'Disentangle current chaos', detail: 'Find your center now' },
-                        { label: 'Future', desc: 'Actionable 30-day roadmap', detail: 'Construct the plan' }
+                        { label: 'Future', desc: 'Actionable roadmap', detail: 'Construct the plan' }
                     ].map((item, i) => (
                         <motion.div 
                             key={i} 
@@ -175,7 +175,7 @@ const HeroSection = () => {
                         className="action-pill primary"
                         style={{ padding: '20px 56px', fontSize: '1rem' }}
                     >
-                        Access The Core
+                        Try Now
                     </button>
                 </motion.div>
                 

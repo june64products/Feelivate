@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, BrainCircuit } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, ChevronLeft } from 'lucide-react';
 import { login, signup } from '../api';
 
 const LoginPage = () => {
@@ -52,62 +52,95 @@ const LoginPage = () => {
             alignItems: 'center',
             justifyContent: 'center',
             background: 'var(--bg-primary)',
-            padding: '24px',
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-sans)',
             position: 'relative',
             overflow: 'hidden'
         }}>
-            {/* Background elements */}
-            <div style={{
-                position: 'absolute',
-                top: '-10%',
-                left: '-10%',
-                width: '60vw',
-                height: '60vw',
-                background: 'radial-gradient(circle, rgba(130, 202, 255, 0.03) 0%, transparent 70%)',
-                zIndex: 0
-            }} />
+            {/* Branding Path Background */}
+            <div className="temporal-path" style={{ opacity: 0.15 }}>
+                <svg width="100%" height="100%" viewBox="0 0 1440 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M-100 600C200 500 400 700 720 400C1040 100 1240 300 1540 200"
+                        stroke="var(--accent-primary)"
+                        strokeWidth="2"
+                    />
+                </svg>
+            </div>
+
+            {/* Back to Home */}
+            <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                style={{ position: 'absolute', top: '40px', left: '40px', zIndex: 100 }}
+            >
+                <button 
+                    onClick={() => navigate('/')}
+                    style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px', 
+                        background: 'transparent', 
+                        border: 'none', 
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem'
+                    }}
+                >
+                    <ChevronLeft size={16} />
+                    Back to Home
+                </button>
+            </motion.div>
             
             <motion.div 
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, ease: [0.19, 1, 0.22, 1] }}
                 style={{
                     width: '100%',
-                    maxWidth: '440px',
+                    maxWidth: '480px',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    padding: '20px'
                 }}
             >
-                <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                    <div 
-                        onClick={() => navigate('/')}
-                        style={{ 
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
-                            gap: '12px', 
-                            marginBottom: '24px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        <BrainCircuit size={32} color="var(--text-accent)" />
-                        <span style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.02em' }}>Emotion Engine</span>
+                {/* Logo Section */}
+                <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+                    <div style={{ marginBottom: '24px', opacity: 0.8 }}>
+                        <img 
+                            src="/LOGO.png" 
+                            alt="Logo" 
+                            style={{ 
+                                height: '48px', 
+                                width: 'auto',
+                                filter: 'invert(1) brightness(2)'
+                            }} 
+                        />
                     </div>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '8px' }}>
-                        {isLogin ? 'Welcome Back' : 'Start Your Journey'}
+                    <h1 style={{ 
+                        fontFamily: 'var(--font-serif)', 
+                        fontSize: '3rem', 
+                        fontWeight: 300, 
+                        marginBottom: '12px',
+                        letterSpacing: '-0.02em'
+                    }}>
+                        {isLogin ? 'Welcome back' : 'Join the journey'}
                     </h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>
-                        {isLogin ? 'Continue your transformation blueprint.' : 'Create an account to save your 6-month path.'}
+                    <p style={{ color: 'var(--text-secondary)', opacity: 0.6, fontSize: '1.1rem', fontWeight: 300 }}>
+                        {isLogin ? 'Enter your credentials to continue.' : 'Create your secure profile to begin.'}
                     </p>
                 </div>
 
                 <div style={{
                     background: 'rgba(255, 255, 255, 0.02)',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '24px',
-                    padding: '40px',
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+                    backdropFilter: 'blur(40px)',
+                    -webkit-backdropFilter: 'blur(40px)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '32px',
+                    padding: '48px',
+                    boxShadow: '0 40px 100px rgba(0,0,0,0.4)'
                 }}>
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         <AnimatePresence mode="wait">
                             {!isLogin && (
                                 <motion.div
@@ -116,24 +149,26 @@ const LoginPage = () => {
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}
                                 >
-                                    <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontSize: '0.9rem' }}>Full Name</label>
+                                    <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Full Name</label>
                                     <div style={{ position: 'relative' }}>
-                                        <UserIcon size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                                        <UserIcon size={16} style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.2)' }} />
                                         <input
                                             type="text"
                                             required={!isLogin}
-                                            placeholder="John Doe"
+                                            placeholder="Your name"
                                             value={formData.name}
                                             onChange={(e) => setFormData({...formData, name: e.target.value})}
                                             style={{
                                                 width: '100%',
-                                                background: 'rgba(255,255,255,0.03)',
-                                                border: '1px solid var(--border-color)',
-                                                borderRadius: '12px',
-                                                padding: '14px 16px 14px 48px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: '1px solid var(--border-subtle)',
+                                                borderRadius: '0',
+                                                padding: '16px 16px 16px 32px',
                                                 color: 'white',
                                                 outline: 'none',
-                                                transition: 'border-color 0.2s'
+                                                transition: 'border-color 0.3s',
+                                                fontSize: '1rem'
                                             }}
                                         />
                                     </div>
@@ -142,33 +177,35 @@ const LoginPage = () => {
                         </AnimatePresence>
 
                         <div>
-                            <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontSize: '0.9rem' }}>Email Address</label>
+                            <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Email</label>
                             <div style={{ position: 'relative' }}>
-                                <Mail size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                                <Mail size={16} style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.2)' }} />
                                 <input
                                     type="email"
                                     required
-                                    placeholder="name@company.com"
+                                    placeholder="your@email.com"
                                     value={formData.email}
                                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                                     style={{
                                         width: '100%',
-                                        background: 'rgba(255,255,255,0.03)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '12px',
-                                        padding: '14px 16px 14px 48px',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        borderBottom: '1px solid var(--border-subtle)',
+                                        borderRadius: '0',
+                                        padding: '16px 16px 16px 32px',
                                         color: 'white',
                                         outline: 'none',
-                                        transition: 'border-color 0.2s'
+                                        transition: 'border-color 0.3s',
+                                        fontSize: '1rem'
                                     }}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontSize: '0.9rem' }}>Password</label>
+                            <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Password</label>
                             <div style={{ position: 'relative' }}>
-                                <Lock size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
+                                <Lock size={16} style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.2)' }} />
                                 <input
                                     type="password"
                                     required
@@ -177,45 +214,42 @@ const LoginPage = () => {
                                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                                     style={{
                                         width: '100%',
-                                        background: 'rgba(255,255,255,0.03)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '12px',
-                                        padding: '14px 16px 14px 48px',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        borderBottom: '1px solid var(--border-subtle)',
+                                        borderRadius: '0',
+                                        padding: '16px 16px 16px 32px',
                                         color: 'white',
                                         outline: 'none',
-                                        transition: 'border-color 0.2s'
+                                        transition: 'border-color 0.3s',
+                                        fontSize: '1rem'
                                     }}
                                 />
                             </div>
                         </div>
 
                         {error && (
-                            <div style={{ color: '#ff4d4d', fontSize: '0.9rem', textAlign: 'center' }}>
+                            <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                style={{ color: '#ff4d4d', fontSize: '0.85rem', textAlign: 'center' }}
+                            >
                                 {error}
-                            </div>
+                            </motion.div>
                         )}
 
                         <button
                             type="submit"
                             disabled={loading}
+                            className="action-pill primary"
                             style={{
-                                background: 'var(--text-primary)',
-                                color: 'var(--bg-primary)',
-                                border: 'none',
-                                borderRadius: '12px',
-                                padding: '16px',
+                                width: '100%',
+                                padding: '20px',
                                 fontWeight: 600,
                                 fontSize: '1rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '12px',
-                                marginTop: '10px',
-                                transition: 'transform 0.2s, opacity 0.2s'
+                                marginTop: '20px',
+                                gap: '12px'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-                            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                         >
                             {loading ? <Loader2 className="spinner" size={20} /> : (
                                 <>
@@ -226,13 +260,22 @@ const LoginPage = () => {
                         </button>
                     </form>
 
-                    <div style={{ marginTop: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                    <div style={{ marginTop: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}>
                         {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
                         <button
                             onClick={() => setIsLogin(!isLogin)}
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-accent)', padding: 0, fontWeight: 600, cursor: 'pointer' }}
+                            style={{ 
+                                background: 'transparent', 
+                                border: 'none', 
+                                color: 'var(--accent-primary)', 
+                                padding: 0, 
+                                fontWeight: 500, 
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                                textUnderlineOffset: '4px'
+                            }}
                         >
-                            {isLogin ? 'Sign Up' : 'Log In'}
+                            {isLogin ? 'Register' : 'Login'}
                         </button>
                     </div>
                 </div>
@@ -241,7 +284,8 @@ const LoginPage = () => {
             <style>{`
                 .spinner { animation: spin 1s linear infinite; }
                 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                input:focus { border-color: rgba(130, 202, 255, 0.5) !important; }
+                input:focus { border-color: var(--accent-primary) !important; }
+                input::placeholder { color: rgba(255,255,255,0.1) !important; }
             `}</style>
         </div>
     );

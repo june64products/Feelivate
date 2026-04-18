@@ -6,7 +6,7 @@ import Footer from '../components/Footer';
 
 const LandingPage = () => {
     return (
-        <>
+        <div className="zoom-90">
             <Navbar />
             <main>
                 <HeroSection />
@@ -14,7 +14,7 @@ const LandingPage = () => {
                 <SolutionFeatures />
             </main>
             <Footer />
-        </>
+        </div>
     );
 };
 
