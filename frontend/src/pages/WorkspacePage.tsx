@@ -194,21 +194,14 @@ const WorkspacePage = () => {
                 <main style={{ 
                     flex: 1, 
                     marginLeft: userId ? '280px' : 0, 
-                    padding: '40px 24px 80px',
                     position: 'relative',
-                    zIndex: 1 
+                    zIndex: 1,
+                    display: 'flex',
+                    flexDirection: 'column'
                 }}>
-                    <div style={{ maxWidth: result ? '100%' : '1000px', margin: '0 auto' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         {!processing && !result && (
-                            <div style={{ animation: 'fadeIn 0.5s ease' }}>
-                                <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-                                    <h1 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', marginBottom: '16px', fontWeight: 700 }} className="text-gradient">
-                                        Temporal Core: Behavioral Architecture
-                                    </h1>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>
-                                        Architect your emotional blueprint through deep behavioral synthesis.
-                                    </p>
-                                </div>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease' }}>
                                 <InputForm onSubmit={handleIngest} isLoading={processing} />
                             </div>
                         )}
