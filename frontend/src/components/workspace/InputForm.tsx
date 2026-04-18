@@ -138,19 +138,21 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
     return (
         <div style={{
             display: 'flex',
+            flexDirection: window.innerWidth < 768 ? 'column' : 'row',
             width: '100%',
-            height: '100%', // Will fill the parent main container
-            minHeight: '80vh',
+            height: '100%',
+            minHeight: '100vh',
             overflow: 'hidden',
-            borderRadius: '0px',
             background: 'var(--bg-primary)'
         }}>
             
             {/* LEFT PANE - Dynamic Typography */}
             <div style={{
-                flex: '0 0 40%',
+                flex: window.innerWidth < 768 ? 'none' : '0 0 40%',
+                height: window.innerWidth < 768 ? '30vh' : 'auto',
                 background: '#050505',
-                borderRight: '1px solid rgba(255,255,255,0.05)',
+                borderRight: window.innerWidth < 768 ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                borderBottom: window.innerWidth < 768 ? '1px solid rgba(255,255,255,0.1)' : 'none',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
@@ -239,8 +241,9 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
-                padding: '40px clamp(40px, 6vw, 100px)',
-                position: 'relative'
+                padding: window.innerWidth < 768 ? '40px 24px' : '40px clamp(40px, 6vw, 100px)',
+                position: 'relative',
+                background: 'radial-gradient(circle at 70% 30%, rgba(130, 202, 255, 0.03) 0%, transparent 50%)'
             }}>
                 <AnimatePresence mode="wait">
                     <motion.div
