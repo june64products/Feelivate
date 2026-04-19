@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PlusCircle, History, Calendar, ChevronRight, Brain } from 'lucide-react';
-import { getUserSessions } from '../../api';
+import { getUserSessions } from '../../lib/api';
 
 interface Session {
     id: string;

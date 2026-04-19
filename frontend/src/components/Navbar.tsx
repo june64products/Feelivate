@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react';
-<<<<<<< HEAD
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-=======
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
->>>>>>> maze-layout-fixes
+import { motion } from 'framer-motion';
 
 const Navbar = () => {
     const router = useRouter();
-    const [userId, setUserId] = useState<string | null>(localStorage.getItem('user_id'));
+    const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
         setUserId(localStorage.getItem('user_id'));
@@ -42,7 +38,7 @@ const Navbar = () => {
                 alignItems: 'center',
                 gap: '12px',
                 cursor: 'pointer'
-            }} onClick={() => navigate('/')}>
+            }} onClick={() => router.push('/')}>
                 <img
                     src="/LOGO.png"
                     alt="Logo"
@@ -81,14 +77,6 @@ const Navbar = () => {
                             cursor: 'pointer',
                             opacity: 0.8
                         }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.color = 'var(--text-primary)';
-                            e.currentTarget.style.opacity = '1';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.color = 'var(--text-secondary)';
-                            e.currentTarget.style.opacity = '0.8';
-                        }}
                     >
                         {item}
                     </a>
@@ -104,31 +92,13 @@ const Navbar = () => {
                             style={{
                                 color: 'var(--text-muted)',
                                 border: 'none',
-                                background: 'none'
+                                background: 'none',
+                                cursor: 'pointer'
                             }}
                         >
                             End Session
                         </button>
                         <button
-<<<<<<< HEAD
-                            onClick={() => navigate('/app')}
-                            className="action-pill primary"
-                            style={{ fontSize: '0.75rem', padding: '12px 28px' }}
-                        >
-                            Go to Core
-                        </button>
-                    </>
-                ) : (
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => navigate('/login')}
-                        className="action-pill primary"
-                        style={{ padding: '10px 24px', fontSize: '0.75rem' }}
-                    >
-                        Login
-                    </motion.button>
-=======
                             onClick={() => router.push('/workspace')}
                             style={{
                                 background: 'var(--text-primary)',
@@ -161,7 +131,6 @@ const Navbar = () => {
                             Start Journey
                         </button>
                     </>
->>>>>>> maze-layout-fixes
                 )}
             </div>
         </nav>
@@ -169,6 +138,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
-
-

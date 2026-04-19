@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square, Loader2, ArrowRight } from 'lucide-react';
-import { transcribeAudio, generateQuestion, detectContradiction } from '../../api';
+import { transcribeAudio, generateQuestion, detectContradiction } from '../../lib/api';
 
 interface InputFormProps {
     onSubmit: (text: string) => void;

@@ -2,12 +2,8 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
 const HeroSection = () => {
-<<<<<<< HEAD
-    const navigate = useNavigate();
-
-=======
     const router = useRouter();
->>>>>>> maze-layout-fixes
+
     return (
         <section className="hero-section" style={{
             minHeight: '100vh',
@@ -24,32 +20,26 @@ const HeroSection = () => {
             {/* Temporal Flow Visual */}
             <div className="temporal-path">
                 <svg width="100%" height="100%" viewBox="0 0 1440 800" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Background Static Path */}
                     <motion.path
                         d="M-100 600C200 500 400 700 720 400C1040 100 1240 300 1540 200"
                         stroke="url(#gradient-path-main)"
                         strokeWidth="1.5"
-                        className="animate-draw"
                         style={{ opacity: 0.6 }}
                     />
-
-                    {/* Recurring Light Pulse Path */}
                     <motion.path
                         d="M-100 600C200 500 400 700 720 400C1040 100 1240 300 1540 200"
                         stroke="var(--accent-primary)"
                         strokeWidth="2.5"
-                        className="glow-line"
                         initial={{ strokeDasharray: "1, 2000", strokeDashoffset: 2000 }}
                         animate={{ strokeDashoffset: -2000 }}
                         transition={{
                             duration: 4,
                             repeat: Infinity,
                             repeatDelay: 5,
-                            delay: 6, // Start after main draw
+                            delay: 2,
                             ease: "easeInOut"
                         }}
                     />
-
                     <defs>
                         <linearGradient id="gradient-path-main" x1="-100" y1="600" x2="1540" y2="200" gradientUnits="userSpaceOnUse">
                             <stop stopColor="var(--accent-primary)" stopOpacity="0" />
@@ -69,203 +59,120 @@ const HeroSection = () => {
                 background: 'var(--accent-glow)',
             }} />
 
-<<<<<<< HEAD
-    <div className="container" style={{ position: 'relative', zIndex: 10 }}>
-        <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.5 }}
-            style={{ marginBottom: '48px' }}
-        >
-            <span className="text-mono" style={{
-                padding: '8px 20px',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '20px',
-                background: 'rgba(255,255,255,0.03)',
-                color: 'rgba(255,255,255,0.6)'
-=======
-            <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                style={{
-                    color: 'var(--text-accent)',
-                    fontWeight: 600,
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase',
-                    marginBottom: '24px'
-                }}
-            >
-                Guided AI Journey for Emotional Clarity
-            </motion.p>
-
-            <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                style={{
-                    fontSize: 'clamp(3rem, 6vw, 5rem)',
-                    fontWeight: 700,
-                    maxWidth: '1000px',
-                    marginBottom: '32px'
-                }}
-                className="text-gradient"
-            >
-                Untangle your past, present, and future
-            </motion.h1>
-
-            <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                style={{
-                    fontSize: '1.25rem',
-                    color: 'var(--text-secondary)',
-                    maxWidth: '600px',
-                    marginBottom: '48px',
-                    lineHeight: 1.6
-                }}
-            >
-                Emotion Time Travel uses specialized AI agents to analyze your distinct temporal perspectives—disentangling complex feelings to construct a clear, actionable path forward.
-            </motion.p>
-
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                style={{ display: 'flex', gap: '24px' }}
-            >
-                <button
-                    onClick={() => {
-                        const userId = localStorage.getItem('user_id');
-                        if (userId) router.push('/workspace');
-                        else router.push('/login');
-                    }}
+            <div className="container" style={{ position: 'relative', zIndex: 10 }}>
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
                     style={{
-                        background: 'var(--text-primary)',
-                        color: 'var(--bg-primary)',
-                        padding: '16px 32px',
-                        borderRadius: '32px',
+                        color: 'var(--accent-primary)',
                         fontWeight: 600,
-                        fontSize: '1rem',
-                        boxShadow: '0 4px 14px rgba(255, 255, 255, 0.25)'
->>>>>>> maze-layout-fixes
-            }}>
-                Results you'll feel in 1-2 months
-            </span>
-        </motion.div>
-
-        <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.5, ease: [0.19, 1, 0.22, 1] }}
-            style={{
-                fontSize: 'clamp(4rem, 11vw, 8.5rem)',
-                maxWidth: '1200px',
-                marginBottom: '40px',
-                color: 'var(--text-primary)',
-                display: 'inline-block'
-            }}
-        >
-            Travel through <span style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent-primary)' }}>chaos</span>. <br />
-            Arrive at clarity.
-        </motion.h1>
-
-        <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.5, delay: 0.3 }}
-            className="text-jost"
-            style={{
-                fontSize: '1.35rem',
-                color: 'var(--text-secondary)',
-                maxWidth: '750px',
-                margin: '0 auto 64px',
-                lineHeight: 1.6,
-                fontWeight: 300,
-                opacity: 0.9
-            }}
-        >
-            Your thoughts aren't looped—they're just waiting to be disentangled.
-            Emotion Time Travel maps your internal world with surgical precision.
-        </motion.p>
-
-        {/* Benefits Core - Interactive Cards */}
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.2, delay: 0.6 }}
-            style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '40px',
-                width: '100%',
-                maxWidth: '900px',
-                margin: '0 auto 80px',
-            }}
-        >
-            {[
-                { label: 'Past', desc: 'Audit emotional debts', detail: 'Resolve what lingers' },
-                { label: 'Present', desc: 'Disentangle current chaos', detail: 'Find your center now' },
-                { label: 'Future', desc: 'Actionable roadmap', detail: 'Construct the plan' }
-            ].map((item, i) => (
-                <motion.div
-                    key={i}
-                    whileHover={{
-                        scale: 1.02,
-                        backgroundColor: "rgba(255,255,255,0.05)",
-                        borderColor: "rgba(255,255,255,0.1)"
-                    }}
-                    style={{
-                        textAlign: 'center',
-                        padding: '32px',
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid var(--border-subtle)',
-                        borderRadius: '24px',
-                        cursor: 'default',
-                        transition: 'background-color 0.3s ease, border-color 0.3s ease'
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        marginBottom: '24px',
+                        fontSize: '0.8rem'
                     }}
                 >
-                    <div className="text-mono" style={{ color: 'var(--accent-primary)', marginBottom: '12px', fontSize: '0.7rem' }}>{item.label}</div>
-                    <div style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '4px', fontWeight: 400 }}>{item.desc}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 300 }}>{item.detail}</div>
+                    Guided AI Journey for Emotional Clarity
+                </motion.p>
+
+                <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.1 }}
+                    style={{
+                        fontSize: 'clamp(3rem, 6vw, 5.5rem)',
+                        fontWeight: 700,
+                        maxWidth: '1000px',
+                        marginBottom: '32px',
+                        lineHeight: 1.1
+                    }}
+                    className="text-gradient"
+                >
+                    Untangle your past, <br /> present, and future
+                </motion.h1>
+
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    style={{
+                        fontSize: '1.25rem',
+                        color: 'var(--text-secondary)',
+                        maxWidth: '650px',
+                        margin: '0 auto 48px',
+                        lineHeight: 1.6
+                    }}
+                >
+                    Emotion Time Travel uses specialized AI agents to analyze your distinct temporal perspectives—disentangling complex feelings to construct a clear, actionable path forward.
+                </motion.p>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.6, delay: 0.3 }}
+                    style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}
+                >
+                    <button
+                        onClick={() => {
+                            const userId = localStorage.getItem('user_id');
+                            if (userId) router.push('/workspace');
+                            else router.push('/login');
+                        }}
+                        style={{
+                            background: 'var(--text-primary)',
+                            color: 'var(--bg-primary)',
+                            padding: '18px 40px',
+                            borderRadius: '32px',
+                            fontWeight: 600,
+                            fontSize: '1rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 20px rgba(255, 255, 255, 0.15)'
+                        }}
+                    >
+                        Start Your Journey
+                    </button>
+                    
+                    <button
+                        onClick={() => {
+                            const section = document.getElementById('mechanism');
+                            section?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        style={{
+                            background: 'transparent',
+                            color: 'var(--text-primary)',
+                            padding: '18px 40px',
+                            borderRadius: '32px',
+                            fontWeight: 600,
+                            fontSize: '1rem',
+                            border: '1px solid var(--border-subtle)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Learn More
+                    </button>
                 </motion.div>
-            ))}
-        </motion.div>
 
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.8 }}
-        >
-            <button
-                onClick={() => {
-                    const userId = localStorage.getItem('user_id');
-                    if (userId) navigate('/app');
-                    else navigate('/login');
-                }}
-                className="action-pill primary"
-                style={{ padding: '20px 56px', fontSize: '1rem' }}
-            >
-                Try Now
-            </button>
-        </motion.div>
-
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
-            transition={{ delay: 2.5, duration: 1 }}
-            className="text-mono"
-            style={{ marginTop: '100px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3em' }}
-        >
-            ENCRYPTED. ON-DEVICE. PRIVATE.
-        </motion.div>
-    </div>
-        </section >
+                {/* Footer Monospaced Labels */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.4 }}
+                    transition={{ delay: 1, duration: 1 }}
+                    className="text-mono"
+                    style={{ 
+                        marginTop: '100px', 
+                        fontSize: '0.7rem', 
+                        color: 'var(--text-secondary)', 
+                        letterSpacing: '0.4em',
+                        textTransform: 'uppercase'
+                    }}
+                >
+                    Results you'll feel in 1-2 months • Encrypted • Private
+                </motion.div>
+            </div>
+        </section>
     );
 };
 
 export default HeroSection;
-
-
-
