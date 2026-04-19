@@ -97,7 +97,7 @@ class GlobalChatRequest(BaseModel):
     user_id: str
     session_id: str
     message: str
-    full_roadmap: Optional[Any] = None
+    full_roadmap: Any
     chat_history: List[Dict[str, str]]
 
 class TaskUpdate(BaseModel):
@@ -324,50 +324,29 @@ async def generate_global_chat(req: GlobalChatRequest):
     
     logger.info(f"Generating global chat for user {req.user_id}")
     try:
-        # 1. Intent Classification (Fast Routing)
-        intent_prompt = build_prompt("IntentClassifierAgent", {"focus": req.message})
-        intent_json = await asyncio.to_thread(call_llm, intent_prompt, model_override="gpt-4o-mini")
-        intent_data = _parse_json(intent_json)
-        needs_context = intent_data.get("needs_context", True) # Default to true for safety
-        logger.info(f"Intent classified: needs_context={needs_context}")
-
-        # 2. Semantic Retrieval
+        # 1. Semantic Retrieval
         retrieved_memories = []
         retrieved_roadmap = []
         embedding = None
-        
-        if needs_context:
-            try:
-                embedding = await asyncio.to_thread(create_embedding, req.message)
-                if embedding:
-                    # Fetch explicit roadmap chunks
-                    roadmap_hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 2, {"source": "roadmap_chunk"})
-                    retrieved_roadmap = [h["text"] for h in roadmap_hits]
-                    
-                    # Fetch past general memories
-                    hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 3)
-                    retrieved_memories = [h["text"] for h in hits if h.get("metadata", {}).get("source") != "roadmap_chunk"]
-            except Exception as re:
-                logger.warning(f"Global memory retrieval failed: {re}")
+        try:
+            embedding = await asyncio.to_thread(create_embedding, req.message)
+            if embedding:
+                # Fetch explicit roadmap chunks
+                roadmap_hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 2, {"source": "roadmap_chunk"})
+                retrieved_roadmap = [h["text"] for h in roadmap_hits]
+                
+                # Fetch past general memories
+                hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 3)
+                retrieved_memories = [h["text"] for h in hits if h.get("metadata", {}).get("source") != "roadmap_chunk"]
+        except Exception as re:
+            logger.warning(f"Global memory retrieval failed: {re}")
 
-        # 3. Ensure session exists and fetch roadmap if needed
-        roadmap_from_db = None
-        mentor_persona = "A generic but helpful AI mentor."
-        impact_statement = "Help the user achieve their goal through small, consistent steps."
-
-        with SessionLocal() as db_query:
-            session_rec = db_query.query(Session).filter(Session.id == req.session_id).first()
-            if session_rec:
-                roadmap_from_db = session_rec.result_json
-                if session_rec.result_json:
-                    try:
-                        res_data = json.loads(session_rec.result_json)
-                        integration = res_data.get("integration", {})
-                        mentor_persona = integration.get("mentor_persona", mentor_persona)
-                        impact_statement = integration.get("impact_statement", impact_statement)
-                    except Exception as je:
-                        logger.warning(f"Failed to parse result_json for persona: {je}")
-            else:
+        # 1.5 Fetch Session Details for Persona & Context
+        with SessionLocal() as db_session:
+            session_rec = db_session.query(Session).filter(Session.id == req.session_id).first()
+            
+            # If session missing, create placeholder so chat can still function/save
+            if not session_rec:
                 logger.info(f"Creating missing session {req.session_id} for user {req.user_id}")
                 session_rec = Session(
                     id=req.session_id, 
@@ -376,33 +355,36 @@ async def generate_global_chat(req: GlobalChatRequest):
                     history="",
                     vision=""
                 )
-                db_query.add(session_rec)
-                db_query.commit()
+                db_session.add(session_rec)
+                db_session.commit()
+                # Refresh to avoid detached instance issues if needed, 
+                # but we only need it for this block
+            
+            mentor_persona = "A generic but helpful AI mentor."
+            impact_statement = "Help the user achieve their goal through small, consistent steps."
+            
+            if session_rec.result_json:
+                try:
+                    res_data = json.loads(session_rec.result_json)
+                    integration = res_data.get("integration", {})
+                    mentor_persona = integration.get("mentor_persona", mentor_persona)
+                    impact_statement = integration.get("impact_statement", impact_statement)
+                except Exception as je:
+                    logger.warning(f"Failed to parse result_json for persona: {je}")
 
-        # 4. Construct context for the AI
-        # Prefer provided roadmap, fallback to database
-        effective_roadmap = req.full_roadmap if req.full_roadmap else roadmap_from_db
-        
         context = {
             "mentor_persona": mentor_persona,
             "impact_statement": impact_statement,
-            "STRATEGIC_BLUEPRINT_DATA": "\n".join(retrieved_roadmap) if (needs_context and retrieved_roadmap) else json.dumps(effective_roadmap),
-            "CONVERSATION_HISTORY": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-8:]]),
-            "PAST_CONTEXT_MEMORIES": "\n".join(retrieved_memories) if (needs_context and retrieved_memories) else "No specific past context found."
+            "Relevant Roadmap Sections (RAG)": "\n".join(retrieved_roadmap) if retrieved_roadmap else json.dumps(req.full_roadmap),
+            "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-5:]]),
+            "Long-term Context": "\n".join(retrieved_memories) if retrieved_memories else "No specific past context found."
         }
         inputs = {"focus": req.message}
         prompt_text = build_prompt("GlobalMentorAgent", inputs, context)
         logger.info(f"Global Chat Prompt (Persona: {mentor_persona[:50]}...)")
         
-        json_str = await asyncio.to_thread(
-            call_llm, 
-            prompt_text, 
-            model_override="gpt-4o-mini",
-            temperature=0.8,
-            presence_penalty=0.6,
-            frequency_penalty=0.3
-        )
-        logger.info(f"Raw LLM response: {json_str}")
+        json_str = await asyncio.to_thread(call_llm, prompt_text, model_override="gpt-4o-mini")
+        logger.debug(f"Raw LLM response: {json_str}")
         parsed_response = _parse_json(json_str)
         logger.info(f"Parsed response: {parsed_response}")
         
