@@ -44,8 +44,12 @@ result_store: Dict[str, Dict[str, Any]] = {}
 
 @app.on_event("startup")
 def on_startup():
-    init_db()  # Re-enabled to allow SQLite table creation on Render
-    logger.info("Application startup: DB initialization done.")
+    try:
+        init_db()
+        logger.info("Application startup: DB initialization done.")
+    except Exception as e:
+        logger.error(f"CRITICAL: Database initialization failed during startup: {e}")
+        # In production, we might want to fail hard, but for now we log so Northflank shows the error
 
 
 @app.exception_handler(Exception)
