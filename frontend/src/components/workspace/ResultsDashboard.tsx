@@ -158,7 +158,7 @@ export default function ResultsDashboard({ data, userId, sessionId, resetIntegra
         setIsGlobalChatting(true);
 
         try {
-            const response = await chatGlobal({ user_id: userId, session_id: sessionId, message: text, chat_history: updatedHistory.slice(0, -1) });
+            const response = await chatGlobal({ user_id: userId, session_id: sessionId, message: text, chat_history: updatedHistory.slice(0, -1), full_roadmap: data });
             if (response.response_message) {
                 setGlobalChatMessages([...updatedHistory, { role: 'assistant', content: response.response_message }]);
             }
