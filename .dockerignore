@@ -1,0 +1,37 @@
+# Local development files
+.venv
+venv
+env
+bin
+lib
+lib64
+share
+include
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+backend.log
+frontend.log
+*.db
+*.faiss
+
+# Frontend build files
+**/node_modules
+**/dist
+**/.next
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+
+# Git
+.git
+.github
+.gitignore
+.gitattributes

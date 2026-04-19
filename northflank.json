@@ -1,0 +1,67 @@
+{
+  "name": "Emotion Time Travel - Pro Stack",
+  "version": "1.0",
+  "description": "Multi-agent AI architecture with FastAPI, RQ Workers, and React Frontend",
+  "workflow": {
+    "type": "parallel",
+    "nodes": [
+      {
+        "type": "combinedService",
+        "name": "api-service",
+        "configuration": {
+          "serviceType": "combined",
+          "build": {
+            "dockerfile": "Dockerfile",
+            "context": "/"
+          },
+          "deployment": {
+            "instances": 1,
+            "resources": {
+              "plan": "nf-compute-50"
+            },
+            "ports": [
+              {
+                "name": "api",
+                "internalPort": 8000,
+                "public": true,
+                "protocol": "HTTP"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "combinedService",
+        "name": "background-worker",
+        "configuration": {
+          "serviceType": "combined",
+          "build": {
+            "dockerfile": "Dockerfile",
+            "context": "/"
+          },
+          "deployment": {
+            "instances": 1,
+            "resources": {
+              "plan": "nf-compute-50"
+            },
+            "runCommand": "rq worker default"
+          }
+        }
+      },
+      {
+        "type": "combinedService",
+        "name": "frontend-ui",
+        "configuration": {
+          "serviceType": "static",
+          "build": {
+            "buildCommand": "cd frontend && npm install && npm run build",
+            "outputDirectory": "frontend/dist"
+          },
+          "deployment": {
+            "public": true
+          }
+        }
+      }
+    ]
+  }
+}
