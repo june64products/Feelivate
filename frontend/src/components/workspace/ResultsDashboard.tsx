@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, CheckCircle2, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, ChevronLeft, Loader2, MessageSquare, Send, X, RefreshCcw } from 'lucide-react';
-import { submitCheckIn, chatWeek, chatGlobal } from '../../lib/api';
+import { Calendar, CheckCircle2, Target, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, ChevronLeft, Loader2, MessageSquare, Send, X } from 'lucide-react';
+import { submitCheckIn, chatWeek, chatGlobal } from '../../api';
 
 interface DayDetails {
     day_name: string;
@@ -158,7 +158,7 @@ export default function ResultsDashboard({ data, userId, sessionId, resetIntegra
         setIsGlobalChatting(true);
 
         try {
-            const response = await chatGlobal({ user_id: userId, session_id: sessionId, message: text, chat_history: updatedHistory.slice(0, -1), full_roadmap: data });
+            const response = await chatGlobal({ user_id: userId, session_id: sessionId, message: text, chat_history: updatedHistory.slice(0, -1) });
             if (response.response_message) {
                 setGlobalChatMessages([...updatedHistory, { role: 'assistant', content: response.response_message }]);
             }
@@ -216,18 +216,12 @@ export default function ResultsDashboard({ data, userId, sessionId, resetIntegra
                     <span style={{ color: '#50fa7b', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>Core Analysis Active</span>
                 </div>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <button 
-                        onClick={resetIntegration}
-                        style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-secondary)', padding: '8px 16px', borderRadius: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                    >
-                        <RefreshCcw size={16} /> New Journey
-                    </button>
                     <span style={{ fontSize: '1rem', color: '#ffa500', fontWeight: 600 }}>🔥 {streak} Streak</span>
                     <button 
                         onClick={() => setIsGlobalChatOpen(true)}
                         style={{ border: '1px solid rgba(130, 202, 255, 0.3)', background: 'rgba(130, 202, 255, 0.1)', color: '#82caff', padding: '8px 20px', borderRadius: '30px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
                     >
-                        <MessageSquare size={16} /> Common Mentor
+                        <MessageSquare size={16} /> Mentor Omni-Chat
                     </button>
                 </div>
             </div>
@@ -463,7 +457,7 @@ export default function ResultsDashboard({ data, userId, sessionId, resetIntegra
                             <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{ width: '12px', height: '12px', background: '#82caff', borderRadius: '50%', boxShadow: '0 0 10px #82caff' }} />
-                                    <span style={{ color: 'white', fontWeight: 600, fontSize: '1.1rem', letterSpacing: '1px' }}>COMMON MENTOR UPLINK</span>
+                                    <span style={{ color: 'white', fontWeight: 600, fontSize: '1.1rem', letterSpacing: '1px' }}>GLOBAL MENTOR UPLINK</span>
                                 </div>
                                 <button onClick={() => setIsGlobalChatOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={24} /></button>
                             </div>

@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square, Loader2, ArrowRight } from 'lucide-react';
-import { transcribeAudio, generateQuestion, detectContradiction } from '../../lib/api';
+import { transcribeAudio, generateQuestion, detectContradiction } from '../../api';
 
 interface InputFormProps {
     onSubmit: (text: string) => void;
@@ -65,15 +65,12 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
             const newHistory = [...qaHistory, { q: currentQuestion, a: currentAnswer }];
             let nextQ = "";
 
-            // Construct history string from qaHistory
-            const historyStr = newHistory.map(item => `Q: ${item.q}\nA: ${item.a}`).join('\n\n');
-            const focus = newHistory[newHistory.length - 1].a;
-
             if (newHistory.length <= MAX_QUESTIONS) {
-                nextQ = await generateQuestion(focus, historyStr);
+                const response = await generateQuestion(newHistory);
+                nextQ = response.question || "Can you elaborate further?";
             } else {
-                const response = await detectContradiction(focus, historyStr);
-                nextQ = response.tension_question || "Does anything feel off about this?";
+                const response = await detectContradiction(newHistory);
+                nextQ = response.question || "Does anything feel off about this?";
             }
 
             setQaHistory(newHistory);
@@ -113,7 +110,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                 setIsThinking(true);
                 try {
                     const data = await transcribeAudio(audioBlob);
-                    setCurrentAnswer(data.raw_text);
+                    setCurrentAnswer(data.text);
                 } catch (error) {
                     console.error("Transcription error:", error);
                     alert("Could not transcribe audio. Please try typing instead.");
@@ -141,21 +138,19 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
     return (
         <div style={{
             display: 'flex',
-            flexDirection: window.innerWidth < 768 ? 'column' : 'row',
             width: '100%',
-            height: '100%',
-            minHeight: '100vh',
+            height: '100%', // Will fill the parent main container
+            minHeight: '80vh',
             overflow: 'hidden',
+            borderRadius: '0px',
             background: 'var(--bg-primary)'
         }}>
             
             {/* LEFT PANE - Dynamic Typography */}
             <div style={{
-                flex: window.innerWidth < 768 ? 'none' : '0 0 40%',
-                height: window.innerWidth < 768 ? '30vh' : 'auto',
+                flex: '0 0 40%',
                 background: '#050505',
-                borderRight: window.innerWidth < 768 ? 'none' : '1px solid rgba(255,255,255,0.05)',
-                borderBottom: window.innerWidth < 768 ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                borderRight: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
@@ -244,9 +239,8 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
-                padding: window.innerWidth < 768 ? '40px 24px' : '40px clamp(40px, 6vw, 100px)',
-                position: 'relative',
-                background: 'radial-gradient(circle at 70% 30%, rgba(130, 202, 255, 0.03) 0%, transparent 50%)'
+                padding: '40px clamp(40px, 6vw, 100px)',
+                position: 'relative'
             }}>
                 <AnimatePresence mode="wait">
                     <motion.div

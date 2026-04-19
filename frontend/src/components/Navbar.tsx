@@ -1,13 +1,10 @@
-"use client";
-
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const Navbar = () => {
-    const router = useRouter();
-    const [userId, setUserId] = useState<string | null>(null);
+    const navigate = useNavigate();
+    const [userId, setUserId] = useState<string | null>(localStorage.getItem('user_id'));
 
     useEffect(() => {
         setUserId(localStorage.getItem('user_id'));
@@ -16,7 +13,7 @@ const Navbar = () => {
     const handleLogout = () => {
         localStorage.removeItem('user_id');
         setUserId(null);
-        router.push('/');
+        navigate('/');
     };
 
     return (
@@ -40,16 +37,16 @@ const Navbar = () => {
                 alignItems: 'center',
                 gap: '12px',
                 cursor: 'pointer'
-            }} onClick={() => router.push('/')}>
-                <img
-                    src="/LOGO.png"
-                    alt="Logo"
-                    style={{
-                        height: '32px',
+            }} onClick={() => navigate('/')}>
+                <img 
+                    src="/LOGO.png" 
+                    alt="Logo" 
+                    style={{ 
+                        height: '32px', 
                         width: 'auto',
                         filter: 'invert(1) brightness(2)', /* Makes black logo white/visible */
                         opacity: 0.9
-                    }}
+                    }} 
                 />
                 <div style={{
                     fontFamily: 'var(--font-serif)',
@@ -61,23 +58,31 @@ const Navbar = () => {
                 </div>
             </div>
 
-            <div className="nav-links hide-on-mobile" style={{
-                display: 'flex',
-                gap: '40px',
+            <div className="nav-links hide-on-mobile" style={{ 
+                display: 'flex', 
+                gap: '40px', 
                 position: 'absolute',
                 left: '50%',
                 transform: 'translateX(-50%)'
             }}>
                 {['The Journey', 'Mechanism', 'Clarity'].map((item) => (
-                    <a
-                        key={item}
-                        href={`#${item.toLowerCase().replace(' ', '-')}`}
+                    <a 
+                        key={item} 
+                        href={`#${item.toLowerCase().replace(' ', '-')}`} 
                         className="text-mono nav-link-hover"
-                        style={{
-                            color: 'var(--text-secondary)',
+                        style={{ 
+                            color: 'var(--text-secondary)', 
                             transition: 'color 0.4s cubic-bezier(0.19, 1, 0.22, 1)',
                             cursor: 'pointer',
                             opacity: 0.8
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                            e.currentTarget.style.opacity = '1';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                            e.currentTarget.style.opacity = '0.8';
                         }}
                     >
                         {item}
@@ -91,48 +96,32 @@ const Navbar = () => {
                         <button
                             onClick={handleLogout}
                             className="text-mono"
-                            style={{
-                                color: 'var(--text-muted)',
+                            style={{ 
+                                color: 'var(--text-muted)', 
                                 border: 'none',
-                                background: 'none',
-                                cursor: 'pointer'
+                                background: 'none'
                             }}
                         >
                             End Session
                         </button>
                         <button
-                            onClick={() => router.push('/workspace')}
-                            style={{
-                                background: 'var(--text-primary)',
-                                color: 'var(--bg-primary)',
-                                padding: '10px 20px',
-                                borderRadius: '24px',
-                                fontWeight: 600,
-                                fontSize: '0.9rem',
-                                border: 'none',
-                                cursor: 'pointer'
-                            }}>
-                            Open Engine
+                            onClick={() => navigate('/app')}
+                            className="action-pill primary"
+                            style={{ fontSize: '0.75rem', padding: '12px 28px' }}
+                        >
+                            Go to Core
                         </button>
                     </>
                 ) : (
-                    <>
-                        <Link href="/login" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textDecoration: 'none' }}>Log in</Link>
-                        <button
-                            onClick={() => router.push('/login')}
-                            style={{
-                                background: 'var(--text-primary)',
-                                color: 'var(--bg-primary)',
-                                padding: '10px 20px',
-                                borderRadius: '24px',
-                                fontWeight: 600,
-                                fontSize: '0.9rem',
-                                border: 'none',
-                                cursor: 'pointer'
-                            }}>
-                            Start Journey
-                        </button>
-                    </>
+                    <motion.button 
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => navigate('/login')}
+                        className="action-pill primary"
+                        style={{ padding: '10px 24px', fontSize: '0.75rem' }}
+                    >
+                        Login
+                    </motion.button>
                 )}
             </div>
         </nav>
@@ -140,3 +129,6 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
+
+
