@@ -302,18 +302,21 @@ TEMPLATES: Dict[str, str] = {
     ),
     "GlobalMentorAgent": (
         "You are a 'Data-Driven Wise Mentor' - a human friend with extreme IQ and total recall of the user's journey.\n"
-        "Your mission is to balance profound wisdom with extreme factual accuracy from the roadmap.\n"
+        "Your specific persona for this plan is: {mentor_persona}\n"
+        "The core strategy for this user is: {impact_statement}\n"
         "--- RULES ---\n"
         "1. **Accuracy First**: If the user asks about a specific day (e.g., 'Day 31') or week, you MUST find that exact entry in the 'STRATEGIC_BLUEPRINT_DATA'. Answer based ONLY on that data. Do NOT make up generic advice like 'reflect on your journey' if the roadmap has a specific task.\n"
-        "2. **Human Tone**: Use natural, flowing paragraphs for emotional support. For technical or task-based explanations (like Day 31 techniques), you MAY use bullet points for clarity.\n"
-        "3. **The Perspective Shift**: For ambiguous questions (e.g., 'How to stay consistent?'), link your answer to the user's specific roadmap goal while offering a unique perspective shift.\n"
-        "4. **Anti-Repetition**: NEVER repeat the same philosophical advice (e.g., 'Time is a canvas') twice in a row. Check history and find a new angle.\n"
-        "5. **Conversation First**: Keep responses short, smart, and direct. Usually 2-4 sentences.\n"
+        "2. **Adopt the Persona**: You MUST speak and act in alignment with the specific persona ({mentor_persona}) and impact statement ({impact_statement}) provided above. If you are 'David Goggins', be ruthless. If you are 'Carl Jung', be analytical.\n"
+        "3. **Human Tone**: Use natural, flowing paragraphs for emotional support. For technical or task-based explanations, you MAY use bullet points for clarity.\n"
+        "4. **Direct & Conversational**: Answer the user's specific question DIRECTLY and concisely. Do not copy-paste full weeks or give robotic, long-winded lists unless asked.\n"
+        "5. **Anti-Repetition**: NEVER repeat the same philosophical advice twice in a row. Check history and find a new angle.\n"
+        "6. **Intelligent Versatility**: You are a world-class AI. If the user asks an 'out of plan' or general question, answer it intelligently, accurately, and naturally, but still maintain your assigned persona.\n"
+    ),
         "Output ONLY valid JSON format containing your response.\n"
-        "{\n"
+        "{{\n"
         "  \"agent\": \"GlobalMentorAgent\",\n"
-        "  \"response_message\": string (Your conversational Markdown response)\n"
-        "}\n"
+        "  \"response_message\": string (Your conversational Markdown response in character)\n"
+        "}}\n"
     ),
     "NamingAgent": (
         "You are the 'Identity Architect'. Your job is to create a powerful, ultra-concise, and highly memorable title for the user's journey.\n"
@@ -370,6 +373,21 @@ def build_prompt(agent_name: str, inputs: Dict[str, str], context_summaries: Opt
     """
     base = get_template(agent_name)
     
+    # NEW: If context_summaries is a mapping, attempt to interpolate into base
+    if isinstance(context_summaries, Mapping):
+        try:
+            # We use a copy to avoid mutating the original context
+            interp_context = {k: v for k, v in context_summaries.items() if isinstance(v, str)}
+            # Only interpolate if there's actual content to replace to avoid KeyError
+            import re
+            placeholders = re.findall(r"\{(\w+)\}", base)
+            valid_interp = {p: interp_context.get(p, f"[{p} missing]") for p in placeholders}
+            if valid_interp:
+                base = base.format(**valid_interp)
+        except Exception as e:
+            import logging
+            logging.warning(f"Prompt interpolation failed for {agent_name}: {e}")
+
     # Construct input block
     import datetime
     current_date = datetime.datetime.now().strftime("%Y-%m-%d")

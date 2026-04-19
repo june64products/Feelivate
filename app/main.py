@@ -352,13 +352,31 @@ async def generate_global_chat(req: GlobalChatRequest):
 
         # 3. Ensure session exists and fetch roadmap if needed
         roadmap_from_db = None
+        mentor_persona = "A generic but helpful AI mentor."
+        impact_statement = "Help the user achieve their goal through small, consistent steps."
+
         with SessionLocal() as db_query:
-            s = db_query.query(Session).filter(Session.id == req.session_id).first()
-            if s:
-                roadmap_from_db = s.result_json
+            session_rec = db_query.query(Session).filter(Session.id == req.session_id).first()
+            if session_rec:
+                roadmap_from_db = session_rec.result_json
+                if session_rec.result_json:
+                    try:
+                        res_data = json.loads(session_rec.result_json)
+                        integration = res_data.get("integration", {})
+                        mentor_persona = integration.get("mentor_persona", mentor_persona)
+                        impact_statement = integration.get("impact_statement", impact_statement)
+                    except Exception as je:
+                        logger.warning(f"Failed to parse result_json for persona: {je}")
             else:
-                s = Session(id=req.session_id, user_id=req.user_id)
-                db_query.add(s)
+                logger.info(f"Creating missing session {req.session_id} for user {req.user_id}")
+                session_rec = Session(
+                    id=req.session_id, 
+                    user_id=req.user_id,
+                    focus="Direct Mentor Query",
+                    history="",
+                    vision=""
+                )
+                db_query.add(session_rec)
                 db_query.commit()
 
         # 4. Construct context for the AI
@@ -366,13 +384,16 @@ async def generate_global_chat(req: GlobalChatRequest):
         effective_roadmap = req.full_roadmap if req.full_roadmap else roadmap_from_db
         
         context = {
+            "mentor_persona": mentor_persona,
+            "impact_statement": impact_statement,
             "STRATEGIC_BLUEPRINT_DATA": "\n".join(retrieved_roadmap) if (needs_context and retrieved_roadmap) else json.dumps(effective_roadmap),
             "CONVERSATION_HISTORY": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-8:]]),
             "PAST_CONTEXT_MEMORIES": "\n".join(retrieved_memories) if (needs_context and retrieved_memories) else "No specific past context found."
         }
         inputs = {"focus": req.message}
         prompt_text = build_prompt("GlobalMentorAgent", inputs, context)
-        logger.info(f"Prompts: {prompt_text[:200]}...")
+        logger.info(f"Global Chat Prompt (Persona: {mentor_persona[:50]}...)")
+        
         json_str = await asyncio.to_thread(
             call_llm, 
             prompt_text, 

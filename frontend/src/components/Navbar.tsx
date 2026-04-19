@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 const Navbar = () => {
-    const navigate = useNavigate();
-    const [userId, setUserId] = useState<string | null>(localStorage.getItem('user_id'));
+    const router = useRouter();
+    const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
         setUserId(localStorage.getItem('user_id'));
@@ -13,7 +14,11 @@ const Navbar = () => {
     const handleLogout = () => {
         localStorage.removeItem('user_id');
         setUserId(null);
-        navigate('/');
+        router.push('/');
+    };
+
+    const navigateToHome = () => {
+        router.push('/');
     };
 
     return (
@@ -37,7 +42,7 @@ const Navbar = () => {
                 alignItems: 'center',
                 gap: '12px',
                 cursor: 'pointer'
-            }} onClick={() => navigate('/')}>
+            }} onClick={navigateToHome}>
                 <img 
                     src="/LOGO.png" 
                     alt="Logo" 
@@ -76,14 +81,6 @@ const Navbar = () => {
                             cursor: 'pointer',
                             opacity: 0.8
                         }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.color = 'var(--text-primary)';
-                            e.currentTarget.style.opacity = '1';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.color = 'var(--text-secondary)';
-                            e.currentTarget.style.opacity = '0.8';
-                        }}
                     >
                         {item}
                     </a>
@@ -105,26 +102,31 @@ const Navbar = () => {
                             End Session
                         </button>
                         <button
-                            onClick={() => navigate('/app')}
+                            onClick={() => router.push('/workspace')}
                             className="action-pill primary"
                             style={{ fontSize: '0.75rem', padding: '12px 28px' }}
                         >
-                            Go to Core
+                            Open Engine
                         </button>
                     </>
                 ) : (
-                    <motion.button 
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => navigate('/login')}
-                        className="action-pill primary"
-                        style={{ padding: '10px 24px', fontSize: '0.75rem' }}
-                    >
-                        Login
-                    </motion.button>
+                    <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                        <Link href="/login" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textDecoration: 'none' }} className="text-mono">
+                            Login
+                        </Link>
+                        <button
+                            onClick={() => router.push('/login')}
+                            className="action-pill primary"
+                            style={{ padding: '10px 24px', fontSize: '0.75rem' }}
+                        >
+                            Start Journey
+                        </button>
+                    </div>
                 )}
             </div>
         </nav>
+    );
+};
     );
 };
 

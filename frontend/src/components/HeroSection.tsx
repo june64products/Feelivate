@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 
 const HeroSection = () => {
-    const navigate = useNavigate();
-
+    const router = useRouter();
     return (
         <section className="hero-section" style={{
             minHeight: '100vh',
@@ -66,22 +65,22 @@ const HeroSection = () => {
             }} />
 
             <div className="container" style={{ position: 'relative', zIndex: 10 }}>
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 1.5 }}
-                    style={{ marginBottom: '48px' }}
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                    style={{
+                        color: 'var(--accent-primary)',
+                        fontWeight: 600,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        marginBottom: '24px',
+                        fontSize: '0.8rem'
+                    }}
+                    className="text-mono"
                 >
-                    <span className="text-mono" style={{ 
-                        padding: '8px 20px', 
-                        border: '1px solid var(--border-subtle)', 
-                        borderRadius: '20px',
-                        background: 'rgba(255,255,255,0.03)',
-                        color: 'rgba(255,255,255,0.6)'
-                    }}>
-                        Results you'll feel in 1-2 months
-                    </span>
-                </motion.div>
+                    Guided AI Journey for Emotional Clarity
+                </motion.p>
 
                 <motion.h1
                     initial={{ opacity: 0, y: 30 }}
@@ -95,9 +94,45 @@ const HeroSection = () => {
                         display: 'inline-block'
                     }}
                 >
-                    Travel through <span style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent-primary)' }}>chaos</span>. <br />
-                    Arrive at clarity.
+                    Untangle your <span style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent-primary)' }}>past, present, </span><br />
+                    and <span style={{ fontStyle: 'italic', fontWeight: 300, color: 'var(--accent-primary)' }}>future</span>.
                 </motion.h1>
+
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    style={{
+                        fontSize: '1.25rem',
+                        color: 'var(--text-secondary)',
+                        maxWidth: '650px',
+                        margin: '0 auto 48px',
+                        lineHeight: 1.6,
+                        opacity: 0.9
+                    }}
+                >
+                    Emotion Time Travel uses specialized AI agents to analyze your distinct temporal perspectives—disentangling complex feelings to construct a clear, actionable path forward.
+                </motion.p>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 1, delay: 0.4 }}
+                    style={{ display: 'flex', gap: '24px', justifyContent: 'center' }}
+                >
+                    <button
+                        onClick={() => {
+                            const userId = localStorage.getItem('user_id');
+                            if (userId) router.push('/workspace');
+                            else router.push('/login');
+                        }}
+                        className="action-pill primary"
+                        style={{ padding: '20px 56px', fontSize: '1rem' }}
+                    >
+                        Try Now
+                    </button>
+                </motion.div>
+
 
                 <motion.p
                     initial={{ opacity: 0, y: 20 }}
