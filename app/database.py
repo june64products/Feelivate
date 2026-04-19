@@ -90,7 +90,7 @@ def init_db():
     """Initialize database tables."""
     try:
         # Import models here to ensure they are registered with Base
-        # from .models import User, Session  <-- Will implement next
+        from .models import User, Session, ChatMessage, RoadmapTask, EmotionalState, Feedback
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables initialized")
     except Exception as e:
