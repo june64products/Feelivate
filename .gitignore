@@ -4,8 +4,11 @@ __pycache__/
 *$py.class
 .venv/
 venv/
-*.env
+# Environment
 .env
+.env.local
+.env.*
+!.env.example
 .DS_Store
 
 # Streamlit

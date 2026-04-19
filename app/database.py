@@ -24,10 +24,21 @@ else:
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
-    # Strip any sslmode query params as they can interfere with some drivers
+    # Handle Multi-host URLs (commonly provided by Northflank for Primary/Read replicas)
+    # Format: postgresql://user:pass@host1:5432,host2:5432/dbname
+    if "@" in DATABASE_URL and "/" in DATABASE_URL.split("@")[-1]:
+        prefix, remainder = DATABASE_URL.split("@", 1)
+        address_part, path_part = remainder.split("/", 1)
+        
+        if "," in address_part:
+            # Pick only the first host:port pair
+            primary_address = address_part.split(",")[0]
+            DATABASE_URL = f"{prefix}@{primary_address}/{path_part}"
+            logger.info(f"Targeting primary database host: {primary_address.split(':')[0]}")
+
+    # Strip any sslmode query params for asyncpg (handled in connect_args)
     if "?" in DATABASE_URL:
         base_url = DATABASE_URL.split("?")[0]
-        # Keep query params for sync engine if needed, but asyncpg needs them in connect_args
     else:
         base_url = DATABASE_URL
 
