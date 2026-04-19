@@ -227,7 +227,7 @@ export default function ResultsDashboard({ data, userId, sessionId, resetIntegra
                         onClick={() => setIsGlobalChatOpen(true)}
                         style={{ border: '1px solid rgba(130, 202, 255, 0.3)', background: 'rgba(130, 202, 255, 0.1)', color: '#82caff', padding: '8px 20px', borderRadius: '30px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
                     >
-                        <MessageSquare size={16} /> Mentor Omni-Chat
+                        <MessageSquare size={16} /> Common Mentor
                     </button>
                 </div>
             </div>
@@ -463,7 +463,7 @@ export default function ResultsDashboard({ data, userId, sessionId, resetIntegra
                             <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{ width: '12px', height: '12px', background: '#82caff', borderRadius: '50%', boxShadow: '0 0 10px #82caff' }} />
-                                    <span style={{ color: 'white', fontWeight: 600, fontSize: '1.1rem', letterSpacing: '1px' }}>GLOBAL MENTOR UPLINK</span>
+                                    <span style={{ color: 'white', fontWeight: 600, fontSize: '1.1rem', letterSpacing: '1px' }}>COMMON MENTOR UPLINK</span>
                                 </div>
                                 <button onClick={() => setIsGlobalChatOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={24} /></button>
                             </div>

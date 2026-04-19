@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Loader2, BrainCircuit, User, Sparkles, X } from 'lucide-react';
-import { chatGlobal, getSessionHistory } from '@/lib/api';
+import { chatGlobal, getSessionHistory } from '../../lib/api';
 
 interface Message {
     role: string;
@@ -70,7 +70,7 @@ export default function ChatInterface({ userId, sessionId, roadmap, isOpen, onCl
             }
         } catch (error) {
             console.error("Chat error:", error);
-            setMessages([...updatedHistory, { role: 'assistant', content: "SYSTEM ERROR: Could not synchronize with the Global Mentor. Please check your temporal connection." }]);
+            setMessages([...updatedHistory, { role: 'assistant', content: "SYSTEM ERROR: Could not synchronize with the Common Mentor. Please check your temporal connection." }]);
         } finally {
             setIsLoading(false);
         }
@@ -92,7 +92,7 @@ export default function ChatInterface({ userId, sessionId, roadmap, isOpen, onCl
                         <BrainCircuit className="w-5 h-5 text-neon-cyan" />
                     </div>
                     <div>
-                        <h3 className="font-syncopate text-xs font-black text-white tracking-widest uppercase mb-1">GLOBAL MENTOR</h3>
+                        <h3 className="font-syncopate text-xs font-black text-white tracking-widest uppercase mb-1">COMMON MENTOR</h3>
                         <div className="flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
                             <span className="text-[9px] font-space-mono text-neon-cyan uppercase tracking-widest">Temporal Node Active</span>
