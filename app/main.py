@@ -8,7 +8,7 @@ import uuid
 import threading
 import asyncio
 import io
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Union
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Depends
@@ -72,12 +72,12 @@ class IngestRequest(BaseModel):
     session_id: Optional[str] = None
 
 class QuestionRequest(BaseModel):
-    text: str
-    history: Optional[str] = None
+    text: Optional[str] = None
+    history: Optional[Union[str, List[Dict[str, str]]]] = None
 
 class ContradictionRequest(BaseModel):
-    focus: str
-    history: str
+    focus: Optional[str] = None
+    history: Optional[Union[str, List[Dict[str, str]]]] = None
 
 class CheckinRequest(BaseModel):
     user_id: str
@@ -167,9 +167,17 @@ async def generate_questions(payload: QuestionRequest):
     from .orchestrator import _parse_json
     
     try:
-        inputs = {"focus": payload.text}
-        if payload.history:
-            inputs["history"] = payload.history
+        # Determine focus from text or last history entry
+        focus_text = payload.text or ""
+        history_data = payload.history
+        
+        if not focus_text and isinstance(history_data, list) and len(history_data) > 0:
+            last_entry = history_data[-1]
+            focus_text = last_entry.get("a", last_entry.get("content", ""))
+
+        inputs = {"focus": focus_text}
+        if history_data:
+            inputs["history"] = history_data
             
         prompt_text = build_prompt("QuestionGeneratorAgent", inputs, None)
         json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=1000, model_override="llama-3.3-70b-versatile")
@@ -195,10 +203,14 @@ async def detect_contradiction(payload: ContradictionRequest):
     from .orchestrator import _parse_json
     
     try:
-        inputs = {
-            "focus": payload.focus,
-            "history": payload.history
-        }
+        focus_text = payload.focus or ""
+        history_data = payload.history
+        
+        if not focus_text and isinstance(history_data, list) and len(history_data) > 0:
+            last_entry = history_data[-1]
+            focus_text = last_entry.get("a", last_entry.get("content", ""))
+
+        inputs = {"focus": focus_text, "history": history_data}
         prompt_text = build_prompt("ContradictionDetectorAgent", inputs, None)
         json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=1000, model_override="llama-3.3-70b-versatile")
         data = _parse_json(json_str)

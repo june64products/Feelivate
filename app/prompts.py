@@ -355,7 +355,18 @@ def build_prompt(agent_name: str, inputs: Dict[str, str], context_summaries: Opt
     if "focus" in inputs:
         input_text += f"USER FOCUS (PRESENT): {inputs['focus']}\n"
     if "history" in inputs:
-        input_text += f"USER HISTORY (PAST): {inputs['history']}\n"
+        history_val = inputs['history']
+        if isinstance(history_val, list):
+            # Format list of Q&A objects into a string
+            history_text = ""
+            for entry in history_val:
+                q = entry.get("q", entry.get("question", ""))
+                a = entry.get("a", entry.get("answer", entry.get("content", "")))
+                if q: history_text += f"Q: {q}\n"
+                if a: history_text += f"A: {a}\n"
+            input_text += f"USER HISTORY (PAST):\n{history_text}\n"
+        else:
+            input_text += f"USER HISTORY (PAST): {history_val}\n"
     if "vision" in inputs:
         input_text += f"USER VISION (FUTURE): {inputs['vision']}\n"
         
