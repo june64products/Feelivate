@@ -73,7 +73,7 @@ engine = create_engine(
     DATABASE_URL, 
     pool_pre_ping=True, 
     echo=False,
-    connect_args=connect_args
+    connect_args=connect_args if "sqlite" in DATABASE_URL else {} # psycopg2 handles SSL via URL (?sslmode=require)
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
