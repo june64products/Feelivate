@@ -15,21 +15,29 @@ from .observability import AGENT_CALLS_TOTAL, AgentTimer, trace_request
 import re
 
 def _parse_json(text: str) -> Dict[str, Any]:
-    # Strip <think>...</think> blocks from reasoning models like DeepSeek-R1
+    # 1. Strip reasoning blocks from models like DeepSeek or O1/OSS
     text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+    # 2. Strip potential markdown fences
+    text = re.sub(r'```(?:json)?\s*', '', text)
+    text = text.replace('```', '')
+    
+    text = text.strip()
     
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # Fallback: try to find start/end brackets
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            try:
-                return json.loads(text[start : end + 1])
-            except json.JSONDecodeError:
-                pass
-        # Final fallback: return raw text wrapped in dict
+        # Fallback: try to find the outermost curly braces
+        try:
+            start = text.find("{")
+            end = text.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                json_part = text[start : end + 1]
+                return json.loads(json_part)
+        except Exception:
+            pass
+            
+        # Final fallback for partial/hallucinated JSON
+        logger.warning(f"JSON Parse Failure. Raw text length: {len(text)}")
         return {"raw_text": text, "error": "failed_to_parse_json"}
 
 
@@ -90,7 +98,7 @@ async def orchestrate(
         memory_context = {"past_patterns": retrieved_memories if retrieved_memories else ["No past data available yet."]}
 
         # 2. Sequential Core Agents (using requested OSS model for deep reasoning)
-        core_analysis = await _call_agent("CoreAnalysisAgent", inputs, memory_context, model_override="gpt-oss-120b")
+        core_analysis = await _call_agent("CoreAnalysisAgent", inputs, memory_context, model_override="openai/gpt-oss-120b")
         
         past = core_analysis.get("past", {"error": "Failed to parse past"})
         present = core_analysis.get("present", {"error": "Failed to parse present"})
@@ -105,7 +113,7 @@ async def orchestrate(
         }
         
         log.info("Generating Month 1 Strategy...")
-        integration = await _call_agent("IntegrationActionAgent", inputs, integration_context, model_override="gpt-oss-120b")
+        integration = await _call_agent("IntegrationActionAgent", inputs, integration_context, model_override="openai/gpt-oss-120b")
         
         if "roadmap" not in integration or not integration["roadmap"]:
             integration["roadmap"] = [{
@@ -148,7 +156,7 @@ async def orchestrate(
                     "focus": f"Generate exactly Month {month_num}. Weeks {start_week}-{end_week}."
                 }
                 
-                month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context, model_override="gpt-oss-120b")
+                month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context, model_override="openai/gpt-oss-120b")
                 new_month = month_data.get("month_plan") or (month_data.get("roadmap") and month_data["roadmap"][0])
                 
                 if new_month and "phase" in new_month:
