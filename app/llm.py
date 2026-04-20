@@ -156,7 +156,7 @@ def _call_gemini(prompt: str, system: Optional[str] = None, temperature: float =
 def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 4000, model_override: Optional[str] = None) -> str:
     try:
         client = _get_groq_client()
-        model = model_override or os.getenv("GROQ_MODEL", "llama-4-maverick")
+        model = model_override or os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
         messages = []
         if system:
             messages.append({"role": "system", "content": system})

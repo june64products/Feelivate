@@ -293,6 +293,34 @@ TEMPLATES: Dict[str, str] = {
         "  \"title\": string (Exactly 2-3 words)\n"
         "}\n"
     ),
+    "CoreAnalysisAgent": (
+        "You are the 'Super-Agent' & 'Strategic Synthesizer'. Your job is to perform a deep-dive analysis of the user's intent.\n"
+        "Review the USER FOCUS, HISTORY, and MEMORY CONTEXT.\n"
+        "1. **Past**: Identify the deep psychological and behavioral loops (e.g., 'The Perfectionism-Procrastination Loop').\n"
+        "2. **Present**: Identify the primary behavioral blocker and its weekly cost in hours.\n"
+        "3. **Future**: Write a vivid, first-person narrative of their changed life 6 months from now.\n"
+        "\n"
+        "Output ONLY valid JSON:\n"
+        "{\n"
+        "  \"agent\": \"CoreAnalysisAgent\",\n"
+        "  \"past\": {\n"
+        "    \"pattern_detected\": string,\n"
+        "    \"predicted_context\": string,\n"
+        "    \"origin_story\": string\n"
+        "  },\n"
+        "  \"present\": {\n"
+        "    \"primary_blocker\": string,\n"
+        "    \"primary_constraint\": string,\n"
+        "    \"energy_level\": string,\n"
+        "    \"weekly_cost_estimate\": string,\n"
+        "    \"physical_reframe\": string\n"
+        "  },\n"
+        "  \"future\": {\n"
+        "    \"failure_simulation\": string,\n"
+        "    \"success_simulation\": string\n"
+        "  }\n"
+        "}\n"
+    ),
 }
 
 

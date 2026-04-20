@@ -89,9 +89,8 @@ async def orchestrate(
         inputs = {"focus": focus, "history": history, "vision": vision}
         memory_context = {"past_patterns": retrieved_memories if retrieved_memories else ["No past data available yet."]}
 
-        # 2. Sequential Core Agents (using gpt-oss-120b for deep reasoning)
-        # Bypassing the concurrency/rate limit issue by sending one combined request
-        core_analysis = await _call_agent("CoreAnalysisAgent", inputs, memory_context, model_override="openai/gpt-oss-120b")
+        # 2. Sequential Core Agents (using requested OSS model for deep reasoning)
+        core_analysis = await _call_agent("CoreAnalysisAgent", inputs, memory_context, model_override="gpt-oss-120b")
         
         past = core_analysis.get("past", {"error": "Failed to parse past"})
         present = core_analysis.get("present", {"error": "Failed to parse present"})
@@ -106,7 +105,7 @@ async def orchestrate(
         }
         
         log.info("Generating Month 1 Strategy...")
-        integration = await _call_agent("IntegrationActionAgent", inputs, integration_context, model_override="openai/gpt-oss-120b")
+        integration = await _call_agent("IntegrationActionAgent", inputs, integration_context, model_override="gpt-oss-120b")
         
         if "roadmap" not in integration or not integration["roadmap"]:
             integration["roadmap"] = [{
@@ -149,7 +148,7 @@ async def orchestrate(
                     "focus": f"Generate exactly Month {month_num}. Weeks {start_week}-{end_week}."
                 }
                 
-                month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context, model_override="openai/gpt-oss-120b")
+                month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context, model_override="gpt-oss-120b")
                 new_month = month_data.get("month_plan") or (month_data.get("roadmap") and month_data["roadmap"][0])
                 
                 if new_month and "phase" in new_month:
