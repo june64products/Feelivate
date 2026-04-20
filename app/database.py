@@ -37,13 +37,20 @@ else:
             logger.info(f"Targeting primary database host: {primary_address.split(':')[0]}")
 
     # Strip any sslmode query params for asyncpg (handled in connect_args)
-    if "?" in DATABASE_URL:
-        base_url = DATABASE_URL.split("?")[0]
+    if "postgresql" in DATABASE_URL:
+        if "?" in DATABASE_URL:
+            base_url = DATABASE_URL.split("?")[0]
+            # For sync engine, ensure sslmode=require is in the URL if needed
+            if "sslmode=" not in DATABASE_URL:
+                DATABASE_URL += "&sslmode=require" if "?" in DATABASE_URL else "?sslmode=require"
+        else:
+            base_url = DATABASE_URL
+            DATABASE_URL += "?sslmode=require"
+        
+        # Create Async URL
+        ASYNC_DATABASE_URL = base_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     else:
-        base_url = DATABASE_URL
-
-    # Create Async URL
-    ASYNC_DATABASE_URL = base_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        ASYNC_DATABASE_URL = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://", 1)
 
 # Common connection arguments
 connect_args = {}
@@ -54,15 +61,24 @@ elif "sqlite" in DATABASE_URL:
     connect_args["check_same_thread"] = False
 
 # Sync Engine
+# Redact sensitive info for logging
+log_url = DATABASE_URL
+if "@" in log_url:
+    prefix, remainder = log_url.split("://", 1)
+    creds, rest = remainder.split("@", 1)
+    log_url = f"{prefix}://****:****@{rest}"
+
+logger.info(f"Creating sync engine for: {log_url}")
 engine = create_engine(
     DATABASE_URL, 
     pool_pre_ping=True, 
     echo=False,
-    connect_args=connect_args if "sqlite" in DATABASE_URL else {} # psycogp2 handles ssl via URL usually
+    connect_args=connect_args
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Async Engine
+logger.info(f"Creating async engine")
 async_engine = create_async_engine(
     ASYNC_DATABASE_URL,
     echo=False,

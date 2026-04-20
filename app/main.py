@@ -48,8 +48,9 @@ def on_startup():
         init_db()
         logger.info("Application startup: DB initialization done.")
     except Exception as e:
-        logger.error(f"CRITICAL: Database initialization failed during startup: {e}")
-        # In production, we might want to fail hard, but for now we log so Northflank shows the error
+        logger.error(f"CRITICAL: Database initialization failed: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 
 @app.exception_handler(Exception)
