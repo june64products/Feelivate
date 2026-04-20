@@ -111,9 +111,9 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                 try {
                     const data = await transcribeAudio(audioBlob);
                     setCurrentAnswer(data.text);
-                } catch (error) {
-                    console.error("Transcription error:", error);
-                    alert("Could not transcribe audio. Please try typing instead.");
+                 } catch (error) {
+                    console.error("Transcription error details:", error);
+                    alert("Could not transcribe audio. Connection or format mismatch detected.");
                 } finally {
                     setIsThinking(false);
                 }

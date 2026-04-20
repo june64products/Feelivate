@@ -18,7 +18,7 @@ class AudioTranscriber:
             self.enabled = False
             logger.warning("GROQ_API_KEY missing. Audio transcription disabled.")
 
-    def transcribe(self, audio_file) -> str:
+    def transcribe(self, audio_file, filename: str = "audio.webm") -> str:
         """
         Transcribes audio file-like object using Groq Whisper.
         Returns the text string.
@@ -32,7 +32,7 @@ class AudioTranscriber:
             
             # Call Groq API (whisper-large-v3-turbo is faster)
             transcription = self.client.audio.transcriptions.create(
-                file=("input.wav", audio_file.read()), # Groq expects filename/bytes tuple
+                file=(filename, audio_file.read()), # Use provided filename for correct format detection
                 model="whisper-large-v3-turbo",
                 response_format="text"
             )

@@ -765,7 +765,7 @@ async def transcribe_audio(file: UploadFile = File(...), skip_structure: bool = 
         # 1. Read & Transcribe
         content = await file.read()
         file_obj = io.BytesIO(content)
-        raw_text = transcriber.transcribe(file_obj)
+        raw_text = transcriber.transcribe(file_obj, filename=file.filename or "audio.webm")
         
         if "[Error" in raw_text:
             logger.error(f"Transcription error: {raw_text}")
@@ -776,6 +776,7 @@ async def transcribe_audio(file: UploadFile = File(...), skip_structure: bool = 
             logger.info("Skipping LLM structuring for low-latency return.")
             return {
                 "raw_text": raw_text,
+                "text": raw_text, # Alias for frontend
                 "focus": raw_text, # Frontend uses this as the user's primary answer
                 "history": "",
                 "vision": ""
@@ -793,6 +794,7 @@ async def transcribe_audio(file: UploadFile = File(...), skip_structure: bool = 
 
         return {
             "raw_text": raw_text,
+            "text": raw_text, # Alias for frontend
             "focus": structured_data.get("focus", raw_text),
             "history": structured_data.get("history", ""),
             "vision": structured_data.get("vision", "")
