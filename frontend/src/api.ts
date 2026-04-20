@@ -239,7 +239,10 @@ export const login = async (data: any) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error('Login failed');
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.error || 'Login failed');
+    }
     return response.json();
 };
 
@@ -249,7 +252,10 @@ export const signup = async (data: any) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error('Signup failed');
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.error || 'Signup failed');
+    }
     return response.json();
 };
 

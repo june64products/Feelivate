@@ -38,8 +38,9 @@ const LoginPage = () => {
                 localStorage.setItem('user_id', res.user_id);
                 navigate('/app');
             }
-        } catch (err: any) {
-            setError(err.message || 'Authentication failed');
+         } catch (err: any) {
+            console.error("Authentication error details:", err);
+            setError(err.message || 'Authentication failed. Please check your connection or credentials.');
         } finally {
             setLoading(false);
         }
