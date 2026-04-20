@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square, Loader2, ArrowRight } from 'lucide-react';
 import { transcribeAudio, generateQuestion, detectContradiction } from '../../api';

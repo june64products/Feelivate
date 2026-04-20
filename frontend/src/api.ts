@@ -79,6 +79,7 @@ export const fetchResult = async (traceId: string) => {
 
 export interface TranscribeResponse {
     raw_text: string;
+    text: string; // alias/duplicate for raw_text to match component needs
     focus: string;
     history: string;
     vision: string;
@@ -100,35 +101,42 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<TranscribeRespon
     return response.json();
 };
 
-export const generateQuestion = async (text: string, history?: string): Promise<string> => {
+export interface QuestionResponse {
+    question: string;
+}
+
+export const generateQuestion = async (history: Array<{q: string, a: string}>): Promise<QuestionResponse> => {
+    // Convert history array to a single context string if needed by backend, 
+    // though backend likely expects the raw list or a specific format.
+    // Based on previous iterations, let's pass it as is or a stringified version.
     const response = await fetch(`${API_BASE_URL}/generate_questions`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text, history }),
+        body: JSON.stringify({ history }),
     });
 
     if (!response.ok) {
         throw new Error(`Failed to generate question: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data.question;
+    return response.json();
 };
 
 export interface ContradictionResponse {
     has_contradiction: boolean;
-    tension_question: string;
+    tension_question?: string;
+    question?: string; // alias for tension_question if needed by component
 }
 
-export const detectContradiction = async (focus: string, history: string): Promise<ContradictionResponse> => {
+export const detectContradiction = async (history: Array<{q: string, a: string}>): Promise<ContradictionResponse> => {
     const response = await fetch(`${API_BASE_URL}/detect_contradiction`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ focus, history }),
+        body: JSON.stringify({ history }),
     });
 
     if (!response.ok) {
@@ -255,4 +263,9 @@ export const getSessionDetail = async (sessionId: string) => {
     const response = await fetch(`${API_BASE_URL}/sessions/detail/${sessionId}`);
     if (!response.ok) throw new Error('Failed to fetch session details');
     return response.json();
+};
+
+export const getSessionHistory = async (sessionId: string) => {
+    const data = await getSessionDetail(sessionId);
+    return data.chat_history || [];
 };

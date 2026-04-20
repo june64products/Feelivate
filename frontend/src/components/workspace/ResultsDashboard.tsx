@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, CheckCircle2, Target, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, ChevronLeft, Loader2, MessageSquare, Send, X } from 'lucide-react';
+import { Calendar, CheckCircle2, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, ChevronLeft, Loader2, MessageSquare, Send, X } from 'lucide-react';
 import { submitCheckIn, chatWeek, chatGlobal } from '../../api';
 
 interface DayDetails {
@@ -78,7 +78,7 @@ const parseInline = (text: string) => {
 // -----------------------------------------------------------------
 // Main Component
 // -----------------------------------------------------------------
-export default function ResultsDashboard({ data, userId, sessionId, resetIntegration }: ResultsDashboardProps) {
+export default function ResultsDashboard({ data, userId, sessionId }: ResultsDashboardProps) {
     const [localRoadmap, setLocalRoadmap] = useState<MonthPhase[]>([]);
     const [localMicroTask, setLocalMicroTask] = useState<any>(null);
     const [isCheckingIn, setIsCheckingIn] = useState(false);

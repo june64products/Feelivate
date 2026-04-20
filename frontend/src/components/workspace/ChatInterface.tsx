@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Send, Loader2, BrainCircuit, User, Sparkles, X } from 'lucide-react';
-import { chatGlobal, getSessionHistory } from '../../lib/api';
+import { chatGlobal, getSessionHistory } from '../../api';
 
 interface Message {
     role: string;
