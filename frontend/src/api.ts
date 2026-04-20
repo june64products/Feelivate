@@ -1,4 +1,10 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const getApiUrl = () => {
+    // Priority: 1. Manual override, 2. Env variable, 3. Default
+    const override = typeof window !== 'undefined' ? localStorage.getItem('VITE_API_URL_OVERRIDE') : null;
+    return override || import.meta.env.VITE_API_URL || 'http://localhost:8000';
+};
+
+export const API_BASE_URL = getApiUrl();
 
 export interface IngestRequest {
     user_id: string;

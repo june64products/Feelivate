@@ -229,14 +229,32 @@ const LoginPage = () => {
                             </div>
                         </div>
 
-                        {error && (
-                            <motion.div 
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                style={{ color: '#ff4d4d', fontSize: '0.85rem', textAlign: 'center' }}
-                            >
-                                {error}
-                            </motion.div>
+                         {error && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <motion.div 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    style={{ color: '#ff4d4d', fontSize: '0.85rem', textAlign: 'center' }}
+                                >
+                                    {error}
+                                </motion.div>
+                                
+                                <div style={{ 
+                                    padding: '16px', 
+                                    background: 'rgba(255,255,255,0.03)', 
+                                    borderRadius: '12px',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    fontSize: '0.8rem'
+                                }}>
+                                    <div style={{ color: 'rgba(255,255,255,0.3)', marginBottom: '4px', textTransform: 'uppercase', fontSize: '0.65rem' }}>Connection Diagnostic</div>
+                                    <div style={{ color: 'rgba(255,255,255,0.6)', wordBreak: 'break-all' }}>
+                                        Target: <code style={{ color: 'var(--accent-primary)' }}>{import.meta.env.VITE_API_URL || 'localhost (Default)'}</code>
+                                    </div>
+                                    <div style={{ marginTop: '8px', color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem' }}>
+                                        If this is wrong, set <code style={{ color: 'white' }}>VITE_API_URL</code> in Vercel.
+                                    </div>
+                                </div>
+                            </div>
                         )}
 
                         <button
