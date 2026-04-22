@@ -87,7 +87,7 @@ def call_llm(
             return _call_gemini(prompt, system, temperature, max_tokens, model_override)
         elif "llama" in model_lower or "mixtral" in model_lower or "gemma" in model_lower or "oss" in model_lower:
             return _call_groq(prompt, system, temperature, max_tokens, model_override)
-        elif "gpt" in model_lower and "oss" not in model_lower:
+        elif ("gpt" in model_lower or model_lower.startswith("o1") or model_lower.startswith("o3")) and "oss" not in model_lower:
             return _call_openai(
                 prompt, system, temperature, max_tokens, model_override, 
                 presence_penalty, frequency_penalty
@@ -228,19 +228,36 @@ def _call_openai(
         client = _get_openai_client()
         if not client:
             raise RuntimeError("OpenAI client not configured (missing API key)")
+            
         model = model_override or os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
+        is_reasoning_model = model.startswith("o1") or model.startswith("o3")
+        
         messages = []
         if system:
-            messages.append({"role": "system", "content": system})
+            # Reasoning models prefer 'developer' role for system instructions
+            role = "developer" if is_reasoning_model else "system"
+            messages.append({"role": role, "content": system})
         messages.append({"role": "user", "content": prompt})
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            presence_penalty=presence_penalty,
-            frequency_penalty=frequency_penalty
-        )
+        
+        # Build API parameters
+        kwargs = {
+            "model": model,
+            "messages": messages,
+        }
+        
+        if is_reasoning_model:
+            # Reasoning models (o-series) don't support temperature or standard max_tokens
+            # and require max_completion_tokens instead.
+            kwargs["max_completion_tokens"] = max_tokens
+            # Optional: Set reasoning effort if needed
+            # kwargs["reasoning_effort"] = "medium"
+        else:
+            kwargs["temperature"] = temperature
+            kwargs["max_tokens"] = max_tokens
+            kwargs["presence_penalty"] = presence_penalty
+            kwargs["frequency_penalty"] = frequency_penalty
+
+        resp = client.chat.completions.create(**kwargs)
         content = resp.choices[0].message.content or ""
         text = content.strip()
         logger.info("LLM call succeeded", extra={"model": model, "tokens": resp.usage})
