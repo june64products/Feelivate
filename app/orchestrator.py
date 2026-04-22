@@ -142,6 +142,10 @@ async def orchestrate(
         # 4. Sequential Month Generation (2-6)
         full_roadmap = [integration["roadmap"][0]]
         
+        # Calculate real calendar dates for each month
+        import datetime
+        plan_start = datetime.date.today()
+        
         for month_num in range(2, 7):
             success = False
             for attempt in range(2):
@@ -150,10 +154,14 @@ async def orchestrate(
                 last_month = full_roadmap[-1]
                 month_context["current_roadmap_progress"] = json.dumps([last_month])
                 
-                start_week = (month_num - 1) * 4 + 1
-                end_week = month_num * 4
+                # Each month = 28 days (4 weeks). Month N starts at day (N-1)*28.
+                month_start_date = plan_start + datetime.timedelta(days=(month_num - 1) * 28)
+                month_end_date = month_start_date + datetime.timedelta(days=27)
+                start_str = month_start_date.strftime("%b %d, %Y (%A)")
+                end_str = month_end_date.strftime("%b %d, %Y")
+                
                 month_inputs = {
-                    "focus": f"Generate exactly Month {month_num}. Weeks {start_week}-{end_week}."
+                    "focus": f"Generate exactly Month {month_num} starting {start_str} and ending {end_str}. Use REAL calendar dates for all weeks and days."
                 }
                 
                 month_data = await _call_agent("IntegrationMonthAgent", month_inputs, month_context, model_override="openai/gpt-oss-120b")
