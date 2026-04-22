@@ -17,47 +17,71 @@ import re
 def _parse_json(text: str) -> Dict[str, Any]:
     # 1. Strip reasoning blocks from models like DeepSeek or O1/OSS
     text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
-    # 2. Strip potential markdown fences
+    
+    # 2. Extract content between first { and last } to bypass conversational fluff
+    try:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            text = text[start : end + 1]
+    except Exception:
+        pass
+
+    # 3. Strip potential markdown fences
     text = re.sub(r'```(?:json)?\s*', '', text)
     text = text.replace('```', '')
-    
     text = text.strip()
     
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # Fallback: try to find the outermost curly braces
+        # Final fallback for partial/hallucinated JSON - try to remove trailing junk
         try:
-            start = text.find("{")
-            end = text.rfind("}")
-            if start != -1 and end != -1 and end > start:
-                json_part = text[start : end + 1]
-                return json.loads(json_part)
+            # Try to fix truncated JSON by finding last valid closing brace/bracket
+            text = text.rstrip()
+            if text.endswith(",") or text.endswith(":"):
+                text = text[:-1] + "}"
+            return json.loads(text)
         except Exception:
             pass
             
-        # Final fallback for partial/hallucinated JSON
         logger.warning(f"JSON Parse Failure. Raw text length: {len(text)}")
         return {"raw_text": text, "error": "failed_to_parse_json"}
 
 
 async def _call_agent(agent_name: str, inputs: Dict[str, str], context: Optional[Dict[str, Any]], model_override: Optional[str] = None) -> Dict[str, Any]:
     try:
-        # Build prompt with specific inputs and retrieved context
         prompt_text = build_prompt(agent_name, inputs, context)
-        
         timer = AgentTimer(agent_name)
         AGENT_CALLS_TOTAL.labels(agent=agent_name).inc()
         
-        logger.info(f"Calling agent: {agent_name}")
-        # Call LLM (IO bound, run in thread). Use 8000 tokens to ensure the 6-month plan fits.
-        text = await asyncio.to_thread(call_llm, prompt_text, max_tokens=8000, model_override=model_override)
+        logger.info(f"Calling agent: {agent_name} with model: {model_override or 'default'}")
         
-        timer.observe()
-        data = _parse_json(text)
-        return data
+        # Use a retry loop for the high-end OSS model
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                text = await asyncio.to_thread(call_llm, prompt_text, max_tokens=8000, model_override=model_override)
+                data = _parse_json(text)
+                
+                if "error" not in data:
+                    timer.observe()
+                    return data
+                
+                logger.warning(f"Attempt {attempt+1} failed to return valid JSON for {agent_name}. Retrying...")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1) # Small delay before retry
+            except Exception as e:
+                logger.warning(f"Attempt {attempt+1} call failed for {agent_name}: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1)
+            
+        # USER REQUIREMENT: No fallback to Llama for analysis. 
+        # If it fails here, return the error so the system knows the OSS model couldn't complete it.
+        logger.error(f"Agent {agent_name} failed all attempts with {model_override}. No fallback used as per user policy.")
+        return {"agent": agent_name, "error": f"OSS Model {model_override} failed after {max_retries} attempts"}
     except Exception as e:
-        logger.exception(f"Error in _call_agent for {agent_name}")
+        logger.exception(f"Fatal error in _call_agent for {agent_name}")
         return {"agent": agent_name, "error": str(e)}
 
 
