@@ -11,12 +11,22 @@ const WorkspacePage = () => {
     const [processing, setProcessing] = useState(false);
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [sidebarKey, setSidebarKey] = useState(0); // Used to force refetch
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     
     useEffect(() => {
         if (!userId) {
             navigate('/login');
         }
     }, [userId, navigate]);
+
+    // Detect mobile
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const [result, setResult] = useState<any>(null);
     const [pollStatus, setPollStatus] = useState('');
@@ -25,6 +35,7 @@ const WorkspacePage = () => {
         try {
             setProcessing(true);
             setActiveSessionId(sessionId);
+            setIsMobileSidebarOpen(false);
             const data = await getSessionDetail(sessionId);
             
             if (data.result) {
@@ -49,6 +60,7 @@ const WorkspacePage = () => {
         setActiveSessionId(null);
         setResult(null);
         setProcessing(false);
+        setIsMobileSidebarOpen(false);
     };
 
     const handleIngest = async (text: string) => {
@@ -133,30 +145,53 @@ const WorkspacePage = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '0 40px',
+                padding: isMobile ? '0 16px' : '0 40px',
                 background: 'rgba(10, 10, 10, 0.7)',
                 backdropFilter: 'blur(16px)',
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
                 zIndex: 100
             }}>
-                <div
-                    onClick={() => navigate('/')}
-                    style={{
-                        fontWeight: 600,
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        background: 'rgba(255,255,255,0.05)',
-                        transition: 'background 0.2s',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                >
-                    <span style={{ color: 'var(--text-secondary)' }}>←</span> Leave Workspace
+                <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                    {/* Mobile hamburger */}
+                    {isMobile && userId && (
+                        <button
+                            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                            style={{
+                                background: 'transparent',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: 'var(--text-primary)',
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                fontSize: '1.2rem'
+                            }}
+                        >
+                            {isMobileSidebarOpen ? '✕' : '☰'}
+                        </button>
+                    )}
+                    <div
+                        onClick={() => navigate('/')}
+                        style={{
+                            fontWeight: 600,
+                            fontSize: isMobile ? '0.85rem' : '1rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: isMobile ? '8px' : '12px',
+                            padding: isMobile ? '6px 12px' : '8px 16px',
+                            borderRadius: '20px',
+                            background: 'rgba(255,255,255,0.05)',
+                            transition: 'background 0.2s',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    >
+                        <span style={{ color: 'var(--text-secondary)' }}>←</span> {isMobile ? 'Back' : 'Leave Workspace'}
+                    </div>
                 </div>
                 
                 <button
@@ -168,7 +203,7 @@ const WorkspacePage = () => {
                         background: 'transparent',
                         border: '1px solid rgba(255,255,255,0.1)',
                         color: 'var(--text-secondary)',
-                        padding: '8px 16px',
+                        padding: isMobile ? '6px 12px' : '8px 16px',
                         borderRadius: '20px',
                         cursor: 'pointer',
                         fontSize: '0.9rem'
@@ -179,8 +214,8 @@ const WorkspacePage = () => {
             </nav>
 
             <div style={{ display: 'flex', flex: 1, marginTop: 'var(--nav-height)' }}>
-                {/* Sidebar */}
-                {userId && (
+                {/* Sidebar - Desktop: always visible, Mobile: overlay */}
+                {userId && !isMobile && (
                     <SessionSidebar 
                         key={sidebarKey}
                         userId={userId} 
@@ -190,10 +225,32 @@ const WorkspacePage = () => {
                     />
                 )}
 
+                {/* Mobile Sidebar Overlay */}
+                {userId && isMobile && isMobileSidebarOpen && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 'var(--nav-height)',
+                        left: 0,
+                        width: '100vw',
+                        height: `calc(100vh - var(--nav-height))`,
+                        background: 'var(--bg-primary)',
+                        zIndex: 150,
+                        overflowY: 'auto'
+                    }}>
+                        <SessionSidebar 
+                            key={sidebarKey}
+                            userId={userId} 
+                            activeSessionId={activeSessionId}
+                            onSelectSession={handleSelectSession}
+                            onNewJourney={handleNewJourney}
+                        />
+                    </div>
+                )}
+
                 {/* Main Content Area */}
                 <main style={{ 
                     flex: 1, 
-                    marginLeft: userId ? '280px' : 0, 
+                    marginLeft: (userId && !isMobile) ? '280px' : 0, 
                     position: 'relative',
                     zIndex: 1,
                     display: 'flex',
@@ -212,10 +269,10 @@ const WorkspacePage = () => {
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                margin: '100px auto',
+                                margin: isMobile ? '60px 16px' : '100px auto',
                                 maxWidth: '600px',
                                 background: 'rgba(0,0,0,0.3)',
-                                padding: '60px 40px',
+                                padding: isMobile ? '40px 24px' : '60px 40px',
                                 borderRadius: '24px',
                                 border: '1px solid var(--border-color)',
                                 boxShadow: '0 0 40px rgba(130, 202, 255, 0.05)'
@@ -228,14 +285,15 @@ const WorkspacePage = () => {
                                     borderTopColor: 'var(--accent-glow)',
                                     marginBottom: '32px'
                                 }} />
-                                <h3 style={{ fontSize: '1.5rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                <h3 style={{ fontSize: isMobile ? '1.2rem' : '1.5rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center' }}>
                                     The Agents are orchestrating...
                                 </h3>
                                 <p style={{
                                     color: 'var(--text-accent)',
-                                    fontSize: '1.1rem',
+                                    fontSize: isMobile ? '0.95rem' : '1.1rem',
                                     height: '24px',
-                                    transition: 'opacity 0.3s'
+                                    transition: 'opacity 0.3s',
+                                    textAlign: 'center'
                                 }}>
                                     {pollStatus || "Initializing agents..."}
                                 </p>
@@ -243,7 +301,7 @@ const WorkspacePage = () => {
                         )}
 
                         {result && (
-                            <div style={{ animation: 'fadeIn 0.5s ease' }}>
+                            <div style={{ animation: 'fadeIn 0.5s ease', padding: isMobile ? '16px' : '0' }}>
                                 <ResultsDashboard
                                     data={result}
                                     userId={result.user_id}
@@ -268,7 +326,8 @@ const WorkspacePage = () => {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
                 }
-            `}</style>
+            `}
+            </style>
         </div>
     );
 };

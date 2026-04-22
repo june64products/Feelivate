@@ -215,9 +215,11 @@ async def detect_contradiction(payload: ContradictionRequest):
         json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=1000, model_override="llama-3.3-70b-versatile")
         data = _parse_json(json_str)
         
+        tension_q = data.get("tension_question", "")
         return {
             "has_contradiction": data.get("has_contradiction", False),
-            "tension_question": data.get("tension_question", "")
+            "tension_question": tension_q,
+            "question": tension_q  # Alias for frontend compatibility
         }
     except Exception as e:
         logger.exception("Failed to detect contradiction")

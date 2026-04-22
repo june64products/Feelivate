@@ -89,6 +89,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
     const [timeLeft, setTimeLeft] = useState(300);
     const [timerActive, setTimerActive] = useState(false);
     const [streak, setStreak] = useState(0);
+    const [isMobile, setIsMobile] = useState(false);
 
     // Timeline/Carousel State
     const [activeMonthIndex, setActiveMonthIndex] = useState(0);
@@ -105,6 +106,14 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const globalMessagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Detect mobile
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         if (data?.integration) {
@@ -227,10 +236,10 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
             </div>
 
             {/* BENTO BOX GRID: Past, Present, Future */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gridTemplateRows: 'auto auto', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(12, 1fr)', gridTemplateRows: 'auto auto', gap: isMobile ? '16px' : '24px' }}>
                 
                 {/* PAST BENTO */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ gridColumn: 'span 6', background: 'rgba(255, 123, 123, 0.03)', border: '1px solid rgba(255, 123, 123, 0.15)', borderRadius: '24px', padding: '32px', position: 'relative', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ gridColumn: isMobile ? 'span 1' : 'span 6', background: 'rgba(255, 123, 123, 0.03)', border: '1px solid rgba(255, 123, 123, 0.15)', borderRadius: isMobile ? '16px' : '24px', padding: isMobile ? '20px' : '32px', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(to right, #ff7b7b, transparent)' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                         <BrainCircuit size={24} color="#ff7b7b" />
@@ -248,7 +257,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                 </motion.div>
 
                 {/* PRESENT BENTO */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ gridColumn: 'span 6', background: 'rgba(249, 215, 28, 0.03)', border: '1px solid rgba(249, 215, 28, 0.15)', borderRadius: '24px', padding: '32px', position: 'relative', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ gridColumn: isMobile ? 'span 1' : 'span 6', background: 'rgba(249, 215, 28, 0.03)', border: '1px solid rgba(249, 215, 28, 0.15)', borderRadius: isMobile ? '16px' : '24px', padding: isMobile ? '20px' : '32px', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(to right, #f9d71c, transparent)' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                         <Zap size={24} color="#f9d71c" />
@@ -266,10 +275,10 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                 </motion.div>
 
                 {/* FUTURE BENTO (Full Width) */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} style={{ gridColumn: 'span 12', background: 'rgba(130, 202, 255, 0.03)', border: '1px solid rgba(130, 202, 255, 0.15)', borderRadius: '24px', padding: '32px', position: 'relative', overflow: 'hidden', display: 'flex', gap: '32px', alignItems: 'center' }}>
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} style={{ gridColumn: isMobile ? 'span 1' : 'span 12', background: 'rgba(130, 202, 255, 0.03)', border: '1px solid rgba(130, 202, 255, 0.15)', borderRadius: isMobile ? '16px' : '24px', padding: isMobile ? '20px' : '32px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '20px' : '32px', alignItems: isMobile ? 'stretch' : 'center' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'linear-gradient(to bottom, #82caff, transparent)' }} />
                     
-                    <div style={{ flex: '0 0 300px' }}>
+                    <div style={{ flex: isMobile ? 'none' : '0 0 300px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                             <AlertTriangle size={24} color="#82caff" />
                             <h4 style={{ color: '#82caff', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Future Projections</h4>
@@ -290,7 +299,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                         </div>
                     </div>
 
-                    <div style={{ flex: 1, paddingLeft: '32px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ flex: 1, paddingLeft: isMobile ? '0' : '32px', borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.1)', borderTop: isMobile ? '1px solid rgba(255,255,255,0.1)' : 'none', paddingTop: isMobile ? '16px' : '0' }}>
                         <AnimatePresence mode="wait">
                             <motion.p key={futureToggle} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} style={{ color: 'var(--text-primary)', fontSize: '1.2rem', lineHeight: 1.6, margin: 0 }}>
                                 {futureToggle === 'failure' ? future.failure_simulation : future.success_simulation}
@@ -301,7 +310,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
             </div>
 
             {/* MISSION CONTROL: Micro Task & Mentor Intervention */}
-            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} style={{ background: '#0a0a0a', border: '1px solid rgba(80, 250, 123, 0.3)', borderRadius: '32px', padding: '48px', position: 'relative', boxShadow: '0 20px 60px rgba(80,250,123,0.05)' }}>
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} style={{ background: '#0a0a0a', border: '1px solid rgba(80, 250, 123, 0.3)', borderRadius: isMobile ? '20px' : '32px', padding: isMobile ? '24px' : '48px', position: 'relative', boxShadow: '0 20px 60px rgba(80,250,123,0.05)' }}>
                 <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', height: '1px', background: 'linear-gradient(90deg, transparent, #50fa7b, transparent)' }} />
                 
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -312,7 +321,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                 </div>
 
                 {localMicroTask && (
-                    <div style={{ display: 'flex', gap: '32px', background: 'rgba(255,255,255,0.02)', padding: '32px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '20px' : '32px', background: 'rgba(255,255,255,0.02)', padding: isMobile ? '20px' : '32px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
                         <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                                 <Rocket color="#50fa7b" size={28} />
@@ -327,7 +336,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                         </div>
 
                         {/* Interactive Timer & Check-in */}
-                        <div style={{ flex: '0 0 350px', background: '#000', borderRadius: '20px', padding: '24px', border: '1px solid rgba(80,250,123,0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ flex: isMobile ? 'none' : '0 0 350px', background: '#000', borderRadius: '20px', padding: isMobile ? '20px' : '24px', border: '1px solid rgba(80,250,123,0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                             <div style={{ fontSize: '3rem', fontFamily: 'monospace', color: timerActive ? '#50fa7b' : 'var(--text-primary)', marginBottom: '24px', fontWeight: 700 }}>
                                 {formatTime(timeLeft)}
                             </div>
@@ -400,9 +409,9 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '24px', overflowX: 'auto', paddingBottom: '24px' }}>
+                                <div style={{ display: 'flex', gap: isMobile ? '12px' : '24px', overflowX: 'auto', paddingBottom: '24px', WebkitOverflowScrolling: 'touch' }}>
                                     {localRoadmap[activeMonthIndex].weeks?.map((week, wIdx) => (
-                                        <div key={wIdx} style={{ flex: '0 0 400px', background: 'rgba(0,0,0,0.4)', borderRadius: '24px', padding: '24px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column' }}>
+                                        <div key={wIdx} style={{ flex: isMobile ? '0 0 85vw' : '0 0 400px', background: 'rgba(0,0,0,0.4)', borderRadius: isMobile ? '16px' : '24px', padding: isMobile ? '16px' : '24px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                                                 <h5 style={{ color: 'var(--text-primary)', fontSize: '1.2rem', margin: 0 }}>{week.week}</h5>
                                                 <button onClick={() => setActiveChatWeek(activeChatWeek === `${localRoadmap[activeMonthIndex].phase}_${week.week}` ? null : `${localRoadmap[activeMonthIndex].phase}_${week.week}`)} style={{ background: 'rgba(130, 202, 255, 0.1)', color: '#82caff', border: 'none', padding: '6px 12px', borderRadius: '12px', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><MessageSquare size={14} /> Adjust</button>
@@ -453,7 +462,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
             <AnimatePresence>
                 {isGlobalChatOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} style={{ width: '100%', maxWidth: '800px', background: '#0a0a0a', border: '1px solid rgba(130, 202, 255, 0.3)', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '70vh', boxShadow: '0 40px 80px rgba(0,0,0,0.5)' }}>
+                        <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} style={{ width: isMobile ? '100%' : '100%', maxWidth: isMobile ? '100%' : '800px', background: '#0a0a0a', border: isMobile ? 'none' : '1px solid rgba(130, 202, 255, 0.3)', borderRadius: isMobile ? '0' : '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: isMobile ? '100vh' : '70vh', boxShadow: isMobile ? 'none' : '0 40px 80px rgba(0,0,0,0.5)' }}>
                             <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{ width: '12px', height: '12px', background: '#82caff', borderRadius: '50%', boxShadow: '0 0 10px #82caff' }} />

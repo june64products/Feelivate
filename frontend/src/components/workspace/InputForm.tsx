@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square, Loader2, ArrowRight } from 'lucide-react';
 import { transcribeAudio, generateQuestion, detectContradiction } from '../../api';
@@ -24,11 +24,20 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
     const [currentAnswer, setCurrentAnswer] = useState('');
     const [currentQuestion, setCurrentQuestion] = useState('What goal or habit have you been trying to achieve, but keep failing at?');
     const [isThinking, setIsThinking] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     
     // Voice State
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorder = useRef<MediaRecorder | null>(null);
     const audioChunks = useRef<Blob[]>([]);
+
+    // Detect mobile
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // -------------------------------------------------------------
     // Step Definitions for the Left Pane
@@ -70,7 +79,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                 nextQ = response.question || "Can you elaborate further?";
             } else {
                 const response = await detectContradiction(newHistory);
-                nextQ = response.question || "Does anything feel off about this?";
+                nextQ = response.tension_question || response.question || "What would it mean to you if you actually succeeded at this?";
             }
 
             setQaHistory(newHistory);
@@ -138,9 +147,10 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
     return (
         <div style={{
             display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
             width: '100%',
-            height: '100%', // Will fill the parent main container
-            minHeight: '80vh',
+            height: '100%',
+            minHeight: isMobile ? 'auto' : '80vh',
             overflow: 'hidden',
             borderRadius: '0px',
             background: 'var(--bg-primary)'
@@ -148,15 +158,17 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
             
             {/* LEFT PANE - Dynamic Typography */}
             <div style={{
-                flex: '0 0 40%',
+                flex: isMobile ? 'none' : '0 0 40%',
                 background: '#050505',
-                borderRight: '1px solid rgba(255,255,255,0.05)',
+                borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                borderBottom: isMobile ? '1px solid rgba(255,255,255,0.05)' : 'none',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
-                padding: '40px clamp(20px, 4vw, 60px)',
+                padding: isMobile ? '24px 20px' : '40px clamp(20px, 4vw, 60px)',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                minHeight: isMobile ? 'auto' : undefined
             }}>
                 {/* Decorative glowing orb */}
                 <motion.div
@@ -169,8 +181,8 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                         position: 'absolute',
                         top: '30%',
                         left: '-20%',
-                        width: '500px',
-                        height: '500px',
+                        width: isMobile ? '250px' : '500px',
+                        height: isMobile ? '250px' : '500px',
                         background: 'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)',
                         filter: 'blur(60px)',
                         pointerEvents: 'none'
@@ -189,9 +201,9 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                         <div style={{ 
                             fontFamily: 'monospace', 
                             color: 'var(--text-accent)', 
-                            fontSize: '1.2rem', 
+                            fontSize: isMobile ? '1rem' : '1.2rem', 
                             letterSpacing: '4px',
-                            marginBottom: '16px',
+                            marginBottom: isMobile ? '8px' : '16px',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '12px'
@@ -201,34 +213,36 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                         </div>
                         
                         <h2 style={{ 
-                            fontSize: 'clamp(3rem, 5vw, 4.5rem)', 
+                            fontSize: isMobile ? 'clamp(2rem, 8vw, 2.5rem)' : 'clamp(3rem, 5vw, 4.5rem)', 
                             fontWeight: 300, 
                             lineHeight: 1.1,
                             color: 'var(--text-primary)',
-                            marginBottom: '16px',
+                            marginBottom: isMobile ? '8px' : '16px',
                             letterSpacing: '-1px'
                         }}>
                             {currentMeta.title}
                         </h2>
                         
                         <h3 style={{
-                            fontSize: '1.5rem',
+                            fontSize: isMobile ? '1.1rem' : '1.5rem',
                             color: 'var(--text-secondary)',
                             fontWeight: 400,
-                            marginBottom: '24px',
+                            marginBottom: isMobile ? '12px' : '24px',
                             fontStyle: 'italic'
                         }}>
                             {currentMeta.subtitle}
                         </h3>
 
-                        <p style={{
-                            color: 'rgba(255,255,255,0.4)',
-                            fontSize: '1rem',
-                            lineHeight: 1.6,
-                            maxWidth: '80%'
-                        }}>
-                            {currentMeta.caption}
-                        </p>
+                        {!isMobile && (
+                            <p style={{
+                                color: 'rgba(255,255,255,0.4)',
+                                fontSize: '1rem',
+                                lineHeight: 1.6,
+                                maxWidth: '80%'
+                            }}>
+                                {currentMeta.caption}
+                            </p>
+                        )}
                     </motion.div>
                 </AnimatePresence>
             </div>
@@ -239,7 +253,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
-                padding: '40px clamp(40px, 6vw, 100px)',
+                padding: isMobile ? '24px 20px' : '40px clamp(40px, 6vw, 100px)',
                 position: 'relative'
             }}>
                 <AnimatePresence mode="wait">
@@ -253,11 +267,11 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                     >
                         {/* Question */}
                         <div style={{
-                            fontSize: '2rem',
+                            fontSize: isMobile ? '1.3rem' : '2rem',
                             fontWeight: 500,
                             lineHeight: 1.4,
                             color: 'var(--text-primary)',
-                            marginBottom: '40px'
+                            marginBottom: isMobile ? '24px' : '40px'
                         }}>
                             {currentQuestion}
                         </div>
@@ -272,14 +286,14 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                                 placeholder="Type your response or use voice..."
                                 style={{
                                     width: '100%',
-                                    minHeight: '200px',
+                                    minHeight: isMobile ? '120px' : '200px',
                                     background: 'transparent',
                                     border: 'none',
                                     borderBottom: '2px solid rgba(255,255,255,0.1)',
                                     color: 'var(--text-primary)',
-                                    fontSize: '1.25rem',
+                                    fontSize: isMobile ? '1rem' : '1.25rem',
                                     lineHeight: 1.6,
-                                    padding: '24px 0',
+                                    padding: isMobile ? '16px 0' : '24px 0',
                                     resize: 'none',
                                     outline: 'none',
                                     transition: 'border-color 0.3s'
@@ -293,10 +307,11 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
-                                marginTop: '24px'
+                                marginTop: isMobile ? '16px' : '24px',
+                                gap: '12px'
                             }}>
                                 {/* Voice Capture */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '16px' }}>
                                     <button
                                         type="button"
                                         onClick={isRecording ? stopRecording : startRecording}
@@ -305,17 +320,18 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                                             background: isRecording ? 'rgba(255, 123, 123, 0.1)' : 'rgba(255,255,255,0.03)',
                                             border: `1px solid ${isRecording ? '#ff7b7b' : 'rgba(255,255,255,0.1)'}`,
                                             color: isRecording ? '#ff7b7b' : 'var(--text-secondary)',
-                                            width: '50px',
-                                            height: '50px',
+                                            width: isMobile ? '44px' : '50px',
+                                            height: isMobile ? '44px' : '50px',
                                             borderRadius: '50%',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             cursor: (isThinking || isLoading) ? 'not-allowed' : 'pointer',
-                                            transition: 'all 0.3s ease'
+                                            transition: 'all 0.3s ease',
+                                            flexShrink: 0
                                         }}
                                     >
-                                        {isRecording ? <Square size={20} fill="currentColor" /> : <Mic size={20} />}
+                                        {isRecording ? <Square size={isMobile ? 16 : 20} fill="currentColor" /> : <Mic size={isMobile ? 16 : 20} />}
                                     </button>
                                     
                                     {isRecording && (
@@ -325,7 +341,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                                             style={{ color: '#ff7b7b', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
                                         >
                                             <div className="pulse-dot" style={{ width: '8px', height: '8px', background: '#ff7b7b', borderRadius: '50%', animation: 'pulse 1.5s infinite' }} />
-                                            Listening...
+                                            {!isMobile && 'Listening...'}
                                         </motion.div>
                                     )}
                                 </div>
@@ -338,21 +354,23 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                                         background: (!currentAnswer.trim() || isThinking || isLoading) ? 'rgba(255,255,255,0.05)' : 'var(--text-primary)',
                                         color: (!currentAnswer.trim() || isThinking || isLoading) ? 'var(--text-muted)' : 'var(--bg-primary)',
                                         border: 'none',
-                                        padding: '16px 32px',
+                                        padding: isMobile ? '12px 24px' : '16px 32px',
                                         borderRadius: '30px',
-                                        fontSize: '1rem',
+                                        fontSize: isMobile ? '0.9rem' : '1rem',
                                         fontWeight: 600,
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '12px',
+                                        gap: isMobile ? '8px' : '12px',
                                         cursor: (!currentAnswer.trim() || isThinking || isLoading) ? 'not-allowed' : 'pointer',
-                                        transition: 'all 0.3s ease'
+                                        transition: 'all 0.3s ease',
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0
                                     }}
                                 >
                                     {(isThinking || isLoading) ? (
-                                        <>Processing <Loader2 size={18} className="spinner" /></>
+                                        <>{isMobile ? '' : 'Processing'} <Loader2 size={18} className="spinner" /></>
                                     ) : (
-                                        <>{step >= MAX_QUESTIONS + 1 ? 'Synthesize Plan' : 'Continue'} <ArrowRight size={18} /></>
+                                        <>{step >= MAX_QUESTIONS + 1 ? (isMobile ? 'Synthesize' : 'Synthesize Plan') : 'Continue'} <ArrowRight size={18} /></>
                                     )}
                                 </button>
                             </div>
