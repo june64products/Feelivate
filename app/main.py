@@ -715,8 +715,11 @@ async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db))
                     # Save month tasks to DB
                     try:
                         with SessionLocal() as db_inner:
-                            # Extract month number from "Month X"
-                            month_idx = int(month_plan.get("phase", "Month 0").split()[-1])
+                            # Extract month number from "Month X" or "Month X (date range)"
+                            import re
+                            phase_str = month_plan.get("phase", "Month 0")
+                            month_match = re.search(r'Month\s+(\d+)', phase_str)
+                            month_idx = int(month_match.group(1)) if month_match else 0
                             for week in month_plan.get("weeks", []):
                                 week_num = week.get("week", 0)
                                 task = RoadmapTask(
