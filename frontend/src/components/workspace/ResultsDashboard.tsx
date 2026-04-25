@@ -83,7 +83,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
     const [localMicroTask, setLocalMicroTask] = useState<any>(null);
     const [isCheckingIn, setIsCheckingIn] = useState(false);
     const [feedbackMessage, setFeedbackMessage] = useState('');
-    const [futureToggle, setFutureToggle] = useState<'failure' | 'success'>('failure');
+    const [futureToggle, setFutureToggle] = useState<'failure' | 'success'>('success');
     const [checkInPhase, setCheckInPhase] = useState<'initial' | 'success_details' | 'failure_details' | 'complete'>('initial');
     const [userFeedback, setUserFeedback] = useState('');
     const [timeLeft, setTimeLeft] = useState(300);
@@ -222,16 +222,10 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '16px 24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Activity size={20} color="#50fa7b" />
-                    <span style={{ color: '#50fa7b', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>Core Analysis Active</span>
+                    <span style={{ color: '#50fa7b', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>Core Analysis</span>
                 </div>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                     <span style={{ fontSize: '1rem', color: '#ffa500', fontWeight: 600 }}>🔥 {streak} Streak</span>
-                    <button 
-                        onClick={() => setIsGlobalChatOpen(true)}
-                        style={{ border: '1px solid rgba(130, 202, 255, 0.3)', background: 'rgba(130, 202, 255, 0.1)', color: '#82caff', padding: '8px 20px', borderRadius: '30px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
-                    >
-                        <MessageSquare size={16} /> Mentor Omni-Chat
-                    </button>
                 </div>
             </div>
 
@@ -243,7 +237,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(to right, #ff7b7b, transparent)' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                         <BrainCircuit size={24} color="#ff7b7b" />
-                        <h4 style={{ color: '#ff7b7b', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>The True Pattern</h4>
+                        <h4 style={{ color: '#ff7b7b', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Past Analysis</h4>
                     </div>
                     <p style={{ color: 'var(--text-primary)', fontSize: '1.2rem', lineHeight: 1.6, marginBottom: '24px' }}>
                         {past.pattern_detected || "No historical pattern identified."}
@@ -261,7 +255,7 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(to right, #f9d71c, transparent)' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                         <Zap size={24} color="#f9d71c" />
-                        <h4 style={{ color: '#f9d71c', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Current Friction</h4>
+                        <h4 style={{ color: '#f9d71c', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Present Analysis</h4>
                     </div>
                     <p style={{ color: 'var(--text-primary)', fontSize: '1.2rem', lineHeight: 1.6, marginBottom: '24px' }}>
                         {present.primary_blocker || present.primary_constraint || "No constraint."}
@@ -281,20 +275,24 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                     <div style={{ flex: isMobile ? 'none' : '0 0 300px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                             <AlertTriangle size={24} color="#82caff" />
-                            <h4 style={{ color: '#82caff', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Future Projections</h4>
+                            <h4 style={{ color: '#82caff', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Future Analysis</h4>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <div 
-                                onClick={() => setFutureToggle('failure')}
-                                style={{ padding: '12px 16px', borderRadius: '12px', cursor: 'pointer', background: futureToggle === 'failure' ? 'rgba(255, 123, 123, 0.1)' : 'transparent', border: `1px solid ${futureToggle === 'failure' ? 'rgba(255, 123, 123, 0.3)' : 'rgba(255,255,255,0.05)'}`, color: futureToggle === 'failure' ? '#ff7b7b' : 'var(--text-secondary)' }}
+                                onClick={() => setFutureToggle(futureToggle === 'success' ? 'failure' : 'success')}
+                                style={{ 
+                                    padding: '12px 16px', 
+                                    borderRadius: '12px', 
+                                    cursor: 'pointer', 
+                                    background: futureToggle === 'failure' ? 'rgba(255, 123, 123, 0.1)' : 'rgba(255,255,255,0.02)', 
+                                    border: `1px solid ${futureToggle === 'failure' ? 'rgba(255, 123, 123, 0.3)' : 'rgba(255,255,255,0.05)'}`, 
+                                    color: futureToggle === 'failure' ? '#ff7b7b' : 'var(--text-secondary)',
+                                    transition: 'all 0.2s',
+                                    textAlign: 'center',
+                                    fontWeight: 600
+                                }}
                             >
-                                Default Trajectory (Inaction)
-                            </div>
-                            <div 
-                                onClick={() => setFutureToggle('success')}
-                                style={{ padding: '12px 16px', borderRadius: '12px', cursor: 'pointer', background: futureToggle === 'success' ? 'rgba(80, 250, 123, 0.1)' : 'transparent', border: `1px solid ${futureToggle === 'success' ? 'rgba(80, 250, 123, 0.3)' : 'rgba(255,255,255,0.05)'}`, color: futureToggle === 'success' ? '#50fa7b' : 'var(--text-secondary)' }}
-                            >
-                                Altered Vector (Action)
+                                {futureToggle === 'success' ? '🚨 View Inaction Risk' : '✨ Return to Action Path'}
                             </div>
                         </div>
                     </div>
@@ -501,6 +499,36 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* FLOATING MENTOR BUTTON */}
+            {!isGlobalChatOpen && (
+                <motion.button
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    whileHover={{ scale: 1.1, boxShadow: '0 0 30px rgba(130, 202, 255, 0.4)' }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setIsGlobalChatOpen(true)}
+                    style={{
+                        position: 'fixed',
+                        bottom: isMobile ? '24px' : '40px',
+                        right: isMobile ? '24px' : '40px',
+                        width: isMobile ? '56px' : '72px',
+                        height: isMobile ? '56px' : '72px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #82caff 0%, #4a90e2 100%)',
+                        border: 'none',
+                        color: 'black',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 900,
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.3), 0 0 20px rgba(130, 202, 255, 0.2)',
+                    }}
+                >
+                    <MessageSquare size={isMobile ? 28 : 32} />
+                </motion.button>
+            )}
         </div>
     );
 }

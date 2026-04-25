@@ -12,6 +12,7 @@ const WorkspacePage = () => {
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [sidebarKey, setSidebarKey] = useState(0); // Used to force refetch
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     
     useEffect(() => {
@@ -213,16 +214,80 @@ const WorkspacePage = () => {
                 </button>
             </nav>
 
-            <div style={{ display: 'flex', flex: 1, marginTop: 'var(--nav-height)' }}>
-                {/* Sidebar - Desktop: always visible, Mobile: overlay */}
+            <div style={{ display: 'flex', flex: 1, marginTop: 'var(--nav-height)', position: 'relative' }}>
+                {/* Sidebar - Desktop: always visible (can be collapsed), Mobile: overlay */}
                 {userId && !isMobile && (
-                    <SessionSidebar 
-                        key={sidebarKey}
-                        userId={userId} 
-                        activeSessionId={activeSessionId}
-                        onSelectSession={handleSelectSession}
-                        onNewJourney={handleNewJourney}
-                    />
+                    <div style={{
+                        width: isSidebarCollapsed ? '0' : '280px',
+                        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'fixed',
+                        left: 0,
+                        top: 'var(--nav-height)',
+                        bottom: 0,
+                        zIndex: 100,
+                        background: 'var(--bg-primary)',
+                        borderRight: isSidebarCollapsed ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                        overflow: 'hidden'
+                    }}>
+                        <SessionSidebar 
+                            key={sidebarKey}
+                            userId={userId} 
+                            activeSessionId={activeSessionId}
+                            onSelectSession={handleSelectSession}
+                            onNewJourney={handleNewJourney}
+                        />
+                        {/* Collapse Toggle Arrow */}
+                        <button
+                            onClick={() => setIsSidebarCollapsed(true)}
+                            style={{
+                                position: 'absolute',
+                                top: '20px',
+                                right: '10px',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: 'white',
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 110,
+                                opacity: isSidebarCollapsed ? 0 : 1,
+                                transition: 'opacity 0.2s'
+                            }}
+                        >
+                            <span style={{ fontSize: '1rem' }}>←</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* Expand Button (visible when collapsed) */}
+                {userId && !isMobile && isSidebarCollapsed && (
+                    <button
+                        onClick={() => setIsSidebarCollapsed(false)}
+                        style={{
+                            position: 'fixed',
+                            left: '20px',
+                            top: `calc(var(--nav-height) + 20px)`,
+                            background: 'rgba(130, 202, 255, 0.1)',
+                            border: '1px solid rgba(130, 202, 255, 0.3)',
+                            color: '#82caff',
+                            padding: '8px 16px',
+                            borderRadius: '20px',
+                            cursor: 'pointer',
+                            zIndex: 110,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontWeight: 600,
+                            boxShadow: '0 4px 20px rgba(130, 202, 255, 0.15)',
+                            animation: 'fadeIn 0.3s'
+                        }}
+                    >
+                        <span>→</span> Show Journeys
+                    </button>
                 )}
 
                 {/* Mobile Sidebar Overlay */}
@@ -250,13 +315,15 @@ const WorkspacePage = () => {
                 {/* Main Content Area */}
                 <main style={{ 
                     flex: 1, 
-                    marginLeft: (userId && !isMobile) ? '280px' : 0, 
+                    marginLeft: (userId && !isMobile) ? (isSidebarCollapsed ? '0' : '280px') : 0, 
+                    transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     position: 'relative',
                     zIndex: 1,
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    padding: isSidebarCollapsed ? '40px' : (isMobile ? '16px' : '40px')
                 }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
                         {!processing && !result && (
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease' }}>
                                 <InputForm onSubmit={handleIngest} isLoading={processing} />
