@@ -675,6 +675,27 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                             {syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'done' ? 'Synced! ✅' : 'Connect & Sync'}
                         </button>
                         <button 
+                            onClick={handleManualSync}
+                            disabled={isSyncingCalendar || syncStatus === 'done'}
+                            style={{ 
+                                flex: 2,
+                                background: 'rgba(255,255,255,0.05)', 
+                                color: 'white', 
+                                padding: '12px', 
+                                borderRadius: '12px', 
+                                border: '1px solid rgba(255,255,255,0.1)', 
+                                fontWeight: 700, 
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            {syncStatus === 'syncing' ? <Loader2 size={18} className="spinner" /> : <Zap size={18} />}
+                            {syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'done' ? 'Synced! ✅' : 'Sync roadmap'}
+                        </button>
+                        <button 
                             onClick={handleStopSync}
                             disabled={isSyncingCalendar}
                             title="Stop all notifications"
