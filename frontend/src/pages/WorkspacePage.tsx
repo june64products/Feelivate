@@ -214,20 +214,22 @@ const WorkspacePage = () => {
                 </button>
             </nav>
 
-            <div style={{ display: 'flex', flex: 1, marginTop: 'var(--nav-height)', position: 'relative' }}>
+            <div style={{ display: 'flex', flex: 1, marginTop: 'var(--nav-height)', position: 'relative', overflow: 'hidden' }}>
                 {/* Sidebar - Desktop: always visible (can be collapsed), Mobile: overlay */}
                 {userId && !isMobile && (
                     <div style={{
-                        width: isSidebarCollapsed ? '0' : '280px',
-                        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        width: '280px',
+                        minWidth: '280px',
+                        transform: isSidebarCollapsed ? 'translateX(-100%)' : 'translateX(0)',
+                        transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                         position: 'fixed',
                         left: 0,
                         top: 'var(--nav-height)',
                         bottom: 0,
                         zIndex: 100,
                         background: 'var(--bg-primary)',
-                        borderRight: isSidebarCollapsed ? 'none' : '1px solid rgba(255,255,255,0.05)',
-                        overflow: 'hidden'
+                        borderRight: '1px solid rgba(255,255,255,0.05)',
+                        overflowY: 'auto'
                     }}>
                         <SessionSidebar 
                             key={sidebarKey}
@@ -254,7 +256,7 @@ const WorkspacePage = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 zIndex: 110,
-                                opacity: isSidebarCollapsed ? 0 : 1,
+                                opacity: 1,
                                 transition: 'opacity 0.2s'
                             }}
                         >
@@ -316,14 +318,15 @@ const WorkspacePage = () => {
                 <main style={{ 
                     flex: 1, 
                     marginLeft: (userId && !isMobile) ? (isSidebarCollapsed ? '0' : '280px') : 0, 
-                    transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     position: 'relative',
                     zIndex: 1,
                     display: 'flex',
                     flexDirection: 'column',
-                    padding: isSidebarCollapsed ? '40px' : (isMobile ? '16px' : '40px')
+                    padding: isSidebarCollapsed ? (isMobile ? '16px' : '40px 60px') : (isMobile ? '16px' : '40px'),
+                    overflowX: 'hidden'
                 }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '1400px', margin: isSidebarCollapsed ? '0 auto' : '0', width: '100%', transition: 'all 0.4s' }}>
                         {!processing && !result && (
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease' }}>
                                 <InputForm onSubmit={handleIngest} isLoading={processing} />

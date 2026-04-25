@@ -102,7 +102,7 @@ class GlobalChatRequest(BaseModel):
     user_id: str
     session_id: str
     message: str
-    full_roadmap: Any
+    full_roadmap: Optional[Any] = None
     chat_history: List[Dict[str, str]]
 
 class TaskUpdate(BaseModel):
@@ -437,9 +437,9 @@ async def generate_global_chat(req: GlobalChatRequest):
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        logger.error(f"Failed to generate global chat:\n{error_details}")
-        print(f"ERROR IN CHAT_GLOBAL:\n{error_details}")
-        raise HTTPException(status_code=500, detail=str(error_details))
+        logger.error(f"Global chat failed for user {req.user_id}: {str(e)}")
+        logger.error(f"Stack trace:\n{error_details}")
+        return {"response_message": "I apologize, but I encountered an internal error while processing your request. Please try again in a moment."}
 
 @app.get("/sessions/{user_id}", tags=["sessions"])
 async def list_sessions(user_id: str, db: DBSession = Depends(get_db)):

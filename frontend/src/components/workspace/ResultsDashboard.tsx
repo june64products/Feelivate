@@ -216,7 +216,14 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
     };
 
     return (
-        <div style={{ padding: '0', display: 'flex', flexDirection: 'column', gap: '40px' }}>
+        <div style={{ 
+            padding: '0', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '40px',
+            marginRight: (isGlobalChatOpen && !isMobile) ? '400px' : '0',
+            transition: 'margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}>
             
             {/* Top Toolbar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '16px 24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -456,47 +463,73 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                 </div>
             )}
 
-            {/* GLOBAL MENTOR COMMAND PALETTE (OVERLAY) */}
+            {/* GLOBAL MENTOR COMMAND PALET            {/* GLOBAL MENTOR SIDEBAR */}
             <AnimatePresence>
                 {isGlobalChatOpen && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} style={{ width: isMobile ? '100%' : '100%', maxWidth: isMobile ? '100%' : '800px', background: '#0a0a0a', border: isMobile ? 'none' : '1px solid rgba(130, 202, 255, 0.3)', borderRadius: isMobile ? '0' : '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: isMobile ? '100vh' : '70vh', boxShadow: isMobile ? 'none' : '0 40px 80px rgba(0,0,0,0.5)' }}>
-                            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <>
+                        {/* Mobile Overlay Backdrop */}
+                        {isMobile && (
+                            <motion.div 
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                onClick={() => setIsGlobalChatOpen(false)}
+                                style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 999 }}
+                            />
+                        )}
+                        <motion.div 
+                            initial={{ x: '100%' }} 
+                            animate={{ x: 0 }} 
+                            exit={{ x: '100%' }} 
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            style={{ 
+                                position: 'fixed', 
+                                top: 'var(--nav-height)', 
+                                right: 0, 
+                                width: isMobile ? '100%' : '400px', 
+                                height: `calc(100vh - var(--nav-height))`, 
+                                background: '#0a0a0a', 
+                                borderLeft: '1px solid rgba(130, 202, 255, 0.2)', 
+                                zIndex: 1000, 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
+                            }}
+                        >
+                            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ width: '12px', height: '12px', background: '#82caff', borderRadius: '50%', boxShadow: '0 0 10px #82caff' }} />
-                                    <span style={{ color: 'white', fontWeight: 600, fontSize: '1.1rem', letterSpacing: '1px' }}>GLOBAL MENTOR UPLINK</span>
+                                    <div style={{ width: '10px', height: '10px', background: '#82caff', borderRadius: '50%', boxShadow: '0 0 10px #82caff' }} />
+                                    <span style={{ color: 'white', fontWeight: 600, fontSize: '1rem', letterSpacing: '0.5px' }}>YOUR MENTOR</span>
                                 </div>
-                                <button onClick={() => setIsGlobalChatOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={24} /></button>
+                                <button onClick={() => setIsGlobalChatOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}><X size={20} /></button>
                             </div>
                             
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                 {globalChatMessages.length === 0 && (
-                                    <div style={{ textAlign: 'center', color: 'var(--text-secondary)', margin: 'auto' }}>
-                                        <BrainCircuit size={48} style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
-                                        <p style={{ fontSize: '1.2rem', maxWidth: '400px', margin: '0 auto' }}>System synchronized. Ask any overarching questions about your journey, timeline, or resistance.</p>
+                                    <div style={{ textAlign: 'center', color: 'var(--text-secondary)', margin: 'auto', padding: '20px' }}>
+                                        <BrainCircuit size={40} style={{ margin: '0 auto 16px auto', opacity: 0.3 }} />
+                                        <p style={{ fontSize: '0.95rem', lineHeight: 1.5 }}>System synchronized. Ask about your journey, challenges, or next steps.</p>
                                     </div>
                                 )}
                                 {globalChatMessages.map((msg, i) => (
                                     <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                                        <div style={{ maxWidth: '80%', padding: '16px 20px', borderRadius: msg.role === 'user' ? '20px 20px 0 20px' : '20px 20px 20px 0', background: msg.role === 'user' ? 'var(--text-primary)' : 'rgba(255,255,255,0.05)', color: msg.role === 'user' ? '#000' : 'var(--text-primary)', border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.1)' : 'none', fontSize: '1.05rem', lineHeight: 1.6 }}>
+                                        <div style={{ maxWidth: '90%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '16px 16px 0 16px' : '16px 16px 16px 0', background: msg.role === 'user' ? 'rgba(130, 202, 255, 0.15)' : 'rgba(255,255,255,0.05)', color: msg.role === 'user' ? '#82caff' : 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.95rem', lineHeight: 1.5 }}>
                                             <MarkdownRenderer text={msg.content} />
                                         </div>
                                     </div>
                                 ))}
                                 {isGlobalChatting && (
-                                    <div style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.05)', padding: '16px 20px', borderRadius: '20px 20px 20px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <Loader2 size={16} className="spinner" color="var(--text-primary)" /> <span style={{ color: 'var(--text-secondary)' }}>Synthesizing...</span>
+                                    <div style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: '16px 16px 16px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <Loader2 size={14} className="spinner" color="#82caff" /> <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Thinking...</span>
                                     </div>
                                 )}
                                 <div ref={globalMessagesEndRef} />
                             </div>
 
-                            <form onSubmit={(e) => handleGlobalChatSubmit(e)} style={{ padding: '24px', background: 'rgba(0,0,0,0.5)', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '16px' }}>
-                                <input autoFocus type="text" value={globalChatInput} onChange={e => setGlobalChatInput(e.target.value)} placeholder="Enter command or question..." style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '16px 24px', borderRadius: '16px', color: 'white', fontSize: '1.1rem', outline: 'none' }} />
-                                <button type="submit" disabled={!globalChatInput.trim() || isGlobalChatting} style={{ background: '#82caff', color: 'black', border: 'none', padding: '0 32px', borderRadius: '16px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}><Send size={20} /></button>
+                            <form onSubmit={(e) => handleGlobalChatSubmit(e)} style={{ padding: '20px', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '12px' }}>
+                                <input autoFocus type="text" value={globalChatInput} onChange={e => setGlobalChatInput(e.target.value)} placeholder="Type a message..." style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px 16px', borderRadius: '12px', color: 'white', fontSize: '0.95rem', outline: 'none' }} />
+                                <button type="submit" disabled={!globalChatInput.trim() || isGlobalChatting} style={{ background: '#82caff', color: 'black', border: 'none', padding: '0 16px', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}><Send size={18} /></button>
                             </form>
                         </motion.div>
-                    </motion.div>
+                    </>
                 )}
             </AnimatePresence>
 
