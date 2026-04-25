@@ -93,6 +93,19 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
 
     // Timeline/Carousel State
     const [activeMonthIndex, setActiveMonthIndex] = useState(0);
+    const [justCreatedMonth, setJustCreatedMonth] = useState<number | null>(null);
+
+    useEffect(() => {
+        // Trigger the flash effect when localRoadmap grows beyond the first initial month
+        if (localRoadmap.length > 1) {
+            setJustCreatedMonth(localRoadmap.length);
+            const timeout = setTimeout(() => {
+                setJustCreatedMonth(null);
+            }, 3500); // 3.5 seconds pulse duration
+            return () => clearTimeout(timeout);
+        }
+    }, [localRoadmap.length]);
+
     const [activeChatWeek, setActiveChatWeek] = useState<string | null>(null);
     const [chatMessages, setChatMessages] = useState<Record<string, { role: string; content: string }[]>>({});
     const [chatInput, setChatInput] = useState('');
@@ -436,9 +449,62 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                             <Calendar size={32} color="var(--text-primary)" />
                             <h3 style={{ fontSize: '2.5rem', fontWeight: 700, margin: 0 }}>Timeline Vectors</h3>
                         </div>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <button onClick={() => setActiveMonthIndex(Math.max(0, activeMonthIndex - 1))} disabled={activeMonthIndex === 0} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: activeMonthIndex === 0 ? 'not-allowed' : 'pointer', opacity: activeMonthIndex === 0 ? 0.3 : 1 }}><ChevronLeft size={24} /></button>
-                            <button onClick={() => setActiveMonthIndex(Math.min(localRoadmap.length - 1, activeMonthIndex + 1))} disabled={activeMonthIndex === localRoadmap.length - 1} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: activeMonthIndex === localRoadmap.length - 1 ? 'not-allowed' : 'pointer', opacity: activeMonthIndex === localRoadmap.length - 1 ? 0.3 : 1 }}><ChevronRight size={24} /></button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                            {/* Streaming Indicator */}
+                            {localRoadmap.length < 6 && (
+                                <AnimatePresence mode="wait">
+                                    {justCreatedMonth ? (
+                                        <motion.div 
+                                            key="created"
+                                            initial={{ opacity: 0, x: -10 }} 
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0 }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#50fa7b', fontWeight: 600, fontSize: '0.9rem' }}
+                                        >
+                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#50fa7b', animation: 'pulse 1s infinite' }} />
+                                            {justCreatedMonth}{justCreatedMonth === 2 ? 'nd' : justCreatedMonth === 3 ? 'rd' : 'th'} month is created, click here →
+                                        </motion.div>
+                                    ) : (
+                                        <motion.div 
+                                            key="creating"
+                                            initial={{ opacity: 0 }} 
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff7b7b', fontWeight: 600, fontSize: '0.9rem' }}
+                                        >
+                                            <Loader2 size={16} className="spinner" />
+                                            {localRoadmap.length + 1}{localRoadmap.length + 1 === 2 ? 'nd' : localRoadmap.length + 1 === 3 ? 'rd' : 'th'} month is creating...
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button onClick={() => setActiveMonthIndex(Math.max(0, activeMonthIndex - 1))} disabled={activeMonthIndex === 0} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: activeMonthIndex === 0 ? 'not-allowed' : 'pointer', opacity: activeMonthIndex === 0 ? 0.3 : 1 }}><ChevronLeft size={24} /></button>
+                                
+                                {/* Right Chevron with dynamic border if newly created */}
+                                <button 
+                                    onClick={() => setActiveMonthIndex(Math.min(localRoadmap.length - 1, activeMonthIndex + 1))} 
+                                    disabled={activeMonthIndex === localRoadmap.length - 1} 
+                                    style={{ 
+                                        background: 'rgba(255,255,255,0.05)', 
+                                        border: justCreatedMonth ? '2px solid #50fa7b' : 'none',
+                                        boxShadow: justCreatedMonth ? '0 0 15px rgba(80, 250, 123, 0.4)' : 'none',
+                                        color: justCreatedMonth ? '#50fa7b' : 'white', 
+                                        width: '48px', 
+                                        height: '48px', 
+                                        borderRadius: '50%', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'center', 
+                                        cursor: activeMonthIndex === localRoadmap.length - 1 ? 'not-allowed' : 'pointer', 
+                                        opacity: activeMonthIndex === localRoadmap.length - 1 ? 0.3 : 1,
+                                        transition: 'all 0.3s'
+                                    }}
+                                >
+                                    <ChevronRight size={24} />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
