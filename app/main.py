@@ -551,7 +551,7 @@ async def google_auth_callback(code: str, user_id: str, db: DBSession = Depends(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/calendar/sync/{session_id}", tags=["calendar"])
-async def sync_calendar(session_id: str, user_id: str, preferred_time: str = "08:00", background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):
+async def sync_calendar(session_id: str, user_id: str, background_tasks: BackgroundTasks, preferred_time: str = "08:00", db: DBSession = Depends(get_db)):
     """Triggers a background task to sync the roadmap to Google Calendar."""
     user = db.query(User).filter(User.id == user_id).first()
     session = db.query(Session).filter(Session.id == session_id).first()
