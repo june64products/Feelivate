@@ -69,22 +69,44 @@ if "@" in log_url:
     log_url = f"{prefix}://****:****@{rest}"
 
 logger.info(f"Creating sync engine for: {log_url}")
-engine = create_engine(
-    DATABASE_URL, 
-    pool_pre_ping=True, 
-    echo=False,
-    connect_args=connect_args if "sqlite" in DATABASE_URL else {} # psycopg2 handles SSL via URL (?sslmode=require)
-)
+
+sync_engine_args = {
+    "pool_pre_ping": True, 
+    "echo": False,
+}
+
+if "sqlite" in DATABASE_URL:
+    sync_engine_args["connect_args"] = connect_args
+else:
+    sync_engine_args.update({
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_recycle": 1800,
+        "pool_timeout": 30
+    })
+
+engine = create_engine(DATABASE_URL, **sync_engine_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Async Engine
 logger.info(f"Creating async engine")
-async_engine = create_async_engine(
-    ASYNC_DATABASE_URL,
-    echo=False,
-    future=True,
-    connect_args=connect_args
-)
+
+async_engine_args = {
+    "echo": False,
+    "future": True,
+    "connect_args": connect_args
+}
+
+if "sqlite" not in ASYNC_DATABASE_URL:
+    async_engine_args.update({
+        "pool_pre_ping": True,
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_recycle": 1800,
+        "pool_timeout": 30
+    })
+
+async_engine = create_async_engine(ASYNC_DATABASE_URL, **async_engine_args)
 AsyncSessionLocal = async_sessionmaker(async_engine, expire_on_commit=False, class_=AsyncSession)
 
 Base = declarative_base()
