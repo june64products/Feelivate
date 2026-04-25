@@ -131,5 +131,19 @@ def init_db():
         from .models import User, Session, ChatMessage, RoadmapTask, EmotionalState, Feedback
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables initialized")
+        
+        # Manually alter tables to add new columns if they don't exist
+        # This handles the lack of an Alembic migration system for the calendar update
+        with engine.begin() as conn:
+            from sqlalchemy import text
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_refresh_token VARCHAR;"))
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_sync_enabled INTEGER DEFAULT 0;"))
+                logger.info("Database migrations applied.")
+            except Exception as inner_e:
+                # Catch silently in case of SQLite dialect which doesn't support IF NOT EXISTS in this context well
+                logger.warning(f"Could not apply manual migrations: {inner_e}")
+                pass
+                
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
