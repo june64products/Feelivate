@@ -15,6 +15,10 @@ class User(Base):
     sessions = relationship("Session", back_populates="user")
     feedbacks = relationship("Feedback", back_populates="user")
     emotional_states = relationship("EmotionalState", back_populates="user")
+    
+    # Google Calendar integration
+    google_refresh_token = Column(String, nullable=True)
+    calendar_sync_enabled = Column(Integer, default=0) # 0: disabled, 1: enabled
 
 class Session(Base):
     __tablename__ = "sessions"

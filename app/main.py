@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from .database import engine, SessionLocal, init_db, get_db
 from .models import User, Session, ChatMessage, RoadmapTask, EmotionalState
+from .calendar_service import calendar_service
 # from .orchestrator import orchestrate (Moved inside functions to prevent startup hang)
 from .observability import REQUESTS_TOTAL
 from .eval import init_eval_db  # Keeping legacy eval for now, but will migrate to Postgres
@@ -513,6 +514,89 @@ async def login(req: LoginRequest, db: DBSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid password")
         
     return {"message": "Login successful", "user_id": user.id, "name": user.name}
+
+# --- Google Calendar Endpoints ---
+
+@app.get("/auth/google", tags=["calendar"])
+async def google_auth_init():
+    """Initializes Google OAuth flow and returns the auth URL."""
+    auth_url = calendar_service.get_auth_url()
+    return {"auth_url": auth_url}
+
+@app.get("/auth/google/callback", tags=["calendar"])
+async def google_auth_callback(code: str, user_id: str, db: DBSession = Depends(get_db)):
+    """Handles the callback from Google, exchanges code for refresh token."""
+    try:
+        tokens = calendar_service.exchange_code(code)
+        refresh_token = tokens.get("refresh_token")
+        
+        if not refresh_token:
+            # If no refresh token, user might have already authorized.
+            # In production, you'd prompt them to re-authorize with access_type=offline
+            logger.warning(f"No refresh token received for user {user_id}. Using existing if available.")
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        if refresh_token:
+            user.google_refresh_token = refresh_token
+        
+        user.calendar_sync_enabled = 1
+        db.commit()
+        
+        return {"status": "success", "message": "Google Calendar connected!"}
+    except Exception as e:
+        logger.error(f"OAuth Callback failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/calendar/sync/{session_id}", tags=["calendar"])
+async def sync_calendar(session_id: str, user_id: str, preferred_time: str = "08:00", background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):
+    """Triggers a background task to sync the roadmap to Google Calendar."""
+    user = db.query(User).filter(User.id == user_id).first()
+    session = db.query(Session).filter(Session.id == session_id).first()
+    
+    if not user or not user.google_refresh_token:
+        raise HTTPException(status_code=400, detail="Google Calendar not connected for this user.")
+        
+    if not session or not session.result_json:
+        raise HTTPException(status_code=404, detail="Roadmap not found for this session.")
+
+    try:
+        roadmap_data = json.loads(session.result_json)
+        user_context = {
+            "focus": session.focus or "",
+            "history": session.history or ""
+        }
+        
+        # Run sync in background as it can take time (generating 180 messages)
+        background_tasks.add_task(
+            calendar_service.sync_roadmap_to_calendar,
+            user.google_refresh_token,
+            roadmap_data,
+            user_context,
+            preferred_time
+        )
+        
+        return {"message": f"Calendar sync started for {preferred_time} in the background."}
+    except Exception as e:
+        logger.error(f"Sync trigger failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/calendar/stop", tags=["calendar"])
+async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):
+    """Disables calendar sync and removes future events."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.google_refresh_token:
+        raise HTTPException(status_code=400, detail="Google Calendar not connected.")
+
+    user.calendar_sync_enabled = 0
+    db.commit()
+
+    # Clear future events in background
+    background_tasks.add_task(calendar_service.clear_roadmap_events, user.google_refresh_token)
+    
+    return {"message": "Notifications disabled and future events being removed."}
 
 @app.post("/ingest", tags=["ingest"])
 async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):

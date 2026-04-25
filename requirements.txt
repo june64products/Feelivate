@@ -27,3 +27,8 @@ groq
 python-dotenv
 aiosqlite
 python-multipart
+
+# Google Calendar Integration
+google-auth
+google-auth-oauthlib
+google-api-python-client

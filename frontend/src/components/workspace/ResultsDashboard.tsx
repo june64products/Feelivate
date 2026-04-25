@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, CheckCircle2, AlertTriangle, Zap, BrainCircuit, Rocket, Activity, ChevronRight, ChevronLeft, Loader2, MessageSquare, Send, X } from 'lucide-react';
-import { submitCheckIn, chatWeek, chatGlobal } from '../../api';
+import { submitCheckIn, chatWeek, chatGlobal, getGoogleAuthUrl, syncGoogleCalendar, stopGoogleCalendarSync } from '../../api';
 
 interface DayDetails {
     day_name: string;
@@ -106,6 +106,51 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const globalMessagesEndRef = useRef<HTMLDivElement>(null);
+
+    const [isSyncingCalendar, setIsSyncingCalendar] = useState(false);
+    const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'done'>('idle');
+    const [preferredTime, setPreferredTime] = useState('08:00');
+
+    const handleCalendarAction = async () => {
+        setIsSyncingCalendar(true);
+        try {
+            // Check if user needs to link first (we'll implement this properly later, 
+            // for now let's just trigger the link flow if they click)
+            const { auth_url } = await getGoogleAuthUrl();
+            window.location.href = auth_url;
+        } catch (error) {
+            console.error("Calendar action failed:", error);
+            setIsSyncingCalendar(false);
+        }
+    };
+
+    const handleManualSync = async () => {
+        setIsSyncingCalendar(true);
+        setSyncStatus('syncing');
+        try {
+            await syncGoogleCalendar(sessionId, userId, preferredTime);
+            setSyncStatus('done');
+            setTimeout(() => setSyncStatus('idle'), 5000);
+        } catch (error) {
+            console.error("Sync failed:", error);
+            setSyncStatus('idle');
+        } finally {
+            setIsSyncingCalendar(false);
+        }
+    };
+
+    const handleStopSync = async () => {
+        setIsSyncingCalendar(true);
+        try {
+            await stopGoogleCalendarSync(userId);
+            setSyncStatus('idle');
+            alert("Calendar sync disabled and future events are being removed.");
+        } catch (error) {
+            console.error("Stop sync failed:", error);
+        } finally {
+            setIsSyncingCalendar(false);
+        }
+    };
 
     // Detect mobile
     useEffect(() => {
@@ -562,6 +607,93 @@ export default function ResultsDashboard({ data, userId, sessionId }: ResultsDas
                     <MessageSquare size={isMobile ? 28 : 32} />
                 </motion.button>
             )}
+
+            {/* Google Calendar Sync Card */}
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ 
+                    background: 'rgba(204, 255, 0, 0.03)', 
+                    border: '1px solid rgba(204, 255, 0, 0.15)', 
+                    borderRadius: '24px', 
+                    padding: isMobile ? '24px' : '32px',
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: 'center',
+                    gap: '24px',
+                    marginBottom: '40px'
+                }}
+            >
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <Calendar size={24} color="#ccff00" />
+                        <h4 style={{ color: '#ccff00', fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Daily AI Motivation via Google Calendar</h4>
+                    </div>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.5, margin: 0 }}>
+                        Get daily English motivational notifications on your phone based on this roadmap. 
+                        AI will send personalized messages to keep you on track every single day.
+                    </p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: isMobile ? '100%' : '300px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Notify at:</span>
+                        <input 
+                            type="time" 
+                            value={preferredTime}
+                            onChange={(e) => setPreferredTime(e.target.value)}
+                            style={{ 
+                                background: 'transparent', 
+                                border: 'none', 
+                                color: 'white', 
+                                fontSize: '1rem', 
+                                fontWeight: 600, 
+                                outline: 'none',
+                                cursor: 'pointer'
+                            }}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                            onClick={handleCalendarAction}
+                            disabled={isSyncingCalendar}
+                            style={{ 
+                                flex: 2,
+                                background: '#ccff00', 
+                                color: 'black', 
+                                padding: '12px', 
+                                borderRadius: '12px', 
+                                border: 'none', 
+                                fontWeight: 700, 
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            {isSyncingCalendar ? <Loader2 size={18} className="spinner" /> : <Calendar size={18} />}
+                            {syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'done' ? 'Synced! ✅' : 'Connect & Sync'}
+                        </button>
+                        <button 
+                            onClick={handleStopSync}
+                            disabled={isSyncingCalendar}
+                            title="Stop all notifications"
+                            style={{ 
+                                flex: 1,
+                                background: 'rgba(255, 123, 123, 0.1)', 
+                                color: '#ff7b7b', 
+                                padding: '12px', 
+                                borderRadius: '12px', 
+                                border: '1px solid rgba(255, 123, 123, 0.2)', 
+                                fontWeight: 600, 
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Stop
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
         </div>
     );
 }

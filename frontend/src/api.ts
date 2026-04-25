@@ -281,3 +281,32 @@ export const getSessionHistory = async (sessionId: string) => {
     const data = await getSessionDetail(sessionId);
     return data.chat_history || [];
 };
+
+// Google Calendar
+export const getGoogleAuthUrl = async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/google`);
+    if (!response.ok) throw new Error('Failed to get auth URL');
+    return response.json();
+};
+
+export const confirmGoogleAuth = async (code: string, userId: string) => {
+    const response = await fetch(`${API_BASE_URL}/auth/google/callback?code=${code}&user_id=${userId}`);
+    if (!response.ok) throw new Error('Failed to confirm Google Auth');
+    return response.json();
+};
+
+export const syncGoogleCalendar = async (sessionId: string, userId: string, preferredTime: string = "08:00") => {
+    const response = await fetch(`${API_BASE_URL}/calendar/sync/${sessionId}?user_id=${userId}&preferred_time=${preferredTime}`, {
+        method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to sync calendar');
+    return response.json();
+};
+
+export const stopGoogleCalendarSync = async (userId: string) => {
+    const response = await fetch(`${API_BASE_URL}/calendar/stop?user_id=${userId}`, {
+        method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to stop calendar sync');
+    return response.json();
+};
