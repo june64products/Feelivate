@@ -21,6 +21,7 @@ const Navbar = () => {
     const navLinks = ['The Journey', 'Mechanism', 'Clarity'];
 
     return (
+        <>
         <nav className="navbar" style={{
             position: 'fixed',
             top: 0,
@@ -163,83 +164,85 @@ const Navbar = () => {
             </div>
 
             {/* Mobile Menu Overlay */}
-            <AnimatePresence>
-                {isMobileMenuOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3 }}
-                        style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'var(--bg-primary)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '32px',
-                            zIndex: 100,
-                            padding: '24px'
-                        }}
-                    >
-                        {navLinks.map((item) => (
-                            <a 
-                                key={item} 
-                                href={`#${item.toLowerCase().replace(' ', '-')}`} 
-                                className="text-mono"
-                                style={{ 
-                                    color: 'var(--text-primary)', 
-                                    fontSize: '1.2rem',
-                                    textDecoration: 'none',
-                                    letterSpacing: '0.2em'
-                                }}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                {item}
-                            </a>
-                        ))}
-                        
-                        <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', maxWidth: '200px' }}>
-                            {userId ? (
-                                <>
-                                    <button
-                                        onClick={() => { setIsMobileMenuOpen(false); navigate('/app'); }}
-                                        className="action-pill primary"
-                                        style={{ width: '100%', justifyContent: 'center' }}
-                                    >
-                                        Go to Core
-                                    </button>
-                                    <button
-                                        onClick={handleLogout}
-                                        className="text-mono"
-                                        style={{ 
-                                            color: 'var(--text-muted)', 
-                                            border: 'none',
-                                            background: 'none',
-                                            padding: '12px'
-                                        }}
-                                    >
-                                        End Session
-                                    </button>
-                                </>
-                            ) : (
-                                <button 
-                                    onClick={() => { setIsMobileMenuOpen(false); navigate('/login'); }}
+        </nav>
+        
+        <AnimatePresence>
+            {isMobileMenuOpen && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'var(--bg-primary)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '32px',
+                        zIndex: 99,
+                        padding: '24px'
+                    }}
+                >
+                    {navLinks.map((item) => (
+                        <a 
+                            key={item} 
+                            href={`#${item.toLowerCase().replace(' ', '-')}`} 
+                            className="text-mono"
+                            style={{ 
+                                color: 'var(--text-primary)', 
+                                fontSize: '1.2rem',
+                                textDecoration: 'none',
+                                letterSpacing: '0.2em'
+                            }}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                            {item}
+                        </a>
+                    ))}
+                    
+                    <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', maxWidth: '200px' }}>
+                        {userId ? (
+                            <>
+                                <button
+                                    onClick={() => { setIsMobileMenuOpen(false); navigate('/app'); }}
                                     className="action-pill primary"
                                     style={{ width: '100%', justifyContent: 'center' }}
                                 >
-                                    Login
+                                    Go to Core
                                 </button>
-                            )}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </nav>
+                                <button
+                                    onClick={handleLogout}
+                                    className="text-mono"
+                                    style={{ 
+                                        color: 'var(--text-muted)', 
+                                        border: 'none',
+                                        background: 'none',
+                                        padding: '12px'
+                                    }}
+                                >
+                                    End Session
+                                </button>
+                            </>
+                        ) : (
+                            <button 
+                                onClick={() => { setIsMobileMenuOpen(false); navigate('/login'); }}
+                                className="action-pill primary"
+                                style={{ width: '100%', justifyContent: 'center' }}
+                            >
+                                Login
+                            </button>
+                        )}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+        </>
     );
 };
 
