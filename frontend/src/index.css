@@ -171,6 +171,10 @@ h1, h2 {
   animation: orbit 20s linear infinite;
 }
 
+.show-on-mobile {
+  display: none !important;
+}
+
 /* ============================================ */
 /* RESPONSIVE DESIGN                            */
 /* ============================================ */
@@ -198,6 +202,40 @@ h1, h2 {
 
   h1, h2 {
     line-height: 1.1;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .show-on-mobile {
+    display: block !important;
+  }
+
+  .navbar {
+    padding: 0 20px !important;
+  }
+
+  .nav-logo-img {
+    height: 24px !important;
+  }
+
+  .nav-logo-text {
+    font-size: 1rem !important;
+  }
+
+  .hero-title {
+    font-size: clamp(2.5rem, 8vw, 4rem) !important;
+  }
+
+  .hero-description {
+    font-size: 1.1rem !important;
+    margin-bottom: 40px !important;
+  }
+
+  .cards-container {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
   }
 
   /* Hide sidebar on mobile - controlled via JS */

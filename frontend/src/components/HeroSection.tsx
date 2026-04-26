@@ -18,8 +18,8 @@ const HeroSection = () => {
             backgroundColor: 'var(--bg-primary)'
         }}>
             {/* Temporal Flow Visual */}
-            <div className="temporal-path">
-                <svg width="100%" height="100%" viewBox="0 0 1440 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <div className="temporal-path" style={{ overflow: 'hidden' }}>
+                <svg width="100%" height="100%" viewBox="0 0 1440 800" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg">
                     {/* Background Static Path */}
                     <motion.path
                         d="M-100 600C200 500 400 700 720 400C1040 100 1240 300 1540 200"
@@ -87,6 +87,7 @@ const HeroSection = () => {
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.5, ease: [0.19, 1, 0.22, 1] }}
+                    className="hero-title"
                     style={{
                         fontSize: 'clamp(4rem, 11vw, 8.5rem)',
                         maxWidth: '1200px',
@@ -103,7 +104,7 @@ const HeroSection = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.5, delay: 0.3 }}
-                    className="text-jost"
+                    className="text-jost hero-description"
                     style={{
                         fontSize: '1.35rem',
                         color: 'var(--text-secondary)',
@@ -123,6 +124,7 @@ const HeroSection = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, delay: 0.6 }}
+                    className="cards-container"
                     style={{ 
                         display: 'grid', 
                         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',

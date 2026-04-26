@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = () => {
     const navigate = useNavigate();
     const [userId, setUserId] = useState<string | null>(localStorage.getItem('user_id'));
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         setUserId(localStorage.getItem('user_id'));
@@ -14,7 +15,10 @@ const Navbar = () => {
         localStorage.removeItem('user_id');
         setUserId(null);
         navigate('/');
+        setIsMobileMenuOpen(false);
     };
+
+    const navLinks = ['The Journey', 'Mechanism', 'Clarity'];
 
     return (
         <nav className="navbar" style={{
@@ -26,7 +30,7 @@ const Navbar = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 60px',
+            padding: '0 60px', /* Desktop padding, overridden by index.css on mobile */
             zIndex: 100,
             background: 'rgba(3, 3, 3, 0.6)',
             backdropFilter: 'blur(30px)',
@@ -36,19 +40,21 @@ const Navbar = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                zIndex: 101
             }} onClick={() => navigate('/')}>
                 <img 
                     src="/LOGO.png" 
                     alt="Logo" 
+                    className="nav-logo-img"
                     style={{ 
                         height: '32px', 
                         width: 'auto',
-                        filter: 'invert(1) brightness(2)', /* Makes black logo white/visible */
+                        filter: 'invert(1) brightness(2)',
                         opacity: 0.9
                     }} 
                 />
-                <div style={{
+                <div className="nav-logo-text" style={{
                     fontFamily: 'var(--font-serif)',
                     fontSize: '1.2rem',
                     color: 'var(--text-primary)',
@@ -65,7 +71,7 @@ const Navbar = () => {
                 left: '50%',
                 transform: 'translateX(-50%)'
             }}>
-                {['The Journey', 'Mechanism', 'Clarity'].map((item) => (
+                {navLinks.map((item) => (
                     <a 
                         key={item} 
                         href={`#${item.toLowerCase().replace(' ', '-')}`} 
@@ -90,7 +96,7 @@ const Navbar = () => {
                 ))}
             </div>
 
-            <div className="nav-actions" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+            <div className="nav-actions hide-on-mobile" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
                 {userId ? (
                     <>
                         <button
@@ -124,6 +130,115 @@ const Navbar = () => {
                     </motion.button>
                 )}
             </div>
+
+            {/* Mobile Hamburger Icon */}
+            <div 
+                className="mobile-menu-toggle show-on-mobile" 
+                style={{ zIndex: 101, cursor: 'pointer', padding: '10px' }}
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+                <div style={{
+                    width: '24px',
+                    height: '2px',
+                    background: 'var(--text-primary)',
+                    marginBottom: '6px',
+                    transition: 'transform 0.3s',
+                    transform: isMobileMenuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none'
+                }}></div>
+                <div style={{
+                    width: '24px',
+                    height: '2px',
+                    background: 'var(--text-primary)',
+                    marginBottom: '6px',
+                    opacity: isMobileMenuOpen ? 0 : 1,
+                    transition: 'opacity 0.3s'
+                }}></div>
+                <div style={{
+                    width: '24px',
+                    height: '2px',
+                    background: 'var(--text-primary)',
+                    transition: 'transform 0.3s',
+                    transform: isMobileMenuOpen ? 'rotate(-45deg) translate(6px, -6px)' : 'none'
+                }}></div>
+            </div>
+
+            {/* Mobile Menu Overlay */}
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'var(--bg-primary)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '32px',
+                            zIndex: 100,
+                            padding: '24px'
+                        }}
+                    >
+                        {navLinks.map((item) => (
+                            <a 
+                                key={item} 
+                                href={`#${item.toLowerCase().replace(' ', '-')}`} 
+                                className="text-mono"
+                                style={{ 
+                                    color: 'var(--text-primary)', 
+                                    fontSize: '1.2rem',
+                                    textDecoration: 'none',
+                                    letterSpacing: '0.2em'
+                                }}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                {item}
+                            </a>
+                        ))}
+                        
+                        <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', maxWidth: '200px' }}>
+                            {userId ? (
+                                <>
+                                    <button
+                                        onClick={() => { setIsMobileMenuOpen(false); navigate('/app'); }}
+                                        className="action-pill primary"
+                                        style={{ width: '100%', justifyContent: 'center' }}
+                                    >
+                                        Go to Core
+                                    </button>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="text-mono"
+                                        style={{ 
+                                            color: 'var(--text-muted)', 
+                                            border: 'none',
+                                            background: 'none',
+                                            padding: '12px'
+                                        }}
+                                    >
+                                        End Session
+                                    </button>
+                                </>
+                            ) : (
+                                <button 
+                                    onClick={() => { setIsMobileMenuOpen(false); navigate('/login'); }}
+                                    className="action-pill primary"
+                                    style={{ width: '100%', justifyContent: 'center' }}
+                                >
+                                    Login
+                                </button>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </nav>
     );
 };
