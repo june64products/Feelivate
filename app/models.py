@@ -8,7 +8,7 @@ class User(Base):
 
     id = Column(String, primary_key=True, index=True) # UUID
     email = Column(String, unique=True, index=True)
-    password = Column(String) # Plain text for now as requested, hash in prod
+    password = Column(String) # Storing Argon2 hash here now
     name = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     

@@ -19,24 +19,43 @@ from pydantic import BaseModel
 from loguru import logger
 from sqlalchemy.orm import Session as DBSession
 
+from fastapi.security import OAuth2PasswordBearer
 from .database import engine, SessionLocal, init_db, get_db
 from .models import User, Session, ChatMessage, RoadmapTask, EmotionalState
 from .calendar_service import calendar_service
-# from .orchestrator import orchestrate (Moved inside functions to prevent startup hang)
+from .security import get_password_hash, verify_password, create_access_token, decode_access_token
 from .observability import REQUESTS_TOTAL
-from .eval import init_eval_db  # Keeping legacy eval for now, but will migrate to Postgres
+from .eval import init_eval_db 
 
 load_dotenv()
 
 app = FastAPI(title="Emotion Time Travel API", version="0.2.0")
 
+# SECURITY: Restrict CORS to your production frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://emotion-time-travel-brlz.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: DBSession = Depends(get_db)):
+    """Dependency to validate JWT and return the current user."""
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
 
 
 # In-memory result store for async polling (Production: use Redis)
@@ -125,19 +144,19 @@ class SignupRequest(BaseModel):
 # --- Persistence Endpoints ---
 
 @app.get("/sessions/{session_id}/history", tags=["persistence"])
-def get_session_history(session_id: str, db: DBSession = Depends(get_db)):
+def get_session_history(session_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Fetch all chat messages for a specific session."""
     messages = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at.asc()).all()
     return [{"role": m.role, "content": m.content, "created_at": m.created_at} for m in messages]
 
 @app.get("/sessions/{session_id}/tasks", tags=["persistence"])
-def get_session_tasks(session_id: str, db: DBSession = Depends(get_db)):
+def get_session_tasks(session_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Fetch all roadmap tasks for a specific session."""
     tasks = db.query(RoadmapTask).filter(RoadmapTask.session_id == session_id).order_by(RoadmapTask.month.asc(), RoadmapTask.week.asc()).all()
     return tasks
 
 @app.patch("/tasks/{task_id}", tags=["persistence"])
-def update_task_status(task_id: int, payload: TaskUpdate, db: DBSession = Depends(get_db)):
+def update_task_status(task_id: int, payload: TaskUpdate, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Update the completion status of a roadmap task."""
     task = db.query(RoadmapTask).filter(RoadmapTask.id == task_id).first()
     if not task:
@@ -147,7 +166,7 @@ def update_task_status(task_id: int, payload: TaskUpdate, db: DBSession = Depend
     return task
 
 @app.post("/sessions/{session_id}/messages", tags=["persistence"])
-def add_session_message(session_id: str, payload: MessageCreate, db: DBSession = Depends(get_db)):
+def add_session_message(session_id: str, payload: MessageCreate, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Manually add a message to a session history."""
     msg = ChatMessage(session_id=session_id, role=payload.role, content=payload.content)
     db.add(msg)
@@ -159,7 +178,7 @@ def add_session_message(session_id: str, payload: MessageCreate, db: DBSession =
 # --- Endpoints ---
 
 @app.post("/generate_questions", tags=["ingest"])
-async def generate_questions(payload: QuestionRequest):
+async def generate_questions(payload: QuestionRequest, current_user: User = Depends(get_current_user)):
     """
     Generates 1 specific adaptive follow-up question based on the initial input and history.
     """
@@ -195,7 +214,7 @@ async def generate_questions(payload: QuestionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/detect_contradiction", tags=["ingest"])
-async def detect_contradiction(payload: ContradictionRequest):
+async def detect_contradiction(payload: ContradictionRequest, current_user: User = Depends(get_current_user)):
     """
     Analyzes the user's answers for psychological contradictions before generating the blueprint.
     """
@@ -227,7 +246,7 @@ async def detect_contradiction(payload: ContradictionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/checkin", tags=["ingest"])
-async def submit_checkin(payload: CheckinRequest, db: DBSession = Depends(get_db)):
+async def submit_checkin(payload: CheckinRequest, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Dynamically recalibrates the plan based on checkin status.
     """
@@ -250,7 +269,7 @@ async def submit_checkin(payload: CheckinRequest, db: DBSession = Depends(get_db
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/weekly_focus", tags=["planner"])
-async def get_weekly_focus(payload: WeeklyFocusRequest):
+async def get_weekly_focus(payload: WeeklyFocusRequest, current_user: User = Depends(get_current_user)):
     """
     Generates 3 behavioral focus areas for the current week in the 6-month plan.
     """
@@ -271,7 +290,7 @@ async def get_weekly_focus(payload: WeeklyFocusRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat_week", tags=["planner"])
-async def generate_week_chat(req: WeekChatRequest):
+async def generate_week_chat(req: WeekChatRequest, current_user: User = Depends(get_current_user)):
     """Handle chat interaction for a specific week."""
     from .llm import call_llm, create_embedding
     from .prompts import build_prompt
@@ -335,7 +354,7 @@ async def generate_week_chat(req: WeekChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat_global", tags=["planner"])
-async def generate_global_chat(req: GlobalChatRequest):
+async def generate_global_chat(req: GlobalChatRequest, current_user: User = Depends(get_current_user)):
     """Handle chat interaction with the Common Mentor (Global)."""
     from .llm import call_llm, create_embedding
     from .prompts import build_prompt
@@ -443,8 +462,10 @@ async def generate_global_chat(req: GlobalChatRequest):
         return {"response_message": "I apologize, but I encountered an internal error while processing your request. Please try again in a moment."}
 
 @app.get("/sessions/{user_id}", tags=["sessions"])
-async def list_sessions(user_id: str, db: DBSession = Depends(get_db)):
-    # Optimized query: avoids fetching the giant result_json blob for all sessions
+async def list_sessions(user_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Verify that the user is requesting their own sessions
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You can only access your own sessions")
     sessions = db.query(
         Session.id,
         Session.created_at,
@@ -463,10 +484,13 @@ async def list_sessions(user_id: str, db: DBSession = Depends(get_db)):
     ]
 
 @app.get("/sessions/detail/{session_id}", tags=["sessions"])
-async def get_session_detail(session_id: str, db: DBSession = Depends(get_db)):
+async def get_session_detail(session_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     session = db.query(Session).filter(Session.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    
+    if session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You can only access your own sessions")
     
     # Return matches the format expected by ResultsDashboard
     import json
@@ -488,7 +512,7 @@ async def get_session_detail(session_id: str, db: DBSession = Depends(get_db)):
 
 @app.post("/signup", tags=["auth"])
 async def signup(req: SignupRequest, db: DBSession = Depends(get_db)):
-    """Simple signup (Production: use Supabase Auth)."""
+    """Secure signup with password hashing."""
     user = db.query(User).filter(User.email == req.email).first()
     if user:
         raise HTTPException(status_code=400, detail="User already exists")
@@ -496,24 +520,50 @@ async def signup(req: SignupRequest, db: DBSession = Depends(get_db)):
     new_user = User(
         id=str(uuid.uuid4()),
         email=req.email,
-        password=req.password,
+        password=get_password_hash(req.password),
         name=req.name
     )
     db.add(new_user)
     db.commit()
-    return {"message": "User created", "user_id": new_user.id, "name": new_user.name}
+    
+    access_token = create_access_token(data={"sub": new_user.id})
+    return {
+        "message": "User created", 
+        "user_id": new_user.id, 
+        "name": new_user.name,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 @app.post("/login", tags=["auth"])
 async def login(req: LoginRequest, db: DBSession = Depends(get_db)):
-    """Simple login (Production: use Supabase Auth)."""
+    """Secure login with JWT generation and lazy password hashing."""
     user = db.query(User).filter(User.email == req.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    if user.password != req.password:
-        raise HTTPException(status_code=401, detail="Invalid password")
+    # Lazy Migration Logic: If it doesn't look like an Argon2 hash, assume plain text
+    if not user.password.startswith("$argon2"):
+        if user.password == req.password:
+            # Upgrade immediately
+            user.password = get_password_hash(req.password)
+            db.commit()
+            logger.info(f"Upgraded password for user {user.email} to hash.")
+        else:
+            raise HTTPException(status_code=401, detail="Invalid password")
+    else:
+        # Standard hash verification
+        if not verify_password(req.password, user.password):
+            raise HTTPException(status_code=401, detail="Invalid password")
         
-    return {"message": "Login successful", "user_id": user.id, "name": user.name}
+    access_token = create_access_token(data={"sub": user.id})
+    return {
+        "message": "Login successful", 
+        "user_id": user.id, 
+        "name": user.name,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 # --- Google Calendar Endpoints ---
 
@@ -524,8 +574,11 @@ async def google_auth_init():
     return {"auth_url": auth_url}
 
 @app.get("/auth/google/callback", tags=["calendar"])
-async def google_auth_callback(code: str, user_id: str, db: DBSession = Depends(get_db)):
+async def google_auth_callback(code: str, user_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Handles the callback from Google, exchanges code for refresh token."""
+    # Verify user
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
     try:
         tokens = calendar_service.exchange_code(code)
         refresh_token = tokens.get("refresh_token")
@@ -551,8 +604,10 @@ async def google_auth_callback(code: str, user_id: str, db: DBSession = Depends(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/calendar/sync/{session_id}", tags=["calendar"])
-async def sync_calendar(session_id: str, user_id: str, background_tasks: BackgroundTasks, preferred_time: str = "08:00", db: DBSession = Depends(get_db)):
+async def sync_calendar(session_id: str, user_id: str, background_tasks: BackgroundTasks, preferred_time: str = "08:00", db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Triggers a background task to sync the roadmap to Google Calendar."""
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
     user = db.query(User).filter(User.id == user_id).first()
     session = db.query(Session).filter(Session.id == session_id).first()
     
@@ -584,8 +639,10 @@ async def sync_calendar(session_id: str, user_id: str, background_tasks: Backgro
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/calendar/stop", tags=["calendar"])
-async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):
+async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Disables calendar sync and removes future events."""
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.google_refresh_token:
         raise HTTPException(status_code=400, detail="Google Calendar not connected.")
@@ -599,7 +656,7 @@ async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db
     return {"message": "Notifications disabled and future events being removed."}
 
 @app.post("/ingest", tags=["ingest"])
-async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db)):
+async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Main entry point for v2.0.
     Starts the orchestration in background.
@@ -685,7 +742,7 @@ async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: 
     ).start()
 
 @app.post("/ingest_stream", tags=["ingest"])
-async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db)):
+async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Streaming entry point for v2.0.
     """

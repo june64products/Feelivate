@@ -27,6 +27,8 @@ groq
 python-dotenv
 aiosqlite
 python-multipart
+passlib[argon2]
+python-jose[cryptography]
 
 # Google Calendar Integration
 google-auth
