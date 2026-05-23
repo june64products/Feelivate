@@ -32,26 +32,32 @@ const WorkspacePage = () => {
     const [result, setResult] = useState<any>(null);
     const [pollStatus, setPollStatus] = useState('');
 
+    const [sessionLoadError, setSessionLoadError] = useState('');
+
     const handleSelectSession = async (sessionId: string) => {
         try {
             setProcessing(true);
             setActiveSessionId(sessionId);
             setIsMobileSidebarOpen(false);
+            setSessionLoadError('');
             const data = await getSessionDetail(sessionId);
             
             if (data.result) {
+                const roadmapLength = data.result?.integration?.roadmap?.length || 0;
                 setResult({
                     user_id: userId,
                     session_id: data.id,
-                    ...data.result
+                    ...data.result,
+                    _isPartial: roadmapLength < 6 // Flag for partial roadmaps
                 });
             } else {
                 setResult(null);
-                alert("This session is still being processed or has no results.");
+                setSessionLoadError("This journey's analysis hasn't completed yet. Please start a new journey or try again later.");
             }
         } catch (error) {
             console.error("Failed to load session:", error);
-            alert("Could not load the selected journey.");
+            setResult(null);
+            setSessionLoadError("Could not load the selected journey. Please check your connection.");
         } finally {
             setProcessing(false);
         }
@@ -62,6 +68,7 @@ const WorkspacePage = () => {
         setResult(null);
         setProcessing(false);
         setIsMobileSidebarOpen(false);
+        setSessionLoadError('');
     };
 
     const handleIngest = async (text: string) => {
@@ -329,6 +336,22 @@ const WorkspacePage = () => {
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '1400px', margin: isSidebarCollapsed ? '0 auto' : '0', width: '100%', transition: 'all 0.4s' }}>
                         {!processing && !result && (
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease' }}>
+                                {sessionLoadError && (
+                                    <div style={{
+                                        background: 'rgba(255, 77, 77, 0.08)',
+                                        border: '1px solid rgba(255, 77, 77, 0.2)',
+                                        borderRadius: '16px',
+                                        padding: '20px 24px',
+                                        marginBottom: '24px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        animation: 'fadeIn 0.3s ease'
+                                    }}>
+                                        <span style={{ fontSize: '1.3rem' }}>⚠️</span>
+                                        <span style={{ color: '#ff9999', fontSize: '0.95rem' }}>{sessionLoadError}</span>
+                                    </div>
+                                )}
                                 <InputForm onSubmit={handleIngest} isLoading={processing} />
                             </div>
                         )}

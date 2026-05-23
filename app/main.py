@@ -834,6 +834,16 @@ async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db),
                         **(chunk.get("integration_meta", {})),
                         "roadmap": [chunk.get("first_month")]
                     }
+                    # Incremental save: persist initial analysis + first month immediately
+                    try:
+                        with SessionLocal() as db_partial:
+                            s = db_partial.query(Session).filter(Session.id == session_id).first()
+                            if s:
+                                s.result_json = json.dumps(session_result)
+                                db_partial.commit()
+                                logger.info(f"Incremental save: initial chunk for session {session_id}")
+                    except Exception as save_e:
+                        logger.error(f"Failed incremental save (initial): {save_e}")
                 elif chunk["type"] == "month":
                     month_plan = chunk["month"]
                     session_result["integration"]["roadmap"].append(month_plan)
@@ -855,7 +865,7 @@ async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db),
                     except Exception as ve:
                         logger.error(f"Failed to store roadmap chunk in RAG: {ve}")
 
-                    # Save month tasks to DB
+                    # Save month tasks to DB + incremental result_json save
                     try:
                         with SessionLocal() as db_inner:
                             # Extract month number from "Month X" or "Month X (date range)"
@@ -874,9 +884,15 @@ async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db),
                                     is_completed=0
                                 )
                                 db_inner.add(task)
+                            
+                            # Incremental save: persist result_json after each month
+                            s = db_inner.query(Session).filter(Session.id == session_id).first()
+                            if s:
+                                s.result_json = json.dumps(session_result)
                             db_inner.commit()
+                            logger.info(f"Incremental save: month {month_idx} for session {session_id}")
                     except Exception as db_e:
-                        logger.error(f"Failed to save tasks for month: {db_e}")
+                        logger.error(f"Failed to save tasks/result for month: {db_e}")
 
                 yield f"data: {json.dumps(chunk)}\n\n"
             
