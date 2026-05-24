@@ -121,8 +121,14 @@ async def orchestrate(
         inputs = {"focus": focus, "history": history, "vision": vision}
         memory_context = {"past_patterns": retrieved_memories if retrieved_memories else ["No past data available yet."]}
 
-        # 2. Sequential Core Agents (using OpenAI o3-mini for world-class reasoning)
-        core_analysis = await _call_agent("CoreAnalysisAgent", inputs, memory_context, model_override="o3-mini")
+        # 2. Intent Detection
+        intent_data = await _call_agent("IntentDetectionAgent", inputs, memory_context, model_override="llama-3.3-70b")
+        intent_type = intent_data.get("intent_type", "Distress")
+        analysis_context = memory_context.copy()
+        analysis_context["intent_type"] = intent_type
+
+        # 3. Sequential Core Agents (using OpenAI o3-mini for world-class reasoning)
+        core_analysis = await _call_agent("CoreAnalysisAgent", inputs, analysis_context, model_override="o3-mini")
         
         past = core_analysis.get("past", {"error": "Failed to parse past"})
         present = core_analysis.get("present", {"error": "Failed to parse present"})
@@ -133,7 +139,8 @@ async def orchestrate(
             "past_pattern": past.get("pattern_detected", "None"),
             "present_constraint": present.get("primary_constraint", present.get("primary_blocker", "None")),
             "future_risk": future.get("failure_simulation", "None"),
-            "energy_level": present.get("energy_level", "Unknown")
+            "energy_level": present.get("energy_level", "Unknown"),
+            "intent_type": intent_type
         }
         
         log.info("Generating Month 1 Strategy...")
