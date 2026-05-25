@@ -61,7 +61,7 @@ const Navbar = () => {
                     color: 'var(--text-primary)',
                     marginTop: '2px'
                 }}>
-                    Emotion <span style={{ fontStyle: 'italic', fontWeight: 300 }}>Time Travel</span>
+                    Feelivate
                 </div>
             </div>
 

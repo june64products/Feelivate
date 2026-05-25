@@ -116,7 +116,7 @@ const HeroSection = () => {
                     }}
                 >
                     Your thoughts aren't looped—they're just waiting to be disentangled. 
-                    Emotion Time Travel maps your internal world with surgical precision. 
+                    Feelivate maps your internal world with surgical precision. 
                 </motion.p>
 
                 {/* Benefits Core - Interactive Cards */}

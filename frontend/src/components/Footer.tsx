@@ -51,8 +51,8 @@ const Footer = () => {
                     color: 'var(--text-secondary)',
                     fontSize: '0.9rem'
                 }}>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.25rem' }}>Emotion Time Travel</div>
-                    <div>© 2026 Emotion Time Travel. All rights reserved.</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.25rem' }}>Feelivate</div>
+                    <div>© 2026 Feelivate. All rights reserved.</div>
                 </div>
             </div>
         </footer>
