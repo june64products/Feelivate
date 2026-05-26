@@ -36,7 +36,7 @@ app = FastAPI(title="Emotion Time Travel API", version="0.2.0")
 # e.g. ALLOWED_ORIGINS=https://feelivateai.vercel.app,https://feelivateai-xyz.vercel.app
 _raw_origins = os.environ.get(
     "ALLOWED_ORIGINS",
-    "https://emotion-time-travel-brlz.vercel.app"  # legacy fallback
+    "https://feelivate.com,https://www.feelivate.com,https://emotion-time-travel-brlz.vercel.app"
 )
 _allowed_origins = [o.strip().rstrip("/") for o in _raw_origins.split(",") if o.strip()]
 
