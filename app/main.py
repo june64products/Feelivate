@@ -31,10 +31,18 @@ load_dotenv()
 
 app = FastAPI(title="Emotion Time Travel API", version="0.2.0")
 
-# SECURITY: Restrict CORS to your production frontend
+# CORS: Read allowed origins from environment variable for flexibility
+# Set ALLOWED_ORIGINS in Northflank as a comma-separated list of frontend URLs
+# e.g. ALLOWED_ORIGINS=https://feelivateai.vercel.app,https://feelivateai-xyz.vercel.app
+_raw_origins = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "https://emotion-time-travel-brlz.vercel.app"  # legacy fallback
+)
+_allowed_origins = [o.strip().rstrip("/") for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://emotion-time-travel-brlz.vercel.app"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
