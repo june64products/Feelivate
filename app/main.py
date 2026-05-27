@@ -423,14 +423,25 @@ async def generate_global_chat(req: GlobalChatRequest, current_user: User = Depe
             "mentor_persona": mentor_persona,
             "impact_statement": impact_statement,
             "Relevant Roadmap Sections (RAG)": "\n".join(retrieved_roadmap) if retrieved_roadmap else json.dumps(req.full_roadmap),
-            "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-5:]]),
+            "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-10:]]),
             "Long-term Context": "\n".join(retrieved_memories) if retrieved_memories else "No specific past context found."
         }
         inputs = {"focus": req.message}
         prompt_text = build_prompt("GlobalMentorAgent", inputs, context)
         logger.info(f"Global Chat Prompt (Persona: {mentor_persona[:50]}...)")
         
-        json_str = await asyncio.to_thread(call_llm, prompt_text, model_override="gpt-4o-mini")
+        # Tuned parameters for ChatGPT-level quality:
+        # temperature=0.85 → creative, natural, human-like tone (not robotic safe answers)
+        # presence_penalty=0.4 → forces new vocabulary, prevents AI from repeating its own content
+        # frequency_penalty=0.35 → eliminates repeated phrases within a single response
+        json_str = await asyncio.to_thread(
+            call_llm, 
+            prompt_text, 
+            model_override="gpt-4o-mini",
+            temperature=0.85,
+            presence_penalty=0.4,
+            frequency_penalty=0.35
+        )
         logger.debug(f"Raw LLM response: {json_str}")
         parsed_response = _parse_json(json_str)
         logger.info(f"Parsed response: {parsed_response}")

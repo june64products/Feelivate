@@ -363,28 +363,39 @@ const Navbar = () => {
                 )}
             </div>
 
-            {/* ── MOBILE HAMBURGER ── */}
+            {/* ── MOBILE HAMBURGER + AVATAR (always visible on mobile) ── */}
             <div
-                className="mobile-menu-toggle show-on-mobile"
-                style={{ zIndex: 101, cursor: 'pointer', padding: '10px' }}
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="show-on-mobile"
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', zIndex: 101 }}
             >
-                {[0, 1, 2].map((i) => (
-                    <div key={i} style={{
-                        width: '22px',
-                        height: '1.5px',
-                        background: i === 1 && isMobileMenuOpen
-                            ? 'transparent'
-                            : 'rgba(255,255,255,0.8)',
-                        marginBottom: i < 2 ? '6px' : 0,
-                        transition: 'all 0.3s ease',
-                        transform: isMobileMenuOpen
-                            ? i === 0 ? 'rotate(45deg) translate(5px, 5px)'
-                            : i === 2 ? 'rotate(-45deg) translate(5px, -5px)'
-                            : 'none'
-                            : 'none',
-                    }} />
-                ))}
+                {/* Avatar visible on mobile always */}
+                {userId && (
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <ProfileAvatar onLogout={handleLogout} />
+                    </div>
+                )}
+                {/* Hamburger */}
+                <div
+                    style={{ cursor: 'pointer', padding: '10px' }}
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                >
+                    {[0, 1, 2].map((i) => (
+                        <div key={i} style={{
+                            width: '22px',
+                            height: '1.5px',
+                            background: i === 1 && isMobileMenuOpen
+                                ? 'transparent'
+                                : 'rgba(255,255,255,0.8)',
+                            marginBottom: i < 2 ? '6px' : 0,
+                            transition: 'all 0.3s ease',
+                            transform: isMobileMenuOpen
+                                ? i === 0 ? 'rotate(45deg) translate(5px, 5px)'
+                                : i === 2 ? 'rotate(-45deg) translate(5px, -5px)'
+                                : 'none'
+                                : 'none',
+                        }} />
+                    ))}
+                </div>
             </div>
         </motion.nav>
 

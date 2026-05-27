@@ -163,7 +163,10 @@ const WorkspaceProfileAvatar = ({ onLogout, isMobile }: { onLogout: () => void; 
 const WorkspacePage = () => {
     const navigate = useNavigate();
     const [userId] = useState<string | null>(localStorage.getItem('user_id'));
-    const [processing, setProcessing] = useState(false);
+    const [processing, setProcessing] = useState(() => {
+        // If we have a saved session, start as true so InputForm never flashes on reload
+        return !!sessionStorage.getItem('active_session_id');
+    });
     const [activeSessionId, setActiveSessionId] = useState<string | null>(
         sessionStorage.getItem('active_session_id') // Restore on reload
     );
