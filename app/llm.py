@@ -280,3 +280,40 @@ def create_embedding(text: str) -> List[float]:
     except Exception as e:
         logger.exception("Embedding creation failed")
         raise RuntimeError(f"Embedding error: {e}")
+
+
+def call_llm_chat(
+    messages: List[dict],
+    temperature: float = 0.85,
+    max_tokens: int = 4000,
+    model_override: Optional[str] = None,
+    presence_penalty: float = 0.4,
+    frequency_penalty: float = 0.35
+) -> str:
+    """
+    Call LLM with a multi-turn messages array (ChatGPT-style).
+    Uses OpenAI client directly — messages must be in OpenAI format:
+    [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}, ...]
+    """
+    try:
+        client = _get_openai_client()
+        if not client:
+            raise RuntimeError("OpenAI client not configured (missing API key)")
+        
+        model = model_override or os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
+        
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty,
+        )
+        content = resp.choices[0].message.content or ""
+        text = content.strip()
+        logger.info("LLM chat call succeeded", extra={"model": model, "tokens": resp.usage})
+        return text
+    except Exception as e:
+        logger.exception("LLM chat call failed")
+        raise RuntimeError(f"LLM chat error: {e}")

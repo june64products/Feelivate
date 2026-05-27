@@ -1,19 +1,20 @@
 """
-FastAPI app with v2.0 Production Endpoints.
+FastAPI app v3.0 — Single Smart Chat Endpoint.
+Clean ChatGPT-style architecture: one /chat endpoint that handles everything.
 """
 
 import json
 import os
+import re
 import uuid
-import threading
 import asyncio
 import io
 from typing import Any, Dict, Optional, List, Union
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from loguru import logger
@@ -25,15 +26,12 @@ from .models import User, Session, ChatMessage, RoadmapTask, EmotionalState
 from .calendar_service import calendar_service
 from .security import get_password_hash, verify_password, create_access_token, decode_access_token
 from .observability import REQUESTS_TOTAL
-from .eval import init_eval_db 
 
 load_dotenv()
 
-app = FastAPI(title="Emotion Time Travel API", version="0.2.0")
+app = FastAPI(title="Feelivate API", version="3.0.0")
 
-# CORS: Read allowed origins from environment variable for flexibility
-# Set ALLOWED_ORIGINS in Northflank as a comma-separated list of frontend URLs
-# e.g. ALLOWED_ORIGINS=https://feelivateai.vercel.app,https://feelivateai-xyz.vercel.app
+# CORS
 _raw_origins = os.environ.get(
     "ALLOWED_ORIGINS",
     "https://feelivate.com,https://www.feelivate.com,https://emotion-time-travel-brlz.vercel.app"
@@ -66,10 +64,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: DBSession = 
     return user
 
 
-# In-memory result store for async polling (Production: use Redis)
-result_store: Dict[str, Dict[str, Any]] = {}
-
-
 @app.on_event("startup")
 def on_startup():
     try:
@@ -90,55 +84,17 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 @app.get("/", tags=["health"])
 def read_root():
-    return {"status": "ok", "version": "v2.0-production-persistence"}
+    return {"status": "ok", "version": "v3.0-smart-mentor"}
 
-# --- Input Models ---
 
-class IngestRequest(BaseModel):
-    user_id: str
-    text: str
+# ============================================================
+# INPUT MODELS
+# ============================================================
+
+class ChatRequest(BaseModel):
+    message: str
     session_id: Optional[str] = None
-
-class QuestionRequest(BaseModel):
-    text: Optional[str] = None
-    history: Optional[Union[str, List[Dict[str, str]]]] = None
-
-class ContradictionRequest(BaseModel):
-    focus: Optional[str] = None
-    history: Optional[Union[str, List[Dict[str, str]]]] = None
-
-class CheckinRequest(BaseModel):
     user_id: str
-    session_id: str
-    status: str
-    current_plan: Dict[str, Any]
-
-class WeeklyFocusRequest(BaseModel):
-    user_id: str
-    session_id: str
-    current_phase: str
-    current_week: str
-
-class WeekChatRequest(BaseModel):
-    user_id: str
-    session_id: str
-    message: str
-    week_context: Dict[str, Any]
-    chat_history: List[Dict[str, str]]
-
-class GlobalChatRequest(BaseModel):
-    user_id: str
-    session_id: str
-    message: str
-    full_roadmap: Optional[Any] = None
-    chat_history: List[Dict[str, str]]
-
-class TaskUpdate(BaseModel):
-    is_completed: bool
-
-class MessageCreate(BaseModel):
-    role: str
-    content: str
 
 class LoginRequest(BaseModel):
     email: str
@@ -149,19 +105,259 @@ class SignupRequest(BaseModel):
     password: str
     name: Optional[str] = None
 
-# --- Persistence Endpoints ---
+class TaskUpdate(BaseModel):
+    is_completed: bool
+
+class MessageCreate(BaseModel):
+    role: str
+    content: str
+
+
+# ============================================================
+# CORE: THE ONE CHAT ENDPOINT
+# ============================================================
+
+def _parse_llm_response(raw_text: str) -> Dict[str, Any]:
+    """Parse LLM response into {reply, plan} format."""
+    # Strip thinking blocks
+    raw_text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL)
+    
+    # Try to parse as JSON first
+    try:
+        # Find JSON object
+        start = raw_text.find("{")
+        end = raw_text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            json_str = raw_text[start:end + 1]
+            # Strip markdown fences
+            json_str = re.sub(r'```(?:json)?\s*', '', json_str)
+            json_str = json_str.replace('```', '').strip()
+            data = json.loads(json_str)
+            
+            if "reply" in data:
+                return {
+                    "reply": data.get("reply", ""),
+                    "plan": data.get("plan", None)
+                }
+    except (json.JSONDecodeError, Exception) as e:
+        logger.warning(f"JSON parse failed, treating as plain text: {e}")
+    
+    # Fallback: treat entire response as plain text reply
+    # Strip any JSON artifacts
+    clean_text = raw_text.strip()
+    if clean_text.startswith("{"):
+        # Tried and failed to parse — extract just readable text
+        clean_text = re.sub(r'[{}"\[\]]', '', clean_text)
+    
+    return {"reply": clean_text, "plan": None}
+
+
+@app.post("/chat", tags=["chat"])
+async def chat(
+    payload: ChatRequest, 
+    db: DBSession = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    """
+    The ONE chat endpoint. Handles everything:
+    - Casual conversation
+    - Lovable-style questions (one at a time)
+    - Week plan generation
+    - Plan revision
+    - Free chat after plan
+    """
+    from .llm import call_llm_chat, create_embedding
+    from .prompts import build_chat_prompt
+    from .vector_store import vector_store
+    
+    user_id = payload.user_id
+    session_id = payload.session_id or str(uuid.uuid4())
+    message = payload.message.strip()
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    
+    logger.info(f"Chat request from user {user_id}, session {session_id}")
+    
+    try:
+        # 1. Get or create session
+        session_rec = db.query(Session).filter(Session.id == session_id).first()
+        if not session_rec:
+            session_rec = Session(
+                id=session_id,
+                user_id=user_id,
+                focus="",
+                history="",
+                vision=""
+            )
+            db.add(session_rec)
+            db.commit()
+        
+        # 2. Fetch conversation history from DB
+        db_messages = db.query(ChatMessage).filter(
+            ChatMessage.session_id == session_id
+        ).order_by(ChatMessage.created_at.asc()).all()
+        
+        history = [{"role": m.role, "content": m.content} for m in db_messages]
+        
+        # Add current user message to history
+        history.append({"role": "user", "content": message})
+        
+        # 3. Build system context (active plan info if any)
+        system_context = None
+        if session_rec.week_plan_json:
+            system_context = f"ACTIVE PLAN (Week {session_rec.current_week}):\n{session_rec.week_plan_json}"
+        
+        # 4. Retrieve relevant memories from Qdrant
+        retrieved_memories = []
+        embedding = None
+        try:
+            embedding = await asyncio.to_thread(create_embedding, message)
+            if embedding:
+                hits = await asyncio.to_thread(
+                    vector_store.search_memories, user_id, embedding, 3
+                )
+                retrieved_memories = [h["text"] for h in hits]
+        except Exception as e:
+            logger.warning(f"Memory retrieval failed (non-fatal): {e}")
+        
+        if retrieved_memories:
+            memory_text = "\n".join(retrieved_memories)
+            if system_context:
+                system_context += f"\n\nRELEVANT PAST CONTEXT:\n{memory_text}"
+            else:
+                system_context = f"RELEVANT PAST CONTEXT:\n{memory_text}"
+        
+        # 5. Build prompt and call LLM
+        prompt_messages = build_chat_prompt(history, system_context)
+        
+        raw_response = await asyncio.to_thread(
+            call_llm_chat,
+            prompt_messages,
+            temperature=0.85,
+            max_tokens=4000,
+            model_override="gpt-4o-mini",
+            presence_penalty=0.4,
+            frequency_penalty=0.35
+        )
+        
+        logger.debug(f"Raw LLM response: {raw_response[:200]}...")
+        
+        # 6. Parse response
+        parsed = _parse_llm_response(raw_response)
+        reply_text = parsed["reply"]
+        plan_data = parsed["plan"]
+        
+        # 7. Save messages to DB
+        user_msg = ChatMessage(session_id=session_id, role="user", content=message)
+        assistant_msg = ChatMessage(session_id=session_id, role="assistant", content=reply_text)
+        db.add(user_msg)
+        db.add(assistant_msg)
+        
+        # 8. If plan was generated, update session
+        if plan_data:
+            session_rec.week_plan_json = json.dumps(plan_data)
+            session_rec.current_week = plan_data.get("week_number", 1)
+            session_rec.phase = "planning"
+            
+            # Store the focus from the first message if not set
+            if not session_rec.focus and len(db_messages) == 0:
+                session_rec.focus = message[:200]
+        
+        # Update focus for new sessions
+        if not session_rec.focus:
+            session_rec.focus = message[:200]
+        
+        db.commit()
+        
+        # 9. Save to Qdrant (non-blocking)
+        try:
+            if embedding:
+                memory_text = f"User: '{message}'. Mentor: '{reply_text[:500]}'"
+                await asyncio.to_thread(
+                    vector_store.add_memory,
+                    user_id,
+                    memory_text,
+                    embedding,
+                    {"source": "chat", "session_id": session_id}
+                )
+        except Exception as e:
+            logger.warning(f"Failed to save chat memory (non-fatal): {e}")
+        
+        return {
+            "reply": reply_text,
+            "plan": plan_data,
+            "session_id": session_id
+        }
+        
+    except Exception as e:
+        import traceback
+        logger.error(f"Chat failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        return {
+            "reply": "Sorry, I hit an error. Try again in a moment.",
+            "plan": None,
+            "session_id": session_id
+        }
+
+
+@app.post("/chat/{session_id}/approve_plan", tags=["chat"])
+async def approve_plan(
+    session_id: str,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Approve the current week plan — marks it active and enables calendar sync."""
+    session_rec = db.query(Session).filter(Session.id == session_id).first()
+    if not session_rec:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if session_rec.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    if not session_rec.week_plan_json:
+        raise HTTPException(status_code=400, detail="No plan to approve")
+    
+    session_rec.phase = "active"
+    db.commit()
+    
+    # Add a system message to the chat
+    system_msg = ChatMessage(
+        session_id=session_id,
+        role="assistant",
+        content=f"✅ Week {session_rec.current_week} plan approved and locked! Let's do this. How are you feeling about Day 1?"
+    )
+    db.add(system_msg)
+    db.commit()
+    
+    return {
+        "status": "approved",
+        "week": session_rec.current_week,
+        "message": f"Week {session_rec.current_week} plan is now active!"
+    }
+
+
+# ============================================================
+# PERSISTENCE ENDPOINTS
+# ============================================================
 
 @app.get("/sessions/{session_id}/history", tags=["persistence"])
 def get_session_history(session_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Fetch all chat messages for a specific session."""
-    messages = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at.asc()).all()
+    messages = db.query(ChatMessage).filter(
+        ChatMessage.session_id == session_id
+    ).order_by(ChatMessage.created_at.asc()).all()
     return [{"role": m.role, "content": m.content, "created_at": m.created_at} for m in messages]
+
 
 @app.get("/sessions/{session_id}/tasks", tags=["persistence"])
 def get_session_tasks(session_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Fetch all roadmap tasks for a specific session."""
-    tasks = db.query(RoadmapTask).filter(RoadmapTask.session_id == session_id).order_by(RoadmapTask.month.asc(), RoadmapTask.week.asc()).all()
+    tasks = db.query(RoadmapTask).filter(
+        RoadmapTask.session_id == session_id
+    ).order_by(RoadmapTask.month.asc(), RoadmapTask.week.asc()).all()
     return tasks
+
 
 @app.patch("/tasks/{task_id}", tags=["persistence"])
 def update_task_status(task_id: int, payload: TaskUpdate, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -173,334 +369,34 @@ def update_task_status(task_id: int, payload: TaskUpdate, db: DBSession = Depend
     db.commit()
     return task
 
-@app.post("/sessions/{session_id}/messages", tags=["persistence"])
-def add_session_message(session_id: str, payload: MessageCreate, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Manually add a message to a session history."""
-    msg = ChatMessage(session_id=session_id, role=payload.role, content=payload.content)
-    db.add(msg)
-    db.commit()
-    return msg
 
-
-
-# --- Endpoints ---
-
-@app.post("/generate_questions", tags=["ingest"])
-async def generate_questions(payload: QuestionRequest, current_user: User = Depends(get_current_user)):
-    """
-    Generates 1 specific adaptive follow-up question based on the initial input and history.
-    """
-    from .llm import call_llm
-    from .prompts import build_prompt
-    from .orchestrator import _parse_json
-    
-    try:
-        # Determine focus from text or last history entry
-        focus_text = payload.text or ""
-        history_data = payload.history
-        
-        if not focus_text and isinstance(history_data, list) and len(history_data) > 0:
-            last_entry = history_data[-1]
-            focus_text = last_entry.get("a", last_entry.get("content", ""))
-
-        inputs = {"focus": focus_text}
-        if history_data:
-            inputs["history"] = history_data
-            
-        prompt_text = build_prompt("QuestionGeneratorAgent", inputs, None)
-        json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=1000, model_override="llama-3.3-70b-versatile")
-        data = _parse_json(json_str)
-        
-        # Fallback to empty string if LLM fails
-        question = data.get("question", "")
-        if not question and "questions" in data and isinstance(data["questions"], list) and len(data["questions"]) > 0:
-            question = data["questions"][0] # Just in case it hallucinated the old format
-            
-        return {"question": question}
-    except Exception as e:
-        logger.exception("Failed to generate question")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/detect_contradiction", tags=["ingest"])
-async def detect_contradiction(payload: ContradictionRequest, current_user: User = Depends(get_current_user)):
-    """
-    Analyzes the user's answers for psychological contradictions before generating the blueprint.
-    """
-    from .llm import call_llm
-    from .prompts import build_prompt
-    from .orchestrator import _parse_json
-    
-    try:
-        focus_text = payload.focus or ""
-        history_data = payload.history
-        
-        if not focus_text and isinstance(history_data, list) and len(history_data) > 0:
-            last_entry = history_data[-1]
-            focus_text = last_entry.get("a", last_entry.get("content", ""))
-
-        inputs = {"focus": focus_text, "history": history_data}
-        prompt_text = build_prompt("ContradictionDetectorAgent", inputs, None)
-        json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=1000, model_override="llama-3.3-70b-versatile")
-        data = _parse_json(json_str)
-        
-        tension_q = data.get("tension_question", "")
-        return {
-            "has_contradiction": data.get("has_contradiction", False),
-            "tension_question": tension_q,
-            "question": tension_q  # Alias for frontend compatibility
-        }
-    except Exception as e:
-        logger.exception("Failed to detect contradiction")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/checkin", tags=["ingest"])
-async def submit_checkin(payload: CheckinRequest, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """
-    Dynamically recalibrates the plan based on checkin status.
-    """
-    from .llm import call_llm
-    from .prompts import build_prompt
-    from .orchestrator import _parse_json
-    
-    try:
-        context = {
-            "status": payload.status,
-            "current_plan": json.dumps(payload.current_plan)
-        }
-        prompt_text = build_prompt("RecalibrationAgent", {"focus": f"User status: {payload.status}\nCurrent plan: {json.dumps(payload.current_plan)}"}, context)
-        json_str = await asyncio.to_thread(call_llm, prompt_text)
-        recalibrated_data = _parse_json(json_str)
-        
-        return recalibrated_data
-    except Exception as e:
-        logger.exception("Failed to recalibrate plan")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/weekly_focus", tags=["planner"])
-async def get_weekly_focus(payload: WeeklyFocusRequest, current_user: User = Depends(get_current_user)):
-    """
-    Generates 3 behavioral focus areas for the current week in the 6-month plan.
-    """
-    from .llm import call_llm
-    from .prompts import build_prompt
-    from .orchestrator import _parse_json
-    
-    try:
-        inputs = {
-            "focus": f"Phase: {payload.current_phase}, Week: {payload.current_week}"
-        }
-        prompt_text = build_prompt("WeeklyFocusAgent", inputs, None)
-        json_str = await asyncio.to_thread(call_llm, prompt_text)
-        data = _parse_json(json_str)
-        return data
-    except Exception as e:
-        logger.exception("Failed to generate weekly focus")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/chat_week", tags=["planner"])
-async def generate_week_chat(req: WeekChatRequest, current_user: User = Depends(get_current_user)):
-    """Handle chat interaction for a specific week."""
-    from .llm import call_llm, create_embedding
-    from .prompts import build_prompt
-    from .orchestrator import _parse_json
-    from .vector_store import vector_store
-    
-    logger.info(f"Generating week chat for user {req.user_id}")
-    try:
-        # 1. Semantic Retrieval
-        retrieved_memories = []
-        try:
-            embedding = await asyncio.to_thread(create_embedding, req.message)
-            if embedding:
-                hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 2)
-                retrieved_memories = [h["text"] for h in hits]
-        except Exception as re:
-            logger.warning(f"Memory retrieval failed: {re}")
-
-        context = {
-            "Week Context": json.dumps(req.week_context),
-            "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-5:]]),
-            "Relevant Past Memories": "\n".join(retrieved_memories) if retrieved_memories else "None found."
-        }
-        inputs = {"focus": req.message}
-        prompt_text = build_prompt("WeekChatAgent", inputs, context)
-        
-        json_str = await asyncio.to_thread(call_llm, prompt_text)
-        parsed_response = _parse_json(json_str)
-        
-        # 2. Add message saving logic to SQL
-        with SessionLocal() as db:
-            # Save user message
-            user_msg = ChatMessage(session_id=req.session_id, role="user", content=req.message)
-            db.add(user_msg)
-            # Save assistant response
-            assistant_msg = ChatMessage(
-                session_id=req.session_id, 
-                role="assistant", 
-                content=parsed_response.get("response_message", "")
-            )
-            db.add(assistant_msg)
-            db.commit()
-
-        # 3. Save interaction to vector store (Semantic Memory)
-        try:
-            memory_text = f"User asked Week Mentor: '{req.message}'. Mentor replied: '{parsed_response.get('response_message', '')}'"
-            if embedding:
-                await asyncio.to_thread(
-                    vector_store.add_memory, 
-                    req.user_id, 
-                    memory_text, 
-                    embedding, 
-                    {"source": "chat_week", "week": req.week_context.get("week_number")}
-                )
-        except Exception as ve:
-             logger.warning(f"Could not save chat memory to Qdrant: {ve}")
-             
-        return parsed_response
-    except Exception as e:
-        logger.exception("Week chat generation failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/chat_global", tags=["planner"])
-async def generate_global_chat(req: GlobalChatRequest, current_user: User = Depends(get_current_user)):
-    """Handle chat interaction with the Common Mentor (Global)."""
-    from .llm import call_llm, create_embedding
-    from .prompts import build_prompt
-    from .orchestrator import _parse_json
-    from .vector_store import vector_store
-    
-    logger.info(f"Generating global chat for user {req.user_id}")
-    try:
-        # 1. Semantic Retrieval
-        retrieved_memories = []
-        retrieved_roadmap = []
-        embedding = None
-        try:
-            embedding = await asyncio.to_thread(create_embedding, req.message)
-            if embedding:
-                # Fetch explicit roadmap chunks
-                roadmap_hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 2, {"source": "roadmap_chunk"})
-                retrieved_roadmap = [h["text"] for h in roadmap_hits]
-                
-                # Fetch past general memories
-                hits = await asyncio.to_thread(vector_store.search_memories, req.user_id, embedding, 3)
-                retrieved_memories = [h["text"] for h in hits if h.get("metadata", {}).get("source") != "roadmap_chunk"]
-        except Exception as re:
-            logger.warning(f"Global memory retrieval failed: {re}")
-
-        # 1.5 Fetch Session Details for Persona & Context
-        with SessionLocal() as db_session:
-            session_rec = db_session.query(Session).filter(Session.id == req.session_id).first()
-            
-            # If session missing, create placeholder so chat can still function/save
-            if not session_rec:
-                logger.info(f"Creating missing session {req.session_id} for user {req.user_id}")
-                session_rec = Session(
-                    id=req.session_id, 
-                    user_id=req.user_id,
-                    focus="Direct Mentor Query",
-                    history="",
-                    vision=""
-                )
-                db_session.add(session_rec)
-                db_session.commit()
-                # Refresh to avoid detached instance issues if needed, 
-                # but we only need it for this block
-            
-            mentor_persona = "A generic but helpful AI mentor."
-            impact_statement = "Help the user achieve their goal through small, consistent steps."
-            
-            if session_rec.result_json:
-                try:
-                    res_data = json.loads(session_rec.result_json)
-                    integration = res_data.get("integration", {})
-                    mentor_persona = integration.get("mentor_persona", mentor_persona)
-                    impact_statement = integration.get("impact_statement", impact_statement)
-                except Exception as je:
-                    logger.warning(f"Failed to parse result_json for persona: {je}")
-
-        context = {
-            "mentor_persona": mentor_persona,
-            "impact_statement": impact_statement,
-            "Relevant Roadmap Sections (RAG)": "\n".join(retrieved_roadmap) if retrieved_roadmap else json.dumps(req.full_roadmap),
-            "Conversation History": "\n".join([f"{msg['role']}: {msg['content']}" for msg in req.chat_history[-10:]]),
-            "Long-term Context": "\n".join(retrieved_memories) if retrieved_memories else "No specific past context found."
-        }
-        inputs = {"focus": req.message}
-        prompt_text = build_prompt("GlobalMentorAgent", inputs, context)
-        logger.info(f"Global Chat Prompt (Persona: {mentor_persona[:50]}...)")
-        
-        # Tuned parameters for ChatGPT-level quality:
-        # temperature=0.85 → creative, natural, human-like tone (not robotic safe answers)
-        # presence_penalty=0.4 → forces new vocabulary, prevents AI from repeating its own content
-        # frequency_penalty=0.35 → eliminates repeated phrases within a single response
-        json_str = await asyncio.to_thread(
-            call_llm, 
-            prompt_text, 
-            model_override="gpt-4o-mini",
-            temperature=0.85,
-            presence_penalty=0.4,
-            frequency_penalty=0.35
-        )
-        logger.debug(f"Raw LLM response: {json_str}")
-        parsed_response = _parse_json(json_str)
-        logger.info(f"Parsed response: {parsed_response}")
-        
-        # 2. Save messages to SQL
-        with SessionLocal() as db:
-            user_msg = ChatMessage(session_id=req.session_id, role="user", content=req.message)
-            db.add(user_msg)
-            assistant_msg = ChatMessage(
-                session_id=req.session_id, 
-                role="assistant", 
-                content=parsed_response.get("response_message", "")
-            )
-            db.add(assistant_msg)
-            db.commit()
-
-        # 3. Save to Semantic Memory
-        try:
-            if embedding:
-                memory_text = f"User asked Common Mentor: '{req.message}'. Mentor replied: '{parsed_response.get('response_message', '')}'"
-                await asyncio.to_thread(
-                    vector_store.add_memory, 
-                    req.user_id, 
-                    memory_text, 
-                    embedding, 
-                    {"source": "chat_global"}
-                )
-        except Exception as ve:
-            logger.warning(f"Failed to save global chat memory: {ve}")
-            
-        return parsed_response
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        logger.error(f"Global chat failed for user {req.user_id}: {str(e)}")
-        logger.error(f"Stack trace:\n{error_details}")
-        return {"response_message": "I apologize, but I encountered an internal error while processing your request. Please try again in a moment."}
+# ============================================================
+# SESSIONS
+# ============================================================
 
 @app.get("/sessions/{user_id}", tags=["sessions"])
 async def list_sessions(user_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # Verify that the user is requesting their own sessions
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden: You can only access your own sessions")
     sessions = db.query(
         Session.id,
         Session.created_at,
         Session.focus,
-        Session.result_json.isnot(None).label('has_result')
+        Session.current_week,
+        Session.phase,
     ).filter(Session.user_id == user_id).order_by(Session.created_at.desc()).all()
     
     return [
         {
             "id": s.id,
             "created_at": s.created_at,
-            "focus_preview": s.focus[:50] + "..." if s.focus and len(s.focus) > 50 else (s.focus or "New Journey"),
-            "has_result": s.has_result
+            "focus_preview": s.focus[:60] + "..." if s.focus and len(s.focus) > 60 else (s.focus or "New Chat"),
+            "current_week": s.current_week,
+            "phase": s.phase,
         }
         for s in sessions
     ]
+
 
 @app.get("/sessions/detail/{session_id}", tags=["sessions"])
 async def get_session_detail(session_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -509,25 +405,35 @@ async def get_session_detail(session_id: str, db: DBSession = Depends(get_db), c
         raise HTTPException(status_code=404, detail="Session not found")
     
     if session.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Forbidden: You can only access your own sessions")
+        raise HTTPException(status_code=403, detail="Forbidden")
     
-    # Return matches the format expected by ResultsDashboard
-    import json
-    result = None
-    if session.result_json:
+    # Get messages
+    messages = db.query(ChatMessage).filter(
+        ChatMessage.session_id == session_id
+    ).order_by(ChatMessage.created_at.asc()).all()
+    
+    # Parse plan if exists
+    plan = None
+    if session.week_plan_json:
         try:
-            result = json.loads(session.result_json)
+            plan = json.loads(session.week_plan_json)
         except:
             pass
-            
+    
     return {
         "id": session.id,
         "created_at": session.created_at,
         "focus": session.focus,
-        "history": session.history,
-        "vision": session.vision,
-        "result": result
+        "current_week": session.current_week,
+        "phase": session.phase,
+        "plan": plan,
+        "messages": [{"role": m.role, "content": m.content, "created_at": m.created_at} for m in messages]
     }
+
+
+# ============================================================
+# AUTH
+# ============================================================
 
 @app.post("/signup", tags=["auth"])
 async def signup(req: SignupRequest, db: DBSession = Depends(get_db)):
@@ -564,14 +470,12 @@ async def login(req: LoginRequest, db: DBSession = Depends(get_db)):
     # Lazy Migration Logic: If it doesn't look like an Argon2 hash, assume plain text
     if not user.password.startswith("$argon2"):
         if user.password == req.password:
-            # Upgrade immediately
             user.password = get_password_hash(req.password)
             db.commit()
             logger.info(f"Upgraded password for user {user.email} to hash.")
         else:
             raise HTTPException(status_code=401, detail="Invalid password")
     else:
-        # Standard hash verification
         if not verify_password(req.password, user.password):
             raise HTTPException(status_code=401, detail="Invalid password")
         
@@ -584,7 +488,10 @@ async def login(req: LoginRequest, db: DBSession = Depends(get_db)):
         "token_type": "bearer"
     }
 
-# --- Google Calendar Endpoints ---
+
+# ============================================================
+# GOOGLE CALENDAR
+# ============================================================
 
 @app.get("/auth/google", tags=["calendar"])
 async def google_auth_init():
@@ -595,17 +502,11 @@ async def google_auth_init():
 @app.get("/auth/google/callback", tags=["calendar"])
 async def google_auth_callback(code: str, user_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Handles the callback from Google, exchanges code for refresh token."""
-    # Verify user
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
     try:
         tokens = calendar_service.exchange_code(code)
         refresh_token = tokens.get("refresh_token")
-        
-        if not refresh_token:
-            # If no refresh token, user might have already authorized.
-            # In production, you'd prompt them to re-authorize with access_type=offline
-            logger.warning(f"No refresh token received for user {user_id}. Using existing if available.")
         
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -624,26 +525,34 @@ async def google_auth_callback(code: str, user_id: str, db: DBSession = Depends(
 
 @app.post("/calendar/sync/{session_id}", tags=["calendar"])
 async def sync_calendar(session_id: str, user_id: str, background_tasks: BackgroundTasks, preferred_time: str = "08:00", db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Triggers a background task to sync the roadmap to Google Calendar."""
+    """Triggers a background task to sync the week plan to Google Calendar."""
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
     user = db.query(User).filter(User.id == user_id).first()
     session = db.query(Session).filter(Session.id == session_id).first()
     
     if not user or not user.google_refresh_token:
-        raise HTTPException(status_code=400, detail="Google Calendar not connected for this user.")
+        raise HTTPException(status_code=400, detail="Google Calendar not connected.")
         
-    if not session or not session.result_json:
-        raise HTTPException(status_code=404, detail="Roadmap not found for this session.")
+    if not session or not session.week_plan_json:
+        raise HTTPException(status_code=404, detail="No active plan to sync.")
 
     try:
-        roadmap_data = json.loads(session.result_json)
-        user_context = {
-            "focus": session.focus or "",
-            "history": session.history or ""
+        plan_data = json.loads(session.week_plan_json)
+        # Wrap in the format calendar_service expects
+        roadmap_data = {
+            "integration": {
+                "roadmap": [{
+                    "phase": f"Week {session.current_week}",
+                    "weeks": [{
+                        "week": plan_data.get("week_label", "This week"),
+                        "days": plan_data.get("days", [])
+                    }]
+                }]
+            }
         }
+        user_context = {"focus": session.focus or ""}
         
-        # Run sync in background as it can take time (generating 180 messages)
         background_tasks.add_task(
             calendar_service.sync_roadmap_to_calendar,
             user.google_refresh_token,
@@ -652,7 +561,7 @@ async def sync_calendar(session_id: str, user_id: str, background_tasks: Backgro
             preferred_time
         )
         
-        return {"message": f"Calendar sync started for {preferred_time} in the background."}
+        return {"message": f"Calendar sync started for Week {session.current_week}."}
     except Exception as e:
         logger.error(f"Sync trigger failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -669,331 +578,36 @@ async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db
     user.calendar_sync_enabled = 0
     db.commit()
 
-    # Clear future events in background
     background_tasks.add_task(calendar_service.clear_roadmap_events, user.google_refresh_token)
     
     return {"message": "Notifications disabled and future events being removed."}
 
-@app.post("/ingest", tags=["ingest"])
-async def ingest(payload: IngestRequest, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """
-    Main entry point for v2.0.
-    Starts the orchestration in background.
-    """
-    user_id = payload.user_id
-    
-    # Create/Get User
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        user = User(id=user_id)
-        db.add(user)
-        db.commit()
 
-    # Create Session Record
-    session_id = payload.session_id or str(uuid.uuid4())
-    session_rec = db.query(Session).filter(Session.id == session_id).first()
-    if not session_rec:
-        session_rec = Session(
-            id=session_id,
-            user_id=user_id,
-            focus=payload.text, # Since focus is required on the model, we store the full text there initially
-            history="",
-            vision=""
-        )
-        db.add(session_rec)
-        db.commit()
-
-    trace_id = str(uuid.uuid4())
-    result_store[trace_id] = {"status": "processing"}
-
-    # Run orchestration in background thread (since it calls blocking sync LLM code wrapped in async)
-    def run_orchestrate(tid: str, uid: str, raw_text: str, sid: str):
-        from .orchestrator import orchestrate
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                # 1. First, parse the raw unstructured text into Focus, History, Vision using StructureAgent
-                from .llm import call_llm
-                from .prompts import build_prompt
-                from .orchestrator import _parse_json
-                
-                logger.info("Structuring raw input with Groq StructureAgent...")
-                prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
-                
-                structured_json_str = call_llm(prompt_text, max_tokens=2000)
-                structured_data = _parse_json(structured_json_str)
-                
-                focus = structured_data.get("focus", raw_text)
-                history = structured_data.get("history", "")
-                vision = structured_data.get("vision", "")
-
-                # Update the session with the structured data
-                with SessionLocal() as db_inner:
-                    s = db_inner.query(Session).filter(Session.id == sid).first()
-                    if s:
-                        s.focus = focus
-                        s.history = history
-                        s.vision = vision
-                        db_inner.commit()
-
-                # 2. Call the orchestrator with the newly structured inputs
-                res = loop.run_until_complete(orchestrate(uid, focus, history, vision, sid))
-                
-                # Update DB with result (sync)
-                with SessionLocal() as db_inner:
-                    s = db_inner.query(Session).filter(Session.id == sid).first()
-                    if s:
-                        s.result_json = json.dumps(res)
-                        db_inner.commit()
-                
-                result_store[tid] = res
-            finally:
-                loop.close()
-        except Exception as e:
-            logger.exception(f"Orchestration failed for {tid}")
-            result_store[tid] = {"status": "error", "error": str(e)}
-
-    threading.Thread(
-        target=run_orchestrate, 
-        args=(trace_id, user_id, payload.text, session_id),
-        daemon=True
-    ).start()
-
-@app.post("/ingest_stream", tags=["ingest"])
-async def ingest_stream(payload: IngestRequest, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """
-    Streaming entry point for v2.0.
-    """
-    user_id = payload.user_id
-    session_id = payload.session_id or str(uuid.uuid4())
-
-    # Ensure User and Session exist in DB before proceeding
-    with SessionLocal() as db_init:
-        user = db_init.query(User).filter(User.id == user_id).first()
-        if not user:
-            user = User(id=user_id, email=f"{user_id}@example.com") # Placeholder email
-            db_init.add(user)
-        
-        session = db_init.query(Session).filter(Session.id == session_id).first()
-        if not session:
-            session = Session(id=session_id, user_id=user_id)
-            db_init.add(session)
-        
-        db_init.commit()
-
-    async def event_generator():
-        try:
-            # 1. First, parse the raw unstructured text into Focus, History, Vision using StructureAgent
-            from .llm import call_llm
-            from .prompts import build_prompt
-            from .orchestrator import _parse_json
-            
-            logger.info("Structuring raw input for stream...")
-            prompt_text = build_prompt("StructureAgent", {"focus": payload.text}, None)
-            
-            structured_json_str = await asyncio.to_thread(call_llm, prompt_text, max_tokens=2000)
-            structured_data = _parse_json(structured_json_str)
-            
-            # Update the session with the structured data
-            # Use a separate block to ensure it's saved even if orchestration fails
-            history = structured_data.get("history", "")
-            vision = structured_data.get("vision", "")
-            focus = structured_data.get("focus", payload.text[:100])
-
-            session.focus = focus
-            session.history = history
-            session.vision = vision
-            db.add(session)
-            db.commit()
-            
-            # Initial yield of structured focus
-            yield f"data: {json.dumps({'type': 'structured', 'focus': focus})}\n\n"
-
-            # 1.5 Generate a catchy session title using NamingAgent (Llama 3.3)
-            smart_title = focus
-            try:
-                import re
-                from .llm import call_llm
-                from .prompts import build_prompt
-                naming_prompt = build_prompt("NamingAgent", {"focus": focus})
-                naming_res_raw = await asyncio.to_thread(call_llm, naming_prompt, model_override="llama-3.3-70b-versatile")
-                naming_json = json.loads(re.search(r"\{.*\}", naming_res_raw, re.DOTALL).group())
-                smart_title = naming_json.get("title", focus)
-                
-                # Update session with the better title
-                session.focus = smart_title
-                db.add(session)
-                db.commit()
-                logger.info(f"Smart title generated: {smart_title}")
-            except Exception as e:
-                logger.error(f"Failed to generate smart title: {e}")
-            
-            # Yield full structured data including the potentially smarter title
-            yield f"data: {json.dumps({'type': 'structured', 'focus': smart_title, 'history': history, 'vision': vision})}\n\n"
-
-            # 2. Call the streaming orchestrator
-            # We'll collect everything into session_result for persistence
-            session_result = {
-                "past": {"origin_story": "No historical pattern detected.", "predicted_context": ""},
-                "present": {"primary_blocker": "No immediate constraints identified.", "weekly_cost_estimate": "", "physical_reframe": ""},
-                "future": {"failure_simulation": "Trajectory simulation pending.", "success_simulation": ""},
-                "integration": {
-                    "roadmap": []
-                }
-            }
-            
-            from .orchestrator import orchestrate
-            async for chunk in orchestrate(user_id, focus, history, vision, session_id):
-                if chunk["type"] == "initial":
-                    session_result["past"] = chunk.get("past", "")
-                    session_result["present"] = chunk.get("present", "")
-                    session_result["future"] = chunk.get("future", "")
-                    session_result["integration"] = {
-                        **(chunk.get("integration_meta", {})),
-                        "roadmap": [chunk.get("first_month")]
-                    }
-                    # Incremental save: persist initial analysis + first month immediately
-                    try:
-                        with SessionLocal() as db_partial:
-                            s = db_partial.query(Session).filter(Session.id == session_id).first()
-                            if s:
-                                s.result_json = json.dumps(session_result)
-                                db_partial.commit()
-                                logger.info(f"Incremental save: initial chunk for session {session_id}")
-                    except Exception as save_e:
-                        logger.error(f"Failed incremental save (initial): {save_e}")
-                elif chunk["type"] == "month":
-                    month_plan = chunk["month"]
-                    session_result["integration"]["roadmap"].append(month_plan)
-                    
-                    # Store roadmap chunk in Qdrant for RAG
-                    try:
-                        month_text = json.dumps(month_plan)
-                        from .llm import create_embedding
-                        month_embedding = await asyncio.to_thread(create_embedding, month_text)
-                        if month_embedding:
-                            from .vector_store import vector_store
-                            await asyncio.to_thread(
-                                vector_store.add_memory,
-                                user_id,
-                                month_text,
-                                month_embedding,
-                                {"source": "roadmap_chunk", "session_id": session_id, "phase": month_plan.get("phase", "Unknown")}
-                            )
-                    except Exception as ve:
-                        logger.error(f"Failed to store roadmap chunk in RAG: {ve}")
-
-                    # Save month tasks to DB + incremental result_json save
-                    try:
-                        with SessionLocal() as db_inner:
-                            # Extract month number from "Month X" or "Month X (date range)"
-                            import re
-                            phase_str = month_plan.get("phase", "Month 0")
-                            month_match = re.search(r'Month\s+(\d+)', phase_str)
-                            month_idx = int(month_match.group(1)) if month_match else 0
-                            for week in month_plan.get("weeks", []):
-                                week_num = week.get("week", 0)
-                                task = RoadmapTask(
-                                    session_id=session_id,
-                                    month=month_idx,
-                                    week=week_num,
-                                    title=week.get("title", "Task"),
-                                    description=week.get("description", ""),
-                                    is_completed=0
-                                )
-                                db_inner.add(task)
-                            
-                            # Incremental save: persist result_json after each month
-                            s = db_inner.query(Session).filter(Session.id == session_id).first()
-                            if s:
-                                s.result_json = json.dumps(session_result)
-                            db_inner.commit()
-                            logger.info(f"Incremental save: month {month_idx} for session {session_id}")
-                    except Exception as db_e:
-                        logger.error(f"Failed to save tasks/result for month: {db_e}")
-
-                yield f"data: {json.dumps(chunk)}\n\n"
-            
-            # Save final comprehensive session_result to Session
-            with SessionLocal() as db_final:
-                s = db_final.query(Session).filter(Session.id == session_id).first()
-                if s:
-                    s.result_json = json.dumps(session_result)
-                    db_final.commit()
-        
-        except Exception as e:
-            logger.exception("Streaming orchestration failed")
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-@app.get("/result/{trace_id}", tags=["ingest"])
-def get_result(trace_id: str):
-    res = result_store.get(trace_id)
-    if not res:
-        return {"status": "processing", "message": "Result not found or not ready."}
-    return res
-
+# ============================================================
+# METRICS & AUDIO
+# ============================================================
 
 @app.get("/metrics", tags=["observability"])
 def metrics():
     from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-
-# --- Audio Endpoint ---
-
-from fastapi import UploadFile, File
-from .audio import transcriber
-
 @app.post("/transcribe", tags=["audio"])
-async def transcribe_audio(file: UploadFile = File(...), skip_structure: bool = True):
-    """
-    Accepts an audio file and returns text.
-    1. Transcribe with Whisper on Groq (Ultra-fast).
-    2. Optionally structure with LLM (Slower).
-    """
+async def transcribe_audio(file: UploadFile = File(...)):
+    """Accepts audio file and returns transcribed text."""
     try:
-        # 1. Read & Transcribe
+        from .audio import transcriber
         content = await file.read()
         file_obj = io.BytesIO(content)
         raw_text = transcriber.transcribe(file_obj, filename=file.filename or "audio.webm")
         
         if "[Error" in raw_text:
-            logger.error(f"Transcription error: {raw_text}")
             return JSONResponse(status_code=500, content={"error": raw_text})
-
-        # 2. Early Return for Speed
-        if skip_structure:
-            logger.info("Skipping LLM structuring for low-latency return.")
-            return {
-                "raw_text": raw_text,
-                "text": raw_text, # Alias for frontend
-                "focus": raw_text, # Frontend uses this as the user's primary answer
-                "history": "",
-                "vision": ""
-            }
-
-        # 3. Optional Slow Structure with LLM
-        from .llm import call_llm
-        from .prompts import build_prompt
-        from .orchestrator import _parse_json
-        
-        prompt_text = build_prompt("StructureAgent", {"focus": raw_text}, None)
-        logger.info("Structuring transcript with Groq...")
-        structured_json_str = call_llm(prompt_text, max_tokens=2000)
-        structured_data = _parse_json(structured_json_str)
 
         return {
             "raw_text": raw_text,
-            "text": raw_text, # Alias for frontend
-            "focus": structured_data.get("focus", raw_text),
-            "history": structured_data.get("history", ""),
-            "vision": structured_data.get("vision", "")
+            "text": raw_text,
         }
-
     except Exception as e:
         logger.error(f"Audio processing failed: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})

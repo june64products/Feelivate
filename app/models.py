@@ -36,6 +36,11 @@ class Session(Base):
     # Store the AI result as JSON string (roadmap content)
     result_json = Column(Text, nullable=True) 
     
+    # Weekly adaptive flow
+    current_week = Column(Integer, default=0)          # 0 = no plan yet, 1+ = active week number
+    phase = Column(String, default="chat")             # chat | planning | active | review
+    week_plan_json = Column(Text, nullable=True)       # current approved week plan
+    
     user = relationship("User", back_populates="sessions")
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
     tasks = relationship("RoadmapTask", back_populates="session", cascade="all, delete-orphan")

@@ -1,219 +1,248 @@
 import { useState, useEffect } from 'react';
-import { PlusCircle, History, Calendar, ChevronRight, Brain } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Plus, MessageSquare, LogOut, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { getUserSessions } from '../../api';
-
-interface Session {
-    id: string;
-    created_at: string;
-    focus_preview: string;
-    has_result: boolean;
-}
+import type { SessionPreview } from '../../api';
 
 interface SessionSidebarProps {
     userId: string;
     activeSessionId: string | null;
     onSelectSession: (sessionId: string) => void;
-    onNewJourney: () => void;
+    onNewChat: () => void;
+    onLogout: () => void;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
+    refreshKey: number;
 }
 
-const SessionSidebar = ({ userId, activeSessionId, onSelectSession, onNewJourney }: SessionSidebarProps) => {
-    const [sessions, setSessions] = useState<Session[]>([]);
+export default function SessionSidebar({
+    userId,
+    activeSessionId,
+    onSelectSession,
+    onNewChat,
+    onLogout,
+    isCollapsed,
+    onToggleCollapse,
+    refreshKey,
+}: SessionSidebarProps) {
+    const [sessions, setSessions] = useState<SessionPreview[]>([]);
     const [loading, setLoading] = useState(true);
+    const userName = localStorage.getItem('user_name') || 'User';
 
     useEffect(() => {
-        const loadSessions = async () => {
+        const fetchSessions = async () => {
             try {
+                setLoading(true);
                 const data = await getUserSessions(userId);
                 setSessions(data);
-            } catch (error) {
-                console.error("Failed to load sessions:", error);
+            } catch (err) {
+                console.error('Failed to load sessions:', err);
             } finally {
                 setLoading(false);
             }
         };
+        if (userId) fetchSessions();
+    }, [userId, refreshKey]);
 
-        if (userId) {
-            loadSessions();
-        }
-    }, [userId]);
-
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    };
+    if (isCollapsed) {
+        return (
+            <div style={{
+                width: '50px',
+                height: '100vh',
+                background: 'var(--bg-sidebar)',
+                borderRight: '1px solid var(--border-subtle)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                paddingTop: '12px',
+                gap: '8px',
+                flexShrink: 0,
+            }}>
+                <button
+                    onClick={onToggleCollapse}
+                    style={{
+                        width: '36px', height: '36px', borderRadius: '10px',
+                        border: 'none', background: 'transparent',
+                        color: 'var(--text-muted)', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.2s',
+                    }}
+                >
+                    <PanelLeft size={18} />
+                </button>
+                <button
+                    onClick={onNewChat}
+                    style={{
+                        width: '36px', height: '36px', borderRadius: '10px',
+                        border: '1px solid var(--border-medium)',
+                        background: 'transparent',
+                        color: 'var(--text-secondary)', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.2s',
+                    }}
+                >
+                    <Plus size={16} />
+                </button>
+            </div>
+        );
+    }
 
     return (
-        <div style={{
-            width: '280px',
-            height: 'calc(100vh - var(--nav-height))',
-            background: 'rgba(10, 10, 10, 0.4)',
-            backdropFilter: 'blur(20px)',
-            borderRight: '1px solid rgba(255, 255, 255, 0.05)',
-            display: 'flex',
-            flexDirection: 'column',
-            position: 'fixed',
-            left: 0,
-            top: 'var(--nav-height)',
-            zIndex: 40,
-            transition: 'transform 0.3s ease',
-        }}>
-            <div style={{ padding: '24px' }}>
+        <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            style={{
+                width: 'var(--sidebar-width)',
+                height: '100vh',
+                background: 'var(--bg-sidebar)',
+                borderRight: '1px solid var(--border-subtle)',
+                display: 'flex',
+                flexDirection: 'column',
+                flexShrink: 0,
+                overflow: 'hidden',
+            }}
+        >
+            {/* Header */}
+            <div style={{
+                padding: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+            }}>
                 <button
-                    onClick={onNewJourney}
+                    onClick={onToggleCollapse}
                     style={{
-                        width: '100%',
-                        background: 'var(--text-primary)',
-                        color: 'var(--bg-primary)',
-                        padding: '12px',
-                        borderRadius: '12px',
-                        fontWeight: 600,
+                        width: '36px', height: '36px', borderRadius: '10px',
+                        border: 'none', background: 'transparent',
+                        color: 'var(--text-muted)', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.2s',
+                    }}
+                >
+                    <PanelLeftClose size={18} />
+                </button>
+                <button
+                    onClick={onNewChat}
+                    style={{
+                        flex: 1,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
                         gap: '8px',
-                        border: 'none',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border-medium)',
+                        background: 'transparent',
+                        color: 'var(--text-secondary)',
                         cursor: 'pointer',
-                        boxShadow: '0 4px 12px rgba(255, 255, 255, 0.1)',
-                        transition: 'transform 0.2s'
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        transition: 'all 0.2s',
+                        fontFamily: 'var(--font-sans)',
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                    <PlusCircle size={18} />
-                    New Journey
+                    <Plus size={16} />
+                    New chat
                 </button>
             </div>
 
-            <div style={{ 
-                flex: 1, 
-                overflowY: 'auto', 
-                padding: '0 12px 24px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px'
+            {/* Session list */}
+            <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '4px 8px',
             }}>
-                <div style={{ 
-                    padding: '0 12px 12px', 
-                    fontSize: '0.75rem', 
-                    fontWeight: 600, 
-                    color: 'var(--text-secondary)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                }}>
-                    <History size={14} />
-                    Past Journeys
-                </div>
-
                 {loading ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        <div className="spinner" style={{ width: '20px', height: '20px', margin: '0 auto 10px' }} />
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
                         Loading...
                     </div>
                 ) : sessions.length === 0 ? (
-                    <div style={{ 
-                        padding: '24px', 
-                        textAlign: 'center', 
-                        color: 'var(--text-secondary)',
-                        background: 'rgba(255,255,255,0.02)',
-                        borderRadius: '12px',
-                        margin: '0 12px',
-                        fontSize: '0.9rem'
-                    }}>
-                        No past journeys found. Start your first one!
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                        No conversations yet
                     </div>
                 ) : (
                     sessions.map((session) => (
-                        <div
+                        <button
                             key={session.id}
                             onClick={() => onSelectSession(session.id)}
                             style={{
-                                padding: '12px',
-                                borderRadius: '12px',
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                padding: '10px 12px',
+                                borderRadius: '10px',
+                                border: 'none',
+                                background: session.id === activeSessionId
+                                    ? 'var(--glass-hover)'
+                                    : 'transparent',
+                                color: session.id === activeSessionId
+                                    ? 'var(--text-primary)'
+                                    : 'var(--text-secondary)',
                                 cursor: 'pointer',
-                                background: activeSessionId === session.id ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-                                border: '1px solid',
-                                borderColor: activeSessionId === session.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                                transition: 'all 0.2s',
-                                position: 'relative',
-                                overflow: 'hidden'
-                            }}
-                            onMouseEnter={(e) => {
-                                if (activeSessionId !== session.id) {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (activeSessionId !== session.id) {
-                                    e.currentTarget.style.background = 'transparent';
-                                }
+                                fontSize: '13px',
+                                fontFamily: 'var(--font-sans)',
+                                textAlign: 'left',
+                                transition: 'all 0.15s',
+                                marginBottom: '2px',
                             }}
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                                <div style={{ 
-                                    fontSize: '0.85rem', 
-                                    fontWeight: 600, 
-                                    color: activeSessionId === session.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    maxWidth: '80%'
-                                }}>
-                                    {session.focus_preview}
-                                </div>
-                                <ChevronRight 
-                                    size={14} 
-                                    style={{ 
-                                        opacity: activeSessionId === session.id ? 1 : 0,
-                                        transition: 'opacity 0.2s',
-                                        color: 'var(--text-accent)'
-                                    }} 
-                                />
-                            </div>
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '12px',
-                                fontSize: '0.7rem', 
-                                color: 'rgba(255,255,255,0.4)' 
+                            <MessageSquare size={14} style={{ flexShrink: 0, opacity: 0.5 }} />
+                            <span style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
                             }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <Calendar size={10} />
-                                    {formatDate(session.created_at)}
-                                </span>
-                                {session.has_result && (
-                                    <span style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '4px',
-                                        color: 'rgba(130, 202, 255, 0.6)'
-                                    }}>
-                                        <Brain size={10} />
-                                        Analyzed
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+                                {session.focus_preview}
+                            </span>
+                        </button>
                     ))
                 )}
             </div>
-            
-            <style>{`
-                .spinner {
-                    border: 2px solid rgba(255, 255, 255, 0.1);
-                    border-top: 2px solid var(--text-accent);
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                }
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `}</style>
-        </div>
-    );
-};
 
-export default SessionSidebar;
+            {/* User section at bottom */}
+            <div style={{
+                padding: '12px',
+                borderTop: '1px solid var(--border-subtle)',
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                }}>
+                    <div style={{
+                        width: '28px', height: '28px', borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '11px', fontWeight: 700, color: 'white',
+                        flexShrink: 0,
+                    }}>
+                        {userName.charAt(0).toUpperCase()}
+                    </div>
+                    <span style={{
+                        flex: 1, fontSize: '13px', color: 'var(--text-secondary)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                        {userName}
+                    </span>
+                    <button
+                        onClick={onLogout}
+                        style={{
+                            width: '28px', height: '28px', borderRadius: '8px',
+                            border: 'none', background: 'transparent',
+                            color: 'var(--text-muted)', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        <LogOut size={14} />
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+}

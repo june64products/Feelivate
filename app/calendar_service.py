@@ -11,7 +11,6 @@ from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 
 from .llm import call_llm
-from .prompts import build_prompt
 
 class GoogleCalendarService:
     def __init__(self):

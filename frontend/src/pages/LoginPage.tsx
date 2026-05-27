@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, ChevronLeft } from 'lucide-react';
+import { Sparkles, Mail, Lock, User as UserIcon, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import { login, signup } from '../api';
 
-const LoginPage = () => {
+export default function LoginPage() {
     const navigate = useNavigate();
     const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -15,6 +15,10 @@ const LoginPage = () => {
         password: '',
         name: ''
     });
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,7 +32,6 @@ const LoginPage = () => {
                     password: formData.password
                 });
                 localStorage.setItem('user_id', res.user_id);
-                // Save name: from response or derive from email
                 const displayName = res.name || res.full_name || formData.email.split('@')[0];
                 localStorage.setItem('user_name', displayName);
                 navigate('/app');
@@ -42,9 +45,9 @@ const LoginPage = () => {
                 localStorage.setItem('user_name', formData.name || res.name || formData.email.split('@')[0]);
                 navigate('/app');
             }
-         } catch (err: any) {
+        } catch (err: any) {
             console.error("Authentication error details:", err);
-            setError(err.message || 'Authentication failed. Please check your connection or credentials.');
+            setError(err.message || 'Authentication failed. Please check your credentials.');
         } finally {
             setLoading(false);
         }
@@ -54,246 +57,365 @@ const LoginPage = () => {
         <div style={{
             minHeight: '100vh',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             background: 'var(--bg-primary)',
-            color: 'var(--text-primary)',
             fontFamily: 'var(--font-sans)',
-            position: 'relative',
-            overflow: 'hidden'
+            color: 'var(--text-primary)',
+            overflow: 'hidden',
         }}>
-            {/* Branding Path Background */}
-            <div className="temporal-path" style={{ opacity: 0.15 }}>
-                <svg width="100%" height="100%" viewBox="0 0 1440 800" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                        d="M-100 600C200 500 400 700 720 400C1040 100 1240 300 1540 200"
-                        stroke="var(--accent-primary)"
-                        strokeWidth="2"
-                    />
-                </svg>
-            </div>
+            {/* Left Side: Brand Panel (Desktop only) */}
+            <div style={{
+                flex: 1.2,
+                background: 'linear-gradient(135deg, #171717, #0d0d0d)',
+                borderRight: '1px solid var(--border-subtle)',
+                display: 'none',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                padding: '48px',
+                position: 'relative',
+                '@media (min-width: 1024px)': {
+                    display: 'flex',
+                }
+            } as any} className="desktop-brand-panel">
+                {/* Glow Orb in panel */}
+                <div style={{
+                    position: 'absolute',
+                    top: '25%',
+                    left: '20%',
+                    width: '300px',
+                    height: '300px',
+                    background: 'radial-gradient(circle, rgba(192, 132, 252, 0.05) 0%, transparent 70%)',
+                    filter: 'blur(50px)',
+                    pointerEvents: 'none',
+                }} />
 
-            {/* Back to Home */}
-            <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                style={{ position: 'absolute', top: '40px', left: '40px', zIndex: 100 }}
-            >
                 <button 
                     onClick={() => navigate('/')}
-                    style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '8px', 
-                        background: 'transparent', 
-                        border: 'none', 
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: 'transparent',
+                        border: 'none',
                         color: 'var(--text-secondary)',
+                        fontSize: '14px',
                         cursor: 'pointer',
-                        fontSize: '0.9rem'
+                        alignSelf: 'flex-start',
+                        zIndex: 2,
+                        transition: 'color 0.2s',
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                 >
-                    <ChevronLeft size={16} />
-                    Back to Home
+                    <ArrowLeft size={16} />
+                    Back to home
                 </button>
-            </motion.div>
-            
-            <motion.div 
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1, ease: [0.19, 1, 0.22, 1] }}
-                style={{
-                    width: '100%',
-                    maxWidth: '480px',
-                    position: 'relative',
-                    zIndex: 1,
-                    padding: '20px'
-                }}
-            >
-                {/* Logo Section */}
-                <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-                    <div style={{ marginBottom: '24px', opacity: 0.8 }}>
-                        <img 
-                            src="/LOGO.png" 
-                            alt="Logo" 
-                            style={{ 
-                                height: '48px', 
-                                width: 'auto',
-                                filter: 'invert(1) brightness(2)'
-                            }} 
-                        />
-                    </div>
-                    <h1 style={{ 
-                        fontFamily: 'var(--font-serif)', 
-                        fontSize: '3rem', 
-                        fontWeight: 300, 
-                        marginBottom: '12px',
-                        letterSpacing: '-0.02em'
+
+                <div style={{ zIndex: 2, maxWidth: '440px', marginTop: '60px' }}>
+                    <div className="animate-float" style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '16px',
+                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '24px',
+                        boxShadow: '0 8px 24px rgba(192, 132, 252, 0.2)',
                     }}>
-                        {isLogin ? 'Welcome back' : 'Join the journey'}
-                    </h1>
-                    <p style={{ color: 'var(--text-secondary)', opacity: 0.6, fontSize: '1.1rem', fontWeight: 300 }}>
-                        {isLogin ? 'Enter your credentials to continue.' : 'Create your secure profile to begin.'}
+                        <Sparkles size={24} style={{ color: 'white' }} />
+                    </div>
+                    <h2 style={{
+                        fontSize: '32px',
+                        fontWeight: 700,
+                        lineHeight: 1.2,
+                        letterSpacing: '-0.02em',
+                        color: '#f5f0e8',
+                        marginBottom: '16px',
+                    }}>
+                        Organize your time. Master your craft.
+                    </h2>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: 1.6 }}>
+                        Feelivate adapts to you, helps build a bulletproof week-by-week action schedule, and chats with you just like a knowledgeable companion.
                     </p>
                 </div>
 
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', zIndex: 2 }}>
+                    &copy; {new Date().getFullYear()} Feelivate Inc. All rights reserved.
+                </div>
+            </div>
+
+            {/* Right Side: Auth Form (Claude.ai style cream card on right) */}
+            <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '24px',
+                position: 'relative',
+                background: 'var(--bg-primary)'
+            }}>
                 <div style={{
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    backdropFilter: 'blur(40px)',
-                    WebkitBackdropFilter: 'blur(40px)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: '32px',
-                    padding: '48px',
-                    boxShadow: '0 40px 100px rgba(0,0,0,0.4)'
+                    width: '100%',
+                    maxWidth: '400px',
+                    background: '#f5f0e8', // Elegant Claude.ai cream off-white background
+                    borderRadius: '24px',
+                    padding: '36px 32px',
+                    boxShadow: '0 20px 80px rgba(0,0,0,0.3)',
+                    color: '#1a1a1a', // Dark text on cream background
+                    position: 'relative',
                 }}>
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        <AnimatePresence mode="wait">
-                            {!isLogin && (
-                                <motion.div
-                                    key="name-field"
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                >
-                                    <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Full Name</label>
-                                    <div style={{ position: 'relative' }}>
-                                        <UserIcon size={16} style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.2)' }} />
-                                        <input
-                                            type="text"
-                                            required={!isLogin}
-                                            placeholder="Your name"
-                                            value={formData.name}
-                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                            style={{
-                                                width: '100%',
-                                                background: 'transparent',
-                                                border: 'none',
-                                                borderBottom: '1px solid var(--border-subtle)',
-                                                borderRadius: '0',
-                                                padding: '16px 16px 16px 32px',
-                                                color: 'white',
-                                                outline: 'none',
-                                                transition: 'border-color 0.3s',
-                                                fontSize: '1rem'
-                                            }}
-                                        />
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        <div>
-                            <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Email</label>
-                            <div style={{ position: 'relative' }}>
-                                <Mail size={16} style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.2)' }} />
-                                <input
-                                    type="email"
-                                    required
-                                    placeholder="your@email.com"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                    style={{
-                                        width: '100%',
-                                        background: 'transparent',
-                                        border: 'none',
-                                        borderBottom: '1px solid var(--border-subtle)',
-                                        borderRadius: '0',
-                                        padding: '16px 16px 16px 32px',
-                                        color: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.3s',
-                                        fontSize: '1rem'
-                                    }}
-                                />
-                            </div>
+                    {/* Header with mini logo */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '28px' }}>
+                        <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '8px',
+                            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}>
+                            <Sparkles size={12} style={{ color: 'white' }} />
                         </div>
+                        <span style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '-0.01em', color: '#1a1a1a' }}>Feelivate</span>
+                    </div>
 
-                        <div>
-                            <label style={{ display: 'block', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Password</label>
-                            <div style={{ position: 'relative' }}>
-                                <Lock size={16} style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.2)' }} />
-                                <input
-                                    type="password"
-                                    required
-                                    placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                                    style={{
-                                        width: '100%',
-                                        background: 'transparent',
-                                        border: 'none',
-                                        borderBottom: '1px solid var(--border-subtle)',
-                                        borderRadius: '0',
-                                        padding: '16px 16px 16px 32px',
-                                        color: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.3s',
-                                        fontSize: '1rem'
-                                    }}
-                                />
-                            </div>
-                        </div>
+                    <h1 style={{
+                        fontSize: '24px',
+                        fontWeight: 700,
+                        letterSpacing: '-0.02em',
+                        color: '#1a1a1a',
+                        marginBottom: '8px',
+                    }}>
+                        {isLogin ? 'Welcome back' : 'Create an account'}
+                    </h1>
+                    <p style={{ fontSize: '13px', color: '#6b6b6b', marginBottom: '24px' }}>
+                        {isLogin ? "Enter your details to sign in to your AI workspace" : "Get started with Feelivate to configure your custom Weekly plans"}
+                    </p>
 
-                         {error && (
-                            <motion.div 
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                style={{ color: '#ff4d4d', fontSize: '0.85rem', textAlign: 'center', marginBottom: '16px' }}
+                    {/* Error message */}
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                style={{
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    background: 'rgba(239, 68, 68, 0.08)',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    color: '#b91c1c',
+                                    fontSize: '13px',
+                                    marginBottom: '20px',
+                                }}
                             >
                                 {error}
                             </motion.div>
                         )}
+                    </AnimatePresence>
 
+                    {/* Auth Form */}
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Name Field (Signup only) */}
+                        {!isLogin && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#4a4a4a' }}>Full Name</label>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8c8c8c', display: 'flex' }}>
+                                        <UserIcon size={16} />
+                                    </span>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        required
+                                        placeholder="John Doe"
+                                        value={formData.name}
+                                        onChange={handleInputChange}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px 12px 12px 38px',
+                                            borderRadius: '12px',
+                                            border: '1px solid #dcd7cf',
+                                            background: '#faf6f0',
+                                            color: '#1a1a1a',
+                                            fontSize: '14px',
+                                            outline: 'none',
+                                            transition: 'border 0.2s',
+                                        }}
+                                        onFocus={(e) => e.currentTarget.style.borderColor = '#c084fc'}
+                                        onBlur={(e) => e.currentTarget.style.borderColor = '#dcd7cf'}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Email Field */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#4a4a4a' }}>Email Address</label>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8c8c8c', display: 'flex' }}>
+                                    <Mail size={16} />
+                                </span>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    required
+                                    placeholder="you@example.com"
+                                    value={formData.email}
+                                    onChange={handleInputChange}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 12px 12px 38px',
+                                        borderRadius: '12px',
+                                        border: '1px solid #dcd7cf',
+                                        background: '#faf6f0',
+                                        color: '#1a1a1a',
+                                        fontSize: '14px',
+                                        outline: 'none',
+                                        transition: 'border 0.2s',
+                                    }}
+                                    onFocus={(e) => e.currentTarget.style.borderColor = '#c084fc'}
+                                    onBlur={(e) => e.currentTarget.style.borderColor = '#dcd7cf'}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Password Field */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#4a4a4a' }}>Password</label>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#8c8c8c', display: 'flex' }}>
+                                    <Lock size={16} />
+                                </span>
+                                <input
+                                    type="password"
+                                    name="password"
+                                    required
+                                    placeholder="••••••••"
+                                    value={formData.password}
+                                    onChange={handleInputChange}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 12px 12px 38px',
+                                        borderRadius: '12px',
+                                        border: '1px solid #dcd7cf',
+                                        background: '#faf6f0',
+                                        color: '#1a1a1a',
+                                        fontSize: '14px',
+                                        outline: 'none',
+                                        transition: 'border 0.2s',
+                                    }}
+                                    onFocus={(e) => e.currentTarget.style.borderColor = '#c084fc'}
+                                    onBlur={(e) => e.currentTarget.style.borderColor = '#dcd7cf'}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Submit Button */}
                         <button
                             type="submit"
                             disabled={loading}
-                            className="action-pill primary"
                             style={{
-                                width: '100%',
-                                padding: '20px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                background: '#1a1a1a',
+                                color: '#f5f0e8',
+                                border: 'none',
+                                padding: '14px',
+                                borderRadius: '12px',
+                                fontSize: '14px',
                                 fontWeight: 600,
-                                fontSize: '1rem',
-                                marginTop: '20px',
-                                gap: '12px'
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                transition: 'opacity 0.2s, transform 0.1s',
+                                marginTop: '8px',
                             }}
+                            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = '0.9'; }}
+                            onMouseLeave={(e) => { if (!loading) e.currentTarget.style.opacity = '1'; }}
                         >
-                            {loading ? <Loader2 className="spinner" size={20} /> : (
+                            {loading ? (
+                                <Loader2 size={16} className="animate-spin" />
+                            ) : (
                                 <>
-                                    {isLogin ? 'Sign In' : 'Create Account'}
-                                    <ArrowRight size={18} />
+                                    {isLogin ? 'Sign In' : 'Sign Up'}
+                                    <ArrowRight size={16} />
                                 </>
                             )}
                         </button>
                     </form>
 
-                    <div style={{ marginTop: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}>
-                        {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
+                    {/* Toggle Login/Signup */}
+                    <div style={{
+                        marginTop: '24px',
+                        textAlign: 'center',
+                        fontSize: '13px',
+                        color: '#6b6b6b',
+                    }}>
+                        {isLogin ? "Don't have an account? " : "Already have an account? "}
                         <button
-                            onClick={() => setIsLogin(!isLogin)}
-                            style={{ 
-                                background: 'transparent', 
-                                border: 'none', 
-                                color: 'var(--accent-primary)', 
-                                padding: 0, 
-                                fontWeight: 500, 
+                            onClick={() => {
+                                setIsLogin(!isLogin);
+                                setError('');
+                            }}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#c96442', // Terracotta accent color
+                                fontWeight: 600,
                                 cursor: 'pointer',
-                                textDecoration: 'underline',
-                                textUnderlineOffset: '4px'
+                                padding: 0,
+                                fontSize: '13px',
                             }}
                         >
-                            {isLogin ? 'Register' : 'Login'}
+                            {isLogin ? 'Sign up free' : 'Log in here'}
                         </button>
                     </div>
+
+                    {/* Back to home for mobile */}
+                    <button 
+                        onClick={() => navigate('/')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#8c8c8c',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            marginTop: '24px',
+                            width: '100%',
+                            justifyContent: 'center',
+                            '@media (min-width: 1024px)': {
+                                display: 'none',
+                            }
+                        } as any}
+                        className="mobile-back-home"
+                    >
+                        <ArrowLeft size={12} />
+                        Back to home
+                    </button>
                 </div>
-            </motion.div>
+            </div>
             
+            {/* Simple CSS injection for responsive display grid */}
             <style>{`
-                .spinner { animation: spin 1s linear infinite; }
-                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                input:focus { border-color: var(--accent-primary) !important; }
-                input::placeholder { color: rgba(255,255,255,0.1) !important; }
+                @media (max-width: 1024px) {
+                    .desktop-brand-panel {
+                        display: none !important;
+                    }
+                }
+                @media (min-width: 1025px) {
+                    .desktop-brand-panel {
+                        display: flex !important;
+                    }
+                    .mobile-back-home {
+                        display: none !important;
+                    }
+                }
             `}</style>
         </div>
     );
-};
-
-export default LoginPage;
+}
