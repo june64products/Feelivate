@@ -28,6 +28,9 @@ const LoginPage = () => {
                     password: formData.password
                 });
                 localStorage.setItem('user_id', res.user_id);
+                // Save name: from response or derive from email
+                const displayName = res.name || res.full_name || formData.email.split('@')[0];
+                localStorage.setItem('user_name', displayName);
                 navigate('/app');
             } else {
                 const res = await signup({
@@ -36,6 +39,7 @@ const LoginPage = () => {
                     name: formData.name
                 });
                 localStorage.setItem('user_id', res.user_id);
+                localStorage.setItem('user_name', formData.name || res.name || formData.email.split('@')[0]);
                 navigate('/app');
             }
          } catch (err: any) {
