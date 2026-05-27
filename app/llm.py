@@ -165,13 +165,12 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
         # If using the specialized openai OSS reasoning model on Groq
         if "gpt-oss-120b" in model:
             try:
+                actual_model = "llama-3.3-70b-versatile" # Map the placeholder to a real Groq model
                 resp = client.chat.completions.create(
-                    model=model,
+                    model=actual_model,
                     messages=messages,
-                    temperature=1,
-                    max_completion_tokens=max_tokens,
-                    top_p=1,
-                    reasoning_effort="medium"
+                    temperature=temperature,
+                    max_tokens=max_tokens,
                 )
             except Exception as api_err:
                 if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
@@ -306,13 +305,12 @@ def call_llm_chat(
                 
             if "gpt-oss-120b" in model:
                 try:
+                    actual_model = "llama-3.3-70b-versatile" # Map the placeholder to a real Groq model
                     resp = client.chat.completions.create(
-                        model=model,
+                        model=actual_model,
                         messages=messages,
-                        temperature=1,
-                        max_completion_tokens=max_tokens,
-                        top_p=1,
-                        reasoning_effort="medium"
+                        temperature=temperature,
+                        max_tokens=max_tokens,
                     )
                 except Exception as api_err:
                     if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
