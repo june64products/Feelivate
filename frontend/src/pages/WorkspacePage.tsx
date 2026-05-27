@@ -1,9 +1,161 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { LogOut, Sparkles, ChevronDown } from 'lucide-react';
 import InputForm from '../components/workspace/InputForm';
 import ResultsDashboard from '../components/workspace/ResultsDashboard';
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import { submitIngestStream, getSessionDetail } from '../api';
+
+/* ── Inline Profile Avatar (same design as Navbar) ── */
+const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
+
+const WorkspaceProfileAvatar = ({ onLogout, isMobile }: { onLogout: () => void; isMobile: boolean }) => {
+    const navigate = useNavigate();
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const name = localStorage.getItem('user_name') || 'User';
+    const initials = getInitials(name);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={ref} style={{ position: 'relative' }}>
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        style={{
+                            position: 'absolute',
+                            top: 'calc(100% + 12px)',
+                            right: 0,
+                            minWidth: '200px',
+                            background: 'rgba(10, 8, 20, 0.97)',
+                            backdropFilter: 'blur(40px)',
+                            WebkitBackdropFilter: 'blur(40px)',
+                            border: '1px solid rgba(216,180,254,0.12)',
+                            borderRadius: '20px',
+                            overflow: 'hidden',
+                            boxShadow: '0 16px 60px rgba(0,0,0,0.7), 0 0 40px rgba(167,139,250,0.06)',
+                            zIndex: 300,
+                        }}
+                    >
+                        {/* User info */}
+                        <div style={{ padding: '18px 18px 14px', borderBottom: '1px solid rgba(216,180,254,0.08)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{
+                                    width: '36px', height: '36px', borderRadius: '10px',
+                                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)',
+                                    boxShadow: '0 2px 12px rgba(99,102,241,0.4)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '0.8rem', fontWeight: 700, color: 'white',
+                                    fontFamily: 'monospace',
+                                }}>
+                                    {initials}
+                                </div>
+                                <div>
+                                    <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.85rem', fontWeight: 600, lineHeight: 1.2 }}>
+                                        {name}
+                                    </div>
+                                    <div style={{ color: 'rgba(216,180,254,0.4)', fontSize: '0.65rem', fontFamily: 'monospace', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '3px' }}>
+                                        Active Session
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Actions */}
+                        <div style={{ padding: '8px' }}>
+                            <button
+                                onClick={() => { setOpen(false); navigate('/'); }}
+                                style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                                    padding: '10px 12px', borderRadius: '12px', border: 'none',
+                                    background: 'transparent', color: 'rgba(216,180,254,0.7)',
+                                    cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'monospace',
+                                    letterSpacing: '0.08em', textAlign: 'left', transition: 'background 0.15s, color 0.15s',
+                                }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(216,180,254,0.06)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.9)'; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'rgba(216,180,254,0.7)'; }}
+                            >
+                                <Sparkles size={14} /> Leave Workspace
+                            </button>
+                            <button
+                                onClick={() => { setOpen(false); onLogout(); }}
+                                style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                                    padding: '10px 12px', borderRadius: '12px', border: 'none',
+                                    background: 'transparent', color: 'rgba(248,113,113,0.6)',
+                                    cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'monospace',
+                                    letterSpacing: '0.08em', textAlign: 'left', transition: 'background 0.15s, color 0.15s',
+                                }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(248,113,113,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(248,113,113,1)'; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'rgba(248,113,113,0.6)'; }}
+                            >
+                                <LogOut size={14} /> End Session
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Avatar pill button */}
+            <motion.button
+                onClick={() => setOpen(v => !v)}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px',
+                    padding: isMobile ? '5px 8px 5px 5px' : '6px 12px 6px 6px',
+                    background: open ? 'rgba(216,180,254,0.08)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${open ? 'rgba(216,180,254,0.2)' : 'rgba(216,180,254,0.1)'}`,
+                    borderRadius: '999px', cursor: 'pointer', transition: 'all 0.2s ease',
+                }}
+            >
+                <div style={{
+                    width: '28px', height: '28px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)',
+                    boxShadow: '0 2px 10px rgba(99,102,241,0.5)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.65rem', fontWeight: 700, color: 'white',
+                    fontFamily: 'monospace', flexShrink: 0,
+                }}>
+                    {initials}
+                </div>
+                {!isMobile && (
+                    <span style={{
+                        color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem',
+                        fontFamily: 'monospace', letterSpacing: '0.05em',
+                        maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                        {name}
+                    </span>
+                )}
+                <ChevronDown
+                    size={12}
+                    style={{
+                        color: 'rgba(216,180,254,0.5)',
+                        transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease', flexShrink: 0,
+                    }}
+                />
+            </motion.button>
+        </div>
+    );
+};
+
 
 const WorkspacePage = () => {
     const navigate = useNavigate();
@@ -201,24 +353,16 @@ const WorkspacePage = () => {
                         <span style={{ color: 'var(--text-secondary)' }}>←</span> {isMobile ? 'Back' : 'Leave Workspace'}
                     </div>
                 </div>
-                
-                <button
-                    onClick={() => {
+
+                {/* ── Profile Avatar replaces plain Log Out button ── */}
+                <WorkspaceProfileAvatar
+                    isMobile={isMobile}
+                    onLogout={() => {
                         localStorage.removeItem('user_id');
+                        localStorage.removeItem('user_name');
                         navigate('/');
                     }}
-                    style={{
-                        background: 'transparent',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'var(--text-secondary)',
-                        padding: isMobile ? '6px 12px' : '8px 16px',
-                        borderRadius: '20px',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem'
-                    }}
-                >
-                    Log Out
-                </button>
+                />
             </nav>
 
             <div style={{ display: 'flex', flex: 1, marginTop: 'var(--nav-height)', position: 'relative', overflow: 'hidden' }}>
