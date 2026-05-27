@@ -118,12 +118,14 @@ const WorkspaceProfileAvatar = ({ onLogout, isMobile }: { onLogout: () => void; 
                 whileTap={{ scale: 0.96 }}
                 style={{
                     display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px',
-                    padding: isMobile ? '5px 8px 5px 5px' : '6px 12px 6px 6px',
+                    padding: '6px 10px 6px 6px',
                     background: open ? 'rgba(216,180,254,0.08)' : 'rgba(255,255,255,0.04)',
                     border: `1px solid ${open ? 'rgba(216,180,254,0.2)' : 'rgba(216,180,254,0.1)'}`,
                     borderRadius: '999px', cursor: 'pointer', transition: 'all 0.2s ease',
+                    flexShrink: 0,
                 }}
             >
+                {/* Initials circle — always visible */}
                 <div style={{
                     width: '28px', height: '28px', borderRadius: '50%',
                     background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)',
@@ -134,6 +136,7 @@ const WorkspaceProfileAvatar = ({ onLogout, isMobile }: { onLogout: () => void; 
                 }}>
                     {initials}
                 </div>
+                {/* Name — hidden only on very small screens */}
                 {!isMobile && (
                     <span style={{
                         color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem',
@@ -161,8 +164,10 @@ const WorkspacePage = () => {
     const navigate = useNavigate();
     const [userId] = useState<string | null>(localStorage.getItem('user_id'));
     const [processing, setProcessing] = useState(false);
-    const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-    const [sidebarKey, setSidebarKey] = useState(0); // Used to force refetch
+    const [activeSessionId, setActiveSessionId] = useState<string | null>(
+        sessionStorage.getItem('active_session_id') // Restore on reload
+    );
+    const [sidebarKey, setSidebarKey] = useState(0);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -170,6 +175,12 @@ const WorkspacePage = () => {
     useEffect(() => {
         if (!userId) {
             navigate('/login');
+            return;
+        }
+        // Restore last session on reload
+        const savedSessionId = sessionStorage.getItem('active_session_id');
+        if (savedSessionId) {
+            handleSelectSession(savedSessionId);
         }
     }, [userId, navigate]);
 
@@ -190,6 +201,7 @@ const WorkspacePage = () => {
         try {
             setProcessing(true);
             setActiveSessionId(sessionId);
+            sessionStorage.setItem('active_session_id', sessionId); // Persist
             setIsMobileSidebarOpen(false);
             setSessionLoadError('');
             const data = await getSessionDetail(sessionId);
@@ -221,6 +233,7 @@ const WorkspacePage = () => {
         setProcessing(false);
         setIsMobileSidebarOpen(false);
         setSessionLoadError('');
+        sessionStorage.removeItem('active_session_id'); // Clear persisted session
     };
 
     const handleIngest = async (text: string) => {
@@ -236,7 +249,7 @@ const WorkspacePage = () => {
                 if (chunk.type === 'structured') {
                     setPollStatus(`🧠 Pattern detected: ${chunk.focus.substring(0, 30)}...`);
                 } else if (chunk.type === 'initial') {
-                    setResult({
+                    const newResult = {
                         user_id: userId,
                         session_id: chunk.session_id,
                         past: chunk.past,
@@ -246,10 +259,12 @@ const WorkspacePage = () => {
                             ...chunk.integration_meta,
                             roadmap: [chunk.first_month]
                         }
-                    });
-                    setProcessing(false); 
+                    };
+                    setResult(newResult);
+                    setProcessing(false);
                     setActiveSessionId(chunk.session_id);
-                    setSidebarKey(prev => prev + 1); // Refresh sidebar list
+                    sessionStorage.setItem('active_session_id', chunk.session_id); // Persist
+                    setSidebarKey(prev => prev + 1);
                 } else if (chunk.type === 'month') {
                     setResult((prev: any) => {
                         if (!prev) return prev;
