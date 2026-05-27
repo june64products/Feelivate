@@ -292,27 +292,65 @@ def call_llm_chat(
 ) -> str:
     """
     Call LLM with a multi-turn messages array (ChatGPT-style).
-    Uses OpenAI client directly — messages must be in OpenAI format:
-    [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}, ...]
+    Routes to Groq if OSS models are specified, otherwise uses OpenAI.
     """
     try:
-        client = _get_openai_client()
-        if not client:
-            raise RuntimeError("OpenAI client not configured (missing API key)")
-        
         model = model_override or os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
+        model_lower = model.lower()
         
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            presence_penalty=presence_penalty,
-            frequency_penalty=frequency_penalty,
-        )
+        # Route to Groq for OSS models
+        if "llama" in model_lower or "mixtral" in model_lower or "oss" in model_lower:
+            client = _get_groq_client()
+            if not client:
+                raise RuntimeError("Groq client not configured")
+                
+            if "gpt-oss-120b" in model:
+                try:
+                    resp = client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        temperature=1,
+                        max_completion_tokens=max_tokens,
+                        top_p=1,
+                        reasoning_effort="medium"
+                    )
+                except Exception as api_err:
+                    if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
+                        fallback_model = "llama-3.3-70b-versatile"
+                        logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
+                        resp = client.chat.completions.create(
+                            model=fallback_model,
+                            messages=messages,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                        )
+                    else:
+                        raise api_err
+            else:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+        else:
+            # Route to OpenAI
+            client = _get_openai_client()
+            if not client:
+                raise RuntimeError("OpenAI client not configured (missing API key)")
+            
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                presence_penalty=presence_penalty,
+                frequency_penalty=frequency_penalty,
+            )
+            
         content = resp.choices[0].message.content or ""
         text = content.strip()
-        logger.info("LLM chat call succeeded", extra={"model": model, "tokens": resp.usage})
+        logger.info("LLM chat call succeeded", extra={"model": model})
         return text
     except Exception as e:
         logger.exception("LLM chat call failed")
