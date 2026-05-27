@@ -236,7 +236,6 @@ async def chat(
             prompt_messages,
             temperature=0.85,
             max_tokens=4000,
-            model_override="gpt-4o-mini",
             presence_penalty=0.4,
             frequency_penalty=0.35
         )

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Calendar, PanelLeft, AlertCircle, ArrowUp } from 'lucide-react';
+import { Sparkles, Calendar, PanelLeft, AlertCircle } from 'lucide-react';
 import { 
     chatWithMentor, 
     approvePlan, 
@@ -11,6 +11,7 @@ import {
 } from '../api';
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
+import RadiantPromptInput from '../components/chat/RadiantPromptInput';
 
 export default function WorkspacePage() {
     const navigate = useNavigate();
@@ -33,7 +34,6 @@ export default function WorkspacePage() {
     const [syncLoading, setSyncLoading] = useState(false);
     const [syncMessage, setSyncMessage] = useState("");
     const [syncError, setSyncError] = useState("");
-    const [inputValue, setInputValue] = useState("");
 
     // Auth validation
     useEffect(() => {
@@ -303,76 +303,10 @@ export default function WorkspacePage() {
                     background: 'linear-gradient(180deg, transparent, var(--bg-primary) 20%)',
                     flexShrink: 0,
                 }}>
-                    <div style={{
-                        maxWidth: '800px',
-                        margin: '0 auto',
-                        background: 'var(--bg-surface)',
-                        border: '1px solid var(--border-medium)',
-                        borderRadius: '16px',
-                        padding: '12px 16px',
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        gap: '12px',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        transition: 'border-color 0.2s ease',
-                    }}>
-                        <textarea
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    if (inputValue.trim() && !isLoading) {
-                                        handleSendMessage(inputValue.trim());
-                                        setInputValue('');
-                                    }
-                                }
-                            }}
-                            placeholder="Message Feelivate..."
-                            disabled={isLoading}
-                            style={{
-                                flex: 1,
-                                background: 'transparent',
-                                border: 'none',
-                                outline: 'none',
-                                color: 'var(--text-primary)',
-                                fontSize: '15px',
-                                lineHeight: '1.5',
-                                resize: 'none',
-                                minHeight: '24px',
-                                maxHeight: '200px',
-                                fontFamily: 'inherit',
-                                paddingTop: '4px',
-                                overflowY: 'auto'
-                            }}
-                            rows={1}
-                        />
-                        <button
-                            onClick={() => {
-                                if (inputValue.trim() && !isLoading) {
-                                    handleSendMessage(inputValue.trim());
-                                    setInputValue('');
-                                }
-                            }}
-                            disabled={!inputValue.trim() || isLoading}
-                            style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                background: inputValue.trim() ? 'var(--brand-primary)' : 'var(--border-medium)',
-                                color: inputValue.trim() ? '#fff' : 'var(--text-muted)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                border: 'none',
-                                cursor: inputValue.trim() && !isLoading ? 'pointer' : 'not-allowed',
-                                transition: 'all 0.2s ease',
-                                flexShrink: 0
-                            }}
-                        >
-                            <ArrowUp size={18} strokeWidth={2.5} />
-                        </button>
-                    </div>
+                    <RadiantPromptInput
+                        onSubmit={handleSendMessage}
+                        disabled={isLoading}
+                    />
                 </div>
             </div>
 
