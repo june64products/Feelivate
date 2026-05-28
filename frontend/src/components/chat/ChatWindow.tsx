@@ -51,14 +51,18 @@ export default function ChatWindow({
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
-                    style={{
-                        width: '48px', height: '48px', borderRadius: '16px',
-                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 8px 32px rgba(192, 132, 252, 0.2)',
-                    }}
                 >
-                    <Sparkles size={24} style={{ color: 'white' }} />
+                    <img
+                        src="/logo_2_backup.png"
+                        alt="Feelivate"
+                        style={{
+                            width: '56px',
+                            height: '56px',
+                            objectFit: 'contain',
+                            borderRadius: '16px',
+                            filter: 'drop-shadow(0 8px 32px rgba(192, 132, 252, 0.25))',
+                        }}
+                    />
                 </motion.div>
                 <motion.h2
                     initial={{ opacity: 0, y: 10 }}
@@ -182,7 +186,11 @@ export default function ChatWindow({
                                 {msg.role === 'user' ? (
                                     <User size={14} style={{ color: 'white' }} />
                                 ) : (
-                                    <Sparkles size={14} style={{ color: 'white' }} />
+                                    <img
+                                        src="/logo_2_backup.png"
+                                        alt="Feelivate"
+                                        style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '4px' }}
+                                    />
                                 )}
                             </div>
 
@@ -238,11 +246,16 @@ export default function ChatWindow({
                     >
                         <div style={{
                             width: '28px', height: '28px', borderRadius: '10px',
-                            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                            background: 'var(--bg-surface)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0,
+                            border: '1px solid var(--border-subtle)',
                         }}>
-                            <Sparkles size={14} style={{ color: 'white' }} />
+                            <img
+                                src="/logo_2_backup.png"
+                                alt="Feelivate"
+                                style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '4px' }}
+                            />
                         </div>
                         <div style={{ paddingTop: '8px' }}>
                             <div style={{ display: 'flex', gap: '4px' }}>

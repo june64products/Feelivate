@@ -85,17 +85,11 @@ export default function LandingPage() {
                 zIndex: 10,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}>
-                        <Sparkles size={14} style={{ color: 'white' }} />
-                    </div>
+                    <img
+                        src="/logo_2_backup.png"
+                        alt="Feelivate Logo"
+                        style={{ width: '28px', height: '28px', objectFit: 'contain', borderRadius: '6px' }}
+                    />
                     <span style={{ fontWeight: 700, fontSize: '18px', letterSpacing: '-0.02em' }}>Feelivate</span>
                 </div>
 
@@ -134,21 +128,22 @@ export default function LandingPage() {
                 }}
             >
                 {/* Logo & Sub-tag */}
-                <motion.div 
+                <motion.div
                     variants={itemVariants}
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
                 >
-                    <div className="animate-float" style={{
-                        width: '72px',
-                        height: '72px',
-                        borderRadius: '24px',
-                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 12px 40px rgba(192, 132, 252, 0.25)',
-                    }}>
-                        <Sparkles size={36} style={{ color: 'white' }} />
+                    <div className="animate-float">
+                        <img
+                            src="/logo_2_backup.png"
+                            alt="Feelivate Logo"
+                            style={{
+                                width: '88px',
+                                height: '88px',
+                                objectFit: 'contain',
+                                borderRadius: '24px',
+                                filter: 'drop-shadow(0 12px 40px rgba(192, 132, 252, 0.3))',
+                            }}
+                        />
                     </div>
                 </motion.div>
 

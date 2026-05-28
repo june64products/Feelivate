@@ -111,18 +111,18 @@ export default function LoginPage() {
                 </button>
 
                 <div style={{ zIndex: 2, maxWidth: '440px', marginTop: '60px' }}>
-                    <div className="animate-float" style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '16px',
-                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '24px',
-                        boxShadow: '0 8px 24px rgba(192, 132, 252, 0.2)',
-                    }}>
-                        <Sparkles size={24} style={{ color: 'white' }} />
+                    <div className="animate-float" style={{ marginBottom: '24px' }}>
+                        <img
+                            src="/logo_2_backup.png"
+                            alt="Feelivate Logo"
+                            style={{
+                                width: '56px',
+                                height: '56px',
+                                objectFit: 'contain',
+                                borderRadius: '16px',
+                                filter: 'drop-shadow(0 8px 24px rgba(192, 132, 252, 0.3))',
+                            }}
+                        />
                     </div>
                     <h2 style={{
                         fontSize: '32px',
@@ -166,17 +166,11 @@ export default function LoginPage() {
                 }}>
                     {/* Header with mini logo */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '28px' }}>
-                        <div style={{
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '8px',
-                            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}>
-                            <Sparkles size={12} style={{ color: 'white' }} />
-                        </div>
+                        <img
+                            src="/logo_2_backup.png"
+                            alt="Feelivate Logo"
+                            style={{ width: '24px', height: '24px', objectFit: 'contain', borderRadius: '6px' }}
+                        />
                         <span style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '-0.01em', color: '#1a1a1a' }}>Feelivate</span>
                     </div>
 
