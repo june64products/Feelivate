@@ -257,7 +257,7 @@ async def chat(
         # 8. If plan was generated, update session
         if plan_data:
             session_rec.week_plan_json = json.dumps(plan_data)
-            session_rec.current_week = plan_data.get("week_number", 1)
+            session_rec.current_week = plan_data.get("week_number", 1) if isinstance(plan_data, dict) else 1
             session_rec.phase = "planning"
             
             # Store the focus from the first message if not set

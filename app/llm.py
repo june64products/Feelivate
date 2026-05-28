@@ -174,7 +174,7 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
                 )
             except Exception as api_err:
                 if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
-                    fallback_model = "llama-3.3-70b-versatile"
+                    fallback_model = "llama3-8b-8192"
                     logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
                     resp = client.chat.completions.create(
                         model=fallback_model,
@@ -194,7 +194,7 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
                 )
             except Exception as api_err:
                 if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
-                    fallback_model = "llama-3.3-70b-versatile"
+                    fallback_model = "llama3-8b-8192"
                     logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
                     resp = client.chat.completions.create(
                         model=fallback_model,
@@ -314,7 +314,7 @@ def call_llm_chat(
                     )
                 except Exception as api_err:
                     if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
-                        fallback_model = "llama-3.3-70b-versatile"
+                        fallback_model = "llama3-8b-8192"
                         logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
                         resp = client.chat.completions.create(
                             model=fallback_model,

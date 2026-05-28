@@ -18,7 +18,7 @@ export default function WorkspacePage() {
     const [userId] = useState<string | null>(localStorage.getItem('user_id'));
     
     const [activeSessionId, setActiveSessionId] = useState<string | null>(
-        sessionStorage.getItem('active_session_id')
+        localStorage.getItem('active_session_id')
     );
     const [messages, setMessages] = useState<any[]>([]);
     const [activePlan, setActivePlan] = useState<any | null>(null);
@@ -74,13 +74,13 @@ export default function WorkspacePage() {
     // Handle session selection
     const handleSelectSession = (sessionId: string) => {
         setActiveSessionId(sessionId);
-        sessionStorage.setItem('active_session_id', sessionId);
+        localStorage.setItem('active_session_id', sessionId);
     };
 
     // Start a new chat session
     const handleNewChat = () => {
         setActiveSessionId(null);
-        sessionStorage.removeItem('active_session_id');
+        localStorage.removeItem('active_session_id');
         setMessages([]);
         setActivePlan(null);
         setIsPlanApproved(false);
@@ -89,7 +89,6 @@ export default function WorkspacePage() {
     // Logout
     const handleLogout = () => {
         localStorage.clear();
-        sessionStorage.clear();
         navigate('/login');
     };
 
@@ -109,7 +108,7 @@ export default function WorkspacePage() {
             // 3. If new session was created on backend, set active session ID
             if (!activeSessionId && res.session_id) {
                 setActiveSessionId(res.session_id);
-                sessionStorage.setItem('active_session_id', res.session_id);
+                localStorage.setItem('active_session_id', res.session_id);
                 setSidebarRefreshKey(prev => prev + 1);
             }
             
