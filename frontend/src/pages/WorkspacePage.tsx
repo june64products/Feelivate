@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Calendar, PanelLeft, AlertCircle } from 'lucide-react';
+import { Sparkles, Calendar, PanelLeft, AlertCircle, MessageSquare, Code2, Palette } from 'lucide-react';
 import { 
     chatWithMentor, 
     approvePlan, 
@@ -12,6 +12,12 @@ import {
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
 import RadiantPromptInput from '../components/chat/RadiantPromptInput';
+
+const CAPABILITIES = [
+    { icon: MessageSquare, title: "Deep Reflection", desc: "Understand your emotional patterns and past" },
+    { icon: Code2,         title: "Action Planning", desc: "Build structured week-by-week growth plans" },
+    { icon: Palette,       title: "Future Visioning", desc: "Craft a vivid picture of who you want to become" },
+];
 
 export default function WorkspacePage() {
     const navigate = useNavigate();
@@ -27,6 +33,9 @@ export default function WorkspacePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
+
+    // Derived: whether we're in the cinematic empty state
+    const isEmptyState = messages.length === 0 && !isLoading;
     
     // Calendar sync states
     const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -96,23 +105,19 @@ export default function WorkspacePage() {
     const handleSendMessage = async (text: string) => {
         if (!userId) return;
         
-        // 1. Add user message locally
         const userMsg = { role: 'user', content: text };
         setMessages(prev => [...prev, userMsg]);
         setIsLoading(true);
         
         try {
-            // 2. Call chat API
             const res = await chatWithMentor(text, activeSessionId, userId);
             
-            // 3. If new session was created on backend, set active session ID
             if (!activeSessionId && res.session_id) {
                 setActiveSessionId(res.session_id);
                 localStorage.setItem('active_session_id', res.session_id);
                 setSidebarRefreshKey(prev => prev + 1);
             }
             
-            // 4. Update messages list with AI reply and potential plan
             const assistantMsg = { 
                 role: 'assistant', 
                 content: res.reply,
@@ -122,7 +127,7 @@ export default function WorkspacePage() {
             
             if (res.plan) {
                 setActivePlan(res.plan);
-                setIsPlanApproved(false); // New plan generated, not approved yet
+                setIsPlanApproved(false);
             }
         } catch (err) {
             console.error("Chat error:", err);
@@ -142,7 +147,6 @@ export default function WorkspacePage() {
             const res = await approvePlan(activeSessionId);
             if (res.status === 'approved') {
                 setIsPlanApproved(true);
-                // Fetch updated messages (the backend appends a system confirmation message)
                 const data = await getSessionDetail(activeSessionId);
                 setMessages(data.messages || []);
             }
@@ -151,7 +155,6 @@ export default function WorkspacePage() {
         }
     };
 
-    // Tweak request
     const handleRequestPlanChange = (feedback: string) => {
         handleSendMessage(`I'd like to change some parts of this plan: ${feedback}`);
     };
@@ -168,7 +171,6 @@ export default function WorkspacePage() {
             setTimeout(() => setShowCalendarModal(false), 2000);
         } catch (err: any) {
             console.error("Sync failed:", err);
-            // If calendar is not connected, redirect to auth flow
             if (err.message?.includes("Google Calendar not connected")) {
                 try {
                     const authRes = await getGoogleAuthUrl();
@@ -224,6 +226,53 @@ export default function WorkspacePage() {
                 position: 'relative',
                 overflow: 'hidden',
             }}>
+
+                {/* Ambient Background Orbs — always visible, brightest in empty state */}
+                <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+                    <motion.div
+                        animate={{ opacity: isEmptyState ? 0.45 : 0.18, scale: isEmptyState ? 1.1 : 1 }}
+                        transition={{ duration: 1.2, ease: 'easeInOut' }}
+                        style={{
+                            position: 'absolute',
+                            top: '-10%',
+                            left: '20%',
+                            width: '500px',
+                            height: '500px',
+                            background: 'radial-gradient(circle, rgba(192,132,252,0.25) 0%, transparent 70%)',
+                            borderRadius: '50%',
+                            filter: 'blur(60px)',
+                        }}
+                    />
+                    <motion.div
+                        animate={{ opacity: isEmptyState ? 0.35 : 0.12, scale: isEmptyState ? 1.05 : 1 }}
+                        transition={{ duration: 1.2, ease: 'easeInOut', delay: 0.1 }}
+                        style={{
+                            position: 'absolute',
+                            bottom: '-5%',
+                            right: '15%',
+                            width: '600px',
+                            height: '600px',
+                            background: 'radial-gradient(circle, rgba(129,140,248,0.2) 0%, transparent 70%)',
+                            borderRadius: '50%',
+                            filter: 'blur(80px)',
+                        }}
+                    />
+                    <motion.div
+                        animate={{ opacity: isEmptyState ? 0.25 : 0.08 }}
+                        transition={{ duration: 1.2, ease: 'easeInOut', delay: 0.2 }}
+                        style={{
+                            position: 'absolute',
+                            top: '40%',
+                            left: '60%',
+                            width: '300px',
+                            height: '300px',
+                            background: 'radial-gradient(circle, rgba(201,100,66,0.2) 0%, transparent 70%)',
+                            borderRadius: '50%',
+                            filter: 'blur(50px)',
+                        }}
+                    />
+                </div>
+
                 {/* Header */}
                 <div style={{
                     height: '52px',
@@ -234,6 +283,7 @@ export default function WorkspacePage() {
                     justifyContent: 'space-between',
                     flexShrink: 0,
                     zIndex: 15,
+                    position: 'relative',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {isSidebarCollapsed && (
@@ -255,30 +305,19 @@ export default function WorkspacePage() {
                         </span>
                     </div>
 
-                    {/* Sync to Calendar button (only if plan is approved) */}
                     {isPlanApproved && (
                         <button
                             onClick={() => setShowCalendarModal(true)}
                             style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                padding: '6px 12px', borderRadius: '8px',
                                 border: '1px solid rgba(16, 185, 129, 0.3)',
                                 background: 'rgba(16, 185, 129, 0.06)',
-                                color: 'var(--accent-green)',
-                                fontSize: '12px',
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
+                                color: 'var(--accent-green)', fontSize: '12px',
+                                fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
                             }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.12)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.06)';
-                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.12)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.06)'; }}
                         >
                             <Calendar size={13} />
                             Sync to Google Calendar
@@ -286,40 +325,183 @@ export default function WorkspacePage() {
                     )}
                 </div>
 
-                {/* Main Chat Display */}
-                <ChatWindow
-                    messages={messages}
-                    isLoading={isLoading}
-                    activePlan={activePlan}
-                    onApprovePlan={handleApprovePlan}
-                    onRequestPlanChange={handleRequestPlanChange}
-                    isPlanApproved={isPlanApproved}
-                />
+                {/* ─── EMPTY STATE: Cinematic Hero ─── */}
+                <AnimatePresence mode="wait">
+                    {isEmptyState ? (
+                        <motion.div
+                            key="empty-state"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.5, ease: 'easeOut' }}
+                            style={{
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '24px 20px 0',
+                                position: 'relative',
+                                zIndex: 5,
+                                gap: '0px',
+                            }}
+                        >
+                            {/* Hero Text */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 24 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ textAlign: 'center', marginBottom: '48px' }}
+                            >
+                                <h1 style={{
+                                    fontSize: 'clamp(36px, 6vw, 64px)',
+                                    fontWeight: 700,
+                                    letterSpacing: '-0.03em',
+                                    lineHeight: 1.1,
+                                    marginBottom: '16px',
+                                    background: 'linear-gradient(135deg, #ececec 30%, rgba(236,236,236,0.45) 100%)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                }}>
+                                    How can I help?
+                                </h1>
+                                <p style={{
+                                    fontSize: '17px',
+                                    color: 'var(--text-muted)',
+                                    fontWeight: 300,
+                                    letterSpacing: '0.01em',
+                                    maxWidth: '420px',
+                                    margin: '0 auto',
+                                    lineHeight: 1.6,
+                                }}>
+                                    Your AI-powered guide to emotional growth and behavioral transformation.
+                                </p>
+                            </motion.div>
 
-                {/* Bottom Input Area */}
-                <div style={{
-                    padding: '0 20px 24px',
-                    background: 'linear-gradient(180deg, transparent, var(--bg-primary) 20%)',
-                    flexShrink: 0,
-                }}>
-                    <RadiantPromptInput
-                        onSubmit={handleSendMessage}
-                        disabled={isLoading}
-                    />
-                </div>
+                            {/* Radiant Input — centered hero position */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 32, scale: 0.97 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ width: '100%', maxWidth: '720px', padding: '0 16px', marginBottom: '48px' }}
+                            >
+                                <RadiantPromptInput
+                                    onSubmit={handleSendMessage}
+                                    disabled={isLoading}
+                                    placeholder="Share what's on your mind..."
+                                />
+                            </motion.div>
+
+                            {/* Capabilities Grid */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.6, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(3, 1fr)',
+                                    gap: '12px',
+                                    width: '100%',
+                                    maxWidth: '720px',
+                                    padding: '0 16px',
+                                }}
+                            >
+                                {CAPABILITIES.map((item, i) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <motion.button
+                                            key={i}
+                                            onClick={() => handleSendMessage(`Tell me about ${item.title.toLowerCase()}`)}
+                                            whileHover={{ scale: 1.02, y: -2 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            style={{
+                                                padding: '16px',
+                                                borderRadius: '14px',
+                                                border: '1px solid var(--border-subtle)',
+                                                background: 'var(--glass-surface)',
+                                                backdropFilter: 'blur(12px)',
+                                                textAlign: 'left',
+                                                cursor: 'pointer',
+                                                transition: 'border-color 0.2s, background 0.2s',
+                                                color: 'inherit',
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.borderColor = 'var(--border-medium)';
+                                                e.currentTarget.style.background = 'var(--glass-hover)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                                                e.currentTarget.style.background = 'var(--glass-surface)';
+                                            }}
+                                        >
+                                            <Icon size={18} style={{ color: 'var(--accent-primary)', marginBottom: '8px' }} />
+                                            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                                                {item.title}
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                                                {item.desc}
+                                            </div>
+                                        </motion.button>
+                                    );
+                                })}
+                            </motion.div>
+                        </motion.div>
+                    ) : (
+                        /* ─── CHAT STATE ─── */
+                        <motion.div
+                            key="chat-state"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.4 }}
+                            style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 5 }}
+                        >
+                            <ChatWindow
+                                messages={messages}
+                                isLoading={isLoading}
+                                activePlan={activePlan}
+                                onApprovePlan={handleApprovePlan}
+                                onRequestPlanChange={handleRequestPlanChange}
+                                isPlanApproved={isPlanApproved}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Bottom Input (always visible in chat state, hidden in empty state since input is inline there) */}
+                <AnimatePresence>
+                    {!isEmptyState && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                            style={{
+                                padding: '0 20px 24px',
+                                background: 'linear-gradient(180deg, transparent, var(--bg-primary) 20%)',
+                                flexShrink: 0,
+                                position: 'relative',
+                                zIndex: 10,
+                            }}
+                        >
+                            <RadiantPromptInput
+                                onSubmit={handleSendMessage}
+                                disabled={isLoading}
+                                placeholder="Continue the conversation..."
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Calendar Sync Modal */}
             <AnimatePresence>
                 {showCalendarModal && (
                     <div style={{
-                        position: 'absolute',
-                        inset: 0,
+                        position: 'absolute', inset: 0,
                         background: 'rgba(0,0,0,0.6)',
                         backdropFilter: 'blur(4px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                         zIndex: 200,
                     }}>
                         <motion.div
@@ -327,12 +509,10 @@ export default function WorkspacePage() {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             style={{
-                                width: '100%',
-                                maxWidth: '380px',
+                                width: '100%', maxWidth: '380px',
                                 background: 'var(--bg-surface)',
                                 border: '1px solid var(--border-medium)',
-                                borderRadius: '16px',
-                                padding: '24px',
+                                borderRadius: '16px', padding: '24px',
                                 boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
                             }}
                         >
@@ -352,25 +532,18 @@ export default function WorkspacePage() {
                                     value={preferredTime}
                                     onChange={(e) => setPreferredTime(e.target.value)}
                                     style={{
-                                        width: '100%',
-                                        padding: '10px 12px',
-                                        borderRadius: '10px',
-                                        border: '1px solid var(--border-medium)',
-                                        background: 'var(--bg-primary)',
-                                        color: 'var(--text-primary)',
-                                        fontSize: '14px',
-                                        outline: 'none',
+                                        width: '100%', padding: '10px 12px', borderRadius: '10px',
+                                        border: '1px solid var(--border-medium)', background: 'var(--bg-primary)',
+                                        color: 'var(--text-primary)', fontSize: '14px', outline: 'none',
                                     }}
                                 />
                             </div>
 
-                            {/* Status notifications */}
                             {syncMessage && (
                                 <div style={{
                                     padding: '10px 12px', borderRadius: '8px',
-                                    background: 'rgba(16, 185, 129, 0.08)',
-                                    color: 'var(--accent-green)', fontSize: '12px',
-                                    marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center'
+                                    background: 'rgba(16, 185, 129, 0.08)', color: 'var(--accent-green)',
+                                    fontSize: '12px', marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center'
                                 }}>
                                     <Sparkles size={14} />
                                     <span>{syncMessage}</span>
@@ -380,9 +553,8 @@ export default function WorkspacePage() {
                             {syncError && (
                                 <div style={{
                                     padding: '10px 12px', borderRadius: '8px',
-                                    background: 'rgba(239, 68, 68, 0.08)',
-                                    color: '#f87171', fontSize: '12px',
-                                    marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center'
+                                    background: 'rgba(239, 68, 68, 0.08)', color: '#f87171',
+                                    fontSize: '12px', marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center'
                                 }}>
                                     <AlertCircle size={14} />
                                     <span>{syncError}</span>

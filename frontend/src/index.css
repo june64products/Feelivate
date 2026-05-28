@@ -125,6 +125,12 @@ body {
     oklch(0.63 0.2 251.22)
   );
   animation: rotate-gradient 5s infinite linear;
+  transition: box-shadow 0.3s ease;
+}
+
+.radiant-input-wrapper:hover,
+.radiant-input-wrapper:focus-within {
+  box-shadow: 0 0 40px rgba(192, 132, 252, 0.18), 0 8px 32px rgba(0,0,0,0.25);
 }
 
 .radiant-input-wrapper::before {
@@ -134,8 +140,15 @@ body {
   border-radius: inherit;
   background: var(--gradient);
   z-index: -1;
-  filter: blur(8px);
-  opacity: 0.5;
+  filter: blur(14px);
+  opacity: 0.65;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.radiant-input-wrapper:hover::before,
+.radiant-input-wrapper:focus-within::before {
+  filter: blur(18px);
+  opacity: 0.85;
 }
 
 .radiant-input-border {
