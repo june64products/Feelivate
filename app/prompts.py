@@ -96,6 +96,35 @@ When building Week 2 based on feedback:
 
 Week 3 = harder than Week 2. Always progressive. Always cite Week 1 and Week 2 context.
 
+── RULE 5b: PROGRESSION EXAMPLES (CRITICAL — memorize these patterns) ──
+Week 2 must ADVANCE, not repeat. Week 1 content is DONE. It is in the past. Move forward.
+
+🚫 WRONG Week 2 (repeating Week 1):
+  Week 1 had: "HTML — build a basic webpage"
+  Week 2 says: "HTML — build another basic webpage, add more tags" ← SAME LEVEL, WRONG
+
+✅ CORRECT Week 2 (advancing from Week 1):
+  Week 1 had: "HTML — build a basic webpage with heading + paragraph"
+  Week 2 says: "JavaScript — add interactivity: click button to show/hide content. Fetch data from API."
+
+More examples of correct progression:
+
+CODING:
+  W1: Variables, loops, functions in Python → W2: Classes, file I/O, error handling → W3: APIs, databases, frameworks
+
+MACHINE LEARNING:
+  W1: Linear regression, numpy basics → W2: Scikit-learn pipelines, train/test split, metrics → W3: Neural nets intro with PyTorch
+
+FITNESS:
+  W1: 3×10 bodyweight squats, 20 min walk → W2: 4×10 goblet squats 16kg, 30 min jog → W3: 5×5 barbell squats, interval running
+
+STUDY (UPSC, MBA etc.):
+  W1: Read chapters 1-3, make flashcards → W2: Solve past papers on chapters 1-3, identify weak areas → W3: Deep-dive weak areas + chapters 4-6
+
+RULE: Look at PLAN HISTORY. Find the most advanced thing Week 1 covered. Week 2 starts FROM THERE or BEYOND IT.
+Never go backwards. Never repeat an exercise/concept that already appeared in a previous week.
+
+
 ── RULE 6: Free Chat ──
 After a plan is built, you are a COMPLETELY NORMAL chatbot. Talk about ANYTHING.
 Never say "I can only help with your plan." You are ChatGPT with a planning superpower.
@@ -152,7 +181,12 @@ def build_chat_prompt(
 
     # ── Inject plan history for multi-week context ──────────────────────────
     if plan_history and len(plan_history) > 0:
-        system_content += "\n\nPLAN HISTORY (ALL previously approved weeks — use this to build the next week):"
+        system_content += "\n\n═══════════════════════════════════════"
+        system_content += "\nPLAN HISTORY — ALREADY COMPLETED WEEKS"
+        system_content += "\n═══════════════════════════════════════"
+        system_content += "\n⚠️ ALL content below has ALREADY been done by the user. DO NOT REPEAT ANY OF IT in the next week."
+
+        all_completed_actions = []
         for past_plan in plan_history:
             if not isinstance(past_plan, dict):
                 continue
@@ -161,16 +195,25 @@ def build_chat_prompt(
             days = past_plan.get("days", [])
             day_lines = []
             for d in days[:7]:
-                action_preview = d.get("action", "")[:80]
+                action = d.get("action", "")
+                action_preview = action[:100]
                 day_lines.append(f"    {d.get('day', '')}: {action_preview}")
+                all_completed_actions.append(action[:60])
             days_text = "\n".join(day_lines)
-            system_content += f"\n  Week {wk} — {theme}:\n{days_text}"
+            system_content += f"\n\n✅ Week {wk} (DONE — {theme}):\n{days_text}"
 
         next_week = current_week + 1 if phase == "active" else current_week
         system_content += (
-            f"\n\nNEXT WEEK TO BUILD: Week {next_week}"
-            f"\nRemember: Week {next_week} must CONTINUE from where the previous week ended. "
-            f"Do NOT restart topics from scratch. Build on Week {next_week - 1}'s foundation."
+            f"\n\n═══════════════════════════════════════"
+            f"\nNEXT WEEK TO BUILD: Week {next_week}"
+            f"\n═══════════════════════════════════════"
+            f"\n\n🚫 FORBIDDEN: Do NOT repeat any task, concept, or exercise from the weeks above."
+            f"\n🚫 FORBIDDEN: Do NOT go back to beginner-level content already covered."
+            f"\n✅ REQUIRED: Week {next_week} must start from where Week {next_week - 1} ENDED and go FURTHER."
+            f"\n✅ REQUIRED: Every day in Week {next_week} must be HARDER or MORE ADVANCED than the corresponding day in Week {next_week - 1}."
+            f"\n\nIf the user adds a NEW topic in Week {next_week} that was NOT in previous weeks:"
+            f"\n  → Start that NEW topic at absolute beginner level (Day 1 of that topic)"
+            f"\n  → But keep existing topics advancing from where they were"
         )
 
     # ── Inject current plan (if pending) ────────────────────────────────────
