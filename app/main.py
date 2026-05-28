@@ -206,12 +206,23 @@ async def chat(
         # Add current user message to history
         history.append({"role": "user", "content": message})
         
-        # 3. Build system context (active plan info if any)
+        # 3. Build system context (current pending/active plan info)
         system_context = None
         if session_rec.week_plan_json:
-            system_context = f"ACTIVE PLAN (Week {session_rec.current_week}):\n{session_rec.week_plan_json}"
+            phase_label = "LOCKED" if session_rec.phase == "active" else "PENDING APPROVAL"
+            system_context = f"CURRENT WEEK {session_rec.current_week} PLAN ({phase_label}):\n{session_rec.week_plan_json}"
         
-        # 4. Retrieve relevant memories from Qdrant
+        # 4. Load plan history for multi-week context
+        plan_history = []
+        if session_rec.result_json:
+            try:
+                parsed_history = json.loads(session_rec.result_json)
+                if isinstance(parsed_history, list):
+                    plan_history = parsed_history
+            except Exception:
+                plan_history = []
+        
+        # 4b. Retrieve relevant memories from Qdrant
         retrieved_memories = []
         embedding = None
         try:
@@ -231,8 +242,14 @@ async def chat(
             else:
                 system_context = f"RELEVANT PAST CONTEXT:\n{memory_text}"
         
-        # 5. Build prompt and call LLM
-        prompt_messages = build_chat_prompt(history, system_context)
+        # 5. Build prompt with full context and call LLM
+        prompt_messages = build_chat_prompt(
+            history,
+            system_context,
+            phase=session_rec.phase or "chat",
+            plan_history=plan_history,
+            current_week=session_rec.current_week or 0,
+        )
         
         raw_response = await asyncio.to_thread(
             call_llm_chat,
@@ -257,11 +274,20 @@ async def chat(
         db.add(user_msg)
         db.add(assistant_msg)
         
-        # 8. If plan was generated, update session
-        if plan_data:
-            session_rec.week_plan_json = json.dumps(plan_data)
-            session_rec.current_week = plan_data.get("week_number", 1) if isinstance(plan_data, dict) else 1
-            session_rec.phase = "planning"
+        # 8. If plan was generated, update session — with lock guard
+        if plan_data and isinstance(plan_data, dict):
+            new_week_num = plan_data.get("week_number", 1)
+            
+            # LOCK GUARD: if current week is locked, only accept plans for a NEWER week
+            if session_rec.phase == "active" and new_week_num <= (session_rec.current_week or 0):
+                logger.warning(
+                    f"Model attempted to modify locked Week {session_rec.current_week} — discarding plan."
+                )
+                plan_data = None  # Discard — never let the model silently overwrite a locked week
+            else:
+                session_rec.week_plan_json = json.dumps(plan_data)
+                session_rec.current_week = new_week_num
+                session_rec.phase = "planning"  # Back to pending approval for new week
             
             # Store the focus from the first message if not set
             if not session_rec.focus and len(db_messages) == 0:
@@ -324,6 +350,26 @@ async def approve_plan(
     
     if not session_rec.week_plan_json:
         raise HTTPException(status_code=400, detail="No plan to approve")
+    
+    # Save current plan to history BEFORE approving
+    plan_history: list = []
+    if session_rec.result_json:
+        try:
+            existing = json.loads(session_rec.result_json)
+            if isinstance(existing, list):
+                plan_history = existing
+        except Exception:
+            plan_history = []
+    
+    try:
+        approved_plan = json.loads(session_rec.week_plan_json)
+        # Avoid duplicating the same week in history
+        existing_weeks = {p.get("week_number") for p in plan_history if isinstance(p, dict)}
+        if approved_plan.get("week_number") not in existing_weeks:
+            plan_history.append(approved_plan)
+        session_rec.result_json = json.dumps(plan_history)
+    except Exception as e:
+        logger.warning(f"Could not save plan to history: {e}")
     
     session_rec.phase = "active"
     db.commit()
@@ -439,8 +485,47 @@ async def get_session_detail(session_id: str, db: DBSession = Depends(get_db), c
 
 
 # ============================================================
-# AUTH
+# VOICE TRANSCRIPTION (Whisper)
 # ============================================================
+
+@app.post("/transcribe", tags=["chat"])
+async def transcribe_audio(
+    audio: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Transcribe voice input to text using OpenAI Whisper."""
+    from .llm import _get_openai_client
+    
+    client = _get_openai_client()
+    if not client:
+        raise HTTPException(
+            status_code=503,
+            detail="Transcription requires OPENAI_API_KEY to be configured."
+        )
+    
+    audio_bytes = await audio.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Audio file is empty")
+    
+    # Wrap bytes in a named BytesIO so the OpenAI SDK knows the format
+    audio_buffer = io.BytesIO(audio_bytes)
+    filename = audio.filename or "recording.webm"
+    audio_buffer.name = filename
+    
+    try:
+        transcript = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_buffer,
+            response_format="text",
+        )
+        text = transcript if isinstance(transcript, str) else (transcript.text if hasattr(transcript, "text") else str(transcript))
+        logger.info(f"Whisper transcribed {len(audio_bytes)} bytes → {len(text)} chars")
+        return {"text": text.strip()}
+    except Exception as e:
+        logger.error(f"Whisper transcription failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription error: {str(e)}")
+
+
 
 @app.post("/signup", tags=["auth"])
 async def signup(req: SignupRequest, db: DBSession = Depends(get_db)):

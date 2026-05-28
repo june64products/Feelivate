@@ -308,3 +308,47 @@ body {
     --input-max-width: 100%;
   }
 }
+
+/* ============================================ */
+/* MIC / VOICE RECORDING ANIMATIONS            */
+/* ============================================ */
+
+/* Pulsing red ring around mic button when recording */
+@keyframes micPulseRing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5),
+                0 0 0 0 rgba(239, 68, 68, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.15),
+                0 0 0 16px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0),
+                0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.mic-recording {
+  animation: micPulseRing 1.4s ease-out infinite !important;
+}
+
+/* Live waveform bars */
+@keyframes waveBar {
+  0%, 100% { height: 4px; }
+  50%       { height: 18px; }
+}
+
+.mic-wave-bar {
+  width: 3px;
+  height: 4px;
+  border-radius: 3px;
+  background: #f87171;
+  animation: waveBar 0.8s ease-in-out infinite;
+}
+
+/* Spinner for transcribing state */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

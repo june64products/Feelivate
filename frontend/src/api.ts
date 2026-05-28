@@ -196,3 +196,28 @@ export const stopGoogleCalendarSync = async (userId: string) => {
     if (!response.ok) throw new Error('Failed to stop calendar sync');
     return response.json();
 };
+
+// ============================================================
+// VOICE TRANSCRIPTION
+// ============================================================
+
+export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
+    const formData = new FormData();
+    // Use .webm extension — supported by Whisper
+    const ext = audioBlob.type.includes('mp4') ? 'mp4' : 'webm';
+    formData.append('audio', audioBlob, `recording.${ext}`);
+
+    const response = await secureFetch(`${API_BASE_URL}/transcribe`, {
+        method: 'POST',
+        body: formData,
+        // Don't set Content-Type — let the browser set multipart/form-data boundary
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Transcription failed');
+    }
+
+    const data = await response.json();
+    return data.text || '';
+};
