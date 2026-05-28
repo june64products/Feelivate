@@ -7,6 +7,17 @@ export const API_BASE_URL = getApiUrl();
 
 const getToken = () => localStorage.getItem('access_token');
 
+/** Clears auth state and redirects to login. */
+const forceLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('active_session_id');
+    if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+    }
+};
+
 const secureFetch = async (url: string, options: RequestInit = {}) => {
     const token = getToken();
     const headers: Record<string, string> = {
@@ -24,10 +35,10 @@ const secureFetch = async (url: string, options: RequestInit = {}) => {
     });
 
     if (response.status === 401) {
-        localStorage.removeItem('access_token');
-        if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-        }
+        // Token is invalid/expired — force a clean logout.
+        forceLogout();
+        // Throw so callers know the request failed, not return a broken response.
+        throw new Error('Session expired. Please log in again.');
     }
 
     return response;

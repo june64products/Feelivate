@@ -44,9 +44,13 @@ export default function WorkspacePage() {
     const [syncMessage, setSyncMessage] = useState("");
     const [syncError, setSyncError] = useState("");
 
-    // Auth validation
+    // Auth validation — check both token AND user_id
     useEffect(() => {
-        if (!userId) {
+        const token = localStorage.getItem('access_token');
+        if (!userId || !token) {
+            // Clear any stale data
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('active_session_id');
             navigate('/login');
             return;
         }
@@ -68,8 +72,16 @@ export default function WorkspacePage() {
                 setMessages(data.messages || []);
                 setActivePlan(data.plan || null);
                 setIsPlanApproved(data.phase === 'active');
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Failed to load session details:", err);
+                // If session not found (404) or auth expired (401 throws), clear stale session
+                if (err?.message?.includes('Session expired') || err?.message?.includes('404')) {
+                    localStorage.removeItem('active_session_id');
+                    setActiveSessionId(null);
+                }
+                // If session just doesn't exist, silently reset to empty state
+                setMessages([]);
+                setActivePlan(null);
             } finally {
                 setIsLoading(false);
             }

@@ -122,34 +122,37 @@ def _parse_llm_response(raw_text: str) -> Dict[str, Any]:
     # Strip thinking blocks
     raw_text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL)
     
+    # Strip markdown code fences FIRST before any JSON extraction
+    # Handles: ```json\n{...}\n```, ```\n{...}\n```, etc.
+    fence_stripped = re.sub(r'```(?:json)?\s*', '', raw_text)
+    fence_stripped = fence_stripped.replace('```', '').strip()
+    
     # Try to parse as JSON first
-    try:
-        # Find JSON object
-        start = raw_text.find("{")
-        end = raw_text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            json_str = raw_text[start:end + 1]
-            # Strip markdown fences
-            json_str = re.sub(r'```(?:json)?\s*', '', json_str)
-            json_str = json_str.replace('```', '').strip()
-            data = json.loads(json_str)
-            
-            if "reply" in data:
-                return {
-                    "reply": data.get("reply", ""),
-                    "plan": data.get("plan", None)
-                }
-    except (json.JSONDecodeError, Exception) as e:
-        logger.warning(f"JSON parse failed, treating as plain text: {e}")
+    for text_to_try in [fence_stripped, raw_text]:
+        try:
+            # Find outermost JSON object
+            start = text_to_try.find("{")
+            end = text_to_try.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                json_str = text_to_try[start:end + 1].strip()
+                data = json.loads(json_str)
+                
+                if "reply" in data:
+                    return {
+                        "reply": str(data.get("reply", "")),
+                        "plan": data.get("plan", None)
+                    }
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning(f"JSON parse attempt failed: {e}")
+            continue
     
     # Fallback: treat entire response as plain text reply
-    # Strip any JSON artifacts
-    clean_text = raw_text.strip()
+    clean_text = fence_stripped or raw_text.strip()
+    # Remove leftover JSON structural characters if it looks like broken JSON
     if clean_text.startswith("{"):
-        # Tried and failed to parse — extract just readable text
-        clean_text = re.sub(r'[{}"\[\]]', '', clean_text)
+        clean_text = re.sub(r'[{}"\[\]]', '', clean_text).strip()
     
-    return {"reply": clean_text, "plan": None}
+    return {"reply": clean_text or "I'm here — what can I help you with?", "plan": None}
 
 
 @app.post("/chat", tags=["chat"])
@@ -292,10 +295,14 @@ async def chat(
         
     except Exception as e:
         import traceback
+        tb = traceback.format_exc()
         logger.error(f"Chat failed: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(tb)
+        # Return the real error in development so it's debuggable;
+        # in prod the generic message is fine but we expose the type.
+        error_hint = type(e).__name__
         return {
-            "reply": "Sorry, I hit an error. Try again in a moment.",
+            "reply": f"Sorry, I hit an error ({error_hint}). Try again in a moment.",
             "plan": None,
             "session_id": session_id
         }
