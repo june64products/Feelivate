@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import PlanCard from './PlanCard';
 
 interface Message {

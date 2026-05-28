@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Mail, Lock, User as UserIcon, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
+
 import { login, signup } from '../api';
 
 export default function LoginPage() {

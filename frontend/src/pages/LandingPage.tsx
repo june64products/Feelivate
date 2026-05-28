@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, Shield, Zap, Calendar } from 'lucide-react';
+import { ArrowRight, Shield, Zap, Calendar } from 'lucide-react';
 
 export default function LandingPage() {
     const navigate = useNavigate();
