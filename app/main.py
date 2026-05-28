@@ -169,7 +169,7 @@ async def chat(
     - Plan revision
     - Free chat after plan
     """
-    from .llm import call_llm_chat, create_embedding
+    from .llm import call_with_fallback_chain, create_embedding
     from .prompts import build_chat_prompt
     from .vector_store import vector_store
     
@@ -252,11 +252,10 @@ async def chat(
         )
         
         raw_response = await asyncio.to_thread(
-            call_llm_chat,
+            call_with_fallback_chain,
             prompt_messages,
             temperature=0.85,
             max_tokens=4000,
-            model_override="gpt-oss-120b",
             presence_penalty=0.4,
             frequency_penalty=0.35
         )
@@ -493,36 +492,21 @@ async def transcribe_audio(
     audio: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
 ):
-    """Transcribe voice input to text using OpenAI Whisper."""
-    from .llm import _get_openai_client
-    
-    client = _get_openai_client()
-    if not client:
-        raise HTTPException(
-            status_code=503,
-            detail="Transcription requires OPENAI_API_KEY to be configured."
-        )
-    
+    """Transcribe voice input via Groq Whisper Large v3 Turbo (fast, <1s)."""
+    from .llm import call_groq_transcribe
+
     audio_bytes = await audio.read()
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="Audio file is empty")
-    
-    # Wrap bytes in a named BytesIO so the OpenAI SDK knows the format
-    audio_buffer = io.BytesIO(audio_bytes)
+
     filename = audio.filename or "recording.webm"
-    audio_buffer.name = filename
-    
+
     try:
-        transcript = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_buffer,
-            response_format="text",
-        )
-        text = transcript if isinstance(transcript, str) else (transcript.text if hasattr(transcript, "text") else str(transcript))
-        logger.info(f"Whisper transcribed {len(audio_bytes)} bytes → {len(text)} chars")
-        return {"text": text.strip()}
+        text = await asyncio.to_thread(call_groq_transcribe, audio_bytes, filename)
+        logger.info(f"[Transcribe] {len(audio_bytes)} bytes → {len(text)} chars")
+        return {"text": text}
     except Exception as e:
-        logger.error(f"Whisper transcription failed: {e}")
+        logger.error(f"[Transcribe] failed: {e}")
         raise HTTPException(status_code=500, detail=f"Transcription error: {str(e)}")
 
 

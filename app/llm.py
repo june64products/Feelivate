@@ -11,6 +11,25 @@ _groq_client: Optional[OpenAI] = None
 _openai_client: Optional[OpenAI] = None
 _gemini_configured = False
 
+# ─── Fallback Chain Config ───────────────────────────────────────────────────
+# Each model is tried in order on rate-limit / decommission errors.
+# Final fallback is OpenAI gpt-4o (requires OPENAI_API_KEY).
+# NOTE: Use exact IDs from Groq's /models API (verified active 2026-05).
+GROQ_FALLBACK_CHAIN = [
+    "openai/gpt-oss-120b",        # 1st — Groq's hosted OSS 120B (primary)
+    "openai/gpt-oss-20b",         # 2nd — Groq's hosted OSS 20B
+    "llama-3.3-70b-versatile",    # 3rd — Llama 70B (reliable fallback)
+    "llama-3.1-8b-instant",       # 4th — small, ultra-fast
+]
+OPENAI_FALLBACK_MODEL = "gpt-4o"
+
+# Internal shorthand → real Groq model mapping (legacy support)
+MODEL_MAP = {
+    "gpt-oss-120b": "openai/gpt-oss-120b",
+    "gpt-oss-20b":  "openai/gpt-oss-20b",
+}
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 def _get_groq_client() -> OpenAI:
     global _groq_client
@@ -174,7 +193,7 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
                 )
             except Exception as api_err:
                 if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
-                    fallback_model = "llama3-8b-8192"
+                    fallback_model = "llama-3.1-8b-instant"
                     logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
                     resp = client.chat.completions.create(
                         model=fallback_model,
@@ -194,7 +213,7 @@ def _call_groq(prompt: str, system: Optional[str] = None, temperature: float = 0
                 )
             except Exception as api_err:
                 if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
-                    fallback_model = "llama3-8b-8192"
+                    fallback_model = "llama-3.1-8b-instant"
                     logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
                     resp = client.chat.completions.create(
                         model=fallback_model,
@@ -314,7 +333,7 @@ def call_llm_chat(
                     )
                 except Exception as api_err:
                     if "Rate limit" in str(api_err) or "429" in str(api_err) or "rate_limit_exceeded" in str(api_err):
-                        fallback_model = "llama3-8b-8192"
+                        fallback_model = "llama-3.1-8b-instant"
                         logger.warning(f"Rate limit hit for {model}. Falling back to {fallback_model}!")
                         resp = client.chat.completions.create(
                             model=fallback_model,
@@ -353,3 +372,107 @@ def call_llm_chat(
     except Exception as e:
         logger.exception("LLM chat call failed")
         raise RuntimeError(f"LLM chat error: {e}")
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _is_retryable_error(e: Exception) -> bool:
+    """Return True if this error means we should try the next model."""
+    err = str(e).lower()
+    return any(kw in err for kw in [
+        "429", "rate_limit", "rate limit", "too many requests",
+        "decommissioned", "model_not_found", "model not found",
+        "503", "service unavailable", "overloaded",
+    ])
+
+
+def call_with_fallback_chain(
+    messages: List[dict],
+    temperature: float = 0.85,
+    max_tokens: int = 4000,
+    presence_penalty: float = 0.4,
+    frequency_penalty: float = 0.35,
+) -> str:
+    """
+    Call LLM with auto-fallback cascade:
+      1. llama-3.3-70b-versatile  (Groq — primary)
+      2. mistral-saba-24b         (Groq — gpt-oss-20b equivalent)
+      3. llama-3.1-8b-instant     (Groq — fast small)
+      4. gpt-4o                   (OpenAI — last resort)
+    """
+    tried: List[str] = []
+
+    # ── Step 1-3: Groq models ──────────────────────────────────────────────
+    for model in GROQ_FALLBACK_CHAIN:
+        if model in tried:
+            continue
+        tried.append(model)
+        try:
+            client = _get_groq_client()
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            content = (resp.choices[0].message.content or "").strip()
+            logger.info(f"[Fallback chain] ✅ Groq/{model}")
+            return content
+        except Exception as e:
+            if _is_retryable_error(e):
+                logger.warning(f"[Fallback chain] ⚠️  Groq/{model} failed ({type(e).__name__}: {str(e)[:120]}), trying next...")
+                continue
+            # Non-retryable (e.g. auth error) — bubble up immediately
+            logger.exception(f"[Fallback chain] ❌ Groq/{model} non-retryable error")
+            raise RuntimeError(f"Groq/{model} error: {e}")
+
+    # ── Step 4: OpenAI gpt-4o (last resort) ──────────────────────────────
+    logger.warning("[Fallback chain] All Groq models exhausted → OpenAI gpt-4o")
+    try:
+        client = _get_openai_client()
+        if not client:
+            raise RuntimeError("OpenAI client not configured (set OPENAI_API_KEY)")
+        resp = client.chat.completions.create(
+            model=OPENAI_FALLBACK_MODEL,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty,
+        )
+        content = (resp.choices[0].message.content or "").strip()
+        logger.info("[Fallback chain] ✅ OpenAI/gpt-4o")
+        return content
+    except Exception as e:
+        logger.exception("[Fallback chain] ❌ OpenAI gpt-4o also failed")
+        raise RuntimeError(f"All models in fallback chain failed. Last error: {e}")
+
+
+def call_groq_transcribe(audio_bytes: bytes, filename: str = "recording.webm") -> str:
+    """
+    Transcribe audio using Groq Whisper Large v3 Turbo.
+    Much faster than OpenAI Whisper — typically <1s response.
+    """
+    import io
+    try:
+        client = _get_groq_client()
+        audio_buffer = io.BytesIO(audio_bytes)
+        # Detect content type from filename extension
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "webm"
+        content_type_map = {
+            "webm": "audio/webm", "mp3": "audio/mpeg", "mp4": "audio/mp4",
+            "wav": "audio/wav", "ogg": "audio/ogg", "m4a": "audio/mp4",
+            "flac": "audio/flac",
+        }
+        content_type = content_type_map.get(ext, "audio/webm")
+        transcript = client.audio.transcriptions.create(
+            model="whisper-large-v3-turbo",
+            file=(filename, audio_buffer, content_type),
+            response_format="text",
+        )
+        text = transcript if isinstance(transcript, str) else str(transcript)
+        logger.info(f"[Groq Whisper] ✅ {len(audio_bytes)} bytes → {len(text)} chars")
+        return text.strip()
+    except Exception as e:
+        logger.exception("[Groq Whisper] transcription failed")
+        raise RuntimeError(f"Groq Whisper error: {e}")
