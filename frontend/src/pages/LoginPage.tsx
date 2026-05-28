@@ -14,44 +14,52 @@ const GoogleIcon = () => (
   </svg>
 );
 
-// ─── Feature Card Data ────────────────────────────────────────────────────────
+// ─── Feature Cards ────────────────────────────────────────────────────────────
 const features = [
-  {
-    icon: '🎯',
-    title: 'Goal Intake',
-    desc: 'Tell me your goal once — I ask just 3 smart questions to understand you completely.',
-  },
-  {
-    icon: '📅',
-    title: 'Weekly Action Plans',
-    desc: 'Get a hyper-specific 7-day roadmap. No vague advice — exact tasks, times, and steps.',
-  },
-  {
-    icon: '🔒',
-    title: 'Plan Locking',
-    desc: 'Once you approve a week, it\'s locked in. Commitment is the strategy.',
-  },
-  {
-    icon: '📈',
-    title: 'Progressive Difficulty',
-    desc: 'Every week builds on the last. Week 4 you is not Week 1 you.',
-  },
+  { icon: '🎯', title: 'Goal Intake',         desc: 'Tell me your goal once — I ask just 3 smart questions to understand you completely.' },
+  { icon: '📅', title: 'Weekly Action Plans', desc: 'Get a hyper-specific 7-day roadmap. No vague advice — exact tasks, times, and steps.' },
+  { icon: '🔒', title: 'Plan Locking',        desc: "Once you approve a week, it's locked in. Commitment is the strategy." },
+  { icon: '📈', title: 'Progressive Growth',  desc: 'Every week builds on the last. Week 4 you is not Week 1 you.' },
 ];
 
+// ─── Shared input style ───────────────────────────────────────────────────────
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '13px 14px 13px 42px',
+  borderRadius: '12px',
+  border: '1px solid rgba(255,255,255,0.1)',
+  background: '#1a1a1a',
+  color: '#ffffff',
+  fontSize: '14px',
+  fontWeight: 400,
+  outline: 'none',
+  transition: 'border-color 0.2s, box-shadow 0.2s',
+  fontFamily: "'Inter', system-ui, sans-serif",
+  letterSpacing: '-0.01em',
+};
+
+// ─── Label style ─────────────────────────────────────────────────────────────
+const labelStyle: React.CSSProperties = {
+  fontSize: '11.5px',
+  fontWeight: 600,
+  color: '#9c9a92',
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+};
+
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const navigate   = useNavigate();
+  const [isLogin, setIsLogin]           = useState(true);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState('');
   const [showGooglePopup, setShowGooglePopup] = useState(false);
-  const [tryGlow, setTryGlow] = useState(false);
+  const [tryGlow, setTryGlow]           = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({ email: '', password: '', name: '' });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +87,11 @@ export default function LoginPage() {
   const handleTryFeelivate = () => {
     setTryGlow(true);
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => setTryGlow(false), 2200);
+    setTimeout(() => setTryGlow(false), 2400);
   };
+
+  // ─── FONT: Inter everywhere ─────────────────────────────────────────────────
+  const pageFont = "'Inter', system-ui, -apple-system, sans-serif";
 
   return (
     <div style={{
@@ -88,12 +99,12 @@ export default function LoginPage() {
       display: 'flex',
       flexDirection: 'column',
       background: '#0d0d0d',
-      fontFamily: "'Satoshi', 'Inter', system-ui, sans-serif",
+      fontFamily: pageFont,          // ← Inter for ENTIRE page
       color: '#ffffff',
       overflow: 'hidden',
     }}>
 
-      {/* ── Top Navigation ──────────────────────────────────────────────────── */}
+      {/* ── Top Navigation ─────────────────────────────────────────────────── */}
       <nav style={{
         display: 'flex',
         alignItems: 'center',
@@ -110,82 +121,57 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            width: '34px',
-            height: '34px',
+            width: '34px', height: '34px',
             background: '#ffffff',
             borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-            flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', flexShrink: 0,
           }}>
-            <img
-              src="/logo_2_backup.png"
-              alt="Feelivate"
-              style={{ width: '26px', height: '26px', objectFit: 'contain' }}
-            />
+            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '26px', height: '26px', objectFit: 'contain' }} />
           </div>
-          <span style={{ fontWeight: 700, fontSize: '16px', letterSpacing: '-0.02em', color: '#fff' }}>
+          {/* Same font as rest of page — Inter Bold */}
+          <span style={{ fontWeight: 700, fontSize: '16px', letterSpacing: '-0.03em', color: '#fff', fontFamily: pageFont }}>
             Feelivate
           </span>
         </div>
 
         {/* Nav Links */}
-        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {['Meet Feelivate', 'Platform', 'Solutions', 'Pricing', 'Resources', 'Contact sales'].map((item) => (
+        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+          {['Meet Feelivate', 'Platform', 'Solutions', 'Pricing', 'Resources', 'Contact sales'].map(item => (
             <button key={item} style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#9c9a92',
-              fontSize: '13.5px',
-              fontWeight: 500,
-              padding: '6px 12px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'color 0.2s, background 0.2s',
+              background: 'transparent', border: 'none',
+              color: '#9c9a92', fontSize: '13px', fontWeight: 500,
+              padding: '6px 11px', borderRadius: '8px', cursor: 'pointer',
+              transition: 'color 0.18s, background 0.18s',
+              fontFamily: pageFont,
             }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = '#fff';
-                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = '#9c9a92';
-                e.currentTarget.style.background = 'transparent';
-              }}
-            >
-              {item}
-            </button>
+              onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#9c9a92'; e.currentTarget.style.background = 'transparent'; }}
+            >{item}</button>
           ))}
         </div>
 
-        {/* CTA */}
+        {/* Try Feelivate CTA */}
         <button
-          id="try-feelivate-btn"
           onClick={handleTryFeelivate}
           style={{
-            background: '#ffffff',
-            color: '#0d0d0d',
-            border: 'none',
-            padding: '9px 20px',
-            borderRadius: '10px',
-            fontSize: '13.5px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'opacity 0.2s, transform 0.15s',
-            letterSpacing: '-0.01em',
+            background: '#ffffff', color: '#0d0d0d', border: 'none',
+            padding: '9px 20px', borderRadius: '10px',
+            fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+            transition: 'opacity 0.18s, transform 0.15s',
+            fontFamily: pageFont, letterSpacing: '-0.02em',
           }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'scale(1.03)'; }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.87'; e.currentTarget.style.transform = 'scale(1.03)'; }}
           onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; }}
         >
           Try Feelivate
         </button>
       </nav>
 
-      {/* ── Main Split ──────────────────────────────────────────────────────── */}
+      {/* ── Main Split ─────────────────────────────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
 
-        {/* ── LEFT: Sign In Form ──────────────────────────────────────────── */}
+        {/* ── LEFT: Sign-In Form ─────────────────────────────────────────── */}
         <div style={{
           flex: 1,
           display: 'flex',
@@ -196,24 +182,39 @@ export default function LoginPage() {
         }}>
           <div ref={formRef} style={{ width: '100%', maxWidth: '400px' }}>
 
-            {/* Form Heading */}
-            <div style={{ marginBottom: '36px' }}>
-              <h1 style={{
-                fontSize: '32px',
-                fontWeight: 700,
-                letterSpacing: '-0.03em',
-                color: '#ffffff',
-                marginBottom: '8px',
-                lineHeight: 1.15,
-                fontFamily: "'Gambetta', 'Georgia', serif",
-              }}>
-                {isLogin ? 'Sign in to Feelivate' : 'Create your account'}
-              </h1>
-              <p style={{ fontSize: '14px', color: '#9c9a92', lineHeight: 1.6 }}>
-                {isLogin
-                  ? 'Your AI mentor is waiting. Pick up right where you left off.'
-                  : 'Start your journey. Your first weekly plan is one conversation away.'}
-              </p>
+            {/* Heading — animated when toggling */}
+            <div style={{ marginBottom: '32px' }}>
+              <AnimatePresence mode="wait">
+                <motion.h1
+                  key={isLogin ? 'login-h' : 'signup-h'}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                  style={{
+                    fontSize: '30px', fontWeight: 700,
+                    letterSpacing: '-0.035em', color: '#ffffff',
+                    marginBottom: '8px', lineHeight: 1.18,
+                    fontFamily: pageFont,
+                  }}
+                >
+                  {isLogin ? 'Sign in to Feelivate' : 'Create your account'}
+                </motion.h1>
+              </AnimatePresence>
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={isLogin ? 'login-p' : 'signup-p'}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={{ duration: 0.2, ease: 'easeOut', delay: 0.04 }}
+                  style={{ fontSize: '13.5px', color: '#9c9a92', lineHeight: 1.6, fontFamily: pageFont }}
+                >
+                  {isLogin
+                    ? 'Your AI mentor is waiting. Pick up right where you left off.'
+                    : 'Start your journey. Your first weekly plan is one conversation away.'}
+                </motion.p>
+              </AnimatePresence>
             </div>
 
             {/* Error */}
@@ -224,17 +225,12 @@ export default function LoginPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   style={{
-                    padding: '12px 16px',
-                    borderRadius: '10px',
-                    background: 'rgba(239,68,68,0.08)',
-                    border: '1px solid rgba(239,68,68,0.2)',
-                    color: '#f87171',
-                    fontSize: '13px',
-                    marginBottom: '20px',
+                    padding: '12px 16px', borderRadius: '10px',
+                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                    color: '#f87171', fontSize: '13px', marginBottom: '18px',
+                    fontFamily: pageFont,
                   }}
-                >
-                  {error}
-                </motion.div>
+                >{error}</motion.div>
               )}
             </AnimatePresence>
 
@@ -243,39 +239,49 @@ export default function LoginPage() {
               animate={tryGlow ? {
                 boxShadow: [
                   '0 0 0px 0px rgba(217,119,87,0)',
-                  '0 0 30px 12px rgba(217,119,87,0.35)',
-                  '0 0 50px 20px rgba(217,119,87,0.25)',
-                  '0 0 30px 12px rgba(217,119,87,0.15)',
+                  '0 0 32px 14px rgba(217,119,87,0.32)',
+                  '0 0 52px 22px rgba(217,119,87,0.18)',
                   '0 0 0px 0px rgba(217,119,87,0)',
                 ],
               } : { boxShadow: '0 0 0px 0px rgba(217,119,87,0)' }}
-              transition={{ duration: 2, ease: 'easeInOut' }}
+              transition={{ duration: 2.2, ease: 'easeInOut' }}
               style={{ borderRadius: '16px' }}
             >
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-                {/* Name (signup only) */}
-                {!isLogin && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#9c9a92', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Full Name</label>
-                    <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#555', display: 'flex' }}>
-                        <UserIcon size={15} />
-                      </span>
-                      <input
-                        type="text" name="name" required placeholder="John Doe"
-                        value={formData.name} onChange={handleInputChange}
-                        style={inputStyle}
-                        onFocus={e => { e.currentTarget.style.borderColor = '#d97757'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,119,87,0.12)'; }}
-                        onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
-                      />
-                    </div>
-                  </div>
-                )}
+                {/* ── Name field (signup only) — smooth height + fade ───── */}
+                <AnimatePresence initial={false}>
+                  {!isLogin && (
+                    <motion.div
+                      key="name-field"
+                      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      animate={{ opacity: 1, height: 'auto', marginBottom: 0 }}
+                      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingBottom: '2px' }}>
+                        <label style={labelStyle}>Full Name</label>
+                        <div style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#555', display: 'flex' }}>
+                            <UserIcon size={15} />
+                          </span>
+                          <input
+                            type="text" name="name" required placeholder="John Doe"
+                            value={formData.name} onChange={handleInputChange}
+                            style={inputStyle}
+                            onFocus={e => { e.currentTarget.style.borderColor = '#d97757'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,119,87,0.13)'; }}
+                            onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Email */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#9c9a92', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Email</label>
+                  <label style={labelStyle}>Email</label>
                   <div style={{ position: 'relative' }}>
                     <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#555', display: 'flex' }}>
                       <Mail size={15} />
@@ -284,7 +290,7 @@ export default function LoginPage() {
                       type="email" name="email" required placeholder="Enter your email"
                       value={formData.email} onChange={handleInputChange}
                       style={inputStyle}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#d97757'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,119,87,0.12)'; }}
+                      onFocus={e => { e.currentTarget.style.borderColor = '#d97757'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,119,87,0.13)'; }}
                       onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
                     />
                   </div>
@@ -292,7 +298,7 @@ export default function LoginPage() {
 
                 {/* Password */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#9c9a92', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Password</label>
+                  <label style={labelStyle}>Password</label>
                   <div style={{ position: 'relative' }}>
                     <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#555', display: 'flex' }}>
                       <Lock size={15} />
@@ -301,7 +307,7 @@ export default function LoginPage() {
                       type="password" name="password" required placeholder="Enter password"
                       value={formData.password} onChange={handleInputChange}
                       style={inputStyle}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#d97757'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,119,87,0.12)'; }}
+                      onFocus={e => { e.currentTarget.style.borderColor = '#d97757'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,119,87,0.13)'; }}
                       onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
                     />
                   </div>
@@ -309,61 +315,45 @@ export default function LoginPage() {
 
                 {/* Continue button */}
                 <button
-                  type="submit"
-                  disabled={loading}
+                  type="submit" disabled={loading}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    background: '#ffffff',
-                    color: '#0d0d0d',
-                    border: 'none',
-                    padding: '14px',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: 700,
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    transition: 'opacity 0.2s, transform 0.15s',
-                    marginTop: '4px',
-                    opacity: loading ? 0.7 : 1,
-                    letterSpacing: '-0.01em',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    background: '#ffffff', color: '#0d0d0d', border: 'none',
+                    padding: '14px', borderRadius: '12px',
+                    fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'opacity 0.18s, transform 0.15s',
+                    marginTop: '4px', opacity: loading ? 0.7 : 1,
+                    fontFamily: pageFont, letterSpacing: '-0.02em',
                   }}
-                  onMouseEnter={e => { if (!loading) { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'scale(1.01)'; } }}
+                  onMouseEnter={e => { if (!loading) { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'scale(1.01)'; } }}
                   onMouseLeave={e => { if (!loading) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; } }}
                 >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : (
-                    <>{isLogin ? 'Continue' : 'Create Account'}<ArrowRight size={15} /></>
-                  )}
+                  {loading
+                    ? <Loader2 size={16} className="animate-spin" />
+                    : <>{isLogin ? 'Continue' : 'Create Account'}<ArrowRight size={15} /></>
+                  }
                 </button>
 
                 {/* Divider */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '2px 0' }}>
                   <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                  <span style={{ fontSize: '12px', color: '#555', fontWeight: 500 }}>OR</span>
+                  <span style={{ fontSize: '11.5px', color: '#555', fontWeight: 500, fontFamily: pageFont }}>OR</span>
                   <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
                 </div>
 
-                {/* Google Sign In */}
+                {/* Google */}
                 <button
-                  type="button"
-                  onClick={() => setShowGooglePopup(true)}
+                  type="button" onClick={() => setShowGooglePopup(true)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    background: 'transparent',
-                    color: '#ffffff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                    background: 'transparent', color: '#ffffff',
                     border: '1px solid rgba(255,255,255,0.14)',
-                    padding: '13px',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'background 0.2s, border-color 0.2s',
+                    padding: '13px', borderRadius: '12px',
+                    fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                    transition: 'background 0.18s, border-color 0.18s',
+                    fontFamily: pageFont,
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.26)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'; }}
                 >
                   <GoogleIcon />
@@ -372,22 +362,17 @@ export default function LoginPage() {
               </form>
             </motion.div>
 
-            {/* Toggle Login/Signup */}
-            <p style={{ marginTop: '28px', textAlign: 'center', fontSize: '13.5px', color: '#9c9a92' }}>
+            {/* Toggle Login / Signup */}
+            <p style={{ marginTop: '26px', textAlign: 'center', fontSize: '13.5px', color: '#9c9a92', fontFamily: pageFont }}>
               {isLogin ? 'New to Feelivate? ' : 'Already have an account? '}
               <button
                 onClick={() => { setIsLogin(!isLogin); setError(''); }}
                 style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#d97757',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontSize: '13.5px',
-                  padding: 0,
-                  transition: 'opacity 0.2s',
+                  background: 'transparent', border: 'none', color: '#d97757',
+                  fontWeight: 700, cursor: 'pointer', padding: 0,
+                  fontSize: '13.5px', transition: 'opacity 0.18s', fontFamily: pageFont,
                 }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.72'}
                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}
               >
                 {isLogin ? 'Create account' : 'Log in here'}
@@ -396,134 +381,118 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* ── RIGHT: Brand Panel ──────────────────────────────────────────── */}
+        {/* ── RIGHT: Brand Panel ─────────────────────────────────────────── */}
         <div className="brand-panel" style={{
           flex: 1,
-          background: 'radial-gradient(ellipse at 30% 40%, #1e1512 0%, #111 40%, #0d0d0d 100%)',
+          background: 'radial-gradient(ellipse at 35% 45%, #1a1208 0%, #111 45%, #0d0d0d 100%)',
           borderLeft: '1px solid rgba(255,255,255,0.06)',
           display: 'flex',
-          flexDirection: 'column',
+          alignItems: 'center',
           justifyContent: 'center',
-          padding: '60px 56px',
+          padding: '40px 48px',
           position: 'relative',
           overflow: 'hidden',
         }}>
-          {/* Ambient glow */}
+
+          {/* Ambient glow blobs */}
           <div style={{
-            position: 'absolute', top: '10%', right: '10%',
-            width: '320px', height: '320px',
-            background: 'radial-gradient(circle, rgba(217,119,87,0.08) 0%, transparent 70%)',
-            filter: 'blur(60px)',
-            pointerEvents: 'none',
+            position: 'absolute', top: '8%', right: '8%',
+            width: '280px', height: '280px',
+            background: 'radial-gradient(circle, rgba(217,119,87,0.09) 0%, transparent 70%)',
+            filter: 'blur(60px)', pointerEvents: 'none',
           }} />
           <div style={{
-            position: 'absolute', bottom: '15%', left: '-5%',
-            width: '260px', height: '260px',
-            background: 'radial-gradient(circle, rgba(217,119,87,0.05) 0%, transparent 70%)',
-            filter: 'blur(80px)',
-            pointerEvents: 'none',
+            position: 'absolute', bottom: '12%', left: '-8%',
+            width: '220px', height: '220px',
+            background: 'radial-gradient(circle, rgba(217,119,87,0.06) 0%, transparent 70%)',
+            filter: 'blur(80px)', pointerEvents: 'none',
           }} />
 
-          {/* Hero text */}
-          <div style={{ position: 'relative', zIndex: 2, maxWidth: '480px' }}>
-            {/* Feelivate badge */}
+          {/* ── THE CARD — centered, contained ───────────────────────────── */}
+          <div style={{
+            position: 'relative',
+            zIndex: 2,
+            width: '100%',
+            maxWidth: '440px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.09)',
+            borderRadius: '24px',
+            padding: '36px 32px',
+            backdropFilter: 'blur(12px)',
+          }}>
+
+            {/* Badge */}
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               background: 'rgba(217,119,87,0.1)',
-              border: '1px solid rgba(217,119,87,0.25)',
+              border: '1px solid rgba(217,119,87,0.22)',
               borderRadius: '100px',
-              padding: '5px 14px',
-              marginBottom: '28px',
+              padding: '4px 12px',
+              marginBottom: '22px',
             }}>
               <div style={{
-                width: '20px', height: '20px',
-                background: '#ffffff',
-                borderRadius: '5px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                overflow: 'hidden',
+                width: '18px', height: '18px', background: '#fff',
+                borderRadius: '4px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', overflow: 'hidden',
               }}>
-                <img src="/logo_2_backup.png" alt="" style={{ width: '15px', height: '15px', objectFit: 'contain' }} />
+                <img src="/logo_2_backup.png" alt="" style={{ width: '13px', height: '13px', objectFit: 'contain' }} />
               </div>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#d97757', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#d97757', letterSpacing: '0.06em', fontFamily: pageFont }}>
                 FEELIVATE AI MENTOR
               </span>
             </div>
 
+            {/* Headline */}
             <h2 style={{
-              fontSize: '38px',
-              fontWeight: 700,
-              lineHeight: 1.15,
-              letterSpacing: '-0.03em',
-              color: '#ffffff',
-              marginBottom: '16px',
-              fontFamily: "'Gambetta', 'Georgia', serif",
+              fontSize: '28px', fontWeight: 700,
+              lineHeight: 1.2, letterSpacing: '-0.03em',
+              color: '#ffffff', marginBottom: '10px',
+              fontFamily: pageFont,
             }}>
               Tell me your goal once.<br />
               <span style={{ color: '#d97757' }}>I'll build the rest.</span>
             </h2>
-
-            <p style={{
-              fontSize: '15px',
-              color: '#9c9a92',
-              lineHeight: 1.7,
-              marginBottom: '44px',
-            }}>
-              Not a to-do list. A commitment. Your AI mentor that builds hyper-specific weekly action plans and holds you accountable, week after week.
+            <p style={{ fontSize: '13.5px', color: '#9c9a92', lineHeight: 1.65, marginBottom: '28px', fontFamily: pageFont }}>
+              Not a to-do list. A commitment. Hyper-specific weekly plans, locked in, week after week.
             </p>
 
-            {/* Feature cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* Feature Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
               {features.map((f, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, x: 16 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 + 0.2, duration: 0.4, ease: 'easeOut' }}
+                  transition={{ delay: i * 0.09 + 0.15, duration: 0.36, ease: 'easeOut' }}
                   style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '14px',
-                    background: 'rgba(255,255,255,0.03)',
+                    display: 'flex', alignItems: 'flex-start', gap: '12px',
+                    background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: '14px',
-                    padding: '16px 18px',
-                    transition: 'background 0.2s, border-color 0.2s',
-                    cursor: 'default',
+                    borderRadius: '12px', padding: '13px 15px',
+                    transition: 'background 0.18s, border-color 0.18s',
                   }}
-                  onHoverStart={e => {
-                    (e.target as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
-                    (e.target as HTMLElement).style.borderColor = 'rgba(217,119,87,0.2)';
-                  }}
-                  onHoverEnd={e => {
-                    (e.target as HTMLElement).style.background = 'rgba(255,255,255,0.03)';
-                    (e.target as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)';
-                  }}
+                  whileHover={{ backgroundColor: 'rgba(255,255,255,0.07)', borderColor: 'rgba(217,119,87,0.22)' } as any}
                 >
-                  <span style={{ fontSize: '22px', lineHeight: 1, flexShrink: 0, marginTop: '2px' }}>{f.icon}</span>
+                  <span style={{ fontSize: '19px', lineHeight: 1, flexShrink: 0, marginTop: '1px' }}>{f.icon}</span>
                   <div>
-                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#ffffff', marginBottom: '3px', letterSpacing: '-0.01em' }}>
-                      {f.title}
-                    </div>
-                    <div style={{ fontSize: '12.5px', color: '#9c9a92', lineHeight: 1.55 }}>
-                      {f.desc}
-                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '2px', letterSpacing: '-0.01em', fontFamily: pageFont }}>{f.title}</div>
+                    <div style={{ fontSize: '12px', color: '#9c9a92', lineHeight: 1.55, fontFamily: pageFont }}>{f.desc}</div>
                   </div>
                 </motion.div>
               ))}
             </div>
 
-            {/* Testimonial quote */}
+            {/* Quote */}
             <div style={{
-              marginTop: '32px',
-              padding: '18px 20px',
-              background: 'rgba(217,119,87,0.06)',
+              padding: '15px 18px',
+              background: 'rgba(217,119,87,0.07)',
               border: '1px solid rgba(217,119,87,0.18)',
-              borderRadius: '14px',
+              borderRadius: '12px',
             }}>
-              <p style={{ fontSize: '13px', color: '#c8c3bb', lineHeight: 1.6, fontStyle: 'italic', margin: 0 }}>
+              <p style={{ fontSize: '12.5px', color: '#c8c3bb', lineHeight: 1.6, fontStyle: 'italic', margin: 0, fontFamily: pageFont }}>
                 "Week 1 is easy. Week 4 is who you become."
               </p>
-              <p style={{ fontSize: '11px', color: '#d97757', fontWeight: 600, marginTop: '8px', marginBottom: 0, letterSpacing: '0.06em' }}>
+              <p style={{ fontSize: '10.5px', color: '#d97757', fontWeight: 700, marginTop: '7px', marginBottom: 0, letterSpacing: '0.07em', fontFamily: pageFont }}>
                 — FEELIVATE PHILOSOPHY
               </p>
             </div>
@@ -531,100 +500,68 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* ── Google Coming Soon Popup ─────────────────────────────────────────── */}
+      {/* ── Google Coming Soon Popup ─────────────────────────────────────── */}
       <AnimatePresence>
         {showGooglePopup && (
           <>
-            {/* Backdrop */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowGooglePopup(false)}
-              style={{
-                position: 'fixed', inset: 0,
-                background: 'rgba(0,0,0,0.7)',
-                backdropFilter: 'blur(6px)',
-                zIndex: 200,
-              }}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 200 }}
             />
-            {/* Modal */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.88, y: 24 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 10 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+              exit={{ opacity: 0, scale: 0.9, y: 12 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
               style={{
-                position: 'fixed',
-                top: '50%', left: '50%',
+                position: 'fixed', top: '50%', left: '50%',
                 transform: 'translate(-50%, -50%)',
-                background: '#161616',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '20px',
-                padding: '36px 32px',
-                zIndex: 201,
-                textAlign: 'center',
-                width: '100%',
-                maxWidth: '360px',
-                boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
+                background: '#161616', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '20px', padding: '36px 32px',
+                zIndex: 201, textAlign: 'center',
+                width: '100%', maxWidth: '350px',
+                boxShadow: '0 32px 80px rgba(0,0,0,0.55)',
+                fontFamily: pageFont,
               }}
             >
-              {/* Close */}
               <button
                 onClick={() => setShowGooglePopup(false)}
                 style={{
-                  position: 'absolute', top: '16px', right: '16px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: 'none', borderRadius: '8px',
-                  color: '#9c9a92', cursor: 'pointer',
-                  padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.2s',
+                  position: 'absolute', top: '14px', right: '14px',
+                  background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: '8px',
+                  color: '#9c9a92', cursor: 'pointer', padding: '6px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 0.18s',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-              >
-                <X size={16} />
-              </button>
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.14)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+              ><X size={15} /></button>
 
-              {/* Google icon large */}
               <div style={{
-                width: '56px', height: '56px',
-                background: 'rgba(255,255,255,0.06)',
-                borderRadius: '16px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 20px',
+                width: '52px', height: '52px', background: 'rgba(255,255,255,0.06)',
+                borderRadius: '14px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', margin: '0 auto 18px',
               }}>
                 <GoogleIcon />
               </div>
 
-              <h3 style={{
-                fontSize: '20px', fontWeight: 700,
-                color: '#ffffff', marginBottom: '10px',
-                letterSpacing: '-0.02em',
-                fontFamily: "'Gambetta', 'Georgia', serif",
-              }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '10px', letterSpacing: '-0.025em', fontFamily: pageFont }}>
                 Google Sign In — Coming Soon
               </h3>
-              <p style={{ fontSize: '13.5px', color: '#9c9a92', lineHeight: 1.6, marginBottom: '24px' }}>
+              <p style={{ fontSize: '13px', color: '#9c9a92', lineHeight: 1.65, marginBottom: '22px', fontFamily: pageFont }}>
                 We're working on Google authentication. For now, please sign in with your email and password — it takes just 30 seconds.
               </p>
 
               <button
                 onClick={() => setShowGooglePopup(false)}
                 style={{
-                  width: '100%',
-                  background: '#ffffff',
-                  color: '#0d0d0d',
-                  border: 'none',
-                  padding: '13px',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'opacity 0.2s',
-                  letterSpacing: '-0.01em',
+                  width: '100%', background: '#fff', color: '#0d0d0d', border: 'none',
+                  padding: '13px', borderRadius: '12px', fontSize: '14px',
+                  fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.18s',
+                  fontFamily: pageFont, letterSpacing: '-0.02em',
                 }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.87'}
                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}
               >
                 Use Email Instead
@@ -634,43 +571,29 @@ export default function LoginPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Responsive Styles ──────────────────────────────────────────────── */}
+      {/* ── Styles ──────────────────────────────────────────────────────── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        input::placeholder { color: #555 !important; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        input::placeholder { color: #4a4a4a !important; }
         input { box-sizing: border-box; }
 
-        @media (max-width: 900px) {
+        @media (max-width: 860px) {
           .brand-panel { display: none !important; }
-          .nav-links { display: none !important; }
+          .nav-links   { display: none !important; }
         }
-        @media (max-width: 600px) {
-          nav { padding: 0 20px !important; }
+        @media (max-width: 540px) {
+          nav { padding: 0 18px !important; }
         }
 
         @keyframes spin {
           from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          to   { transform: rotate(360deg); }
         }
-        .animate-spin { animation: spin 1s linear infinite; }
+        .animate-spin { animation: spin 0.9s linear infinite; }
       `}</style>
     </div>
   );
 }
-
-// ─── Shared input style ────────────────────────────────────────────────────────
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '13px 14px 13px 42px',
-  borderRadius: '12px',
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: '#1a1a1a',
-  color: '#ffffff',
-  fontSize: '14px',
-  outline: 'none',
-  transition: 'border-color 0.2s, box-shadow 0.2s',
-  fontFamily: 'inherit',
-};
