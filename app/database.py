@@ -125,25 +125,64 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 def init_db():
-    """Initialize database tables."""
+    """Initialize database tables and apply incremental column migrations."""
     try:
         # Import models here to ensure they are registered with Base
         from .models import User, Session, ChatMessage, RoadmapTask, EmotionalState, Feedback
         Base.metadata.create_all(bind=engine)
-        logger.info("Database tables initialized")
-        
-        # Manually alter tables to add new columns if they don't exist
-        # This handles the lack of an Alembic migration system for the calendar update
+        logger.info("Database tables created/verified")
+
+        # ── Incremental column migrations ──────────────────────────────────────
+        # PostgreSQL supports IF NOT EXISTS for ADD COLUMN (PG 9.6+).
+        # SQLite does NOT — but we wrap each statement individually so one failure
+        # doesn't block the rest.
+        is_postgres = "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL
+
+        migrations = []
+
+        if is_postgres:
+            # ── users ──
+            migrations += [
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_refresh_token VARCHAR;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_sync_enabled INTEGER DEFAULT 0;",
+                # ── sessions ── (added progressively across deploys)
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;",
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS history TEXT;",
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS vision TEXT;",
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS result_json TEXT;",
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS current_week INTEGER DEFAULT 0;",
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS phase VARCHAR DEFAULT 'chat';",
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS week_plan_json TEXT;",
+            ]
+        else:
+            # SQLite — try without IF NOT EXISTS; ignore OperationalError (column exists)
+            migrations += [
+                "ALTER TABLE users ADD COLUMN google_refresh_token VARCHAR;",
+                "ALTER TABLE users ADD COLUMN calendar_sync_enabled INTEGER DEFAULT 0;",
+                "ALTER TABLE sessions ADD COLUMN updated_at TIMESTAMP;",
+                "ALTER TABLE sessions ADD COLUMN history TEXT;",
+                "ALTER TABLE sessions ADD COLUMN vision TEXT;",
+                "ALTER TABLE sessions ADD COLUMN result_json TEXT;",
+                "ALTER TABLE sessions ADD COLUMN current_week INTEGER DEFAULT 0;",
+                "ALTER TABLE sessions ADD COLUMN phase VARCHAR DEFAULT 'chat';",
+                "ALTER TABLE sessions ADD COLUMN week_plan_json TEXT;",
+            ]
+
         with engine.begin() as conn:
             from sqlalchemy import text
-            try:
-                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_refresh_token VARCHAR;"))
-                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_sync_enabled INTEGER DEFAULT 0;"))
-                logger.info("Database migrations applied.")
-            except Exception as inner_e:
-                # Catch silently in case of SQLite dialect which doesn't support IF NOT EXISTS in this context well
-                logger.warning(f"Could not apply manual migrations: {inner_e}")
-                pass
-                
+            applied = 0
+            for sql in migrations:
+                try:
+                    conn.execute(text(sql))
+                    applied += 1
+                except Exception as col_err:
+                    # Column already exists or other harmless error — skip
+                    logger.debug(f"Migration skipped (likely already applied): {sql.strip()[:60]} — {col_err}")
+
+            logger.info(f"DB migrations done: {applied}/{len(migrations)} statements executed.")
+
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+
