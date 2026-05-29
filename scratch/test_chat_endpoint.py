@@ -1,53 +1,32 @@
-import asyncio
 import os
-import sys
-from loguru import logger
+import asyncio
+from fastapi.testclient import TestClient
+from app.main import app, get_current_user
+from app.models import User
+from app.database import init_db, get_db
 
-# Add root directory to python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Override dependency
+def override_get_current_user():
+    return User(id="test_user", email="test@test.com", name="Test")
 
-from app.database import SessionLocal, init_db
-from app.models import User, Session, ChatMessage
-from app.main import chat, ChatRequest
+app.dependency_overrides[get_current_user] = override_get_current_user
 
-async def test_chat():
-    logger.info("Initializing DB...")
-    init_db()
-    db = SessionLocal()
-    
-    try:
-        # Get or create test user
-        email = "test@example.com"
-        user = db.query(User).filter(User.email == email).first()
-        if not user:
-            import uuid
-            user = User(
-                id=str(uuid.uuid4()),
-                email=email,
-                password="testpassword",
-                name="Test User"
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            
-        logger.info(f"Using user: {user.email} with ID {user.id}")
-        
-        # Test Chat Request
-        request_payload = ChatRequest(
-            message="I want to learn guitar. I have 30 minutes a day.",
-            session_id=None,
-            user_id=user.id
-        )
-        
-        logger.info("Invoking /chat endpoint...")
-        result = await chat(payload=request_payload, db=db, current_user=user)
-        logger.info(f"RESULT: {result}")
-        
-    except Exception as e:
-        logger.exception("Chat execution failed:")
-    finally:
-        db.close()
+init_db()
 
-if __name__ == "__main__":
-    asyncio.run(test_chat())
+# Create a test user in DB if it doesn't exist
+db_gen = get_db()
+db = next(db_gen)
+user = db.query(User).filter(User.id == "test_user").first()
+if not user:
+    user = User(id="test_user", email="test@test.com", password="pwd", name="Test")
+    db.add(user)
+    db.commit()
+
+client = TestClient(app)
+
+response = client.post(
+    "/chat",
+    json={"message": "hello", "user_id": "test_user", "session_id": "test_session"}
+)
+print("Response status:", response.status_code)
+print("Response JSON:", response.json())

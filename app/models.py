@@ -40,6 +40,7 @@ class Session(Base):
     current_week = Column(Integer, default=0)          # 0 = no plan yet, 1+ = active week number
     phase = Column(String, default="chat")             # chat | planning | active | review
     week_plan_json = Column(Text, nullable=True)       # current approved week plan
+    week_review_json = Column(Text, nullable=True)     # user's end-of-week feedback per week
     
     user = relationship("User", back_populates="sessions")
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
@@ -93,3 +94,78 @@ class Feedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="feedbacks")
+
+
+# ============================================================
+# NEW TABLES — USP Features
+# ============================================================
+
+class DailyCheckin(Base):
+    """
+    One row per user per day. Tracks whether they completed their plan task today.
+    Unique constraint on (user_id, date) prevents double-logging.
+    """
+    __tablename__ = "daily_checkins"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    session_id = Column(String, ForeignKey("sessions.id"), nullable=True)
+    date       = Column(String, nullable=False)   # ISO date string: "2026-05-29"
+    status     = Column(String, default="pending") # pending | done | skipped
+    note       = Column(Text, nullable=True)       # optional user note on checkin
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class UserStreak(Base):
+    """
+    One row per user. Denormalized for fast reads. Updated on every checkin.
+    """
+    __tablename__ = "user_streaks"
+
+    user_id        = Column(String, ForeignKey("users.id"), primary_key=True)
+    current_streak = Column(Integer, default=0)
+    longest_streak = Column(Integer, default=0)
+    last_checkin   = Column(String, nullable=True)  # ISO date of last 'done' checkin
+    total_done     = Column(Integer, default=0)      # lifetime done count
+    updated_at     = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class VoiceJournal(Base):
+    """
+    One row per voice journal entry. Stores transcript + AI-detected emotion.
+    Old data is NEVER auto-injected into new sessions (user views via /journey).
+    """
+    __tablename__ = "voice_journals"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    user_id       = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    date          = Column(String, nullable=False)    # ISO date: "2026-05-29"
+    transcript    = Column(Text, nullable=False)       # Groq Whisper output
+    emotion_label = Column(String, nullable=True)      # e.g. "motivated", "stressed"
+    emotion_score = Column(Integer, nullable=True)     # 1–10
+    one_liner     = Column(Text, nullable=True)        # AI 1-sentence summary
+    created_at    = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+class WeeklyReport(Base):
+    """
+    One generated report per user per week. Created on-demand (user visits /journey).
+    Contains mood trend JSON + AI insight text.
+    """
+    __tablename__ = "weekly_reports"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    user_id     = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    week_start  = Column(String, nullable=False)  # Monday ISO date: "2026-05-26"
+    week_end    = Column(String, nullable=False)  # Sunday ISO date: "2026-06-01"
+    report_json = Column(Text, nullable=False)    # Full report as JSON string
+    created_at  = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")

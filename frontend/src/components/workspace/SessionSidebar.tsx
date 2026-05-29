@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, MessageSquare, LogOut, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Plus, MessageSquare, LogOut, PanelLeftClose, PanelLeft, BookOpen } from 'lucide-react';
 import { getUserSessions } from '../../api';
 import type { SessionPreview } from '../../api';
+import StreakBar from './StreakBar';
+
 
 interface SessionSidebarProps {
     userId: string;
@@ -10,9 +12,11 @@ interface SessionSidebarProps {
     onSelectSession: (sessionId: string) => void;
     onNewChat: () => void;
     onLogout: () => void;
+    onJourney: () => void;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
     refreshKey: number;
+    isPlanActive: boolean;
 }
 
 export default function SessionSidebar({
@@ -21,9 +25,11 @@ export default function SessionSidebar({
     onSelectSession,
     onNewChat,
     onLogout,
+    onJourney,
     isCollapsed,
     onToggleCollapse,
     refreshKey,
+    isPlanActive,
 }: SessionSidebarProps) {
     const [sessions, setSessions] = useState<SessionPreview[]>([]);
     const [loading, setLoading] = useState(true);
@@ -198,6 +204,42 @@ export default function SessionSidebar({
                         </button>
                     ))
                 )}
+            </div>
+
+            {/* Streak bar — shows only when plan is active */}
+            <StreakBar
+                userId={userId}
+                sessionId={activeSessionId}
+                isPlanActive={isPlanActive}
+            />
+
+            {/* Journey link */}
+            <div style={{ padding: '8px 8px 0' }}>
+                <button
+                    onClick={onJourney}
+                    style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '9px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border-subtle)',
+                        background: 'var(--glass-surface)',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontFamily: 'var(--font-sans)',
+                        fontWeight: 500,
+                        textAlign: 'left',
+                        transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-hover)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-surface)'; }}
+                >
+                    <BookOpen size={13} style={{ opacity: 0.6 }} />
+                    My Journey 📔
+                </button>
             </div>
 
             {/* User section at bottom */}

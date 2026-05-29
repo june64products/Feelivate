@@ -22,7 +22,10 @@ from sqlalchemy.orm import Session as DBSession
 
 from fastapi.security import OAuth2PasswordBearer
 from .database import engine, SessionLocal, init_db, get_db
-from .models import User, Session, ChatMessage, RoadmapTask, EmotionalState
+from .models import (
+    User, Session, ChatMessage, RoadmapTask, EmotionalState,
+    DailyCheckin, UserStreak, VoiceJournal, WeeklyReport,
+)
 from .calendar_service import calendar_service
 from .security import get_password_hash, verify_password, create_access_token, decode_access_token
 from .observability import REQUESTS_TOTAL
@@ -111,6 +114,27 @@ class TaskUpdate(BaseModel):
 class MessageCreate(BaseModel):
     role: str
     content: str
+
+class CheckinRequest(BaseModel):
+    status: str           # "done" | "skipped"
+    note: Optional[str] = None
+    session_id: Optional[str] = None
+
+class WeeklyReviewRequest(BaseModel):
+    week_number: int
+    feedback: str         # free-text: "Week 1 was hard on days 3-4..."
+
+# ── Smart memory helpers ─────────────────────────────────────────────────────
+_PERSONAL_KEYWORDS = [
+    "feel", "emotion", "week", "plan", "goal", "struggle", "stress",
+    "anxious", "progress", "update", "journal", "mood", "how am i",
+    "kaise", "stressed", "motivation", "tired", "excited", "confident",
+]
+
+def _is_personal_query(message: str) -> bool:
+    """Return True only if message seems personally relevant (not generic knowledge)."""
+    msg = message.lower()
+    return any(kw in msg for kw in _PERSONAL_KEYWORDS)
 
 
 # ============================================================
@@ -222,26 +246,36 @@ async def chat(
             except Exception:
                 plan_history = []
         
-        # 4b. Retrieve relevant memories from Qdrant
-        retrieved_memories = []
+        # 4b. Retrieve relevant memories — ONLY for personal queries, ONLY current session
+        # Design rule: Plans cross sessions. Emotions do NOT.
+        # Old session emotional data is never auto-injected (user views it in /journey).
         embedding = None
         try:
             embedding = await asyncio.to_thread(create_embedding, message)
-            if embedding:
+            if embedding and _is_personal_query(message):
                 hits = await asyncio.to_thread(
-                    vector_store.search_memories, user_id, embedding, 3
+                    vector_store.search_memories, user_id, embedding, 5
                 )
-                retrieved_memories = [h["text"] for h in hits]
+                # Filter: only include memories from THIS session
+                session_memories = [
+                    h["text"] for h in hits
+                    if h.get("payload", {}).get("session_id") == session_id
+                ]
+                if session_memories:
+                    memory_text = "\n".join(session_memories)
+                    ctx_line = f"\n\nCURRENT SESSION CONTEXT:\n{memory_text}"
+                    system_context = (system_context or "") + ctx_line
         except Exception as e:
             logger.warning(f"Memory retrieval failed (non-fatal): {e}")
         
-        if retrieved_memories:
-            memory_text = "\n".join(retrieved_memories)
-            if system_context:
-                system_context += f"\n\nRELEVANT PAST CONTEXT:\n{memory_text}"
-            else:
-                system_context = f"RELEVANT PAST CONTEXT:\n{memory_text}"
-        
+        # 4c. Load week reviews for multi-week calibration
+        week_reviews = []
+        if session_rec.week_review_json:
+            try:
+                week_reviews = json.loads(session_rec.week_review_json)
+            except Exception:
+                week_reviews = []
+
         # 5. Build prompt with full context and call LLM
         prompt_messages = build_chat_prompt(
             history,
@@ -249,6 +283,7 @@ async def chat(
             phase=session_rec.phase or "chat",
             plan_history=plan_history,
             current_week=session_rec.current_week or 0,
+            week_reviews=week_reviews,
         )
         
         raw_response = await asyncio.to_thread(
@@ -657,6 +692,435 @@ async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db
     background_tasks.add_task(calendar_service.clear_roadmap_events, user.google_refresh_token)
     
     return {"message": "Notifications disabled and future events being removed."}
+
+
+# ============================================================
+# STREAK & DAILY CHECK-IN
+# ============================================================
+
+def _recalculate_streak(db: DBSession, user_id: str) -> UserStreak:
+    """
+    Recalculate current and longest streak from daily_checkins.
+    Called after every checkin mutation. O(n) but checkins are small.
+    """
+    from datetime import date, timedelta
+
+    # Get all 'done' checkins ordered newest first
+    done_rows = (
+        db.query(DailyCheckin)
+        .filter(DailyCheckin.user_id == user_id, DailyCheckin.status == "done")
+        .order_by(DailyCheckin.date.desc())
+        .all()
+    )
+    done_dates = sorted({r.date for r in done_rows}, reverse=True)
+
+    today = date.today().isoformat()
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+
+    # Current streak: consecutive days ending today or yesterday
+    current = 0
+    if done_dates and done_dates[0] in (today, yesterday):
+        expected = done_dates[0]
+        for d in done_dates:
+            if d == expected:
+                current += 1
+                prev = date.fromisoformat(expected) - timedelta(days=1)
+                expected = prev.isoformat()
+            else:
+                break
+
+    # Longest streak: scan all done dates
+    longest = 0
+    run = 0
+    prev_date = None
+    for d in sorted(done_dates):
+        if prev_date is None:
+            run = 1
+        else:
+            delta = (date.fromisoformat(d) - date.fromisoformat(prev_date)).days
+            run = run + 1 if delta == 1 else 1
+        longest = max(longest, run)
+        prev_date = d
+
+    # Upsert UserStreak
+    streak_rec = db.query(UserStreak).filter(UserStreak.user_id == user_id).first()
+    if not streak_rec:
+        streak_rec = UserStreak(user_id=user_id)
+        db.add(streak_rec)
+    streak_rec.current_streak = current
+    streak_rec.longest_streak = max(longest, streak_rec.longest_streak)
+    streak_rec.total_done = len(done_dates)
+    streak_rec.last_checkin = done_dates[0] if done_dates else None
+    db.commit()
+    db.refresh(streak_rec)
+    return streak_rec
+
+
+@app.post("/checkin", tags=["streak"])
+async def daily_checkin(
+    payload: CheckinRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Mark today as done or skipped. Idempotent — calling twice updates the status.
+    Returns updated streak.
+    """
+    from datetime import date
+    today = date.today().isoformat()
+    user_id = current_user.id
+
+    if payload.status not in ("done", "skipped"):
+        raise HTTPException(status_code=400, detail="status must be 'done' or 'skipped'")
+
+    # Upsert checkin for today
+    existing = (
+        db.query(DailyCheckin)
+        .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == today)
+        .first()
+    )
+    if existing:
+        existing.status = payload.status
+        if payload.note:
+            existing.note = payload.note
+        if payload.session_id:
+            existing.session_id = payload.session_id
+    else:
+        checkin = DailyCheckin(
+            user_id=user_id,
+            session_id=payload.session_id,
+            date=today,
+            status=payload.status,
+            note=payload.note,
+        )
+        db.add(checkin)
+    db.commit()
+
+    streak = _recalculate_streak(db, user_id)
+    return {
+        "date": today,
+        "status": payload.status,
+        "current_streak": streak.current_streak,
+        "longest_streak": streak.longest_streak,
+        "total_done": streak.total_done,
+    }
+
+
+@app.get("/streak/{user_id}", tags=["streak"])
+async def get_streak(
+    user_id: str,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return streak stats + last 7 days checkin statuses for the UI calendar strip."""
+    from datetime import date, timedelta
+
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    streak_rec = db.query(UserStreak).filter(UserStreak.user_id == user_id).first()
+
+    # Build last 7 days checkin map
+    days = []
+    for i in range(6, -1, -1):  # 6 days ago → today
+        d = (date.today() - timedelta(days=i)).isoformat()
+        checkin = (
+            db.query(DailyCheckin)
+            .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == d)
+            .first()
+        )
+        days.append({"date": d, "status": checkin.status if checkin else "pending"})
+
+    return {
+        "current_streak": streak_rec.current_streak if streak_rec else 0,
+        "longest_streak": streak_rec.longest_streak if streak_rec else 0,
+        "total_done": streak_rec.total_done if streak_rec else 0,
+        "last_checkin": streak_rec.last_checkin if streak_rec else None,
+        "days_this_week": days,
+    }
+
+
+# ============================================================
+# WEEKLY REVIEW
+# ============================================================
+
+@app.post("/sessions/{session_id}/weekly_review", tags=["sessions"])
+async def submit_weekly_review(
+    session_id: str,
+    payload: WeeklyReviewRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Save user's end-of-week review feedback.
+    This is injected into the prompt when building next week's plan.
+    """
+    session = db.query(Session).filter(Session.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Store reviews as a list keyed by week_number
+    reviews: list = []
+    if session.week_review_json:
+        try:
+            reviews = json.loads(session.week_review_json)
+        except Exception:
+            reviews = []
+
+    # Upsert review for this week
+    reviews = [r for r in reviews if r.get("week_number") != payload.week_number]
+    reviews.append({"week_number": payload.week_number, "feedback": payload.feedback})
+    session.week_review_json = json.dumps(reviews)
+    db.commit()
+
+    return {"status": "saved", "week_number": payload.week_number}
+
+
+# ============================================================
+# VOICE JOURNAL & WEEKLY EMOTION REPORT
+# ============================================================
+
+_EMOTION_LABELS = [
+    "motivated", "stressed", "focused", "anxious", "confident",
+    "drained", "excited", "neutral", "frustrated", "hopeful",
+]
+
+async def _analyze_emotion(transcript: str) -> dict:
+    """
+    Use LLM to detect emotion from transcript.
+    Returns {label, score, one_liner}.
+    """
+    from .llm import call_llm
+    prompt = (
+        f"Analyze the emotional tone of this journal entry and respond with ONLY valid JSON.\n"
+        f"Entry: \"{transcript[:800]}\"\n\n"
+        f"Respond exactly: {{\"label\": \"one of: {', '.join(_EMOTION_LABELS)}\", "
+        f"\"score\": <integer 1-10 where 10=very positive>, "
+        f"\"one_liner\": \"1 sentence capturing the essence\"}}"
+    )
+    try:
+        raw = await asyncio.to_thread(call_llm, prompt, temperature=0.2, max_tokens=120)
+        raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start != -1 and end != -1:
+            data = json.loads(raw[start:end + 1])
+            return {
+                "label": data.get("label", "neutral"),
+                "score": max(1, min(10, int(data.get("score", 5)))),
+                "one_liner": data.get("one_liner", ""),
+            }
+    except Exception as e:
+        logger.warning(f"Emotion analysis failed (non-fatal): {e}")
+    return {"label": "neutral", "score": 5, "one_liner": ""}
+
+
+@app.post("/journal/voice", tags=["journal"])
+async def create_voice_journal(
+    audio: UploadFile = File(...),
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Upload a voice note → transcribe (Groq Whisper) → analyze emotion (LLM) → save.
+    One entry per day; calling again on same day updates the existing entry.
+    """
+    from .llm import call_groq_transcribe
+    from datetime import date
+
+    audio_bytes = await audio.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Audio file is empty")
+
+    filename = audio.filename or "recording.webm"
+    today = date.today().isoformat()
+    user_id = current_user.id
+
+    # 1. Transcribe
+    try:
+        transcript = await asyncio.to_thread(call_groq_transcribe, audio_bytes, filename)
+    except Exception as e:
+        logger.error(f"Transcription failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription error: {str(e)}")
+
+    if not transcript.strip():
+        raise HTTPException(status_code=422, detail="Could not transcribe audio — too short or silent.")
+
+    # 2. Analyze emotion
+    emotion = await _analyze_emotion(transcript)
+
+    # 3. Upsert journal entry for today
+    existing = (
+        db.query(VoiceJournal)
+        .filter(VoiceJournal.user_id == user_id, VoiceJournal.date == today)
+        .first()
+    )
+    if existing:
+        existing.transcript = transcript
+        existing.emotion_label = emotion["label"]
+        existing.emotion_score = emotion["score"]
+        existing.one_liner = emotion["one_liner"]
+    else:
+        entry = VoiceJournal(
+            user_id=user_id,
+            date=today,
+            transcript=transcript,
+            emotion_label=emotion["label"],
+            emotion_score=emotion["score"],
+            one_liner=emotion["one_liner"],
+        )
+        db.add(entry)
+    db.commit()
+
+    return {
+        "date": today,
+        "transcript": transcript,
+        "emotion_label": emotion["label"],
+        "emotion_score": emotion["score"],
+        "one_liner": emotion["one_liner"],
+    }
+
+
+@app.get("/journal/{user_id}", tags=["journal"])
+async def get_journals(
+    user_id: str,
+    limit: int = 30,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Fetch all voice journal entries for the user (newest first). Max 30 by default."""
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    entries = (
+        db.query(VoiceJournal)
+        .filter(VoiceJournal.user_id == user_id)
+        .order_by(VoiceJournal.date.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": e.id,
+            "date": e.date,
+            "transcript": e.transcript,
+            "emotion_label": e.emotion_label,
+            "emotion_score": e.emotion_score,
+            "one_liner": e.one_liner,
+            "created_at": e.created_at,
+        }
+        for e in entries
+    ]
+
+
+@app.get("/journal/{user_id}/weekly-report", tags=["journal"])
+async def get_weekly_report(
+    user_id: str,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return (or generate) the weekly emotion report for the current week.
+    Report is cached after first generation — regenerated if new journals exist.
+    """
+    from .llm import call_llm
+    from datetime import date, timedelta
+    import hashlib
+
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())  # Monday
+    week_end   = week_start + timedelta(days=6)            # Sunday
+    ws = week_start.isoformat()
+    we = week_end.isoformat()
+
+    # Fetch this week's journals
+    journals = (
+        db.query(VoiceJournal)
+        .filter(
+            VoiceJournal.user_id == user_id,
+            VoiceJournal.date >= ws,
+            VoiceJournal.date <= we,
+        )
+        .order_by(VoiceJournal.date.asc())
+        .all()
+    )
+
+    if not journals:
+        return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we}
+
+    # Check if cached report is still fresh (same number of entries)
+    cached = (
+        db.query(WeeklyReport)
+        .filter(WeeklyReport.user_id == user_id, WeeklyReport.week_start == ws)
+        .first()
+    )
+    if cached:
+        try:
+            report_data = json.loads(cached.report_json)
+            if report_data.get("entry_count") == len(journals):
+                return {"status": "cached", "week_start": ws, "week_end": we, "report": report_data}
+        except Exception:
+            pass
+
+    # Build report prompt
+    days_text = "\n".join(
+        f"{j.date} ({j.emotion_label}, score {j.emotion_score}/10): {j.one_liner}"
+        for j in journals
+    )
+    avg_score = round(sum(j.emotion_score or 5 for j in journals) / len(journals), 1)
+
+    prompt = (
+        f"You are an empathetic AI coach. Generate a weekly emotion report based on these daily journal entries.\n\n"
+        f"{days_text}\n\n"
+        f"Respond with ONLY valid JSON in this exact format:\n"
+        f"{{\n"
+        f"  \"avg_score\": {avg_score},\n"
+        f"  \"dominant_emotion\": \"the most common emotion this week\",\n"
+        f"  \"highlight\": \"the best moment/day this week (1 sentence)\",\n"
+        f"  \"pattern\": \"key pattern you noticed (1-2 sentences)\",\n"
+        f"  \"next_week_tip\": \"one specific, actionable tip for next week based on the data\",\n"
+        f"  \"days\": [{{\'date\': \'YYYY-MM-DD\', \'emotion\': \'label\', \'score\': 7}}]\n"
+        f"}}"
+    )
+    try:
+        raw = await asyncio.to_thread(call_llm, prompt, temperature=0.3, max_tokens=600)
+        raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
+        start = raw.find("{")
+        end = raw.rfind("}")
+        report_data = json.loads(raw[start:end + 1]) if start != -1 else {}
+    except Exception as e:
+        logger.error(f"Weekly report generation failed: {e}")
+        report_data = {}
+
+    # Augment with metadata
+    report_data["entry_count"] = len(journals)
+    report_data["week_start"] = ws
+    report_data["week_end"] = we
+    report_data["avg_score"] = avg_score
+    report_data["days"] = [
+        {"date": j.date, "emotion": j.emotion_label, "score": j.emotion_score}
+        for j in journals
+    ]
+
+    # Cache / update report
+    if cached:
+        cached.report_json = json.dumps(report_data)
+    else:
+        new_report = WeeklyReport(
+            user_id=user_id,
+            week_start=ws,
+            week_end=we,
+            report_json=json.dumps(report_data),
+        )
+        db.add(new_report)
+    db.commit()
+
+    return {"status": "generated", "week_start": ws, "week_end": we, "report": report_data}
 
 
 # ============================================================

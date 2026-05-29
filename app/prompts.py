@@ -142,6 +142,7 @@ def build_chat_prompt(
     phase: Optional[str] = None,
     plan_history: Optional[List[dict]] = None,
     current_week: int = 0,
+    week_reviews: Optional[List[dict]] = None,
 ) -> List[Dict[str, str]]:
     """
     Build the messages array for the LLM call.
@@ -152,7 +153,7 @@ def build_chat_prompt(
         phase: Session phase — "chat" | "planning" | "active"
         plan_history: List of all previously approved week plan dicts
         current_week: The current week number (0 if no plan yet)
-
+        week_reviews: List of {week_number, feedback} from user's end-of-week reviews
     Returns:
         OpenAI-compatible messages array with enriched system prompt.
     """
@@ -162,6 +163,7 @@ def build_chat_prompt(
 
     system_content = SMART_MENTOR_SYSTEM_PROMPT
     system_content += f"\n\nCURRENT DATE: {current_date} ({day_name}). Use real calendar dates starting from today when building plans."
+
 
     # ── Inject plan locking status ──────────────────────────────────────────
     if phase == "active":
@@ -214,6 +216,21 @@ def build_chat_prompt(
             f"\n\nIf the user adds a NEW topic in Week {next_week} that was NOT in previous weeks:"
             f"\n  → Start that NEW topic at absolute beginner level (Day 1 of that topic)"
             f"\n  → But keep existing topics advancing from where they were"
+        )
+
+    # ── Inject weekly reviews so AI calibrates next week ────────────────────
+    if week_reviews and len(week_reviews) > 0:
+        system_content += "\n\n═══════════════════════════════════════"
+        system_content += "\nUSER'S WEEKLY REVIEWS — USE TO CALIBRATE DIFFICULTY"
+        system_content += "\n═══════════════════════════════════════"
+        for review in week_reviews:
+            wk = review.get("week_number", "?")
+            fb = review.get("feedback", "")
+            system_content += f"\n\nWeek {wk} review: \"{fb}\""
+        system_content += (
+            "\n\n⚠️ CRITICAL: Use the reviews above to calibrate difficulty."
+            "\nIf user said something was hard → reduce intensity or add more support steps."
+            "\nIf user said something was easy → push harder in the next week."
         )
 
     # ── Inject current plan (if pending) ────────────────────────────────────

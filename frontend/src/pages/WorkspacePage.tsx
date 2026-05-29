@@ -12,6 +12,8 @@ import {
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
 import RadiantPromptInput from '../components/chat/RadiantPromptInput';
+import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
+import JourneyPage from './JourneyPage';
 
 const CAPABILITIES = [
     { icon: MessageSquare, title: "Deep Reflection", desc: "Understand your emotional patterns and past" },
@@ -33,6 +35,9 @@ export default function WorkspacePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
+    const [view, setView] = useState<'chat' | 'journey'>('chat');
+    const [showReviewModal, setShowReviewModal] = useState(false);
+
 
     // Derived: whether we're in the cinematic empty state
     const isEmptyState = messages.length === 0 && !isLoading;
@@ -221,12 +226,14 @@ export default function WorkspacePage() {
             <SessionSidebar
                 userId={userId || ''}
                 activeSessionId={activeSessionId}
-                onSelectSession={handleSelectSession}
-                onNewChat={handleNewChat}
+                onSelectSession={(id) => { handleSelectSession(id); setView('chat'); }}
+                onNewChat={() => { handleNewChat(); setView('chat'); }}
                 onLogout={handleLogout}
+                onJourney={() => setView('journey')}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                 refreshKey={sidebarRefreshKey}
+                isPlanActive={isPlanApproved}
             />
 
             {/* Chat Area */}
@@ -238,6 +245,26 @@ export default function WorkspacePage() {
                 position: 'relative',
                 overflow: 'hidden',
             }}>
+                {/* Journey view — full-panel replacement */}
+                {view === 'journey' && userId && (
+                    <JourneyPage userId={userId} />
+                )}
+
+                {/* Weekly Review Modal */}
+                {showReviewModal && activeSessionId && activePlan && (
+                    <WeeklyReviewModal
+                        sessionId={activeSessionId}
+                        weekNumber={activePlan.week_number ?? 1}
+                        onClose={() => setShowReviewModal(false)}
+                        onComplete={() => {
+                            setShowReviewModal(false);
+                            setView('chat');
+                        }}
+                    />
+                )}
+
+                {/* Normal chat view */}
+                {view === 'chat' && (<>
 
                 {/* Ambient Background Orbs — always visible, brightest in empty state */}
                 <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
@@ -504,6 +531,7 @@ export default function WorkspacePage() {
                         </motion.div>
                     )}
                 </AnimatePresence>
+                </>) } {/* end view === 'chat' */}
             </div>
 
             {/* Calendar Sync Modal */}

@@ -221,3 +221,114 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
     const data = await response.json();
     return data.text || '';
 };
+
+// ============================================================
+// STREAK & DAILY CHECK-IN
+// ============================================================
+
+export interface StreakData {
+    current_streak: number;
+    longest_streak: number;
+    total_done: number;
+    last_checkin: string | null;
+    days_this_week: { date: string; status: 'pending' | 'done' | 'skipped' }[];
+}
+
+export const getStreak = async (userId: string): Promise<StreakData> => {
+    const response = await secureFetch(`${API_BASE_URL}/streak/${userId}`);
+    if (!response.ok) throw new Error('Failed to fetch streak');
+    return response.json();
+};
+
+export const submitCheckin = async (
+    status: 'done' | 'skipped',
+    sessionId?: string,
+    note?: string,
+): Promise<{ date: string; status: string; current_streak: number; longest_streak: number; total_done: number }> => {
+    const response = await secureFetch(`${API_BASE_URL}/checkin`, {
+        method: 'POST',
+        body: JSON.stringify({ status, session_id: sessionId, note }),
+    });
+    if (!response.ok) throw new Error('Check-in failed');
+    return response.json();
+};
+
+// ============================================================
+// WEEKLY REVIEW
+// ============================================================
+
+export const submitWeeklyReview = async (
+    sessionId: string,
+    weekNumber: number,
+    feedback: string,
+): Promise<{ status: string; week_number: number }> => {
+    const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/weekly_review`, {
+        method: 'POST',
+        body: JSON.stringify({ week_number: weekNumber, feedback }),
+    });
+    if (!response.ok) throw new Error('Failed to submit weekly review');
+    return response.json();
+};
+
+// ============================================================
+// VOICE JOURNAL
+// ============================================================
+
+export interface JournalEntry {
+    id: number;
+    date: string;
+    transcript: string;
+    emotion_label: string;
+    emotion_score: number;
+    one_liner: string;
+    created_at: string;
+}
+
+export const uploadVoiceJournal = async (audioBlob: Blob): Promise<JournalEntry> => {
+    const formData = new FormData();
+    const ext = audioBlob.type.includes('mp4') ? 'mp4' : 'webm';
+    formData.append('audio', audioBlob, `journal.${ext}`);
+
+    const response = await secureFetch(`${API_BASE_URL}/journal/voice`, {
+        method: 'POST',
+        body: formData,
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Journal upload failed');
+    }
+    return response.json();
+};
+
+export const getJournals = async (userId: string, limit = 30): Promise<JournalEntry[]> => {
+    const response = await secureFetch(`${API_BASE_URL}/journal/${userId}?limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to fetch journals');
+    return response.json();
+};
+
+// ============================================================
+// WEEKLY EMOTION REPORT
+// ============================================================
+
+export interface WeeklyReport {
+    status: 'generated' | 'cached' | 'no_data';
+    week_start: string;
+    week_end: string;
+    message?: string;
+    report?: {
+        avg_score: number;
+        dominant_emotion: string;
+        highlight: string;
+        pattern: string;
+        next_week_tip: string;
+        entry_count: number;
+        days: { date: string; emotion: string; score: number }[];
+    };
+}
+
+export const getWeeklyReport = async (userId: string): Promise<WeeklyReport> => {
+    const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/weekly-report`);
+    if (!response.ok) throw new Error('Failed to fetch weekly report');
+    return response.json();
+};
+

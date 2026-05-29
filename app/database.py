@@ -127,25 +127,25 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
 def init_db():
     """Initialize database tables and apply incremental column migrations."""
     try:
-        # Import models here to ensure they are registered with Base
-        from .models import User, Session, ChatMessage, RoadmapTask, EmotionalState, Feedback
+        # Import ALL models so SQLAlchemy registers them with Base before create_all
+        from .models import (
+            User, Session, ChatMessage, RoadmapTask, EmotionalState, Feedback,
+            DailyCheckin, UserStreak, VoiceJournal, WeeklyReport,
+        )
         Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created/verified")
+        logger.info("Database tables created/verified (including new USP tables)")
 
         # ── Incremental column migrations ──────────────────────────────────────
-        # PostgreSQL supports IF NOT EXISTS for ADD COLUMN (PG 9.6+).
-        # SQLite does NOT — but we wrap each statement individually so one failure
-        # doesn't block the rest.
+        # PostgreSQL: IF NOT EXISTS supported (PG 9.6+).
+        # SQLite: wrap each statement; OperationalError = column exists → skip.
         is_postgres = "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL
 
-        migrations = []
-
         if is_postgres:
-            # ── users ──
-            migrations += [
+            migrations = [
+                # ── users ──
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_refresh_token VARCHAR;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_sync_enabled INTEGER DEFAULT 0;",
-                # ── sessions ── (added progressively across deploys)
+                # ── sessions ──
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS history TEXT;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS vision TEXT;",
@@ -153,10 +153,18 @@ def init_db():
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS current_week INTEGER DEFAULT 0;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS phase VARCHAR DEFAULT 'chat';",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS week_plan_json TEXT;",
+                # ── NEW: week review ──
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS week_review_json TEXT;",
+                # ── NEW USP tables: unique constraint on daily_checkins ──
+                # daily_checkins and other new tables are created by create_all above.
+                # Add unique index to prevent duplicate checkins for same user+date:
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_checkins_user_date
+                ON daily_checkins (user_id, date);
+                """,
             ]
         else:
-            # SQLite — try without IF NOT EXISTS; ignore OperationalError (column exists)
-            migrations += [
+            migrations = [
                 "ALTER TABLE users ADD COLUMN google_refresh_token VARCHAR;",
                 "ALTER TABLE users ADD COLUMN calendar_sync_enabled INTEGER DEFAULT 0;",
                 "ALTER TABLE sessions ADD COLUMN updated_at TIMESTAMP;",
@@ -166,6 +174,9 @@ def init_db():
                 "ALTER TABLE sessions ADD COLUMN current_week INTEGER DEFAULT 0;",
                 "ALTER TABLE sessions ADD COLUMN phase VARCHAR DEFAULT 'chat';",
                 "ALTER TABLE sessions ADD COLUMN week_plan_json TEXT;",
+                "ALTER TABLE sessions ADD COLUMN week_review_json TEXT;",
+                # SQLite unique index (no IF NOT EXISTS, so we catch the error)
+                "CREATE UNIQUE INDEX uq_daily_checkins_user_date ON daily_checkins (user_id, date);",
             ]
 
         with engine.begin() as conn:
@@ -176,13 +187,16 @@ def init_db():
                     conn.execute(text(sql))
                     applied += 1
                 except Exception as col_err:
-                    # Column already exists or other harmless error — skip
-                    logger.debug(f"Migration skipped (likely already applied): {sql.strip()[:60]} — {col_err}")
+                    logger.debug(
+                        f"Migration skipped (already applied or harmless): "
+                        f"{sql.strip()[:80]} — {col_err}"
+                    )
 
-            logger.info(f"DB migrations done: {applied}/{len(migrations)} statements executed.")
+            logger.info(f"DB migrations done: {applied}/{len(migrations)} applied.")
 
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         import traceback
         logger.error(traceback.format_exc())
+
 
