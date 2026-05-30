@@ -57,9 +57,9 @@ function MiniAnalysis({ label, content }: { label: string; content: string }) {
 function WeekDrawer({
     weekNumber,
     report,
-    isOngoing,
     isActiveCurrent,
     activePlan,
+    drawerTop,
     onClose,
 }: {
     weekNumber: number;
@@ -67,6 +67,7 @@ function WeekDrawer({
     isOngoing: boolean;
     isActiveCurrent: boolean;
     activePlan?: any;
+    drawerTop?: number;
     onClose: () => void;
 }) {
     const isCurrentWeek = isOngoing || isActiveCurrent;
@@ -86,8 +87,8 @@ function WeekDrawer({
             style={{
                 position: 'fixed',
                 right: 60, // offset from the pill panel
-                top: '50%',
-                transform: 'translateY(-50%)',
+                top: drawerTop !== undefined ? Math.min(drawerTop, typeof window !== 'undefined' ? window.innerHeight - 350 : 500) : 80,
+                transform: 'none',
                 width: '300px',
                 maxHeight: '80vh',
                 background: '#111112',
@@ -248,6 +249,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
     const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [loadedReports, setLoadedReports] = useState(false);
+    const [drawerTop, setDrawerTop] = useState<number>(80);
 
     // Load archived reports once
     useEffect(() => {
@@ -298,7 +300,9 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
         });
     };
 
-    const handleWeekClick = (weekNumber: number) => {
+    const handleWeekClick = (weekNumber: number, e: React.MouseEvent) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setDrawerTop(rect.top);
         setSelectedWeek(prev => prev === weekNumber ? null : weekNumber);
     };
 
@@ -409,7 +413,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                                     key={w.weekNumber}
                                     item={w}
                                     isSelected={selectedWeek === w.weekNumber}
-                                    onClick={() => handleWeekClick(w.weekNumber)}
+                                    onClick={(e) => handleWeekClick(w.weekNumber, e)}
                                 />
                             ))}
                             {gi < groups.length - 1 && (
@@ -429,6 +433,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                         isOngoing={isSelectedOngoing}
                         isActiveCurrent={selectedWeek === currentWeek && !micLocked}
                         activePlan={activePlan}
+                        drawerTop={drawerTop}
                         onClose={() => setSelectedWeek(null)}
                     />
                 )}
@@ -446,7 +451,7 @@ function WeekPill({
 }: {
     item: WeekButtonItem;
     isSelected: boolean;
-    onClick: () => void;
+    onClick: (e: React.MouseEvent) => void;
 }) {
     const { weekNumber, isOngoing, isLocked } = item;
     // isOngoing = true → recorded today (indigo/sparkle)
