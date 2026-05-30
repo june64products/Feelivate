@@ -7,13 +7,16 @@ import {
     approvePlan, 
     getSessionDetail, 
     getGoogleAuthUrl,
-    syncGoogleCalendar
+    syncGoogleCalendar,
+    getTodayEmotion,
+    type TodayEmotionResult,
 } from '../api';
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
 import RadiantPromptInput from '../components/chat/RadiantPromptInput';
 import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
 import JourneyPage from './JourneyPage';
+import EmotionOrb from '../components/workspace/EmotionOrb';
 
 const CAPABILITIES = [
     { icon: MessageSquare, title: "Deep Reflection", desc: "Understand your emotional patterns and past" },
@@ -37,6 +40,7 @@ export default function WorkspacePage() {
     const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
     const [view, setView] = useState<'chat' | 'journey'>('chat');
     const [showReviewModal, setShowReviewModal] = useState(false);
+    const [todayEmotion, setTodayEmotion] = useState<TodayEmotionResult['entry'] | null>(null);
 
 
     // Derived: whether we're in the cinematic empty state
@@ -59,6 +63,10 @@ export default function WorkspacePage() {
             navigate('/login');
             return;
         }
+        // Load today's emotion for the orb
+        getTodayEmotion(userId)
+            .then(res => { if (res.has_entry) setTodayEmotion(res.entry); })
+            .catch(() => {});
     }, [userId, navigate]);
 
     // Fetch active session detail
@@ -97,11 +105,33 @@ export default function WorkspacePage() {
         }
     }, [activeSessionId]);
 
+    // Listen for "Plan Week N+1" button from JourneyPage
+    useEffect(() => {
+        const handleNextWeekPlan = (e: Event) => {
+            const week = (e as CustomEvent).detail?.week ?? 2;
+            setView('chat');
+            // Small delay so view switches before sending
+            setTimeout(() => {
+                handleSendMessage(
+                    `I've reviewed my week report. Please build me Week ${week} plan based on my performance data and what I need to improve.`
+                );
+            }, 300);
+        };
+        const handleCloseJourney = () => setView('chat');
+        window.addEventListener('request-next-week-plan', handleNextWeekPlan);
+        window.addEventListener('close-journey', handleCloseJourney);
+        return () => {
+            window.removeEventListener('request-next-week-plan', handleNextWeekPlan);
+            window.removeEventListener('close-journey', handleCloseJourney);
+        };
+    }, [activeSessionId]);
+
     // Handle session selection
     const handleSelectSession = (sessionId: string) => {
         setActiveSessionId(sessionId);
         localStorage.setItem('active_session_id', sessionId);
     };
+
 
     // Start a new chat session
     const handleNewChat = () => {
@@ -247,7 +277,12 @@ export default function WorkspacePage() {
             }}>
                 {/* Journey view — full-panel replacement */}
                 {view === 'journey' && userId && (
-                    <JourneyPage userId={userId} />
+                    <JourneyPage
+                        userId={userId}
+                        sessionId={activeSessionId ?? undefined}
+                        onJournalSaved={(entry) => setTodayEmotion(entry)}
+                        onClose={() => setView('chat')}
+                    />
                 )}
 
                 {/* Weekly Review Modal */}
@@ -311,6 +346,16 @@ export default function WorkspacePage() {
                         }}
                     />
                 </div>
+
+                {/* Emotion Orb — floats on right edge of chat after today's journal */}
+                <AnimatePresence>
+                    {todayEmotion && (
+                        <EmotionOrb
+                            emotion={todayEmotion}
+                            onClick={() => setView('journey')}
+                        />
+                    )}
+                </AnimatePresence>
 
                 {/* Header */}
                 <div style={{

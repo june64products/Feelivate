@@ -307,8 +307,39 @@ export const getJournals = async (userId: string, limit = 30): Promise<JournalEn
 };
 
 // ============================================================
+// TODAY'S EMOTION (for the chat-side orb)
+// ============================================================
+
+export interface TodayEmotionResult {
+    has_entry: boolean;
+    entry: {
+        id: number;
+        date: string;
+        emotion_label: string;
+        emotion_score: number;
+        one_liner: string;
+    } | null;
+}
+
+export const getTodayEmotion = async (userId: string): Promise<TodayEmotionResult> => {
+    const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/today-emotion`);
+    if (!response.ok) throw new Error('Failed to fetch today emotion');
+    return response.json();
+};
+
+
+// ============================================================
 // WEEKLY EMOTION REPORT
 // ============================================================
+
+export interface WeeklyReportDay {
+    date: string;
+    emotion: string | null;
+    score: number | null;
+    one_liner: string | null;
+    checkin: 'done' | 'skipped' | 'missed' | 'pending';
+    has_journal: boolean;
+}
 
 export interface WeeklyReport {
     status: 'generated' | 'cached' | 'no_data';
@@ -316,19 +347,32 @@ export interface WeeklyReport {
     week_end: string;
     message?: string;
     report?: {
+        // Core metrics
         avg_score: number;
-        dominant_emotion: string;
-        highlight: string;
-        pattern: string;
-        next_week_tip: string;
+        consistency_score: number;
+        days_done: number;
+        days_missed: number;
+        past_days_count: number;
         entry_count: number;
-        days: { date: string; emotion: string; score: number }[];
+        week_number: number;
+        week_theme: string;
+        // AI analysis
+        dominant_emotion: string;
+        emotional_arc: string;
+        what_went_well: string;
+        where_you_slipped: string;
+        consistency_analysis: string;
+        hidden_insight: string;
+        next_week_focus: string;
+        next_week_plan_context: string;
+        // Per-day data
+        days: WeeklyReportDay[];
     };
 }
 
-export const getWeeklyReport = async (userId: string): Promise<WeeklyReport> => {
-    const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/weekly-report`);
+export const getWeeklyReport = async (userId: string, sessionId?: string): Promise<WeeklyReport> => {
+    const qs = sessionId ? `?session_id=${sessionId}` : '';
+    const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/weekly-report${qs}`);
     if (!response.ok) throw new Error('Failed to fetch weekly report');
     return response.json();
 };
-

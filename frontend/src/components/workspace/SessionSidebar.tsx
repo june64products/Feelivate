@@ -213,34 +213,43 @@ export default function SessionSidebar({
                 isPlanActive={isPlanActive}
             />
 
-            {/* Journey link */}
-            <div style={{ padding: '8px 8px 0' }}>
-                <button
-                    onClick={onJourney}
-                    style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '9px 12px',
-                        borderRadius: '10px',
-                        border: '1px solid var(--border-subtle)',
-                        background: 'var(--glass-surface)',
-                        color: 'var(--text-secondary)',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontFamily: 'var(--font-sans)',
-                        fontWeight: 500,
-                        textAlign: 'left',
-                        transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-hover)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-surface)'; }}
-                >
-                    <BookOpen size={13} style={{ opacity: 0.6 }} />
-                    My Journey 📔
-                </button>
-            </div>
+            {/* Journey link — only visible when session has an active plan */}
+            {isPlanActive && (
+                <div style={{ padding: '8px 8px 0' }}>
+                    <button
+                        onClick={onJourney}
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '9px 12px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(99,102,241,0.25)',
+                            background: 'rgba(99,102,241,0.06)',
+                            color: 'var(--accent-primary)',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontFamily: 'var(--font-sans)',
+                            fontWeight: 600,
+                            textAlign: 'left',
+                            transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(99,102,241,0.14)';
+                            e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(99,102,241,0.06)';
+                            e.currentTarget.style.borderColor = 'rgba(99,102,241,0.25)';
+                        }}
+                    >
+                        <BookOpen size={13} style={{ flexShrink: 0 }} />
+                        My Journey
+                    </button>
+                </div>
+            )}
+
 
             {/* User section at bottom */}
             <div style={{

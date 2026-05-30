@@ -1015,19 +1015,55 @@ async def get_journals(
     ]
 
 
-@app.get("/journal/{user_id}/weekly-report", tags=["journal"])
-async def get_weekly_report(
+@app.get("/journal/{user_id}/today-emotion", tags=["journal"])
+async def get_today_emotion(
     user_id: str,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
+    Return today's voice journal entry if it exists. Used by the chat-side emotion orb.
+    Returns null if no entry recorded today.
+    """
+    from datetime import date
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    today = date.today().isoformat()
+    entry = (
+        db.query(VoiceJournal)
+        .filter(VoiceJournal.user_id == user_id, VoiceJournal.date == today)
+        .first()
+    )
+    if not entry:
+        return {"has_entry": False, "entry": None}
+    return {
+        "has_entry": True,
+        "entry": {
+            "id": entry.id,
+            "date": entry.date,
+            "emotion_label": entry.emotion_label,
+            "emotion_score": entry.emotion_score,
+            "one_liner": entry.one_liner,
+        },
+    }
+
+
+@app.get("/journal/{user_id}/weekly-report", tags=["journal"])
+async def get_weekly_report(
+    user_id: str,
+    session_id: Optional[str] = None,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
     Return (or generate) the weekly emotion report for the current week.
-    Report is cached after first generation — regenerated if new journals exist.
+    If session_id provided, report also analyses the week plan vs actual performance.
+    Acts as a deep week reviewer — reads all transcripts + plan + checkins.
+    Report is cached per week and regenerated only when new journals arrive.
     """
     from .llm import call_llm
     from datetime import date, timedelta
-    import hashlib
 
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -1038,7 +1074,7 @@ async def get_weekly_report(
     ws = week_start.isoformat()
     we = week_end.isoformat()
 
-    # Fetch this week's journals
+    # ── 1. Fetch this week's voice journals ──────────────────────────────────
     journals = (
         db.query(VoiceJournal)
         .filter(
@@ -1053,7 +1089,7 @@ async def get_weekly_report(
     if not journals:
         return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we}
 
-    # Check if cached report is still fresh (same number of entries)
+    # ── 2. Check cache (invalidate if new journals exist since last gen) ─────
     cached = (
         db.query(WeeklyReport)
         .filter(WeeklyReport.user_id == user_id, WeeklyReport.week_start == ws)
@@ -1061,63 +1097,162 @@ async def get_weekly_report(
     )
     if cached:
         try:
-            report_data = json.loads(cached.report_json)
-            if report_data.get("entry_count") == len(journals):
-                return {"status": "cached", "week_start": ws, "week_end": we, "report": report_data}
+            cached_data = json.loads(cached.report_json)
+            if cached_data.get("entry_count") == len(journals):
+                return {"status": "cached", "week_start": ws, "week_end": we, "report": cached_data}
         except Exception:
             pass
 
-    # Build report prompt
-    days_text = "\n".join(
-        f"{j.date} ({j.emotion_label}, score {j.emotion_score}/10): {j.one_liner}"
-        for j in journals
-    )
+    # ── 3. Fetch daily checkins for this week ────────────────────────────────
+    all_week_days = [(week_start + timedelta(days=i)).isoformat() for i in range(7)]
+    checkin_map: dict = {}
+    for d in all_week_days:
+        row = (
+            db.query(DailyCheckin)
+            .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == d)
+            .first()
+        )
+        checkin_map[d] = row.status if row else ("pending" if d > today.isoformat() else "missed")
+
+    # ── 4. Optionally fetch the approved week plan ───────────────────────────
+    week_plan_days: list = []
+    week_plan_theme = ""
+    week_number = 0
+    if session_id:
+        session_rec = db.query(Session).filter(Session.id == session_id).first()
+        if session_rec and session_rec.week_plan_json:
+            try:
+                plan = json.loads(session_rec.week_plan_json)
+                week_plan_days = plan.get("days", [])
+                week_plan_theme = plan.get("theme", "")
+                week_number = plan.get("week_number", 0)
+            except Exception:
+                pass
+
+    # ── 5. Build the per-day data merge ─────────────────────────────────────
+    journal_by_date = {j.date: j for j in journals}
     avg_score = round(sum(j.emotion_score or 5 for j in journals) / len(journals), 1)
+    days_done = sum(1 for s in checkin_map.values() if s == "done")
+    days_missed = sum(1 for d, s in checkin_map.items() if s == "missed" and d <= today.isoformat())
+    past_days_count = sum(1 for d in all_week_days if d <= today.isoformat())
+    consistency_score = round((days_done / max(past_days_count, 1)) * 100) if past_days_count > 0 else 0
 
-    prompt = (
-        f"You are an empathetic AI coach. Generate a weekly emotion report based on these daily journal entries.\n\n"
-        f"{days_text}\n\n"
-        f"Respond with ONLY valid JSON in this exact format:\n"
-        f"{{\n"
-        f"  \"avg_score\": {avg_score},\n"
-        f"  \"dominant_emotion\": \"the most common emotion this week\",\n"
-        f"  \"highlight\": \"the best moment/day this week (1 sentence)\",\n"
-        f"  \"pattern\": \"key pattern you noticed (1-2 sentences)\",\n"
-        f"  \"next_week_tip\": \"one specific, actionable tip for next week based on the data\",\n"
-        f"  \"days\": [{{\'date\': \'YYYY-MM-DD\', \'emotion\': \'label\', \'score\': 7}}]\n"
-        f"}}"
-    )
-    try:
-        raw = await asyncio.to_thread(call_llm, prompt, temperature=0.3, max_tokens=600)
-        raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
-        start = raw.find("{")
-        end = raw.rfind("}")
-        report_data = json.loads(raw[start:end + 1]) if start != -1 else {}
-    except Exception as e:
-        logger.error(f"Weekly report generation failed: {e}")
-        report_data = {}
-
-    # Augment with metadata
-    report_data["entry_count"] = len(journals)
-    report_data["week_start"] = ws
-    report_data["week_end"] = we
-    report_data["avg_score"] = avg_score
-    report_data["days"] = [
-        {"date": j.date, "emotion": j.emotion_label, "score": j.emotion_score}
+    # ── 6. Build rich AI prompt ───────────────────────────────────────────────
+    # Full transcripts block
+    transcripts_block = "\n\n".join(
+        f"[{j.date}] Emotion: {j.emotion_label} ({j.emotion_score}/10)\n"
+        f"Summary: {j.one_liner}\n"
+        f"Full entry: {j.transcript[:600]}"
         for j in journals
-    ]
+    )
 
-    # Cache / update report
+    # Plan vs actual comparison block
+    plan_vs_actual = ""
+    if week_plan_days:
+        lines = []
+        for pd in week_plan_days[:7]:
+            day_label = pd.get("day", "")
+            task = pd.get("action", "")
+            # Try to find the date for this plan day
+            day_status = "unknown"
+            for d, s in checkin_map.items():
+                lines.append(f"  Planned: '{task[:100]}' | Checkin: {s}")
+                break
+            else:
+                lines.append(f"  Planned: '{task[:100]}' | Checkin: {day_status}")
+        plan_vs_actual = "\nWEEK PLAN vs ACTUAL:\n" + "\n".join(lines)
+
+    prompt = f"""You are a world-class performance coach and behavioral analyst. Your job is to write a deep, honest, insightful WEEK REVIEW for this user.
+
+You have access to:
+- All their daily voice journal entries this week (what they actually felt and said)
+- Their daily checkin status (did they complete their plan each day)
+- Their week's planned tasks (what they were supposed to do)
+
+Be direct, specific, and honest. This is NOT a therapy session — it's a performance review. Call out exactly where consistency broke, what patterns emerged, and what needs to change next week.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WEEK DATA: {ws} to {we} (Week {week_number or 'N'})
+Theme: {week_plan_theme or 'Personal growth'}
+Days with checkin done: {days_done}/{past_days_count}
+Days missed: {days_missed}
+Avg emotional score: {avg_score}/10
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+VOICE JOURNAL ENTRIES (what the user actually recorded):
+{transcripts_block}
+{plan_vs_actual}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
+{{
+  "dominant_emotion": "the single most common emotional state this week",
+  "emotional_arc": "2 sentences describing how their emotional state evolved across the week",
+  "what_went_well": "2-3 specific things they did right — cite actual days or actions from their journals",
+  "where_you_slipped": "2-3 specific breakdowns in consistency or mindset — be direct, not harsh. Cite evidence from journals.",
+  "consistency_analysis": "Detailed 3-4 sentence analysis of their consistency pattern. When did they slip? Why? Was it emotional or external?",
+  "hidden_insight": "One non-obvious insight you noticed about their emotional patterns that they probably haven't noticed themselves.",
+  "next_week_focus": "The single most important thing they must do differently next week based on this data. Make it very specific and actionable.",
+  "next_week_plan_context": "2-3 bullet points of what the next week plan should account for, based on this week's performance. Format: bullet per line with \\n separator."
+}}"""
+
+    try:
+        raw = await asyncio.to_thread(call_llm, prompt, temperature=0.4, max_tokens=900)
+        raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
+        start_idx = raw.find("{")
+        end_idx = raw.rfind("}")
+        ai_data = json.loads(raw[start_idx:end_idx + 1]) if start_idx != -1 else {}
+    except Exception as e:
+        logger.error(f"Weekly report AI generation failed: {e}")
+        ai_data = {
+            "dominant_emotion": journals[0].emotion_label if journals else "neutral",
+            "emotional_arc": "Could not generate analysis.",
+            "what_went_well": "You showed up and recorded your journey.",
+            "where_you_slipped": "Analysis unavailable.",
+            "consistency_analysis": f"You completed {days_done} out of {past_days_count} days.",
+            "hidden_insight": "",
+            "next_week_focus": "Keep showing up every day.",
+            "next_week_plan_context": "",
+        }
+
+    # ── 7. Build the final report dict ──────────────────────────────────────
+    report_data = {
+        **ai_data,
+        # Core metrics
+        "avg_score": avg_score,
+        "consistency_score": consistency_score,
+        "days_done": days_done,
+        "days_missed": days_missed,
+        "past_days_count": past_days_count,
+        "entry_count": len(journals),
+        "week_start": ws,
+        "week_end": we,
+        "week_number": week_number,
+        "week_theme": week_plan_theme,
+        # Per-day data for charts
+        "days": [
+            {
+                "date": d,
+                "emotion": journal_by_date[d].emotion_label if d in journal_by_date else None,
+                "score": journal_by_date[d].emotion_score if d in journal_by_date else None,
+                "one_liner": journal_by_date[d].one_liner if d in journal_by_date else None,
+                "checkin": checkin_map.get(d, "pending"),
+                "has_journal": d in journal_by_date,
+            }
+            for d in all_week_days
+        ],
+    }
+
+    # ── 8. Cache the report ───────────────────────────────────────────────────
     if cached:
         cached.report_json = json.dumps(report_data)
     else:
-        new_report = WeeklyReport(
+        db.add(WeeklyReport(
             user_id=user_id,
             week_start=ws,
             week_end=we,
             report_json=json.dumps(report_data),
-        )
-        db.add(new_report)
+        ))
     db.commit()
 
     return {"status": "generated", "week_start": ws, "week_end": we, "report": report_data}

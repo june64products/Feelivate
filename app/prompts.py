@@ -143,6 +143,7 @@ def build_chat_prompt(
     plan_history: Optional[List[dict]] = None,
     current_week: int = 0,
     week_reviews: Optional[List[dict]] = None,
+    week_report_data: Optional[dict] = None,
 ) -> List[Dict[str, str]]:
     """
     Build the messages array for the LLM call.
@@ -231,6 +232,40 @@ def build_chat_prompt(
             "\n\n⚠️ CRITICAL: Use the reviews above to calibrate difficulty."
             "\nIf user said something was hard → reduce intensity or add more support steps."
             "\nIf user said something was easy → push harder in the next week."
+        )
+
+    # ── Inject AI-generated week performance report ──────────────────────────
+    if week_report_data and isinstance(week_report_data, dict):
+        wn = week_report_data.get("week_number", current_week)
+        cs = week_report_data.get("consistency_score", 0)
+        avg = week_report_data.get("avg_score", 0)
+        done = week_report_data.get("days_done", 0)
+        missed = week_report_data.get("days_missed", 0)
+        went_well = week_report_data.get("what_went_well", "")
+        slipped = week_report_data.get("where_you_slipped", "")
+        next_ctx = week_report_data.get("next_week_plan_context", "")
+        arc = week_report_data.get("emotional_arc", "")
+        focus = week_report_data.get("next_week_focus", "")
+
+        system_content += f"\n\n{'═'*39}"
+        system_content += f"\nWEEK {wn} PERFORMANCE REPORT (AI-Generated from voice journals + checkins)"
+        system_content += f"\n{'═'*39}"
+        system_content += (
+            f"\nConsistency Score: {cs}% ({done} days done, {missed} missed)"
+            f"\nAvg Emotional Score: {avg}/10"
+            f"\nEmotional Arc: {arc}"
+            f"\nWhat went well: {went_well}"
+            f"\nWhere they slipped: {slipped}"
+            f"\nKey focus for next week: {focus}"
+        )
+        if next_ctx:
+            system_content += f"\nNext week plan must account for:\n{next_ctx}"
+        system_content += (
+            f"\n\n⚠️ CRITICAL: Use the performance report above to build Week {wn + 1}."
+            f"\n- If consistency was below 70% → reduce daily task count, make days shorter"
+            f"\n- If emotional scores were low mid-week → add a dedicated recovery/rest day mid-week"
+            f"\n- If consistency was above 85% → increase challenge level significantly"
+            f"\n- Directly address the 'where they slipped' areas with structural fixes in the plan"
         )
 
     # ── Inject current plan (if pending) ────────────────────────────────────
