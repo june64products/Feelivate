@@ -63,10 +63,13 @@ export default function WorkspacePage() {
             navigate('/login');
             return;
         }
-        // Load today's emotion for the orb
-        getTodayEmotion(userId)
-            .then(res => { if (res.has_entry) setTodayEmotion(res.entry); })
-            .catch(() => {});
+        // Load today's emotion scoped to current session
+        if (userId) {
+            const storedSession = localStorage.getItem('active_session_id');
+            getTodayEmotion(userId, storedSession ?? undefined)
+                .then(res => { if (res.has_entry) setTodayEmotion(res.entry); })
+                .catch(() => {});
+        }
     }, [userId, navigate]);
 
     // Fetch active session detail
@@ -151,11 +154,11 @@ export default function WorkspacePage() {
         setTodayEmotion(null);
         setIsSessionCompleted(false);
         setView('chat');
-        // Re-fetch today's emotion for new context
+        // Re-fetch today's emotion scoped to the newly selected session
         if (userId) {
-            getTodayEmotion(userId)
-                .then(res => { if (res.has_entry) setTodayEmotion(res.entry); })
-                .catch(() => {});
+            getTodayEmotion(userId, sessionId)
+                .then(res => { if (res.has_entry) setTodayEmotion(res.entry); else setTodayEmotion(null); })
+                .catch(() => { setTodayEmotion(null); });
         }
     };
 
@@ -306,7 +309,10 @@ export default function WorkspacePage() {
                     <JourneyPage
                         userId={userId}
                         sessionId={activeSessionId ?? undefined}
-                        onJournalSaved={(entry) => setTodayEmotion(entry)}
+                        onJournalSaved={(entry) => {
+                            // Directly update the orb with the saved entry — no refetch needed
+                            setTodayEmotion(entry);
+                        }}
                         onClose={() => setView('chat')}
                     />
                 )}

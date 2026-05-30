@@ -1304,11 +1304,13 @@ async def get_journals(
 @app.get("/journal/{user_id}/today-emotion", tags=["journal"])
 async def get_today_emotion(
     user_id: str,
+    session_id: Optional[str] = None,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Return today's voice journal entry if it exists. Used by the chat-side emotion orb.
+    If session_id provided, filters to that session only.
     Returns null if no entry recorded today.
     """
     from datetime import date
@@ -1316,11 +1318,13 @@ async def get_today_emotion(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     today = date.today().isoformat()
-    entry = (
+    q = (
         db.query(VoiceJournal)
         .filter(VoiceJournal.user_id == user_id, VoiceJournal.date == today)
-        .first()
     )
+    if session_id:
+        q = q.filter(VoiceJournal.session_id == session_id)
+    entry = q.order_by(VoiceJournal.created_at.desc()).first()
     if not entry:
         return {"has_entry": False, "entry": None}
     return {

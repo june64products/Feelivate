@@ -321,8 +321,9 @@ export interface TodayEmotionResult {
     } | null;
 }
 
-export const getTodayEmotion = async (userId: string): Promise<TodayEmotionResult> => {
-    const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/today-emotion`);
+export const getTodayEmotion = async (userId: string, sessionId?: string): Promise<TodayEmotionResult> => {
+    const qs = sessionId ? `?session_id=${sessionId}` : '';
+    const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/today-emotion${qs}`);
     if (!response.ok) throw new Error('Failed to fetch today emotion');
     return response.json();
 };
