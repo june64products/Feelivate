@@ -128,7 +128,7 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
 }
 
 // ─── 7-day calendar strip ─────────────────────────────────────────────────────
-function WeekCalendar({ days, today }: { days: WeeklyReportDay[]; today: string }) {
+function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[]; today: string; planStartDate?: string }) {
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     return (
@@ -138,10 +138,11 @@ function WeekCalendar({ days, today }: { days: WeeklyReportDay[]; today: string 
             gap: '6px',
         }}>
             {days.map((d, i) => {
-                const isPast = d.date <= today;
+                const isBeforePlan = planStartDate ? d.date < planStartDate : false;
+                const isPast = d.date < today;
                 const isToday = d.date === today;
                 const hasDone = d.has_journal;
-                const isMissed = isPast && !hasDone && !isToday;
+                const isMissed = !isBeforePlan && isPast && !hasDone && !isToday;
                 const color = hasDone ? emotionColor(d.emotion) : isMissed ? '#ef4444' : 'rgba(255,255,255,0.15)';
 
                 return (
@@ -176,7 +177,13 @@ function WeekCalendar({ days, today }: { days: WeeklyReportDay[]; today: string 
                                     background: 'rgba(239,68,68,0.3)',
                                 }} />
                             )}
-                            {isToday && !hasDone && (
+                            {isBeforePlan && !hasDone && (
+                                <div style={{
+                                    width: '12px', height: '2px', borderRadius: '2px',
+                                    background: 'rgba(255,255,255,0.15)',
+                                }} />
+                            )}
+                            {isToday && !hasDone && !isBeforePlan && (
                                 <div style={{
                                     width: '5px', height: '5px', borderRadius: '50%',
                                     background: 'rgba(255,255,255,0.4)',
@@ -360,21 +367,22 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
         journals.forEach(j => { jMap[j.date] = j; });
 
         let startDate: Date;
-        let dayCount: number;
-
-        if (weekInfo?.has_plan && weekInfo.week_start && weekInfo.week_end) {
-            startDate = new Date(weekInfo.week_start);
-            const endDate = new Date(weekInfo.week_end);
-            dayCount = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1;
+        
+        if (weekInfo?.has_plan && weekInfo.week_start) {
+            // Find the Monday of the week that weekInfo.week_start belongs to
+            const wsDate = new Date(weekInfo.week_start);
+            startDate = new Date(wsDate);
+            const dow = startDate.getDay() || 7;
+            startDate.setDate(startDate.getDate() - dow + 1);
         } else {
-            // Fallback: standard Mon-Sun
+            // Fallback: standard Mon-Sun of current local week
             const d = new Date();
             startDate = new Date(d);
-            startDate.setDate(d.getDate() - d.getDay() + 1);
-            dayCount = 7;
+            const dow = startDate.getDay() || 7;
+            startDate.setDate(startDate.getDate() - dow + 1);
         }
 
-        return Array.from({ length: dayCount }, (_, i) => {
+        return Array.from({ length: 7 }, (_, i) => {
             const day = new Date(startDate);
             day.setDate(startDate.getDate() + i);
             const dateStr = day.toISOString().split('T')[0];
@@ -600,7 +608,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         </span>
                                     )}
                                 </div>
-                                <WeekCalendar days={weekDays} today={today} />
+                                <div style={{ flex: 1 }}>
+                                    <WeekCalendar days={weekDays} today={today} planStartDate={weekInfo?.plan_start_date} />
+                                </div>
                                 <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
