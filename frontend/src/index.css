@@ -393,15 +393,24 @@ body {
   }
 
   .week-drawer-mobile {
-    top: auto !important;
+    top: 0 !important;
     bottom: 0 !important;
-    left: 0 !important;
+    left: auto !important;
     right: 0 !important;
-    width: 100% !important;
-    max-height: 85vh !important;
-    border-radius: 20px 20px 0 0 !important;
-    transform: translateY(100%) !important;
-    animation: slideUpSheet 0.4s var(--ease-spring) forwards !important;
+    width: 85% !important;
+    max-width: 340px !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 20px 0 0 20px !important;
+    transform: none !important;
+    animation: none !important;
+    z-index: 1000 !important;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.5) !important;
+  }
+
+  .mobile-header {
+    padding-top: max(env(safe-area-inset-top, 24px), 36px) !important;
+    min-height: 70px !important;
   }
 
   /* Journey Page Responsive Grids */

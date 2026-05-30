@@ -421,7 +421,7 @@ export default function WorkspacePage() {
                 </AnimatePresence>
 
                 {/* Header */}
-                <div style={{
+                <div className="mobile-header" style={{
                     minHeight: '56px',
                     height: 'auto',
                     padding: 'calc(env(safe-area-inset-top, 0px) + 8px) 20px 8px 20px',

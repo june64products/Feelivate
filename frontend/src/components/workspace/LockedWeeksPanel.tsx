@@ -89,9 +89,9 @@ function WeekDrawer({
     return (
         <motion.div
             key={`drawer-${weekNumber}`}
-            initial={isMobile ? { y: '100%', opacity: 0 } : { x: '100%', opacity: 0 }}
-            animate={isMobile ? { y: 0, opacity: 1 } : { x: 0, opacity: 1 }}
-            exit={isMobile ? { y: '100%', opacity: 0 } : { x: '100%', opacity: 0 }}
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             className={isMobile ? 'week-drawer-mobile' : ''}
             style={{
