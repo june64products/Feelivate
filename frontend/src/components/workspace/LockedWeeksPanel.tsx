@@ -57,16 +57,19 @@ function WeekDrawer({
     weekNumber,
     report,
     isOngoing,
+    isActiveCurrent,
     onClose,
 }: {
     weekNumber: number;
     report: ArchivedWeekReport | null;
     isOngoing: boolean;
+    isActiveCurrent: boolean;
     onClose: () => void;
 }) {
-    const accentColor = isOngoing ? '#818cf8' : '#6b7280';
-    const accentBg = isOngoing ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.04)';
-    const accentBorder = isOngoing ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.1)';
+    const isCurrentWeek = isOngoing || isActiveCurrent;
+    const accentColor = isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : '#6b7280';
+    const accentBg = isOngoing ? 'rgba(99,102,241,0.08)' : isActiveCurrent ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)';
+    const accentBorder = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)';
 
     const r = report?.report;
 
@@ -106,11 +109,13 @@ function WeekDrawer({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                         width: '28px', height: '28px', borderRadius: '8px',
-                        background: isOngoing ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.06)',
+                        background: isOngoing ? 'rgba(99,102,241,0.15)' : isActiveCurrent ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                         {isOngoing
                             ? <Sparkles size={13} color={accentColor} />
+                            : isActiveCurrent
+                            ? <span style={{ fontSize: '12px', color: accentColor }}>▶</span>
                             : <FileText size={13} color={accentColor} />
                         }
                     </div>
@@ -118,8 +123,8 @@ function WeekDrawer({
                         <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
                             Week {weekNumber}
                         </p>
-                        <p style={{ fontSize: '10px', color: isOngoing ? '#818cf8' : 'rgba(255,255,255,0.35)', margin: 0, marginTop: '1px' }}>
-                            {isOngoing ? 'Ongoing ✦' : (report ? `${report.week_start} – ${report.week_end}` : 'Locked')}
+                        <p style={{ fontSize: '10px', color: isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : 'rgba(255,255,255,0.35)', margin: 0, marginTop: '1px' }}>
+                            {isOngoing ? 'Recorded Today ✦' : isActiveCurrent ? 'Active Now' : (report ? `${report.week_start} – ${report.week_end}` : 'Locked')}
                         </p>
                     </div>
                 </div>
@@ -138,14 +143,17 @@ function WeekDrawer({
 
             {/* Content */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {isOngoing && !r && (
+                {isCurrentWeek && !r && (
                     <div style={{
                         padding: '20px', borderRadius: '12px',
-                        background: 'rgba(99,102,241,0.06)',
-                        border: '1px dashed rgba(99,102,241,0.2)',
+                        background: isOngoing ? 'rgba(99,102,241,0.06)' : 'rgba(16,185,129,0.06)',
+                        border: `1px dashed ${isOngoing ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)'}`,
                         textAlign: 'center',
                     }}>
-                        <Sparkles size={20} color="#818cf8" style={{ margin: '0 auto 10px' }} />
+                        {isOngoing 
+                            ? <Sparkles size={20} color="#818cf8" style={{ margin: '0 auto 10px' }} />
+                            : <div style={{ fontSize: '20px', color: '#34d399', margin: '0 auto 10px', lineHeight: 1 }}>▶</div>
+                        }
                         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.5 }}>
                             This is your current active week.<br />
                             Keep journaling — your report appears at week end.
@@ -153,7 +161,7 @@ function WeekDrawer({
                     </div>
                 )}
 
-                {!isOngoing && !r && (
+                {!isCurrentWeek && !r && (
                     <div style={{
                         padding: '20px', borderRadius: '12px',
                         border: '1px dashed rgba(255,255,255,0.1)',
@@ -220,7 +228,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked }: 
             .catch(() => { setLoadedReports(true); });
     }, [sessionId]);
 
-    // Build list of week items — locked past weeks + current ongoing week
+    // Build list of week items — locked past weeks + current active week
     const weekItems: WeekButtonItem[] = [];
     // Past locked weeks (from archived reports)
     const lockedWeekNums = reports.map(r => r.week_number).sort((a, b) => a - b);
@@ -229,10 +237,10 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked }: 
             weekItems.push({ weekNumber: wn, isOngoing: false, isLocked: true });
         }
     });
-    // Add current week as ongoing
-    if (micLocked) {
-        weekItems.push({ weekNumber: currentWeek, isOngoing: true, isLocked: false });
-    }
+    // Always add current week — isOngoing=true means mic was locked today (recorded)
+    // isOngoing=false means plan is active but no recording yet today
+    weekItems.push({ weekNumber: currentWeek, isOngoing: micLocked, isLocked: false });
+
     // Sort all
     weekItems.sort((a, b) => a.weekNumber - b.weekNumber);
 
@@ -246,7 +254,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked }: 
         groups.push({
             label,
             weeks: chunk,
-            isCollapsed: chunk.length >= 5, // auto-collapse full groups
+            isCollapsed: chunk.length >= 5,
             startWeek: startW,
             endWeek: endW,
         });
@@ -271,9 +279,8 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked }: 
     const selectedReport = selectedWeek !== null ? getReportForWeek(selectedWeek) : null;
     const isSelectedOngoing = selectedWeek === currentWeek;
 
-    if (weekItems.length === 0) return null;
-
     return (
+
         <>
             {/* ── Floating pill panel on right edge ── */}
             <motion.div
@@ -392,6 +399,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked }: 
                         weekNumber={selectedWeek}
                         report={selectedReport}
                         isOngoing={isSelectedOngoing}
+                        isActiveCurrent={selectedWeek === currentWeek && !micLocked}
                         onClose={() => setSelectedWeek(null)}
                     />
                 )}
@@ -411,20 +419,32 @@ function WeekPill({
     isSelected: boolean;
     onClick: () => void;
 }) {
-    const { weekNumber, isOngoing } = item;
+    const { weekNumber, isOngoing, isLocked } = item;
+    // isOngoing = true → recorded today (indigo/sparkle)
+    // isLocked = true → completed past week (gray/lock)
+    // neither → active current week, not recorded yet (emerald/play)
+    const isActiveCurrent = !isOngoing && !isLocked;
 
-    // Color scheme
     const bgColor = isSelected
-        ? isOngoing ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.12)'
-        : isOngoing ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.04)';
+        ? isOngoing ? 'rgba(99,102,241,0.3)' : isActiveCurrent ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.12)'
+        : isOngoing ? 'rgba(99,102,241,0.12)' : isActiveCurrent ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)';
 
     const borderColor = isSelected
-        ? isOngoing ? 'rgba(99,102,241,0.6)' : 'rgba(255,255,255,0.25)'
-        : isOngoing ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.08)';
+        ? isOngoing ? 'rgba(99,102,241,0.6)' : isActiveCurrent ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.25)'
+        : isOngoing ? 'rgba(99,102,241,0.25)' : isActiveCurrent ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)';
 
     const textColor = isSelected
-        ? isOngoing ? '#a5b4fc' : 'white'
-        : isOngoing ? '#818cf8' : 'rgba(255,255,255,0.4)';
+        ? isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : 'white'
+        : isOngoing ? '#818cf8' : isActiveCurrent ? '#10b981' : 'rgba(255,255,255,0.4)';
+
+    const hoverBg = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.09)';
+    const hoverColor = isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : 'rgba(255,255,255,0.8)';
+
+    const titleText = isOngoing
+        ? `Week ${weekNumber} — recorded today ✦`
+        : isActiveCurrent
+        ? `Week ${weekNumber} — active (click to view)`
+        : `Week ${weekNumber} — locked`;
 
     return (
         <motion.button
@@ -434,7 +454,7 @@ function WeekPill({
             exit={{ scale: 0.7, opacity: 0 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
             onClick={onClick}
-            title={isOngoing ? `Week ${weekNumber} (ongoing)` : `Week ${weekNumber} (locked)`}
+            title={titleText}
             style={{
                 width: '44px',
                 padding: '7px 4px',
@@ -449,22 +469,25 @@ function WeekPill({
                 position: 'relative',
             }}
             onMouseEnter={e => {
-                e.currentTarget.style.background = isOngoing ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.09)';
-                e.currentTarget.style.color = isOngoing ? '#a5b4fc' : 'rgba(255,255,255,0.8)';
+                e.currentTarget.style.background = hoverBg;
+                e.currentTarget.style.color = hoverColor;
             }}
             onMouseLeave={e => {
                 e.currentTarget.style.background = bgColor;
                 e.currentTarget.style.color = textColor;
             }}
         >
-            {/* Lock / sparkle icon */}
+            {/* Icon */}
             {isOngoing
                 ? <Sparkles size={10} />
+                : isActiveCurrent
+                ? <span style={{ fontSize: '9px', lineHeight: 1 }}>▶</span>
                 : <Lock size={10} />
             }
             <span style={{ fontSize: '8.5px', fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1 }}>
                 W{weekNumber}
             </span>
+
 
             {/* Selected indicator dot */}
             {isSelected && (

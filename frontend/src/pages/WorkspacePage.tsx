@@ -18,6 +18,7 @@ import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
 import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
 import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
+import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 
 
 
@@ -42,9 +43,22 @@ export default function WorkspacePage() {
     const [sessionFocus, setSessionFocus] = useState<string>('');
     const [todayEmotion, setTodayEmotion] = useState<TodayEmotionResult['entry'] | null>(null);
 
-
     // Derived: whether we're in the cinematic empty state
     const isEmptyState = messages.length === 0 && !isLoading;
+
+    // Mic locked state — check localStorage for today's recording
+    const [micLocked, setMicLocked] = useState<boolean>(() => {
+        const sid = localStorage.getItem('active_session_id');
+        const uid = localStorage.getItem('user_id');
+        const key = `last_journal_date_${sid || uid}`;
+        return localStorage.getItem(key) === new Date().toISOString().split('T')[0];
+    });
+
+    // Refresh micLocked when session changes
+    useEffect(() => {
+        const key = `last_journal_date_${activeSessionId || userId}`;
+        setMicLocked(localStorage.getItem(key) === new Date().toISOString().split('T')[0]);
+    }, [activeSessionId, userId]);
     
     // Calendar sync states
     const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -294,6 +308,16 @@ export default function WorkspacePage() {
                 refreshKey={sidebarRefreshKey}
                 isPlanActive={isPlanApproved}
             />
+
+            {/* Floating Locked Weeks Panel — right edge, visible whenever plan is active */}
+            {isPlanApproved && activeSessionId && (
+                <LockedWeeksPanel
+                    sessionId={activeSessionId}
+                    currentWeek={activePlan?.week_number ?? 1}
+                    micLocked={micLocked}
+                />
+            )}
+
 
             {/* Chat Area */}
             <div style={{
