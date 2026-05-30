@@ -276,6 +276,32 @@ async def chat(
             except Exception:
                 week_reviews = []
 
+        # 4d. Auto-fetch the latest weekly report from DB (compressed performance context)
+        # This saves tokens vs injecting raw transcripts — report is already AI-summarized.
+        # Only inject when plan is active (relevant for building next week).
+        week_report_data = None
+        if session_rec.phase == "active":
+            from datetime import date, timedelta
+            today_d = date.today()
+            # Check current week AND previous week (report may be from last week)
+            for offset in [0, -7]:
+                ref = today_d + timedelta(days=offset)
+                week_start = (ref - timedelta(days=ref.weekday())).isoformat()
+                latest_report = (
+                    db.query(WeeklyReport)
+                    .filter(
+                        WeeklyReport.user_id == user_id,
+                        WeeklyReport.week_start == week_start,
+                    )
+                    .first()
+                )
+                if latest_report:
+                    try:
+                        week_report_data = json.loads(latest_report.report_json)
+                    except Exception:
+                        pass
+                    break  # Use the most recent one found
+
         # 5. Build prompt with full context and call LLM
         prompt_messages = build_chat_prompt(
             history,
@@ -284,7 +310,9 @@ async def chat(
             plan_history=plan_history,
             current_week=session_rec.current_week or 0,
             week_reviews=week_reviews,
+            week_report_data=week_report_data,
         )
+
         
         raw_response = await asyncio.to_thread(
             call_with_fallback_chain,
