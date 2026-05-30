@@ -326,17 +326,6 @@ export default function WorkspacePage() {
                 />
             </div>
 
-            {/* Floating Locked Weeks Panel — right edge, visible whenever plan is active */}
-            {isPlanApproved && activeSessionId && (
-                <LockedWeeksPanel
-                    sessionId={activeSessionId}
-                    currentWeek={activePlan?.week_number ?? 1}
-                    micLocked={micLocked}
-                    activePlan={activePlan}
-                />
-            )}
-
-
             {/* Chat Area */}
             <div style={{
                 flex: 1,
@@ -539,6 +528,16 @@ export default function WorkspacePage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Locked Weeks Panel (Desktop: Fixed Right / Mobile: Relative under Header) */}
+                {isPlanApproved && activeSessionId && (
+                    <LockedWeeksPanel
+                        sessionId={activeSessionId}
+                        currentWeek={activePlan?.week_number ?? 1}
+                        micLocked={micLocked}
+                        activePlan={activePlan}
+                    />
+                )}
 
                 {/* ─── EMPTY STATE: Cinematic Hero ─── */}
                 <AnimatePresence mode="wait">
