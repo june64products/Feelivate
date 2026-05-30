@@ -359,28 +359,19 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const todayEntry = journals.find(j => j.date === today);
     const reportData = report?.report;
 
-    // Build day structure using session week bounds (from weekInfo) or standard Mon-Sun
+    // Build day structure — ALWAYS anchor to the Monday of today's physical week
+    // so that today's voice journal always appears on the correct day in the calendar.
+    // planStartDate is used only to visually cross out pre-plan days.
     const weekDays: WeeklyReportDay[] = (() => {
         if (reportData?.days && reportData.days.length > 0) return reportData.days;
-        // Synthesize from weekInfo or fallback to standard Mon-Sun
         const jMap: Record<string, JournalEntry> = {};
         journals.forEach(j => { jMap[j.date] = j; });
 
-        let startDate: Date;
-        
-        if (weekInfo?.has_plan && weekInfo.week_start) {
-            // Find the Monday of the week that weekInfo.week_start belongs to
-            const wsDate = new Date(weekInfo.week_start);
-            startDate = new Date(wsDate);
-            const dow = startDate.getDay() || 7;
-            startDate.setDate(startDate.getDate() - dow + 1);
-        } else {
-            // Fallback: standard Mon-Sun of current local week
-            const d = new Date();
-            startDate = new Date(d);
-            const dow = startDate.getDay() || 7;
-            startDate.setDate(startDate.getDate() - dow + 1);
-        }
+        // Always use the Monday of the current physical week (local date)
+        const todayLocal = new Date();
+        const startDate = new Date(todayLocal);
+        const dow = startDate.getDay() || 7; // Mon=1..Sun=7
+        startDate.setDate(startDate.getDate() - dow + 1);
 
         return Array.from({ length: 7 }, (_, i) => {
             const day = new Date(startDate);
