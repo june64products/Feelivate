@@ -315,6 +315,7 @@ export default function WorkspacePage() {
                     sessionId={activeSessionId}
                     currentWeek={activePlan?.week_number ?? 1}
                     micLocked={micLocked}
+                    activePlan={activePlan}
                 />
             )}
 

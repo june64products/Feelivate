@@ -41,8 +41,7 @@ export default function EmotionOrb({ emotion, onClick }: EmotionOrbProps) {
             style={{
                 position: 'absolute',
                 right: '18px',
-                top: '50%',
-                transform: 'translateY(-50%)',
+                bottom: '80px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',

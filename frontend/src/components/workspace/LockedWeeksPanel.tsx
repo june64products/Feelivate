@@ -23,6 +23,7 @@ interface LockedWeeksPanelProps {
     sessionId: string | undefined;
     currentWeek: number;           // the ongoing week number (0-indexed)
     micLocked: boolean;            // if today is locked
+    activePlan?: any;              // current plan data
     onClose?: () => void;
 }
 
@@ -58,12 +59,14 @@ function WeekDrawer({
     report,
     isOngoing,
     isActiveCurrent,
+    activePlan,
     onClose,
 }: {
     weekNumber: number;
     report: ArchivedWeekReport | null;
     isOngoing: boolean;
     isActiveCurrent: boolean;
+    activePlan?: any;
     onClose: () => void;
 }) {
     const isCurrentWeek = isOngoing || isActiveCurrent;
@@ -154,10 +157,36 @@ function WeekDrawer({
                             ? <Sparkles size={20} color="#818cf8" style={{ margin: '0 auto 10px' }} />
                             : <div style={{ fontSize: '20px', color: '#34d399', margin: '0 auto 10px', lineHeight: 1 }}>▶</div>
                         }
-                        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.5 }}>
-                            This is your current active week.<br />
+                        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
+                            This is your current active week.
+                        </p>
+                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '4px 0 0 0' }}>
                             Keep journaling — your report appears at week end.
                         </p>
+                    </div>
+                )}
+
+                {/* Show Plan if it's the current week */}
+                {isCurrentWeek && activePlan && activePlan.days && (
+                    <div style={{ marginTop: '4px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'white', marginBottom: '8px', paddingLeft: '4px' }}>
+                            Week {activePlan.week_number} Plan: {activePlan.theme}
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                            {activePlan.days.map((day: any, idx: number) => (
+                                <div key={idx} style={{
+                                    display: 'flex', gap: '10px', padding: '12px 14px',
+                                    borderBottom: idx < activePlan.days.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
+                                }}>
+                                    <div style={{ fontSize: '11px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: accentColor, minWidth: '70px', marginTop: '2px' }}>
+                                        {day.day}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
+                                        {day.action}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -214,7 +243,7 @@ function WeekDrawer({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked }: LockedWeeksPanelProps) {
+export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, activePlan }: LockedWeeksPanelProps) {
     const [reports, setReports] = useState<ArchivedWeekReport[]>([]);
     const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -290,8 +319,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked }: 
                 style={{
                     position: 'fixed',
                     right: 0,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
+                    top: '80px', // Below the profile icon
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px',
@@ -400,6 +428,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked }: 
                         report={selectedReport}
                         isOngoing={isSelectedOngoing}
                         isActiveCurrent={selectedWeek === currentWeek && !micLocked}
+                        activePlan={activePlan}
                         onClose={() => setSelectedWeek(null)}
                     />
                 )}

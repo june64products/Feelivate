@@ -140,17 +140,7 @@ export default function ChatWindow({
                 padding: '20px 0',
             }}
         >
-            {/* Approved plan pill at top */}
-            {isPlanApproved && activePlan && (
-                <div style={{ maxWidth: 'var(--chat-max-width)', margin: '0 auto', padding: '0 20px' }}>
-                    <PlanCard
-                        plan={activePlan}
-                        onApprove={onApprovePlan}
-                        onRequestChange={onRequestPlanChange}
-                        isApproved={true}
-                    />
-                </div>
-            )}
+
 
             {/* Messages */}
             <div style={{ maxWidth: 'var(--chat-max-width)', margin: '0 auto', padding: '0 20px' }}>
