@@ -242,18 +242,42 @@ def build_chat_prompt(
             system_content += f"\n\n✅ Week {wk} (DONE — {theme}):\n{days_text}"
 
         next_week = current_week + 1 if phase == "active" else current_week
+        
+        # Override for the very first plan based on day of week
+        dow = now.weekday()
+        is_first_plan = (current_week == 0 and phase != "active")
+        if is_first_plan:
+            next_week = 1 if dow <= 2 else 0
+
         system_content += (
             f"\n\n═══════════════════════════════════════"
             f"\nNEXT WEEK TO BUILD: Week {next_week}"
             f"\n═══════════════════════════════════════"
-            f"\n\n🚫 FORBIDDEN: Do NOT repeat any task, concept, or exercise from the weeks above."
-            f"\n🚫 FORBIDDEN: Do NOT go back to beginner-level content already covered."
-            f"\n✅ REQUIRED: Week {next_week} must start from where Week {next_week - 1} ENDED and go FURTHER."
-            f"\n✅ REQUIRED: Every day in Week {next_week} must be HARDER or MORE ADVANCED than the corresponding day in Week {next_week - 1}."
-            f"\n\nIf the user adds a NEW topic in Week {next_week} that was NOT in previous weeks:"
-            f"\n  → Start that NEW topic at absolute beginner level (Day 1 of that topic)"
-            f"\n  → But keep existing topics advancing from where they were"
         )
+        
+        if is_first_plan and next_week == 0:
+             system_content += (
+                 f"\n\n⚠️ CRITICAL INSTRUCTION ON WEEK 0: Because today is {day_name} (late in the week), "
+                 f"you MUST build a short, partial 'Week 0' plan that only covers the remaining days until this Sunday. "
+                 f"DO NOT call it Week 1. Output `\"week_number\": 0` in your JSON plan."
+             )
+        elif is_first_plan and next_week == 1:
+             system_content += (
+                 f"\n\n⚠️ CRITICAL INSTRUCTION ON WEEK 1: Because today is {day_name} (early in the week), "
+                 f"you MUST build a full 'Week 1' plan starting from today and ending on this Sunday. "
+                 f"Output `\"week_number\": 1` in your JSON plan."
+             )
+
+        if not is_first_plan:
+            system_content += (
+                f"\n\n🚫 FORBIDDEN: Do NOT repeat any task, concept, or exercise from the weeks above."
+                f"\n🚫 FORBIDDEN: Do NOT go back to beginner-level content already covered."
+                f"\n✅ REQUIRED: Week {next_week} must start from where Week {next_week - 1} ENDED and go FURTHER."
+                f"\n✅ REQUIRED: Every day in Week {next_week} must be HARDER or MORE ADVANCED than the corresponding day in Week {next_week - 1}."
+                f"\n\nIf the user adds a NEW topic in Week {next_week} that was NOT in previous weeks:"
+                f"\n  → Start that NEW topic at absolute beginner level (Day 1 of that topic)"
+                f"\n  → But keep existing topics advancing from where they were"
+            )
 
     # ── Inject weekly reviews so AI calibrates next week ────────────────────
     if week_reviews and len(week_reviews) > 0:
