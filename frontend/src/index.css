@@ -172,6 +172,7 @@ body {
   border-radius: 14px;
   transition: border-color 0.2s ease;
   width: 100%;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .chat-input-box:focus-within {
@@ -278,13 +279,146 @@ body {
 .orb-glow           { animation: orbGlow 4s ease-in-out infinite; }
 
 /* ============================================ */
+/* BOTTOM SHEET ANIMATIONS                     */
+/* ============================================ */
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.bottom-sheet-anim {
+  animation: slideUpSheet 0.4s var(--ease-spring) forwards;
+}
+
+.backdrop-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* ============================================ */
 /* RESPONSIVE                                   */
 /* ============================================ */
 
 @media (max-width: 768px) {
   :root {
     --sidebar-collapsed-width: 0px;
+    --sidebar-expanded-width: 280px; /* Wider for mobile drawer */
     --chat-max-width: 100%;
+  }
+
+  /* Force overlay styles for sidebar */
+  .sidebar-root {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1000 !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    width: var(--sidebar-expanded-width) !important;
+    visibility: hidden;
+  }
+
+  .sidebar-root.expanded {
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  /* Drawer backdrop */
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+  }
+
+  /* Mobile horizontal scroll container */
+  .mobile-horizontal-scroll {
+    flex-direction: row !important;
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 8px !important;
+    -webkit-overflow-scrolling: touch;
+    align-items: flex-start !important;
+  }
+
+  .mobile-horizontal-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* LockedWeeksPanel Mobile Overrides */
+  .locked-weeks-panel {
+    top: auto !important;
+    bottom: 20px !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    flex-direction: row !important;
+    border-radius: 14px !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(255,255,255,0.06) !important;
+    overflow-x: auto !important;
+    padding: 8px 12px !important;
+    background: rgba(10,10,10,0.95) !important;
+    justify-content: flex-start !important;
+  }
+
+  .locked-weeks-panel .week-group-col {
+    flex-direction: row !important;
+  }
+
+  .locked-weeks-panel .week-divider {
+    width: 1px !important;
+    height: 28px !important;
+    margin: 0 4px !important;
+  }
+
+  .week-drawer-mobile {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-height: 85vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    transform: translateY(100%) !important;
+    animation: slideUpSheet 0.4s var(--ease-spring) forwards !important;
+  }
+
+  /* Journey Page Responsive Grids */
+  .journey-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .journey-flex-col {
+    flex-direction: column !important;
+  }
+
+  .chart-scroll-container {
+    overflow-x: auto;
+    padding-bottom: 12px;
+  }
+
+  /* Hide element completely on mobile */
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .show-on-mobile {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .show-on-mobile {
+    display: none !important;
   }
 }
 

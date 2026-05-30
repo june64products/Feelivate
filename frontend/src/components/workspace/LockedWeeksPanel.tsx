@@ -78,13 +78,22 @@ function WeekDrawer({
 
     const r = report?.report;
 
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth <= 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
     return (
         <motion.div
             key={`drawer-${weekNumber}`}
-            initial={{ x: '100%', opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: '100%', opacity: 0 }}
+            initial={isMobile ? { y: '100%', opacity: 0 } : { x: '100%', opacity: 0 }}
+            animate={isMobile ? { y: 0, opacity: 1 } : { x: 0, opacity: 1 }}
+            exit={isMobile ? { y: '100%', opacity: 0 } : { x: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            className={isMobile ? 'week-drawer-mobile' : ''}
             style={{
                 position: 'fixed',
                 right: 60, // offset from the pill panel
@@ -310,16 +319,24 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
     const getReportForWeek = (wn: number): ArchivedWeekReport | null =>
         reports.find(r => r.week_number === wn) ?? null;
 
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     const selectedReport = selectedWeek !== null ? getReportForWeek(selectedWeek) : null;
     const isSelectedOngoing = selectedWeek === currentWeek;
 
     return (
-
         <>
             {/* ── Floating pill panel on right edge ── */}
             <motion.div
-                initial={{ x: 60, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
+                className="locked-weeks-panel"
+                initial={isMobile ? { y: 60, opacity: 0 } : { x: 60, opacity: 0 }}
+                animate={isMobile ? { y: 0, opacity: 1 } : { x: 0, opacity: 1 }}
                 transition={{ type: 'spring', damping: 22, stiffness: 250, delay: 0.1 }}
                 style={{
                     position: 'fixed',
@@ -350,7 +367,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
 
                     if (showGrouped) {
                         return (
-                            <div key={groupKey} style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', width: '100%' }}>
+                            <div key={groupKey} className="week-group-col" style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', width: '100%' }}>
                                 {/* Group toggle button */}
                                 <button
                                     onClick={() => toggleGroup(groupKey)}
@@ -380,6 +397,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                                 <AnimatePresence>
                                     {isGroupExpanded && (
                                         <motion.div
+                                            className="week-group-col"
                                             initial={{ height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
@@ -400,7 +418,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
 
                                 {/* Divider between groups */}
                                 {gi < groups.length - 1 && (
-                                    <div style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
+                                    <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
                                 )}
                             </div>
                         );
@@ -408,7 +426,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
 
                     // Less than 5 in group → show individually
                     return (
-                        <div key={groupKey} style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', width: '100%' }}>
+                        <div key={groupKey} className="week-group-col" style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', width: '100%' }}>
                             {group.weeks.map(w => (
                                 <WeekPill
                                     key={w.weekNumber}
@@ -418,7 +436,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                                 />
                             ))}
                             {gi < groups.length - 1 && (
-                                <div style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
+                                <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
                             )}
                         </div>
                     );

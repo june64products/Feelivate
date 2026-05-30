@@ -36,6 +36,13 @@ export default function WorkspacePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
+
+    // Auto-collapse sidebar on mobile
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+            setIsSidebarCollapsed(true);
+        }
+    }, []);
     const [view, setView] = useState<'chat' | 'journey'>('chat');
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -296,18 +303,28 @@ export default function WorkspacePage() {
             fontFamily: 'var(--font-sans)',
             overflow: 'hidden',
         }}>
+            {/* Sidebar Overlay Backdrop for Mobile */}
+            {!isSidebarCollapsed && (
+                <div 
+                    className="drawer-backdrop show-on-mobile" 
+                    onClick={() => setIsSidebarCollapsed(true)}
+                />
+            )}
+
             {/* Sidebar */}
-            <SessionSidebar
-                userId={userId || ''}
-                activeSessionId={activeSessionId}
-                onSelectSession={(id) => { handleSelectSession(id); setView('chat'); }}
-                onNewChat={() => { handleNewChat(); setView('chat'); }}
-                onJourney={() => setView('journey')}
-                isCollapsed={isSidebarCollapsed}
-                onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                refreshKey={sidebarRefreshKey}
-                isPlanActive={isPlanApproved}
-            />
+            <div className={`sidebar-root ${!isSidebarCollapsed ? 'expanded' : 'collapsed'}`}>
+                <SessionSidebar
+                    userId={userId || ''}
+                    activeSessionId={activeSessionId}
+                    onSelectSession={(id) => { handleSelectSession(id); setView('chat'); setIsSidebarCollapsed(true); }}
+                    onNewChat={() => { handleNewChat(); setView('chat'); setIsSidebarCollapsed(true); }}
+                    onJourney={() => { setView('journey'); setIsSidebarCollapsed(true); }}
+                    isCollapsed={isSidebarCollapsed}
+                    onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    refreshKey={sidebarRefreshKey}
+                    isPlanActive={isPlanApproved}
+                />
+            </div>
 
             {/* Floating Locked Weeks Panel — right edge, visible whenever plan is active */}
             {isPlanApproved && activeSessionId && (
@@ -427,19 +444,19 @@ export default function WorkspacePage() {
                     fontFamily: "'Inter', sans-serif"
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {isSidebarCollapsed && (
-                            <button
-                                onClick={() => setIsSidebarCollapsed(false)}
-                                style={{
-                                    width: '32px', height: '32px', borderRadius: '8px',
-                                    border: 'none', background: 'transparent',
-                                    color: '#a1a1aa', cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                }}
-                            >
-                                <PanelLeft size={18} />
-                            </button>
-                        )}
+                        {/* Always show hamburger on mobile; show only when collapsed on desktop */}
+                        <button
+                            className={isSidebarCollapsed ? '' : 'hide-on-mobile'}
+                            onClick={() => setIsSidebarCollapsed(false)}
+                            style={{
+                                width: '32px', height: '32px', borderRadius: '8px',
+                                border: 'none', background: 'transparent',
+                                color: '#a1a1aa', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                        >
+                            <PanelLeft size={18} />
+                        </button>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
