@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Calendar, PanelLeft, AlertCircle, MessageSquare, Code2, Palette } from 'lucide-react';
+import { Calendar, PanelLeft, AlertCircle, Sparkles } from 'lucide-react';
 import { 
     chatWithMentor, 
     approvePlan, 
@@ -18,11 +18,7 @@ import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
 import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 
-const CAPABILITIES = [
-    { icon: MessageSquare, title: "Deep Reflection", desc: "Understand your emotional patterns and past" },
-    { icon: Code2,         title: "Action Planning", desc: "Build structured week-by-week growth plans" },
-    { icon: Palette,       title: "Future Visioning", desc: "Craft a vivid picture of who you want to become" },
-];
+
 
 export default function WorkspacePage() {
     const navigate = useNavigate();
@@ -384,47 +380,56 @@ export default function WorkspacePage() {
                         )}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                         {isPlanApproved && (
                             <button
                                 onClick={() => setShowCalendarModal(true)}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '6px',
-                                    padding: '6px 12px', borderRadius: '8px',
-                                    border: '1px solid rgba(16, 185, 129, 0.3)',
-                                    background: 'rgba(16, 185, 129, 0.06)',
-                                    color: 'var(--accent-green)', fontSize: '12px',
+                                    padding: '6px 14px', borderRadius: '20px',
+                                    border: '1px solid rgba(74,222,128,0.25)',
+                                    background: 'rgba(74,222,128,0.05)',
+                                    color: '#4ade80', fontSize: '12.5px',
                                     fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
+                                    fontFamily: "'Inter', sans-serif",
                                 }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.12)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.06)'; }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.1)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.05)'; }}
                             >
-                                <Calendar size={13} />
+                                <Calendar size={12} />
                                 Calendar Sync
                             </button>
                         )}
-                        <button
-                            style={{
-                                padding: '8px 16px', borderRadius: '8px',
-                                background: '#fff', border: 'none',
-                                color: '#000', fontSize: '13px', fontWeight: 600,
-                                cursor: 'pointer', transition: 'all 0.2s',
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
-                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                        {/* Pricing */}
+                        <span style={{
+                            fontSize: '13.5px', color: '#71717a', cursor: 'pointer',
+                            fontWeight: 500, fontFamily: "'Inter', sans-serif",
+                            transition: 'color 0.15s',
+                        }}
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#a1a1aa'}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#71717a'}
                         >
+                            Pricing
+                        </span>
+
+                        {/* Upgrade */}
+                        <button className="upgrade-btn">
                             Upgrade
                         </button>
-                        <div 
+
+                        {/* User avatar with first+last initials */}
+                        <div
+                            className="user-avatar"
                             onClick={handleLogout}
-                            style={{
-                            width: '32px', height: '32px', borderRadius: '50%',
-                            background: '#d97757', display: 'flex',
-                            alignItems: 'center', justifyContent: 'center',
-                            color: '#fff', fontSize: '13px', fontWeight: 600,
-                            cursor: 'pointer'
-                        }}>
-                            {localStorage.getItem('user_name')?.charAt(0).toUpperCase() || 'U'}
+                            title="Logout"
+                        >
+                            {(() => {
+                                const name = localStorage.getItem('user_name') || '';
+                                const parts = name.trim().split(' ');
+                                const first = parts[0]?.[0]?.toUpperCase() || '';
+                                const last = parts.length > 1 ? parts[parts.length - 1][0]?.toUpperCase() : '';
+                                return first + last || 'U';
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -450,36 +455,45 @@ export default function WorkspacePage() {
                                 gap: '0px',
                             }}
                         >
-                            {/* Hero Text */}
+                            {/* Hero Text — Feelivate logo + greeting */}
                             <motion.div
-                                initial={{ opacity: 0, y: 24 }}
+                                initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                                style={{ textAlign: 'center', marginBottom: '40px', fontFamily: "'Inter', sans-serif" }}
+                                transition={{ duration: 0.65, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ textAlign: 'center', marginBottom: '36px', fontFamily: "'Inter', sans-serif" }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '24px' }}>
+                                {/* Logo + Name row */}
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    gap: '14px', marginBottom: '22px'
+                                }}>
                                     <div style={{
-                                        width: '40px', height: '40px', background: '#fff', borderRadius: '10px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+                                        width: '38px', height: '38px',
+                                        background: '#fff', borderRadius: '10px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        overflow: 'hidden', flexShrink: 0,
                                     }}>
-                                        <img src="/logo_2_backup.png" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+                                        <img
+                                            src="/logo_2_backup.png"
+                                            alt="Feelivate"
+                                            style={{ width: '26px', height: '26px', objectFit: 'contain' }}
+                                        />
                                     </div>
                                     <h1 style={{
-                                        fontSize: '32px',
-                                        fontWeight: 700,
-                                        letterSpacing: '-0.02em',
-                                        color: '#fff',
-                                        margin: 0
+                                        fontSize: '30px', fontWeight: 700,
+                                        letterSpacing: '-0.025em', color: '#f0f0f0', margin: 0,
                                     }}>
                                         FEELIVATE
                                     </h1>
                                 </div>
+
+                                {/* Personalised greeting */}
                                 <h2 style={{
-                                    fontSize: '28px',
-                                    color: '#ececec',
-                                    fontWeight: 500,
+                                    fontSize: '26px', fontWeight: 500,
+                                    color: '#a1a1aa',
                                     letterSpacing: '-0.01em',
-                                    margin: '0 auto',
+                                    margin: 0,
+                                    lineHeight: 1.3,
                                 }}>
                                     Hi {localStorage.getItem('user_name')?.split(' ')[0] || 'there'}, what's on your mind?
                                 </h2>
@@ -499,59 +513,7 @@ export default function WorkspacePage() {
                                 />
                             </motion.div>
 
-                            {/* Capabilities Grid */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(3, 1fr)',
-                                    gap: '12px',
-                                    width: '100%',
-                                    maxWidth: '720px',
-                                    padding: '0 16px',
-                                }}
-                            >
-                                {CAPABILITIES.map((item, i) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <motion.button
-                                            key={i}
-                                            onClick={() => handleSendMessage(`Tell me about ${item.title.toLowerCase()}`)}
-                                            whileHover={{ scale: 1.02, y: -2 }}
-                                            whileTap={{ scale: 0.98 }}
-                                            style={{
-                                                padding: '16px',
-                                                borderRadius: '14px',
-                                                border: '1px solid var(--border-subtle)',
-                                                background: 'var(--glass-surface)',
-                                                backdropFilter: 'blur(12px)',
-                                                textAlign: 'left',
-                                                cursor: 'pointer',
-                                                transition: 'border-color 0.2s, background 0.2s',
-                                                color: 'inherit',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.borderColor = 'var(--border-medium)';
-                                                e.currentTarget.style.background = 'var(--glass-hover)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                                                e.currentTarget.style.background = 'var(--glass-surface)';
-                                            }}
-                                        >
-                                            <Icon size={18} style={{ color: 'var(--accent-primary)', marginBottom: '8px' }} />
-                                            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                                                {item.title}
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                                                {item.desc}
-                                            </div>
-                                        </motion.button>
-                                    );
-                                })}
-                            </motion.div>
+                            {/* Capabilities Grid — removed to match Blackbox minimal */}
                         </motion.div>
                     ) : (
                         /* ─── CHAT STATE ─── */
