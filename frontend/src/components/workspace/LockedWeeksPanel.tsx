@@ -57,6 +57,7 @@ function MiniAnalysis({ label, content }: { label: string; content: string }) {
 function WeekDrawer({
     weekNumber,
     report,
+    isOngoing,
     isActiveCurrent,
     activePlan,
     drawerTop,
@@ -390,7 +391,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                                                     key={w.weekNumber}
                                                     item={w}
                                                     isSelected={selectedWeek === w.weekNumber}
-                                                    onClick={() => handleWeekClick(w.weekNumber)}
+                                                    onClick={(e) => handleWeekClick(w.weekNumber, e)}
                                                 />
                                             ))}
                                         </motion.div>
