@@ -1323,8 +1323,12 @@ async def get_today_emotion(
         .filter(VoiceJournal.user_id == user_id, VoiceJournal.date == today)
     )
     if session_id:
-        q = q.filter(VoiceJournal.session_id == session_id)
-    entry = q.order_by(VoiceJournal.created_at.desc()).first()
+        entry = q.filter(VoiceJournal.session_id == session_id).order_by(VoiceJournal.created_at.desc()).first()
+        # Fallback: old records may not have session_id stored
+        if not entry:
+            entry = q.order_by(VoiceJournal.created_at.desc()).first()
+    else:
+        entry = q.order_by(VoiceJournal.created_at.desc()).first()
     if not entry:
         return {"has_entry": False, "entry": None}
     return {
