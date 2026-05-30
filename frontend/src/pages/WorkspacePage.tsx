@@ -616,7 +616,6 @@ export default function WorkspacePage() {
                             <ChatWindow
                                 messages={messages}
                                 isLoading={isLoading}
-                                activePlan={activePlan}
                                 onApprovePlan={handleApprovePlan}
                                 onRequestPlanChange={handleRequestPlanChange}
                                 isPlanApproved={isPlanApproved}

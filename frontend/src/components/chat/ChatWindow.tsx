@@ -12,7 +12,6 @@ interface Message {
 interface ChatWindowProps {
     messages: Message[];
     isLoading: boolean;
-    activePlan: any | null;
     onApprovePlan: () => void;
     onRequestPlanChange: (feedback: string) => void;
     isPlanApproved: boolean;
@@ -21,7 +20,6 @@ interface ChatWindowProps {
 export default function ChatWindow({
     messages,
     isLoading,
-    activePlan,
     onApprovePlan,
     onRequestPlanChange,
     isPlanApproved,
