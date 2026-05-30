@@ -13,6 +13,7 @@ import {
     type WeekInfo,
     type ArchivedWeekReport,
 } from '../api';
+import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 
 // ─── Emotion color palette ────────────────────────────────────────────────────
 const EMOTION_COLORS: Record<string, string> = {
@@ -399,7 +400,14 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
         <div style={{
             flex: 1, display: 'flex', flexDirection: 'column', height: '100%',
             background: 'var(--bg-primary)', overflow: 'hidden',
+            position: 'relative',
         }}>
+            {/* Floating locked weeks panel — right edge */}
+            <LockedWeeksPanel
+                sessionId={sessionId}
+                currentWeek={weekInfo?.current_week ?? 1}
+                micLocked={micLocked}
+            />
             {/* ── Header ── */}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
