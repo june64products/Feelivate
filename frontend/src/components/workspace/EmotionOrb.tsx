@@ -38,10 +38,10 @@ export default function EmotionOrb({ emotion, onClick }: EmotionOrbProps) {
             transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
             title={`Today: ${label} (${score}/10) — ${emotion.one_liner}`}
             onClick={onClick}
+            className="emotion-orb-wrapper"
             style={{
                 position: 'absolute',
                 right: '18px',
-                bottom: '80px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',

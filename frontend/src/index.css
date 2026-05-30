@@ -161,6 +161,11 @@ body {
   width: auto;
 }
 
+/* Emotion Orb Default Position */
+.emotion-orb-wrapper {
+  bottom: 80px;
+}
+
 /* ============================================ */
 /* CHAT INPUT — Blackbox pill style            */
 /* ============================================ */
@@ -375,6 +380,10 @@ body {
 
   .locked-weeks-panel .week-group-col {
     flex-direction: row !important;
+  }
+
+  .emotion-orb-wrapper {
+    bottom: 160px !important;
   }
 
   .locked-weeks-panel .week-divider {

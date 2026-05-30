@@ -422,8 +422,9 @@ export default function WorkspacePage() {
 
                 {/* Header */}
                 <div style={{
-                    height: '56px',
-                    padding: '0 20px',
+                    minHeight: '56px',
+                    height: 'auto',
+                    padding: 'calc(env(safe-area-inset-top, 0px) + 8px) 20px 8px 20px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -469,7 +470,9 @@ export default function WorkspacePage() {
                             </button>
                         )}
                         {/* Pricing */}
-                        <span style={{
+                        <span 
+                            className="hide-on-mobile"
+                            style={{
                             fontSize: '13.5px', color: '#71717a', cursor: 'pointer',
                             fontWeight: 500, fontFamily: "'Inter', sans-serif",
                             transition: 'color 0.15s',
@@ -481,7 +484,7 @@ export default function WorkspacePage() {
                         </span>
 
                         {/* Upgrade */}
-                        <button className="upgrade-btn">
+                        <button className="upgrade-btn hide-on-mobile">
                             Upgrade
                         </button>
 
