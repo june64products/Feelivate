@@ -82,10 +82,25 @@ export default function WorkspacePage() {
             try {
                 setIsLoading(true);
                 const data = await getSessionDetail(activeSessionId);
-                setMessages(data.messages || []);
+                
+                const phase = data.phase;
+                let msgs: any[] = data.messages || [];
+                
+                // If there's an unapproved plan, attach it to the last assistant message
+                // so it gets rendered by ChatWindow
+                if (phase === 'planning' && data.plan && msgs.length > 0) {
+                    for (let i = msgs.length - 1; i >= 0; i--) {
+                        if (msgs[i].role === 'assistant') {
+                            msgs[i].plan = data.plan;
+                            break;
+                        }
+                    }
+                }
+                
+                setMessages(msgs);
                 setActivePlan(data.plan || null);
-                setIsPlanApproved(data.phase === 'active');
-                setIsSessionCompleted(data.phase === 'completed');
+                setIsPlanApproved(phase === 'active');
+                setIsSessionCompleted(phase === 'completed');
                 setSessionFocus(data.focus || '');
             } catch (err: any) {
                 console.error("Failed to load session details:", err);
