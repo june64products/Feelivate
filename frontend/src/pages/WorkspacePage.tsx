@@ -258,7 +258,6 @@ export default function WorkspacePage() {
                 activeSessionId={activeSessionId}
                 onSelectSession={(id) => { handleSelectSession(id); setView('chat'); }}
                 onNewChat={() => { handleNewChat(); setView('chat'); }}
-                onLogout={handleLogout}
                 onJourney={() => setView('journey')}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -359,8 +358,7 @@ export default function WorkspacePage() {
 
                 {/* Header */}
                 <div style={{
-                    height: '52px',
-                    borderBottom: '1px solid var(--border-subtle)',
+                    height: '56px',
                     padding: '0 20px',
                     display: 'flex',
                     alignItems: 'center',
@@ -368,45 +366,67 @@ export default function WorkspacePage() {
                     flexShrink: 0,
                     zIndex: 15,
                     position: 'relative',
+                    fontFamily: "'Inter', sans-serif"
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         {isSidebarCollapsed && (
                             <button
                                 onClick={() => setIsSidebarCollapsed(false)}
                                 style={{
                                     width: '32px', height: '32px', borderRadius: '8px',
                                     border: 'none', background: 'transparent',
-                                    color: 'var(--text-muted)', cursor: 'pointer',
+                                    color: '#a1a1aa', cursor: 'pointer',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    marginRight: '8px',
                                 }}
                             >
-                                <PanelLeft size={16} />
+                                <PanelLeft size={18} />
                             </button>
                         )}
-                        <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                            Feelivate Workspace
-                        </span>
                     </div>
 
-                    {isPlanApproved && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        {isPlanApproved && (
+                            <button
+                                onClick={() => setShowCalendarModal(true)}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                    padding: '6px 12px', borderRadius: '8px',
+                                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                                    background: 'rgba(16, 185, 129, 0.06)',
+                                    color: 'var(--accent-green)', fontSize: '12px',
+                                    fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.12)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.06)'; }}
+                            >
+                                <Calendar size={13} />
+                                Calendar Sync
+                            </button>
+                        )}
                         <button
-                            onClick={() => setShowCalendarModal(true)}
                             style={{
-                                display: 'flex', alignItems: 'center', gap: '6px',
-                                padding: '6px 12px', borderRadius: '8px',
-                                border: '1px solid rgba(16, 185, 129, 0.3)',
-                                background: 'rgba(16, 185, 129, 0.06)',
-                                color: 'var(--accent-green)', fontSize: '12px',
-                                fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
+                                padding: '8px 16px', borderRadius: '8px',
+                                background: '#fff', border: 'none',
+                                color: '#000', fontSize: '13px', fontWeight: 600,
+                                cursor: 'pointer', transition: 'all 0.2s',
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.12)'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.06)'; }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                         >
-                            <Calendar size={13} />
-                            Sync to Google Calendar
+                            Upgrade
                         </button>
-                    )}
+                        <div 
+                            onClick={handleLogout}
+                            style={{
+                            width: '32px', height: '32px', borderRadius: '50%',
+                            background: '#d97757', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center',
+                            color: '#fff', fontSize: '13px', fontWeight: 600,
+                            cursor: 'pointer'
+                        }}>
+                            {localStorage.getItem('user_name')?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                    </div>
                 </div>
 
                 {/* ─── EMPTY STATE: Cinematic Hero ─── */}
@@ -435,32 +455,34 @@ export default function WorkspacePage() {
                                 initial={{ opacity: 0, y: 24 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                                style={{ textAlign: 'center', marginBottom: '48px' }}
+                                style={{ textAlign: 'center', marginBottom: '40px', fontFamily: "'Inter', sans-serif" }}
                             >
-                                <h1 style={{
-                                    fontSize: 'clamp(36px, 6vw, 64px)',
-                                    fontWeight: 700,
-                                    letterSpacing: '-0.03em',
-                                    lineHeight: 1.1,
-                                    marginBottom: '16px',
-                                    background: 'linear-gradient(135deg, #ececec 30%, rgba(236,236,236,0.45) 100%)',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    backgroundClip: 'text',
-                                }}>
-                                    How can I help?
-                                </h1>
-                                <p style={{
-                                    fontSize: '17px',
-                                    color: 'var(--text-muted)',
-                                    fontWeight: 300,
-                                    letterSpacing: '0.01em',
-                                    maxWidth: '420px',
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '24px' }}>
+                                    <div style={{
+                                        width: '40px', height: '40px', background: '#fff', borderRadius: '10px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+                                    }}>
+                                        <img src="/logo_2_backup.png" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+                                    </div>
+                                    <h1 style={{
+                                        fontSize: '32px',
+                                        fontWeight: 700,
+                                        letterSpacing: '-0.02em',
+                                        color: '#fff',
+                                        margin: 0
+                                    }}>
+                                        FEELIVATE
+                                    </h1>
+                                </div>
+                                <h2 style={{
+                                    fontSize: '28px',
+                                    color: '#ececec',
+                                    fontWeight: 500,
+                                    letterSpacing: '-0.01em',
                                     margin: '0 auto',
-                                    lineHeight: 1.6,
                                 }}>
-                                    Your AI-powered guide to emotional growth and behavioral transformation.
-                                </p>
+                                    Hi {localStorage.getItem('user_name')?.split(' ')[0] || 'there'}, what's on your mind?
+                                </h2>
                             </motion.div>
 
                             {/* Radiant Input — centered hero position */}

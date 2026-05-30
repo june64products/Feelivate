@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStreak, submitCheckin, type StreakData } from '../../api';
+import { Flame, Check, X as Close, TrendingUp } from 'lucide-react';
 
 interface StreakBarProps {
     userId: string;
@@ -68,55 +69,58 @@ export default function StreakBar({ userId, sessionId, isPlanActive }: StreakBar
 
     return (
         <div style={{
-            padding: '12px 16px',
-            borderTop: '1px solid var(--border-subtle)',
-            background: 'var(--bg-secondary)',
+            padding: '16px',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            background: 'transparent',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
         }}>
             {/* Streak header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <AnimatePresence>
                         {showCelebration && (
-                            <motion.span
-                                initial={{ scale: 0, rotate: -20 }}
-                                animate={{ scale: 1.4, rotate: 0 }}
-                                exit={{ scale: 0 }}
+                            <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
                                 transition={{ type: 'spring', stiffness: 400 }}
-                                style={{ fontSize: '18px' }}
+                                style={{ color: '#fff' }}
                             >
-                                🎉
-                            </motion.span>
+                                <Check size={16} color="#4ade80" />
+                            </motion.div>
                         )}
                     </AnimatePresence>
-                    <span style={{ fontSize: '16px' }}>🔥</span>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {currentStreak} day{currentStreak !== 1 ? 's' : ''}
+                    {!showCelebration && <Flame size={16} color={currentStreak > 0 ? '#d97757' : '#555'} />}
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', fontFamily: "'Inter', sans-serif" }}>
+                        {currentStreak} Day Streak
                     </span>
                 </div>
-                <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500 }}>
-                    Best: {streak?.longest_streak ?? 0}
+                <span style={{ fontSize: '11px', color: '#9c9a92', fontWeight: 500, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <TrendingUp size={12} /> Best: {streak?.longest_streak ?? 0}
                 </span>
             </div>
 
             {/* 7-day strip */}
-            <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '4px' }}>
                 {days.map((d) => {
                     const isToday = d.date === today;
                     const statusColor =
-                        d.status === 'done' ? 'rgba(16,185,129,0.8)' :
-                        d.status === 'skipped' ? 'rgba(245,158,11,0.6)' :
-                        isToday ? 'rgba(192,132,252,0.3)' : 'rgba(255,255,255,0.06)';
+                        d.status === 'done' ? '#ffffff' :
+                        d.status === 'skipped' ? 'rgba(255,255,255,0.2)' :
+                        isToday ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.08)';
                     return (
                         <motion.div
                             key={d.date}
-                            whileHover={{ scale: 1.15 }}
+                            whileHover={{ scale: 1.1 }}
                             title={`${d.date} — ${d.status}`}
                             style={{
                                 flex: 1,
-                                height: '6px',
-                                borderRadius: '3px',
+                                height: '4px',
+                                borderRadius: '2px',
                                 background: statusColor,
-                                border: isToday ? '1px solid rgba(192,132,252,0.5)' : 'none',
+                                border: isToday ? '1px solid rgba(255,255,255,0.6)' : 'none',
                                 transition: 'background 0.3s',
                             }}
                         />
@@ -126,43 +130,45 @@ export default function StreakBar({ userId, sessionId, isPlanActive }: StreakBar
 
             {/* Today's check-in buttons */}
             {todayStatus === 'pending' ? (
-                <div style={{ display: 'flex', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
                     <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.97 }}
+                        whileHover={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => handleCheckin('done')}
                         disabled={checkinLoading}
                         style={{
                             flex: 1,
-                            padding: '7px 0',
+                            padding: '8px 0',
                             borderRadius: '8px',
-                            border: '1px solid rgba(16,185,129,0.3)',
-                            background: 'rgba(16,185,129,0.08)',
-                            color: 'var(--accent-green)',
-                            fontSize: '11px',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            background: 'transparent',
+                            color: '#fff',
+                            fontSize: '12px',
                             fontWeight: 600,
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '4px',
+                            gap: '6px',
+                            fontFamily: "'Inter', sans-serif"
                         }}
                     >
-                        ✅ Done today
+                        <Check size={14} /> Done
                     </motion.button>
                     <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.97 }}
+                        whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => handleCheckin('skipped')}
                         disabled={checkinLoading}
                         style={{
-                            padding: '7px 10px',
+                            padding: '8px 12px',
                             borderRadius: '8px',
-                            border: '1px solid var(--border-subtle)',
+                            border: '1px solid transparent',
                             background: 'transparent',
-                            color: 'var(--text-muted)',
-                            fontSize: '11px',
+                            color: '#9c9a92',
+                            fontSize: '12px',
                             cursor: 'pointer',
+                            fontFamily: "'Inter', sans-serif"
                         }}
                     >
                         Skip
@@ -170,18 +176,28 @@ export default function StreakBar({ userId, sessionId, isPlanActive }: StreakBar
                 </div>
             ) : (
                 <div style={{
-                    padding: '6px 10px',
+                    padding: '8px',
                     borderRadius: '8px',
-                    background: todayStatus === 'done' ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.06)',
-                    border: `1px solid ${todayStatus === 'done' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.06)',
                     fontSize: '11px',
-                    color: todayStatus === 'done' ? 'var(--accent-green)' : 'rgb(245,158,11)',
+                    color: '#9c9a92',
                     textAlign: 'center',
                     fontWeight: 500,
+                    fontFamily: "'Inter', sans-serif",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
                 }}>
-                    {todayStatus === 'done' ? '✅ Today marked done!' : '⏭️ Skipped today'}
+                    {todayStatus === 'done' ? (
+                        <><Check size={12} color="#fff" /> Completed today</>
+                    ) : (
+                        <><Close size={12} /> Skipped today</>
+                    )}
                 </div>
             )}
         </div>
     );
 }
+

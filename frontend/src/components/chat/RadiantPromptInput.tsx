@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Plus, Mic, MicOff, ArrowUp, Loader2 } from 'lucide-react';
+import { Paperclip, Mic, MicOff, ArrowUp, Loader2, Settings2 } from 'lucide-react';
 import { transcribeAudio } from '../../api';
 
 export interface RadiantPromptInputProps {
@@ -12,7 +12,7 @@ export interface RadiantPromptInputProps {
 }
 
 export default function RadiantPromptInput({
-    placeholder = "Ask anything...",
+    placeholder = "Message Feelivate...",
     value: propValue,
     onChange: propOnChange,
     onSubmit,
@@ -62,7 +62,6 @@ export default function RadiantPromptInput({
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            // Pick best supported MIME type
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
                 ? 'audio/webm;codecs=opus'
                 : MediaRecorder.isTypeSupported('audio/webm')
@@ -77,9 +76,7 @@ export default function RadiantPromptInput({
             };
 
             recorder.onstop = async () => {
-                // Stop all tracks to release mic
                 stream.getTracks().forEach(t => t.stop());
-
                 const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
                 if (audioBlob.size < 1000) {
                     setMicError("Too short — hold and speak!");
@@ -93,7 +90,6 @@ export default function RadiantPromptInput({
                         const newVal = (value ? value + ' ' : '') + text;
                         if (!isControlled) setInternalValue(newVal);
                         propOnChange?.(newVal);
-                        // Resize textarea
                         setTimeout(() => {
                             if (textareaRef.current) {
                                 textareaRef.current.style.height = 'auto';
@@ -129,54 +125,45 @@ export default function RadiantPromptInput({
         if (disabled) return;
         if (isRecording) stopRecording();
         else startRecording();
-        // Clear error on next click
         if (micError) setMicError(null);
     };
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', position: 'relative', width: '100%' }} className={className}>
+        <div style={{ maxWidth: '820px', margin: '0 auto', position: 'relative', width: '100%', fontFamily: "'Inter', sans-serif" }} className={className}>
             <div
-                className="radiant-input-wrapper"
                 style={{
                     position: 'relative',
-                    borderRadius: '9999px',
-                    background: 'var(--bg-surface)',
-                    transition: 'all 0.3s ease',
-                    boxShadow: isFocused ? '0 8px 32px rgba(192, 132, 252, 0.15)' : '0 4px 12px rgba(0,0,0,0.05)',
+                    borderRadius: '16px',
+                    background: '#161616', // Dark sleek background like Blackbox
+                    border: isFocused ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.08)',
+                    transition: 'border-color 0.2s ease',
                 }}
             >
-                {/* Animated Gradient Border */}
-                <div className="radiant-input-border" style={{ borderRadius: '9999px' }} />
-
-                {/* Inner Content */}
                 <div style={{
-                    position: 'relative',
-                    zIndex: 10,
                     display: 'flex',
                     alignItems: 'flex-end',
                     gap: '8px',
-                    padding: '8px 8px 8px 16px',
+                    padding: '10px 12px 10px 16px',
                     minHeight: '56px',
-                    background: 'var(--bg-surface)',
-                    borderRadius: '9999px',
                 }}>
 
-                    {/* Add Button */}
+                    {/* Paperclip Button */}
                     <button
                         type="button"
                         disabled={disabled}
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: '40px', height: '40px', borderRadius: '50%',
+                            width: '32px', height: '32px', borderRadius: '8px',
                             background: 'transparent', border: 'none',
-                            color: 'var(--text-muted)', cursor: disabled ? 'not-allowed' : 'pointer',
+                            color: '#a1a1aa', cursor: disabled ? 'not-allowed' : 'pointer',
                             transition: 'all 0.2s', flexShrink: 0,
+                            marginBottom: '2px'
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.background = 'var(--glass-hover)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1aa'; e.currentTarget.style.background = 'transparent'; }}
                         aria-label="Add attachment"
                     >
-                        <Plus size={20} strokeWidth={2} />
+                        <Paperclip size={18} />
                     </button>
 
                     {/* Text Input */}
@@ -197,102 +184,101 @@ export default function RadiantPromptInput({
                         style={{
                             flex: 1,
                             background: 'transparent', border: 'none', outline: 'none',
-                            color: isRecording ? '#f87171' : 'var(--text-primary)',
-                            fontSize: '16px', fontWeight: 300, letterSpacing: '0.01em',
+                            color: isRecording ? '#f87171' : '#fff',
+                            fontSize: '14.5px', fontWeight: 400,
                             lineHeight: '1.5', resize: 'none',
-                            minHeight: '24px', maxHeight: '150px',
-                            padding: '8px 0',
-                            fontFamily: 'var(--font-sans)', overflowY: 'auto',
+                            minHeight: '24px', maxHeight: '200px',
+                            padding: '6px 0',
+                            fontFamily: "'Inter', sans-serif", overflowY: 'auto',
                             transition: 'color 0.2s',
                         }}
                     />
 
                     {/* Right Actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                        
+                        {/* Fake Model Selector for aesthetics */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            padding: '4px 8px', borderRadius: '6px',
+                            background: 'transparent', cursor: 'pointer',
+                            color: '#a1a1aa', fontSize: '12px', fontWeight: 500,
+                            border: '1px solid transparent',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#fff'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#a1a1aa'; }}
+                        >
+                            <Settings2 size={14} /> Models
+                        </div>
 
-                        {/* Mic Error Tooltip */}
                         {micError && (
-                            <span style={{
-                                fontSize: '11px', color: '#f87171',
-                                whiteSpace: 'nowrap', marginRight: '4px',
-                                animation: 'fadeInUp 0.3s ease',
-                            }}>
+                            <span style={{ fontSize: '11px', color: '#f87171', whiteSpace: 'nowrap' }}>
                                 {micError}
                             </span>
                         )}
 
-                        {/* Mic Button */}
+                        {/* Mic Button - White pill style when recording, otherwise sleek icon */}
                         <button
                             type="button"
                             onClick={handleMicClick}
                             disabled={disabled || isTranscribing}
-                            className={isRecording ? 'mic-recording' : ''}
                             style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                width: '40px', height: '40px', borderRadius: '50%',
+                                width: '32px', height: '32px', borderRadius: '50%',
                                 border: 'none', cursor: (disabled || isTranscribing) ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                                flexShrink: 0,
-                                background: isRecording
-                                    ? 'rgba(239, 68, 68, 0.15)'
-                                    : isTranscribing
-                                        ? 'rgba(192, 132, 252, 0.12)'
-                                        : 'transparent',
-                                color: isRecording
-                                    ? '#f87171'
-                                    : isTranscribing
-                                        ? 'var(--accent-primary)'
-                                        : 'var(--text-muted)',
+                                transition: 'all 0.2s', flexShrink: 0,
+                                background: isRecording ? '#fff' : 'transparent',
+                                color: isRecording ? '#000' : isTranscribing ? '#fff' : '#a1a1aa',
                             }}
                             onMouseEnter={(e) => {
                                 if (!isRecording && !isTranscribing && !disabled) {
-                                    e.currentTarget.style.color = 'var(--text-primary)';
-                                    e.currentTarget.style.background = 'var(--glass-hover)';
+                                    e.currentTarget.style.color = '#fff';
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
                                 }
                             }}
                             onMouseLeave={(e) => {
                                 if (!isRecording && !isTranscribing) {
-                                    e.currentTarget.style.color = 'var(--text-muted)';
+                                    e.currentTarget.style.color = '#a1a1aa';
                                     e.currentTarget.style.background = 'transparent';
                                 }
                             }}
-                            aria-label={isRecording ? "Stop recording" : "Use microphone"}
                         >
                             {isTranscribing
-                                ? <Loader2 size={20} strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }} />
+                                ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
                                 : isRecording
-                                    ? <MicOff size={20} strokeWidth={2} />
-                                    : <Mic size={20} strokeWidth={2} />
+                                    ? <MicOff size={16} />
+                                    : <Mic size={16} />
                             }
                         </button>
 
-                        {/* Submit Button */}
+                        {/* Submit Button - White pill like the waveform button in blackbox */}
                         <button
                             type="button"
                             onClick={handleSubmit}
                             disabled={!value.trim() || disabled || isRecording || isTranscribing}
                             style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                width: '40px', height: '40px', borderRadius: '50%',
-                                background: value.trim() && !isRecording ? 'var(--text-primary)' : 'var(--bg-input)',
-                                color: value.trim() && !isRecording ? 'var(--bg-primary)' : 'var(--text-muted)',
+                                width: '32px', height: '32px', borderRadius: '50%',
+                                background: value.trim() && !isRecording ? '#fff' : 'rgba(255,255,255,0.05)',
+                                color: value.trim() && !isRecording ? '#000' : '#a1a1aa',
                                 border: 'none',
                                 cursor: (value.trim() && !disabled && !isRecording && !isTranscribing) ? 'pointer' : 'not-allowed',
-                                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                                transition: 'all 0.2s',
                                 flexShrink: 0,
-                                transform: (value.trim() && !isRecording) ? 'scale(1)' : 'scale(0.95)',
-                                opacity: (value.trim() && !isRecording) ? 1 : 0.6,
-                                boxShadow: (value.trim() && !isRecording) ? '0 4px 12px rgba(255,255,255,0.1)' : 'none',
                             }}
                             onMouseEnter={(e) => {
-                                if (value.trim() && !disabled && !isRecording) e.currentTarget.style.transform = 'scale(1.05)';
+                                if (value.trim() && !disabled && !isRecording) {
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                }
                             }}
                             onMouseLeave={(e) => {
-                                if (value.trim() && !isRecording) e.currentTarget.style.transform = 'scale(1)';
+                                if (value.trim() && !isRecording) {
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                }
                             }}
-                            aria-label="Send message"
                         >
-                            <ArrowUp size={22} strokeWidth={2.5} />
+                            <ArrowUp size={18} strokeWidth={2.5} />
                         </button>
                     </div>
                 </div>
@@ -301,23 +287,12 @@ export default function RadiantPromptInput({
             {/* Recording status bar */}
             {isRecording && (
                 <div style={{
-                    marginTop: '10px',
+                    marginTop: '8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '10px',
-                    animation: 'fadeInUp 0.3s ease',
+                    gap: '8px',
                 }}>
-                    {/* Live waveform dots */}
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        {[0, 1, 2, 3, 4].map(i => (
-                            <div
-                                key={i}
-                                className="mic-wave-bar"
-                                style={{ animationDelay: `${i * 0.12}s` }}
-                            />
-                        ))}
-                    </div>
                     <span style={{ fontSize: '12px', color: '#f87171', fontWeight: 500 }}>
                         Recording... click mic to stop
                     </span>
