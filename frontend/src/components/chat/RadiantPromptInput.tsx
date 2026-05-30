@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Paperclip, Mic, MicOff, ArrowUp, Loader2, ChevronDown } from 'lucide-react';
+import { Paperclip, Mic, MicOff, ArrowUp, Loader2, SlidersHorizontal, X } from 'lucide-react';
 import { transcribeAudio } from '../../api';
 
 export interface RadiantPromptInputProps {
@@ -27,6 +27,8 @@ export default function RadiantPromptInput({
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [micError, setMicError] = useState<string | null>(null);
+    const [showModels, setShowModels] = useState(false);
+    const [selectedModel, setSelectedModel] = useState('Groq Llama 3.3');
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -206,36 +208,102 @@ export default function RadiantPromptInput({
                     />
                 </div>
 
-                {/* Bottom row: Models + Mic + Send */}
+                {/* Bottom row: Settings + Mic + Send */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '6px 10px 10px 12px',
+                    position: 'relative',
                 }}>
-                    {/* Left: Models selector */}
-                    <div
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '4px',
-                            padding: '4px 10px', borderRadius: '8px',
-                            background: 'transparent', cursor: 'pointer',
-                            color: '#555', fontSize: '12.5px', fontWeight: 500,
-                            border: '1px solid transparent',
-                            transition: 'all 0.15s', userSelect: 'none',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                            e.currentTarget.style.color = '#aaa';
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                            e.currentTarget.style.color = '#555';
-                            e.currentTarget.style.borderColor = 'transparent';
-                        }}
-                    >
-                        Select Models
-                        <ChevronDown size={12} strokeWidth={2} style={{ marginLeft: '2px' }} />
+                    {/* Left: Model settings popup trigger */}
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => setShowModels(prev => !prev)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                padding: '4px 10px', borderRadius: '8px',
+                                background: showModels ? 'rgba(255,255,255,0.07)' : 'transparent',
+                                border: '1px solid transparent',
+                                color: '#555', cursor: disabled ? 'not-allowed' : 'pointer',
+                                fontSize: '12.5px', fontWeight: 500,
+                                transition: 'all 0.15s', userSelect: 'none',
+                                fontFamily: "'Inter', sans-serif",
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!showModels) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.color = '#aaa';
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!showModels) e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = showModels ? '#aaa' : '#555';
+                            }}
+                            aria-label="Select model"
+                        >
+                            <SlidersHorizontal size={14} />
+                            <span style={{ color: '#666', fontSize: '12px' }}>{selectedModel}</span>
+                        </button>
+
+                        {/* Model popup */}
+                        {showModels && (
+                            <div style={{
+                                position: 'absolute', bottom: 'calc(100% + 10px)', left: 0,
+                                background: '#161616',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '14px', padding: '8px',
+                                width: '220px', boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+                                zIndex: 100,
+                            }}>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '6px 8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                    marginBottom: '4px',
+                                }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                                        Model
+                                    </span>
+                                    <button
+                                        onClick={() => setShowModels(false)}
+                                        style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex' }}
+                                    >
+                                        <X size={13} />
+                                    </button>
+                                </div>
+                                {[
+                                    { name: 'Groq Llama 3.3', tag: 'Fast', color: '#60a5fa' },
+                                    { name: 'GPT-4o Mini', tag: 'Balanced', color: '#a78bfa' },
+                                    { name: 'OSS 120B', tag: 'Deep', color: '#fbbf24' },
+                                ].map((m) => (
+                                    <button
+                                        key={m.name}
+                                        onClick={() => { setSelectedModel(m.name); setShowModels(false); }}
+                                        style={{
+                                            width: '100%', display: 'flex', alignItems: 'center',
+                                            justifyContent: 'space-between', padding: '9px 10px',
+                                            borderRadius: '9px', border: 'none',
+                                            background: selectedModel === m.name ? 'rgba(255,255,255,0.06)' : 'transparent',
+                                            color: selectedModel === m.name ? '#e4e4e7' : '#71717a',
+                                            cursor: 'pointer', fontSize: '13px', fontWeight: 500,
+                                            fontFamily: "'Inter', sans-serif",
+                                            transition: 'all 0.12s',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                                        onMouseLeave={e => { if (selectedModel !== m.name) e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        {m.name}
+                                        <span style={{
+                                            fontSize: '10px', fontWeight: 600, color: m.color,
+                                            background: `${m.color}18`, padding: '2px 7px',
+                                            borderRadius: '6px',
+                                        }}>
+                                            {m.tag}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Right: Mic error + Mic + Send */}

@@ -434,13 +434,17 @@ async def approve_plan(
         logger.warning(f"Could not save plan to history: {e}")
     
     session_rec.phase = "active"
+    # Store when plan was first approved (only for week 1 — don't overwrite for subsequent weeks)
+    from datetime import date as _date
+    if not session_rec.plan_start_date:
+        session_rec.plan_start_date = _date.today().isoformat()
     db.commit()
     
     # Add a system message to the chat
     system_msg = ChatMessage(
         session_id=session_id,
         role="assistant",
-        content=f"✅ Week {session_rec.current_week} plan approved and locked! Let's do this. How are you feeling about Day 1?"
+        content=f"Week {session_rec.current_week} plan approved and locked! Let's do this. How are you feeling about Day 1?"
     )
     db.add(system_msg)
     db.commit()
@@ -448,6 +452,7 @@ async def approve_plan(
     return {
         "status": "approved",
         "week": session_rec.current_week,
+        "plan_start_date": session_rec.plan_start_date,
         "message": f"Week {session_rec.current_week} plan is now active!"
     }
 
@@ -848,10 +853,14 @@ async def get_streak(
 
     streak_rec = db.query(UserStreak).filter(UserStreak.user_id == user_id).first()
 
-    # Build last 7 days checkin map
+    # Build Mon–Sun of the CURRENT calendar week (not rolling 7 days)
+    from datetime import date, timedelta
+    today_d = date.today()
+    # weekday(): Monday=0, Sunday=6
+    week_monday = today_d - timedelta(days=today_d.weekday())
     days = []
-    for i in range(6, -1, -1):  # 6 days ago → today
-        d = (date.today() - timedelta(days=i)).isoformat()
+    for i in range(7):  # Mon(0) → Sun(6)
+        d = (week_monday + timedelta(days=i)).isoformat()
         checkin = (
             db.query(DailyCheckin)
             .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == d)
@@ -907,6 +916,251 @@ async def submit_weekly_review(
 
 
 # ============================================================
+# WEEK INFO — session-scoped week bounds
+# ============================================================
+
+def _get_week_bounds(plan_start_date_str: str, week_number: int):
+    """
+    Given the plan_start_date (ISO string) and a week_number (0, 1, 2, ...),
+    return (week_start: str, week_end: str, day_count: int).
+
+    Rules:
+      - Day of week: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+      - If plan started Mon/Tue/Wed (weekday <= 2):
+          Week 1 = plan_start_date → that Sunday
+          Week 2+ = standard Mon–Sun
+      - If plan started Thu/Fri/Sat/Sun (weekday >= 3):
+          Week 0 = plan_start_date → that Sunday (partial)
+          Week 1 = next Monday → next Sunday (full)
+          Week 2+ = standard Mon–Sun after that
+    """
+    from datetime import date, timedelta
+    plan_start = date.fromisoformat(plan_start_date_str)
+    dow = plan_start.weekday()  # 0=Mon, 6=Sun
+
+    if dow <= 2:  # Mon/Tue/Wed — direct Week 1 start
+        has_week0 = False
+        w1_start = plan_start
+        # End of week 1 = that Sunday
+        days_to_sunday = 6 - dow
+        w1_end = plan_start + timedelta(days=days_to_sunday)
+    else:  # Thu/Fri/Sat/Sun — Week 0 exists
+        has_week0 = True
+        w0_start = plan_start
+        days_to_sunday = 6 - dow
+        w0_end = plan_start + timedelta(days=days_to_sunday)
+        # Week 1 starts next Monday
+        w1_start = w0_end + timedelta(days=1)
+        w1_end = w1_start + timedelta(days=6)
+
+    if week_number == 0:
+        if not has_week0:
+            # No week 0 exists for Mon/Tue/Wed starters; return week 1 instead
+            ws, we = w1_start, w1_end
+        else:
+            ws, we = w0_start, w0_end
+    elif week_number == 1:
+        ws, we = w1_start, w1_end
+    else:
+        # Week 2, 3, ... = Mon–Sun blocks starting from w1_end + 1
+        offset_weeks = week_number - 1  # weeks after week 1
+        next_monday = w1_end + timedelta(days=1)
+        ws = next_monday + timedelta(weeks=offset_weeks - 1)
+        we = ws + timedelta(days=6)
+
+    day_count = (we - ws).days + 1
+    return ws.isoformat(), we.isoformat(), day_count
+
+
+@app.get("/sessions/{session_id}/week-info", tags=["sessions"])
+async def get_week_info(
+    session_id: str,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the current week's date bounds and completion status for the session."""
+    from datetime import date
+    session_rec = db.query(Session).filter(Session.id == session_id).first()
+    if not session_rec or session_rec.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if not session_rec.plan_start_date:
+        return {"has_plan": False, "current_week": 0}
+
+    current_week = session_rec.current_week or 1
+    ws, we, day_count = _get_week_bounds(session_rec.plan_start_date, current_week)
+    today = date.today().isoformat()
+    is_week_complete = today > we
+
+    return {
+        "has_plan": True,
+        "current_week": current_week,
+        "plan_start_date": session_rec.plan_start_date,
+        "week_start": ws,
+        "week_end": we,
+        "day_count": day_count,
+        "is_week_complete": is_week_complete,
+        "is_completed": bool(session_rec.is_completed),
+    }
+
+
+# ============================================================
+# SESSION COMPLETION
+# ============================================================
+
+@app.post("/sessions/{session_id}/complete", tags=["sessions"])
+async def complete_session(
+    session_id: str,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Mark a session as complete. Generate a final aggregated report covering
+    all weeks, total checkins, emotional arc, and highlights.
+    """
+    from datetime import date
+    from .llm import call_llm
+
+    session_rec = db.query(Session).filter(Session.id == session_id).first()
+    if not session_rec or session_rec.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Gather all weekly reports for this session
+    weekly_reports = (
+        db.query(WeeklyReport)
+        .filter(WeeklyReport.session_id == session_id)
+        .order_by(WeeklyReport.week_number.asc())
+        .all()
+    )
+
+    # Count checkins
+    checkins = (
+        db.query(DailyCheckin)
+        .filter(DailyCheckin.session_id == session_id)
+        .all()
+    )
+    done_count = sum(1 for c in checkins if c.status == "done")
+    total_count = len(checkins)
+
+    # Journals for this session
+    journals = (
+        db.query(VoiceJournal)
+        .filter(VoiceJournal.session_id == session_id)
+        .order_by(VoiceJournal.date.asc())
+        .all()
+    )
+
+    # Build summary context for the AI
+    weeks_summary = []
+    for wr in weekly_reports:
+        try:
+            rd = json.loads(wr.report_json)
+            weeks_summary.append({
+                "week": wr.week_number,
+                "start": wr.week_start,
+                "end": wr.week_end,
+                "consistency": rd.get("consistency_score", 0),
+                "avg_score": rd.get("avg_score", 0),
+                "dominant_emotion": rd.get("dominant_emotion", "neutral"),
+                "what_went_well": rd.get("what_went_well", ""),
+                "where_you_slipped": rd.get("where_you_slipped", ""),
+            })
+        except Exception:
+            pass
+
+    emotion_labels = [j.emotion_label for j in journals if j.emotion_label]
+    avg_emotion_score = round(sum(j.emotion_score or 0 for j in journals) / max(len(journals), 1), 1)
+
+    # Ask LLM to generate final session summary
+    context = json.dumps({
+        "total_weeks": session_rec.current_week,
+        "days_done": done_count,
+        "days_total": total_count,
+        "avg_emotion_score": avg_emotion_score,
+        "emotion_labels": emotion_labels,
+        "weeks": weeks_summary,
+        "focus": session_rec.focus or "",
+    })
+
+    prompt = (
+        f"You are a mentor writing a final summary report for a user who has completed their transformation plan.\n"
+        f"Context: {context}\n\n"
+        f"Write a warm, insightful final report in JSON format:\n"
+        f"{{\"headline\": \"1-line summary of their journey\","
+        f" \"biggest_wins\": [\"list of 3 biggest achievements\"],"
+        f" \"growth_arc\": \"2-3 sentences describing their emotional and performance arc\","
+        f" \"advice_for_next_chapter\": \"1-2 sentences of forward-looking advice\","
+        f" \"stats\": {{\"total_weeks\": N, \"days_done\": N, \"days_total\": N, \"avg_mood\": N}}}}"
+    )
+
+    try:
+        raw = await asyncio.to_thread(call_llm, prompt, temperature=0.7, max_tokens=600)
+        raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
+        start = raw.find("{")
+        end = raw.rfind("}")
+        report_data = json.loads(raw[start:end + 1]) if start != -1 else {}
+    except Exception as e:
+        logger.warning(f"Final report generation failed: {e}")
+        report_data = {
+            "headline": f"Completed {session_rec.current_week} week plan",
+            "biggest_wins": ["Showed up consistently", "Built self-awareness", "Stayed committed"],
+            "growth_arc": "You committed to the process and saw it through.",
+            "advice_for_next_chapter": "Keep the habits you built. Start fresh with new goals.",
+            "stats": {
+                "total_weeks": session_rec.current_week,
+                "days_done": done_count,
+                "days_total": total_count,
+                "avg_mood": avg_emotion_score,
+            },
+        }
+
+    # Save to session
+    session_rec.is_completed = 1
+    session_rec.phase = "completed"
+    session_rec.session_report_json = json.dumps(report_data)
+    db.commit()
+
+    return {"status": "completed", "report": report_data}
+
+
+# ============================================================
+# ARCHIVE — All weekly reports for a session
+# ============================================================
+
+@app.get("/sessions/{session_id}/reports", tags=["sessions"])
+async def get_session_reports(
+    session_id: str,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return all weekly reports for a session, ordered by week number."""
+    session_rec = db.query(Session).filter(Session.id == session_id).first()
+    if not session_rec or session_rec.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    reports = (
+        db.query(WeeklyReport)
+        .filter(WeeklyReport.session_id == session_id)
+        .order_by(WeeklyReport.week_number.asc())
+        .all()
+    )
+
+    result = []
+    for r in reports:
+        try:
+            report_data = json.loads(r.report_json)
+        except Exception:
+            report_data = {}
+        result.append({
+            "week_number": r.week_number,
+            "week_start": r.week_start,
+            "week_end": r.week_end,
+            "report": report_data,
+        })
+    return result
+
+
+# ============================================================
 # VOICE JOURNAL & WEEKLY EMOTION REPORT
 # ============================================================
 
@@ -948,12 +1202,14 @@ async def _analyze_emotion(transcript: str) -> dict:
 @app.post("/journal/voice", tags=["journal"])
 async def create_voice_journal(
     audio: UploadFile = File(...),
+    session_id: Optional[str] = None,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Upload a voice note → transcribe (Groq Whisper) → analyze emotion (LLM) → save.
-    One entry per day; calling again on same day updates the existing entry.
+    Session-scoped: pass session_id query param to tag entry to a session.
+    One entry per user per day; calling again updates the existing entry.
     """
     from .llm import call_groq_transcribe
     from datetime import date
@@ -979,7 +1235,7 @@ async def create_voice_journal(
     # 2. Analyze emotion
     emotion = await _analyze_emotion(transcript)
 
-    # 3. Upsert journal entry for today
+    # 3. Upsert journal entry for today (one per user per day)
     existing = (
         db.query(VoiceJournal)
         .filter(VoiceJournal.user_id == user_id, VoiceJournal.date == today)
@@ -990,9 +1246,12 @@ async def create_voice_journal(
         existing.emotion_label = emotion["label"]
         existing.emotion_score = emotion["score"]
         existing.one_liner = emotion["one_liner"]
+        if session_id and not existing.session_id:
+            existing.session_id = session_id
     else:
         entry = VoiceJournal(
             user_id=user_id,
+            session_id=session_id,
             date=today,
             transcript=transcript,
             emotion_label=emotion["label"],
@@ -1008,27 +1267,26 @@ async def create_voice_journal(
         "emotion_label": emotion["label"],
         "emotion_score": emotion["score"],
         "one_liner": emotion["one_liner"],
+        "recorded_today": True,
     }
 
 
 @app.get("/journal/{user_id}", tags=["journal"])
 async def get_journals(
     user_id: str,
+    session_id: Optional[str] = None,
     limit: int = 30,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Fetch all voice journal entries for the user (newest first). Max 30 by default."""
+    """Fetch voice journal entries. If session_id provided, filter to that session."""
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    entries = (
-        db.query(VoiceJournal)
-        .filter(VoiceJournal.user_id == user_id)
-        .order_by(VoiceJournal.date.desc())
-        .limit(limit)
-        .all()
-    )
+    q = db.query(VoiceJournal).filter(VoiceJournal.user_id == user_id)
+    if session_id:
+        q = q.filter(VoiceJournal.session_id == session_id)
+    entries = q.order_by(VoiceJournal.date.desc()).limit(limit).all()
     return [
         {
             "id": e.id,
@@ -1081,14 +1339,14 @@ async def get_today_emotion(
 async def get_weekly_report(
     user_id: str,
     session_id: Optional[str] = None,
+    week_number: Optional[int] = None,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Return (or generate) the weekly emotion report for the current week.
-    If session_id provided, report also analyses the week plan vs actual performance.
-    Acts as a deep week reviewer — reads all transcripts + plan + checkins.
-    Report is cached per week and regenerated only when new journals arrive.
+    Return (or generate) the weekly emotion report.
+    Session-scoped: uses plan_start_date to compute correct week bounds.
+    week_number defaults to the session's current_week.
     """
     from .llm import call_llm
     from datetime import date, timedelta
@@ -1097,42 +1355,58 @@ async def get_weekly_report(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     today = date.today()
-    week_start = today - timedelta(days=today.weekday())  # Monday
-    week_end   = week_start + timedelta(days=6)            # Sunday
-    ws = week_start.isoformat()
-    we = week_end.isoformat()
 
-    # ── 1. Fetch this week's voice journals ──────────────────────────────────
-    journals = (
-        db.query(VoiceJournal)
-        .filter(
-            VoiceJournal.user_id == user_id,
-            VoiceJournal.date >= ws,
-            VoiceJournal.date <= we,
-        )
-        .order_by(VoiceJournal.date.asc())
-        .all()
+    # Determine week bounds
+    session_rec = None
+    if session_id:
+        session_rec = db.query(Session).filter(Session.id == session_id).first()
+
+    if session_rec and session_rec.plan_start_date:
+        # Use session-scoped week bounds
+        wk_num = week_number if week_number is not None else (session_rec.current_week or 1)
+        ws, we, _ = _get_week_bounds(session_rec.plan_start_date, wk_num)
+    else:
+        # Fallback: standard Mon–Sun of current calendar week
+        wk_num = week_number or 1
+        week_start_d = today - timedelta(days=today.weekday())
+        ws = week_start_d.isoformat()
+        we = (week_start_d + timedelta(days=6)).isoformat()
+
+    # ── 1. Fetch this week's voice journals (session-scoped if possible) ──────
+    q = db.query(VoiceJournal).filter(
+        VoiceJournal.user_id == user_id,
+        VoiceJournal.date >= ws,
+        VoiceJournal.date <= we,
     )
+    if session_id:
+        q = q.filter(VoiceJournal.session_id == session_id)
+    journals = q.order_by(VoiceJournal.date.asc()).all()
 
     if not journals:
-        return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we}
+        return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we, "week_number": wk_num}
 
-    # ── 2. Check cache (invalidate if new journals exist since last gen) ─────
-    cached = (
-        db.query(WeeklyReport)
-        .filter(WeeklyReport.user_id == user_id, WeeklyReport.week_start == ws)
-        .first()
+    # ── 2. Check cache (session + week keyed) ──────────────────────────────────
+    cache_q = db.query(WeeklyReport).filter(
+        WeeklyReport.user_id == user_id,
+        WeeklyReport.week_start == ws,
     )
+    if session_id:
+        cache_q = cache_q.filter(WeeklyReport.session_id == session_id)
+    cached = cache_q.first()
     if cached:
         try:
             cached_data = json.loads(cached.report_json)
             if cached_data.get("entry_count") == len(journals):
-                return {"status": "cached", "week_start": ws, "week_end": we, "report": cached_data}
+                return {"status": "cached", "week_start": ws, "week_end": we, "week_number": wk_num, "report": cached_data}
         except Exception:
             pass
 
     # ── 3. Fetch daily checkins for this week ────────────────────────────────
-    all_week_days = [(week_start + timedelta(days=i)).isoformat() for i in range(7)]
+    from datetime import date as _date_cls, timedelta as _td
+    ws_date = _date_cls.fromisoformat(ws)
+    we_date = _date_cls.fromisoformat(we)
+    day_count_total = (we_date - ws_date).days + 1
+    all_week_days = [(ws_date + _td(days=i)).isoformat() for i in range(day_count_total)]
     checkin_map: dict = {}
     for d in all_week_days:
         row = (
@@ -1142,22 +1416,18 @@ async def get_weekly_report(
         )
         checkin_map[d] = row.status if row else ("pending" if d > today.isoformat() else "missed")
 
-    # ── 4. Optionally fetch the approved week plan ───────────────────────────
+    # ── 4. Fetch the approved week plan ─────────────────────────────────────
     week_plan_days: list = []
     week_plan_theme = ""
-    week_number = 0
-    if session_id:
-        session_rec = db.query(Session).filter(Session.id == session_id).first()
-        if session_rec and session_rec.week_plan_json:
-            try:
-                plan = json.loads(session_rec.week_plan_json)
-                week_plan_days = plan.get("days", [])
-                week_plan_theme = plan.get("theme", "")
-                week_number = plan.get("week_number", 0)
-            except Exception:
-                pass
+    if session_rec and session_rec.week_plan_json:
+        try:
+            plan = json.loads(session_rec.week_plan_json)
+            week_plan_days = plan.get("days", [])
+            week_plan_theme = plan.get("theme", "")
+        except Exception:
+            pass
 
-    # ── 5. Build the per-day data merge ─────────────────────────────────────
+    # ── 5. Build the per-day data merge ────────────────────────────────────
     journal_by_date = {j.date: j for j in journals}
     avg_score = round(sum(j.emotion_score or 5 for j in journals) / len(journals), 1)
     days_done = sum(1 for s in checkin_map.values() if s == "done")
@@ -1165,7 +1435,7 @@ async def get_weekly_report(
     past_days_count = sum(1 for d in all_week_days if d <= today.isoformat())
     consistency_score = round((days_done / max(past_days_count, 1)) * 100) if past_days_count > 0 else 0
 
-    # ── 6. Build rich AI prompt ───────────────────────────────────────────────
+    # ── 6. Build rich AI prompt ─────────────────────────────────────────
     # Full transcripts block
     transcripts_block = "\n\n".join(
         f"[{j.date}] Emotion: {j.emotion_label} ({j.emotion_score}/10)\n"
@@ -1255,7 +1525,7 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
         "entry_count": len(journals),
         "week_start": ws,
         "week_end": we,
-        "week_number": week_number,
+        "week_number": wk_num,
         "week_theme": week_plan_theme,
         # Per-day data for charts
         "days": [
@@ -1274,16 +1544,21 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
     # ── 8. Cache the report ───────────────────────────────────────────────────
     if cached:
         cached.report_json = json.dumps(report_data)
+        cached.week_number = wk_num
+        if session_id and not cached.session_id:
+            cached.session_id = session_id
     else:
         db.add(WeeklyReport(
             user_id=user_id,
+            session_id=session_id,
+            week_number=wk_num,
             week_start=ws,
             week_end=we,
             report_json=json.dumps(report_data),
         ))
     db.commit()
 
-    return {"status": "generated", "week_start": ws, "week_end": we, "report": report_data}
+    return {"status": "generated", "week_start": ws, "week_end": we, "week_number": wk_num, "report": report_data}
 
 
 # ============================================================

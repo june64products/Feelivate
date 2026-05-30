@@ -15,6 +15,7 @@ import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
 import RadiantPromptInput from '../components/chat/RadiantPromptInput';
 import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
+import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
 import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 
@@ -36,6 +37,9 @@ export default function WorkspacePage() {
     const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
     const [view, setView] = useState<'chat' | 'journey'>('chat');
     const [showReviewModal, setShowReviewModal] = useState(false);
+    const [showCompleteModal, setShowCompleteModal] = useState(false);
+    const [isSessionCompleted, setIsSessionCompleted] = useState(false);
+    const [sessionFocus, setSessionFocus] = useState<string>('');
     const [todayEmotion, setTodayEmotion] = useState<TodayEmotionResult['entry'] | null>(null);
 
 
@@ -81,6 +85,8 @@ export default function WorkspacePage() {
                 setMessages(data.messages || []);
                 setActivePlan(data.plan || null);
                 setIsPlanApproved(data.phase === 'active');
+                setIsSessionCompleted(data.phase === 'completed');
+                setSessionFocus(data.focus || '');
             } catch (err: any) {
                 console.error("Failed to load session details:", err);
                 // If session not found (404) or auth expired (401 throws), clear stale session
@@ -126,6 +132,16 @@ export default function WorkspacePage() {
     const handleSelectSession = (sessionId: string) => {
         setActiveSessionId(sessionId);
         localStorage.setItem('active_session_id', sessionId);
+        // Reset session-specific state
+        setTodayEmotion(null);
+        setIsSessionCompleted(false);
+        setView('chat');
+        // Re-fetch today's emotion for new context
+        if (userId) {
+            getTodayEmotion(userId)
+                .then(res => { if (res.has_entry) setTodayEmotion(res.entry); })
+                .catch(() => {});
+        }
     };
 
 
@@ -417,6 +433,33 @@ export default function WorkspacePage() {
                             Upgrade
                         </button>
 
+                        {/* Running indicator — shown when plan is active */}
+                        {isPlanApproved && !isSessionCompleted && activeSessionId && (
+                            <button
+                                onClick={() => setShowCompleteModal(true)}
+                                title="Stop plan"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '7px',
+                                    padding: '5px 12px', borderRadius: '20px',
+                                    border: '1px solid rgba(239,68,68,0.2)',
+                                    background: 'rgba(239,68,68,0.05)',
+                                    color: '#f87171', fontSize: '12px',
+                                    fontWeight: 500, cursor: 'pointer',
+                                    transition: 'all 0.15s',
+                                    fontFamily: "'Inter', sans-serif",
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; }}
+                            >
+                                <div style={{
+                                    width: '6px', height: '6px', borderRadius: '50%',
+                                    background: '#f87171',
+                                    animation: 'pulse 1.5s ease-in-out infinite',
+                                }} />
+                                Running
+                            </button>
+                        )}
+
                         {/* User avatar with first+last initials */}
                         <div
                             className="user-avatar"
@@ -659,6 +702,20 @@ export default function WorkspacePage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Session Complete Modal */}
+            {showCompleteModal && activeSessionId && (
+                <SessionCompleteModal
+                    sessionId={activeSessionId}
+                    sessionFocus={sessionFocus}
+                    onClose={() => setShowCompleteModal(false)}
+                    onConfirmed={() => {
+                        setIsSessionCompleted(true);
+                        setIsPlanApproved(false);
+                        setShowCompleteModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 }

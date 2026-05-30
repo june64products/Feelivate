@@ -370,9 +370,103 @@ export interface WeeklyReport {
     };
 }
 
-export const getWeeklyReport = async (userId: string, sessionId?: string): Promise<WeeklyReport> => {
-    const qs = sessionId ? `?session_id=${sessionId}` : '';
+export const getWeeklyReport = async (userId: string, sessionId?: string, weekNumber?: number): Promise<WeeklyReport> => {
+    const params = new URLSearchParams();
+    if (sessionId) params.set('session_id', sessionId);
+    if (weekNumber !== undefined) params.set('week_number', String(weekNumber));
+    const qs = params.toString() ? `?${params.toString()}` : '';
     const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/weekly-report${qs}`);
     if (!response.ok) throw new Error('Failed to fetch weekly report');
+    return response.json();
+};
+
+// ============================================================
+// WEEK INFO — session-scoped week bounds
+// ============================================================
+
+export interface WeekInfo {
+    has_plan: boolean;
+    current_week: number;
+    plan_start_date?: string;
+    week_start?: string;
+    week_end?: string;
+    day_count?: number;
+    is_week_complete?: boolean;
+    is_completed?: boolean;
+}
+
+export const getWeekInfo = async (sessionId: string): Promise<WeekInfo> => {
+    const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/week-info`);
+    if (!response.ok) throw new Error('Failed to fetch week info');
+    return response.json();
+};
+
+// ============================================================
+// SESSION COMPLETION
+// ============================================================
+
+export interface SessionReport {
+    headline: string;
+    biggest_wins: string[];
+    growth_arc: string;
+    advice_for_next_chapter: string;
+    stats: {
+        total_weeks: number;
+        days_done: number;
+        days_total: number;
+        avg_mood: number;
+    };
+}
+
+export const completeSession = async (sessionId: string): Promise<{ status: string; report: SessionReport }> => {
+    const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/complete`, {
+        method: 'POST',
+    });
+    if (!response.ok) throw new Error('Failed to complete session');
+    return response.json();
+};
+
+// ============================================================
+// ARCHIVE — All session weekly reports
+// ============================================================
+
+export interface ArchivedWeekReport {
+    week_number: number;
+    week_start: string;
+    week_end: string;
+    report: WeeklyReport['report'];
+}
+
+export const getSessionReports = async (sessionId: string): Promise<ArchivedWeekReport[]> => {
+    const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/reports`);
+    if (!response.ok) throw new Error('Failed to fetch session reports');
+    return response.json();
+};
+
+// ============================================================
+// VOICE JOURNAL (session-scoped)
+// ============================================================
+
+export const uploadVoiceJournalForSession = async (audioBlob: Blob, sessionId?: string): Promise<JournalEntry & { recorded_today?: boolean }> => {
+    const formData = new FormData();
+    const ext = audioBlob.type.includes('mp4') ? 'mp4' : 'webm';
+    formData.append('audio', audioBlob, `journal.${ext}`);
+
+    const qs = sessionId ? `?session_id=${sessionId}` : '';
+    const response = await secureFetch(`${API_BASE_URL}/journal/voice${qs}`, {
+        method: 'POST',
+        body: formData,
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Journal upload failed');
+    }
+    return response.json();
+};
+
+export const getJournalsForSession = async (userId: string, sessionId?: string, limit = 30): Promise<JournalEntry[]> => {
+    const qs = sessionId ? `?session_id=${sessionId}&limit=${limit}` : `?limit=${limit}`;
+    const response = await secureFetch(`${API_BASE_URL}/journal/${userId}${qs}`);
+    if (!response.ok) throw new Error('Failed to fetch journals');
     return response.json();
 };

@@ -155,9 +155,15 @@ def init_db():
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS week_plan_json TEXT;",
                 # ── NEW: week review ──
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS week_review_json TEXT;",
-                # ── NEW USP tables: unique constraint on daily_checkins ──
-                # daily_checkins and other new tables are created by create_all above.
-                # Add unique index to prevent duplicate checkins for same user+date:
+                # ── NEW: plan lifecycle ──
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS plan_start_date VARCHAR;",
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS is_completed INTEGER DEFAULT 0;",
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_report_json TEXT;",
+                # ── NEW: session-scoped journals & reports ──
+                "ALTER TABLE voice_journals ADD COLUMN IF NOT EXISTS session_id VARCHAR REFERENCES sessions(id);",
+                "ALTER TABLE weekly_reports ADD COLUMN IF NOT EXISTS session_id VARCHAR REFERENCES sessions(id);",
+                "ALTER TABLE weekly_reports ADD COLUMN IF NOT EXISTS week_number INTEGER DEFAULT 1;",
+                # ── daily_checkins unique constraint ──
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_checkins_user_date
                 ON daily_checkins (user_id, date);
@@ -175,6 +181,14 @@ def init_db():
                 "ALTER TABLE sessions ADD COLUMN phase VARCHAR DEFAULT 'chat';",
                 "ALTER TABLE sessions ADD COLUMN week_plan_json TEXT;",
                 "ALTER TABLE sessions ADD COLUMN week_review_json TEXT;",
+                # NEW: plan lifecycle
+                "ALTER TABLE sessions ADD COLUMN plan_start_date VARCHAR;",
+                "ALTER TABLE sessions ADD COLUMN is_completed INTEGER DEFAULT 0;",
+                "ALTER TABLE sessions ADD COLUMN session_report_json TEXT;",
+                # NEW: session-scoped journals & reports
+                "ALTER TABLE voice_journals ADD COLUMN session_id VARCHAR REFERENCES sessions(id);",
+                "ALTER TABLE weekly_reports ADD COLUMN session_id VARCHAR REFERENCES sessions(id);",
+                "ALTER TABLE weekly_reports ADD COLUMN week_number INTEGER DEFAULT 1;",
                 # SQLite unique index (no IF NOT EXISTS, so we catch the error)
                 "CREATE UNIQUE INDEX uq_daily_checkins_user_date ON daily_checkins (user_id, date);",
             ]

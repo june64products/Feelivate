@@ -38,9 +38,14 @@ class Session(Base):
     
     # Weekly adaptive flow
     current_week = Column(Integer, default=0)          # 0 = no plan yet, 1+ = active week number
-    phase = Column(String, default="chat")             # chat | planning | active | review
+    phase = Column(String, default="chat")             # chat | planning | active | review | completed
     week_plan_json = Column(Text, nullable=True)       # current approved week plan
     week_review_json = Column(Text, nullable=True)     # user's end-of-week feedback per week
+
+    # Plan lifecycle
+    plan_start_date = Column(String, nullable=True)    # ISO date when first plan was approved
+    is_completed = Column(Integer, default=0)          # 0 = active, 1 = user stopped the session
+    session_report_json = Column(Text, nullable=True)  # final aggregated session report
     
     user = relationship("User", back_populates="sessions")
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
@@ -138,12 +143,13 @@ class UserStreak(Base):
 class VoiceJournal(Base):
     """
     One row per voice journal entry. Stores transcript + AI-detected emotion.
-    Old data is NEVER auto-injected into new sessions (user views via /journey).
+    Session-scoped: each entry belongs to the session that was active when recorded.
     """
     __tablename__ = "voice_journals"
 
     id            = Column(Integer, primary_key=True, index=True)
     user_id       = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    session_id    = Column(String, ForeignKey("sessions.id"), nullable=True, index=True)  # NEW
     date          = Column(String, nullable=False)    # ISO date: "2026-05-29"
     transcript    = Column(Text, nullable=False)       # Groq Whisper output
     emotion_label = Column(String, nullable=True)      # e.g. "motivated", "stressed"
@@ -156,16 +162,18 @@ class VoiceJournal(Base):
 
 class WeeklyReport(Base):
     """
-    One generated report per user per week. Created on-demand (user visits /journey).
-    Contains mood trend JSON + AI insight text.
+    One generated report per session per week.
+    Keyed by (user_id, session_id, week_number) for session-scoped journey.
     """
     __tablename__ = "weekly_reports"
 
-    id          = Column(Integer, primary_key=True, index=True)
-    user_id     = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    week_start  = Column(String, nullable=False)  # Monday ISO date: "2026-05-26"
-    week_end    = Column(String, nullable=False)  # Sunday ISO date: "2026-06-01"
-    report_json = Column(Text, nullable=False)    # Full report as JSON string
-    created_at  = Column(DateTime, default=datetime.utcnow)
+    id           = Column(Integer, primary_key=True, index=True)
+    user_id      = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    session_id   = Column(String, ForeignKey("sessions.id"), nullable=True, index=True)  # NEW
+    week_number  = Column(Integer, nullable=True, default=1)                              # NEW
+    week_start   = Column(String, nullable=False)  # plan_start (Week1) or Monday (Week2+)
+    week_end     = Column(String, nullable=False)  # Sunday of that week
+    report_json  = Column(Text, nullable=False)    # Full report as JSON string
+    created_at   = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")

@@ -1,13 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, Loader2, ArrowLeft } from 'lucide-react';
+import { Mic, Square, Loader2, ArrowLeft, Lock, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import {
-    uploadVoiceJournal,
-    getJournals,
+    getJournalsForSession,
     getWeeklyReport,
+    getWeekInfo,
+    getSessionReports,
+    uploadVoiceJournalForSession,
     type JournalEntry,
     type WeeklyReport,
     type WeeklyReportDay,
+    type WeekInfo,
+    type ArchivedWeekReport,
 } from '../api';
 
 // ─── Emotion color palette ────────────────────────────────────────────────────
@@ -243,9 +247,19 @@ interface JourneyPageProps {
 export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose }: JourneyPageProps) {
     const [journals, setJournals] = useState<JournalEntry[]>([]);
     const [report, setReport] = useState<WeeklyReport | null>(null);
-    const [loadingJournals, setLoadingJournals] = useState(true);
+    const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
+    const [archivedReports, setArchivedReports] = useState<ArchivedWeekReport[]>([]);
     const [loadingReport, setLoadingReport] = useState(true);
+    const [loadingArchive, setLoadingArchive] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'archive'>('overview');
+    const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
+
+    // Mic lock — one recording per day per session
+    const micLockKey = `last_journal_date_${sessionId || userId}`;
+    const [micLocked, setMicLocked] = useState<boolean>(() => {
+        const stored = localStorage.getItem(micLockKey);
+        return stored === new Date().toISOString().split('T')[0];
+    });
 
     // Voice recording
     const [isRecording, setIsRecording] = useState(false);
@@ -256,18 +270,19 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
 
     const today = new Date().toISOString().split('T')[0];
 
-    useEffect(() => { loadAll(); }, [userId]);
+    useEffect(() => { loadAll(); }, [userId, sessionId]);
 
     const loadAll = async () => {
         try {
-            const [j, r] = await Promise.all([
-                getJournals(userId),
+            const [j, r, wi] = await Promise.all([
+                getJournalsForSession(userId, sessionId),
                 getWeeklyReport(userId, sessionId).catch(() => null),
+                sessionId ? getWeekInfo(sessionId).catch(() => null) : Promise.resolve(null),
             ]);
             setJournals(j);
             setReport(r);
+            setWeekInfo(wi);
         } finally {
-            setLoadingJournals(false);
             setLoadingReport(false);
         }
     };
@@ -298,13 +313,16 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
         setIsUploading(true);
         try {
             const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-            const entry = await uploadVoiceJournal(blob);
+            const entry = await uploadVoiceJournalForSession(blob, sessionId);
             setJustSaved(entry);
             onJournalSaved?.(entry);
             setJournals(prev => {
                 const filtered = prev.filter(j => j.date !== entry.date);
                 return [entry, ...filtered];
             });
+            // Lock mic for the rest of today
+            localStorage.setItem(micLockKey, today);
+            setMicLocked(true);
             // Refresh report after new journal
             setLoadingReport(true);
             const r = await getWeeklyReport(userId, sessionId).catch(() => null);
@@ -317,21 +335,48 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
         }
     };
 
+    // Load archive when switching to archive tab
+    const handleArchiveTab = async () => {
+        setActiveTab('archive');
+        if (sessionId && archivedReports.length === 0) {
+            setLoadingArchive(true);
+            try {
+                const reports = await getSessionReports(sessionId);
+                setArchivedReports(reports);
+            } catch { /* ignore */ } finally {
+                setLoadingArchive(false);
+            }
+        }
+    };
+
     const todayEntry = journals.find(j => j.date === today);
     const reportData = report?.report;
 
-    // Build full 7-day structure if report has days (or synthesize from journals)
+    // Build day structure using session week bounds (from weekInfo) or standard Mon-Sun
     const weekDays: WeeklyReportDay[] = (() => {
-        if (reportData?.days && reportData.days.length === 7) return reportData.days;
-        // Synthesize if no report
-        const d = new Date();
-        const monday = new Date(d);
-        monday.setDate(d.getDate() - d.getDay() + 1);
+        if (reportData?.days && reportData.days.length > 0) return reportData.days;
+        // Synthesize from weekInfo or fallback to standard Mon-Sun
         const jMap: Record<string, JournalEntry> = {};
         journals.forEach(j => { jMap[j.date] = j; });
-        return Array.from({ length: 7 }, (_, i) => {
-            const day = new Date(monday);
-            day.setDate(monday.getDate() + i);
+
+        let startDate: Date;
+        let dayCount: number;
+
+        if (weekInfo?.has_plan && weekInfo.week_start && weekInfo.week_end) {
+            startDate = new Date(weekInfo.week_start);
+            const endDate = new Date(weekInfo.week_end);
+            dayCount = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1;
+        } else {
+            // Fallback: standard Mon-Sun
+            const d = new Date();
+            startDate = new Date(d);
+            startDate.setDate(d.getDate() - d.getDay() + 1);
+            dayCount = 7;
+        }
+
+        return Array.from({ length: dayCount }, (_, i) => {
+            const day = new Date(startDate);
+            day.setDate(startDate.getDate() + i);
             const dateStr = day.toISOString().split('T')[0];
             const j = jMap[dateStr];
             const isPast = dateStr < today;
@@ -393,7 +438,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                     {(['overview', 'archive'] as const).map(tab => (
                         <button
                             key={tab}
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => tab === 'archive' ? handleArchiveTab() : setActiveTab('overview')}
                             style={{
                                 padding: '5px 14px', borderRadius: '7px', border: 'none',
                                 background: activeTab === tab ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -463,6 +508,27 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
                                                 Analyzing your mood...
                                             </motion.div>
+                                        ) : micLocked ? (
+                                            <motion.div key="locked"
+                                                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                                                style={{
+                                                    display: 'flex', flexDirection: 'column',
+                                                    alignItems: 'center', gap: '8px',
+                                                }}
+                                            >
+                                                <div style={{
+                                                    width: '60px', height: '60px', borderRadius: '50%',
+                                                    border: '2px solid rgba(255,255,255,0.1)',
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    color: '#3f3f46', cursor: 'not-allowed',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                }}>
+                                                    <Lock size={18} />
+                                                </div>
+                                                <span style={{ fontSize: '11px', color: '#3f3f46', fontWeight: 500 }}>
+                                                    Recorded today
+                                                </span>
+                                            </motion.div>
                                         ) : isRecording ? (
                                             <motion.button key="stop"
                                                 initial={{ scale: 0.8 }} animate={{ scale: 1 }} whileTap={{ scale: 0.95 }}
@@ -516,18 +582,24 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 </AnimatePresence>
                             </div>
 
-                            {/* ── 7-day calendar strip ── */}
                             <div style={{
                                 borderRadius: '16px', padding: '18px 20px',
                                 background: 'rgba(255,255,255,0.03)',
                                 border: '1px solid rgba(255,255,255,0.07)',
                             }}>
-                                <p style={{
-                                    fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-                                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '14px',
-                                }}>
-                                    This Week
-                                </p>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                                    <p style={{
+                                        fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                                        textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0,
+                                    }}>
+                                        {weekInfo?.has_plan ? `Week ${weekInfo.current_week}` : 'This Week'}
+                                    </p>
+                                    {weekInfo?.has_plan && weekInfo.week_start && weekInfo.week_end && (
+                                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', fontWeight: 500 }}>
+                                            {weekInfo.week_start} – {weekInfo.week_end}
+                                        </span>
+                                    )}
+                                </div>
                                 <WeekCalendar days={weekDays} today={today} />
                                 <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -542,6 +614,31 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.2)' }} />
                                         <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>Upcoming</span>
                                     </div>
+                                    {/* Plan Week N+1 gating */}
+                                    {weekInfo?.has_plan && weekInfo.is_week_complete && (
+                                        <button
+                                            onClick={() => {
+                                                const nextWeek = (weekInfo.current_week ?? 1) + 1;
+                                                window.dispatchEvent(new CustomEvent('request-next-week-plan', { detail: { week: nextWeek } }));
+                                            }}
+                                            style={{
+                                                marginLeft: 'auto', padding: '4px 10px',
+                                                borderRadius: '8px',
+                                                border: '1px solid rgba(99,102,241,0.3)',
+                                                background: 'rgba(99,102,241,0.08)',
+                                                color: '#818cf8', fontSize: '11px', fontWeight: 600,
+                                                cursor: 'pointer', transition: 'all 0.15s',
+                                                fontFamily: "'Inter', sans-serif",
+                                            }}
+                                        >
+                                            Plan Week {(weekInfo.current_week ?? 1) + 1}
+                                        </button>
+                                    )}
+                                    {weekInfo?.has_plan && !weekInfo.is_week_complete && weekInfo.week_end && (
+                                        <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.2)', fontWeight: 500 }}>
+                                            Week ends {weekInfo.week_end}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
@@ -729,72 +826,89 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
                                 textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px',
                             }}>
-                                Journal Archive — {journals.length} entries
+                                Session Weekly Reports
                             </p>
 
-                            {loadingJournals ? (
+                            {loadingArchive ? (
                                 <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
-                                    Loading...
+                                    <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 10px' }} />
+                                    Loading archive...
                                 </div>
-                            ) : journals.length === 0 ? (
+                            ) : archivedReports.length === 0 ? (
                                 <div style={{
                                     textAlign: 'center', padding: '40px',
                                     border: '1px dashed rgba(255,255,255,0.1)',
                                     borderRadius: '12px', color: 'rgba(255,255,255,0.3)', fontSize: '13px',
                                 }}>
-                                    No journal entries yet. Record your first voice note above.
+                                    No weekly reports found for this session yet.
                                 </div>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {journals.map((entry, i) => {
-                                        const color = emotionColor(entry.emotion_label);
-                                        const barFill = (entry.emotion_score / 10) * 100;
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {archivedReports.map((aw) => {
+                                        const isExpanded = expandedWeek === aw.week_number;
                                         return (
-                                            <motion.div
-                                                key={entry.id}
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: i * 0.03 }}
+                                            <div
+                                                key={aw.week_number}
                                                 style={{
-                                                    padding: '14px 16px', borderRadius: '12px',
+                                                    borderRadius: '12px',
                                                     border: '1px solid rgba(255,255,255,0.07)',
                                                     background: 'rgba(255,255,255,0.02)',
+                                                    overflow: 'hidden',
                                                 }}
                                             >
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <button
+                                                    onClick={() => setExpandedWeek(isExpanded ? null : aw.week_number)}
+                                                    style={{
+                                                        width: '100%', padding: '14px 16px', display: 'flex',
+                                                        alignItems: 'center', justifyContent: 'space-between',
+                                                        background: 'transparent', border: 'none',
+                                                        color: 'white', cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                         <div style={{
-                                                            width: '8px', height: '8px', borderRadius: '50%',
-                                                            background: color, boxShadow: `0 0 6px ${color}`,
-                                                        }} />
-                                                        <span style={{ fontSize: '12px', fontWeight: 600, color, textTransform: 'capitalize' }}>
-                                                            {entry.emotion_label}
-                                                        </span>
-                                                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>
-                                                            {entry.emotion_score}/10
-                                                        </span>
+                                                            width: '32px', height: '32px', borderRadius: '8px',
+                                                            background: 'rgba(99,102,241,0.1)',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        }}>
+                                                            <FileText size={16} color="#818cf8" />
+                                                        </div>
+                                                        <div style={{ textAlign: 'left' }}>
+                                                            <div style={{ fontSize: '13px', fontWeight: 600 }}>Week {aw.week_number} Report</div>
+                                                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>
+                                                                {aw.week_start} – {aw.week_end}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)' }}>
-                                                        {entry.date}
-                                                    </span>
-                                                </div>
-                                                <p style={{
-                                                    fontSize: '12px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.4,
-                                                    margin: '0 0 8px', overflow: 'hidden',
-                                                    display: '-webkit-box', WebkitLineClamp: 2 as any,
-                                                    WebkitBoxOrient: 'vertical' as any,
-                                                }}>
-                                                    {entry.one_liner || entry.transcript}
-                                                </p>
-                                                <div style={{ height: '3px', borderRadius: '2px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${barFill}%` }}
-                                                        transition={{ delay: i * 0.03 + 0.2, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                                                        style={{ height: '100%', borderRadius: '2px', background: color }}
-                                                    />
-                                                </div>
-                                            </motion.div>
+                                                    {isExpanded ? <ChevronUp size={16} color="#71717a" /> : <ChevronDown size={16} color="#71717a" />}
+                                                </button>
+                                                <AnimatePresence>
+                                                    {isExpanded && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            style={{ overflow: 'hidden' }}
+                                                        >
+                                                            <div style={{
+                                                                padding: '0 16px 16px',
+                                                                borderTop: '1px solid rgba(255,255,255,0.04)',
+                                                                marginTop: '4px', paddingTop: '16px',
+                                                            }}>
+                                                                <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                                                                    <StatCard label="Consistency" value={`${aw.report?.consistency_score ?? 0}%`} color="#10b981" />
+                                                                    <StatCard label="Avg Mood" value={`${aw.report?.avg_score ?? 0}/10`} color="#60a5fa" />
+                                                                </div>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                                    <AnalysisBlock label="Emotional Arc" content={aw.report?.emotional_arc ?? ''} />
+                                                                    <AnalysisBlock label="What went well" content={aw.report?.what_went_well ?? ''} />
+                                                                    <AnalysisBlock label="Where you slipped" content={aw.report?.where_you_slipped ?? ''} />
+                                                                </div>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
                                         );
                                     })}
                                 </div>
