@@ -5,6 +5,15 @@ const getApiUrl = () => {
 
 export const API_BASE_URL = getApiUrl();
 
+/** Returns the user's IANA timezone (e.g. "Asia/Kolkata") */
+export const getClientTimezone = (): string => {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch (e) {
+        return 'UTC';
+    }
+};
+
 const getToken = () => localStorage.getItem('access_token');
 
 /** Clears auth state and redirects to login. */
@@ -65,6 +74,7 @@ export const chatWithMentor = async (
             message,
             session_id: sessionId,
             user_id: userId,
+            timezone: getClientTimezone(),
         }),
     });
 

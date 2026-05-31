@@ -98,6 +98,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
     user_id: str
+    timezone: Optional[str] = "UTC"
 
 class LoginRequest(BaseModel):
     email: str
@@ -303,15 +304,16 @@ async def chat(
                         pass
                     break  # Use the most recent one found
 
-        # 5. Build prompt with full context and call LLM
+        # 5. Build prompt messages
         prompt_messages = build_chat_prompt(
-            history,
-            system_context,
+            messages=history,
+            system_context=system_context,
             phase=session_rec.phase or "chat",
             plan_history=plan_history,
             current_week=session_rec.current_week or 0,
             week_reviews=week_reviews,
             week_report_data=week_report_data,
+            client_timezone=payload.timezone,
         )
 
         

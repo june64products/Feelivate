@@ -216,6 +216,7 @@ def build_chat_prompt(
     current_week: int = 0,
     week_reviews: Optional[List[dict]] = None,
     week_report_data: Optional[dict] = None,
+    client_timezone: str = "UTC",
 ) -> List[Dict[str, str]]:
     """
     Build the messages array for the LLM call.
@@ -230,12 +231,19 @@ def build_chat_prompt(
     Returns:
         OpenAI-compatible messages array with enriched system prompt.
     """
-    now = datetime.datetime.now()
+    try:
+        import zoneinfo
+        tz = zoneinfo.ZoneInfo(client_timezone)
+        now = datetime.datetime.now(tz)
+    except Exception:
+        now = datetime.datetime.now()
+        
     current_date = now.strftime("%Y-%m-%d")
     day_name = now.strftime("%A")
+    current_time = now.strftime("%I:%M %p")
 
     system_content = SMART_MENTOR_SYSTEM_PROMPT
-    system_content += f"\n\nCURRENT DATE: {current_date} ({day_name}). Use real calendar dates starting from today when building plans."
+    system_content += f"\n\nUSER LOCAL TIMEZONE: {client_timezone}\nCURRENT DATE & TIME: {current_date} ({day_name}) {current_time}. Use these real calendar dates starting from today when building plans."
 
 
     # ── Inject plan locking status ──────────────────────────────────────────
