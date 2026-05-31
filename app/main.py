@@ -1017,7 +1017,7 @@ async def get_week_info(
     if not session_rec.plan_start_date:
         return {"has_plan": False, "current_week": 0}
 
-    current_week = session_rec.current_week or 1
+    current_week = session_rec.current_week if session_rec.current_week is not None else 1
     ws, we, day_count = _get_week_bounds(session_rec.plan_start_date, current_week)
     # Use client's local date if provided via query param, otherwise fallback to server date
     today = date.today().isoformat()
@@ -1481,11 +1481,11 @@ async def get_weekly_report(
 
     if session_rec and session_rec.plan_start_date:
         # Use session-scoped week bounds
-        wk_num = week_number if week_number is not None else (session_rec.current_week or 1)
+        wk_num = week_number if week_number is not None else (session_rec.current_week if session_rec.current_week is not None else 1)
         ws, we, _ = _get_week_bounds(session_rec.plan_start_date, wk_num)
     else:
         # Fallback: standard Mon–Sun of current calendar week
-        wk_num = week_number or 1
+        wk_num = week_number if week_number is not None else 1
         week_start_d = today - timedelta(days=today.weekday())
         ws = week_start_d.isoformat()
         we = (week_start_d + timedelta(days=6)).isoformat()
