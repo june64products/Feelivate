@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, Loader2, ArrowLeft, Lock, ChevronDown, ChevronUp, FileText, Sparkles, Trophy } from 'lucide-react';
+import { Mic, Square, Loader2, ArrowLeft, Lock, ChevronDown, FileText, Sparkles, Trophy } from 'lucide-react';
 import {
     getJournalsForSession,
     getWeeklyReport,
