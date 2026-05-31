@@ -224,7 +224,6 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                 {days.map((d, i) => {
                     const hasDone = d.checkin === 'done' || d.has_journal;
                     const isMissed = d.checkin === 'missed';
-                    const isPending = d.checkin === 'pending';
                     const statusColor = hasDone ? '#10b981' : isMissed ? '#ef4444' : 'rgba(255,255,255,0.3)';
                     const statusBg = hasDone ? 'rgba(16,185,129,0.08)' : isMissed ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)';
                     const statusLabel = hasDone ? 'Done' : isMissed ? 'Missed' : 'Upcoming';
