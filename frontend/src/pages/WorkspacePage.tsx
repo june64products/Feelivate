@@ -8,6 +8,7 @@ import {
     getSessionDetail, 
     getGoogleAuthUrl,
     syncGoogleCalendar,
+    stopGoogleCalendarSync,
     getTodayEmotion,
     type TodayEmotionResult,
 } from '../api';
@@ -274,11 +275,8 @@ export default function WorkspacePage() {
                     const authRes = await getGoogleAuthUrl();
                     if (authRes.auth_url) {
                         setSyncMessage("Redirecting to Google Calendar connection page...");
-                        setTimeout(() => {
-                            window.open(authRes.auth_url, '_blank');
-                            setSyncLoading(false);
-                            setSyncMessage("Once authorized, please click Sync again.");
-                        }, 1000);
+                        // Use location.href instead of window.open to prevent popup blockers
+                        window.location.href = authRes.auth_url;
                         return;
                     }
                 } catch (authErr) {
@@ -290,6 +288,24 @@ export default function WorkspacePage() {
             if (syncMessage !== "Redirecting to Google Calendar connection page...") {
                 setSyncLoading(false);
             }
+        }
+    };
+
+    // Stop Calendar Sync
+    const handleStopSyncCalendar = async () => {
+        if (!userId) return;
+        setSyncLoading(true);
+        setSyncMessage("");
+        setSyncError("");
+        try {
+            const res = await stopGoogleCalendarSync(userId);
+            setSyncMessage(res.message || "Sync stopped and events removed.");
+            setTimeout(() => setShowCalendarModal(false), 2000);
+        } catch (err: any) {
+            console.error("Stop sync failed:", err);
+            setSyncError(err.message || "Failed to stop calendar sync.");
+        } finally {
+            setSyncLoading(false);
         }
     };
 
@@ -737,7 +753,19 @@ export default function WorkspacePage() {
                                 </div>
                             )}
 
-                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                <button
+                                    onClick={handleStopSyncCalendar}
+                                    disabled={syncLoading}
+                                    style={{
+                                        padding: '8px 16px', borderRadius: '10px',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)',
+                                        color: '#f87171', fontSize: '13px', cursor: 'pointer',
+                                    }}
+                                >
+                                    Stop Sync
+                                </button>
+                                <div style={{ flex: 1 }} />
                                 <button
                                     onClick={() => setShowCalendarModal(false)}
                                     disabled={syncLoading}
