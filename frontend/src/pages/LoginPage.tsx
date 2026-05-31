@@ -60,7 +60,7 @@ export default function LoginPage() {
       height: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      background: '#FF4D00',
+      background: '#F2EFE9',
       fontFamily: "'Inter', system-ui, sans-serif",
       color: '#000000',
       overflowX: 'hidden',
@@ -156,9 +156,16 @@ export default function LoginPage() {
         zIndex: 100, pointerEvents: 'none'
       }}>
         {/* Left Logo */}
-        <div className="archivo-black" style={{ fontSize: '24px', pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '32px', height: '32px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: '#FF4D00', fontSize: '18px' }}>F</span>
+        <div className="archivo-black" style={{ fontSize: '24px', pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '34px', height: '34px',
+            background: '#e0e0e0',
+            borderRadius: '8px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', flexShrink: 0,
+            border: '2px solid #000'
+          }}>
+            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '26px', height: '26px', objectFit: 'contain' }} />
           </div>
           FEELIVATE
         </div>
@@ -197,7 +204,7 @@ export default function LoginPage() {
         {/* LEFT: Sign-In Form */}
         <div className="split-left" style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '60px 40px', background: '#FF4D00', position: 'relative'
+          padding: '60px 40px', background: '#F2EFE9', position: 'relative'
         }}>
           <div ref={formRef} style={{ width: '100%', maxWidth: '440px', position: 'relative', zIndex: 10 }}>
             <div style={{
@@ -368,18 +375,18 @@ export default function LoginPage() {
       </div>
 
       {/* Skewed Marquee Section */}
-      <div style={{ background: '#000000', borderBottom: '2px solid #000', padding: '40px 0', overflow: 'hidden', transform: 'skewY(-2deg)', transformOrigin: '0 0', marginTop: '-20px', zIndex: 10, position: 'relative' }}>
+      <div style={{ background: '#000000', borderBottom: '2px solid #000', padding: '60px 0', overflow: 'hidden', transform: 'skewY(-2deg)', transformOrigin: '0 100%', zIndex: 10, position: 'relative' }}>
         <div className="marquee-content" style={{ marginBottom: '10px' }}>
           {[...Array(6)].map((_, i) => (
-            <span key={i} className="archivo-black" style={{ fontSize: '8vw', color: '#FF4D00', marginRight: '40px', lineHeight: 0.9 }}>
-              COMMITMENT IS THE STRATEGY • 
+            <span key={i} className="archivo-black" style={{ fontSize: '6vw', color: '#FF4D00', marginRight: '40px', lineHeight: 0.9 }}>
+              EMOTIONAL TIME TRAVEL • AI MENTOR • 
             </span>
           ))}
         </div>
         <div className="marquee-reverse">
           {[...Array(6)].map((_, i) => (
-            <span key={i} className="archivo-black" style={{ fontSize: '6vw', color: 'rgba(255,255,255,0.8)', marginRight: '40px', lineHeight: 0.9 }}>
-              WEEK 4 YOU IS NOT WEEK 1 YOU • 
+            <span key={i} className="archivo-black" style={{ fontSize: '4.5vw', color: 'rgba(255,255,255,0.8)', marginRight: '40px', lineHeight: 0.9 }}>
+              BEHAVIORAL TRANSFORMATION • GOAL INTELLIGENCE • 
             </span>
           ))}
         </div>
@@ -413,7 +420,7 @@ export default function LoginPage() {
             {/* Left Logo - June64 */}
             <div style={{ flex: '1 1 300px' }}>
               <div className="archivo-black" style={{ fontSize: '32px', color: '#FF4D00', marginBottom: '8px' }}>
-                JUNE64
+                FEELIVATE
               </div>
               <div className="space-mono" style={{ fontSize: '12px', color: '#9c9a92', marginBottom: '40px' }}>
                 Next Generation Goal Intelligence
@@ -468,7 +475,7 @@ export default function LoginPage() {
           }}>
             <div className="space-mono" style={{ fontSize: '12px', color: '#9c9a92' }}>
               <span style={{ fontWeight: 'bold', color: '#ffffff' }}>BY. JUNE64</span><br/>
-              © 2026 June64 Inc. All rights reserved.
+              © 2026 June64 Ltd. All rights reserved.
             </div>
             <div style={{ display: 'flex', gap: '16px' }}>
               {/* Social icons placeholders */}
@@ -494,7 +501,7 @@ export default function LoginPage() {
             <motion.div
               initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }}
               style={{
-                position: 'relative', background: '#FF4D00', padding: '40px',
+                position: 'relative', background: '#F2EFE9', padding: '40px',
                 border: '4px solid #000000', width: '100%', maxWidth: '400px',
                 boxShadow: '16px 16px 0px #000000'
               }}
