@@ -1261,6 +1261,29 @@ async def create_voice_journal(
         db.add(entry)
     db.commit()
 
+    # 4. Auto-mark today's daily checkin as "done" so the streak updates automatically
+    #    when a voice journal is recorded (user doesn't need to press Done separately).
+    existing_checkin = (
+        db.query(DailyCheckin)
+        .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == today)
+        .first()
+    )
+    if existing_checkin:
+        # Only upgrade to 'done' — never downgrade a done checkin
+        if existing_checkin.status != "done":
+            existing_checkin.status = "done"
+            if session_id and not existing_checkin.session_id:
+                existing_checkin.session_id = session_id
+    else:
+        db.add(DailyCheckin(
+            user_id=user_id,
+            session_id=session_id,
+            date=today,
+            status="done",
+        ))
+    db.commit()
+    _recalculate_streak(db, user_id)
+
     return {
         "date": today,
         "transcript": transcript,
@@ -1268,6 +1291,50 @@ async def create_voice_journal(
         "emotion_score": emotion["score"],
         "one_liner": emotion["one_liner"],
         "recorded_today": True,
+    }
+
+
+@app.post("/streak/backfill", tags=["streak"])
+async def backfill_streak_from_journals(
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    One-time backfill: create DailyCheckin 'done' entries for every existing
+    VoiceJournal that doesn't already have a checkin. Recalculates streak.
+    Call this once to fix historical data gap (voice journals recorded before
+    the auto-checkin feature existed).
+    """
+    user_id = current_user.id
+    journals = (
+        db.query(VoiceJournal)
+        .filter(VoiceJournal.user_id == user_id)
+        .all()
+    )
+    created = 0
+    for j in journals:
+        existing = (
+            db.query(DailyCheckin)
+            .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == j.date)
+            .first()
+        )
+        if not existing:
+            db.add(DailyCheckin(
+                user_id=user_id,
+                session_id=j.session_id,
+                date=j.date,
+                status="done",
+            ))
+            created += 1
+        elif existing.status != "done":
+            existing.status = "done"
+    db.commit()
+    streak = _recalculate_streak(db, user_id)
+    return {
+        "checkins_created": created,
+        "current_streak": streak.current_streak,
+        "longest_streak": streak.longest_streak,
+        "total_done": streak.total_done,
     }
 
 

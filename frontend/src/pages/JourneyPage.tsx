@@ -283,7 +283,11 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const loadAll = async () => {
         try {
             const [j, r, wi] = await Promise.all([
-                getJournalsForSession(userId, sessionId),
+                // Fetch ALL journals for this user (no session filter) so that
+                // the week calendar shows all voice logs regardless of which session
+                // they were recorded in. This prevents past days showing as "missed"
+                // when the journal was saved under a different session_id.
+                getJournalsForSession(userId, undefined),
                 getWeeklyReport(userId, sessionId).catch(() => null),
                 sessionId ? getWeekInfo(sessionId).catch(() => null) : Promise.resolve(null),
             ]);

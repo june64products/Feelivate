@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getStreak, submitCheckin, type StreakData } from '../../api';
+import { getStreak, submitCheckin, backfillStreak, type StreakData } from '../../api';
 import { Flame, Check, X as Close, TrendingUp } from 'lucide-react';
 
 interface StreakBarProps {
@@ -19,7 +19,19 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
 
     useEffect(() => {
         if (!userId || !isPlanActive) return;
-        loadStreak();
+        // One-time backfill: sync historical voice journals → DailyCheckin → streak
+        // Runs once per browser session (localStorage guard) to fix past data.
+        const backfillKey = `streak_backfilled_${userId}`;
+        if (!localStorage.getItem(backfillKey)) {
+            backfillStreak()
+                .then(() => {
+                    localStorage.setItem(backfillKey, '1');
+                })
+                .catch(() => { /* non-fatal */ })
+                .finally(() => loadStreak());
+        } else {
+            loadStreak();
+        }
     }, [userId, isPlanActive]);
 
     const loadStreak = async () => {

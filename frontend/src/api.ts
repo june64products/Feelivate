@@ -471,3 +471,20 @@ export const getJournalsForSession = async (userId: string, sessionId?: string, 
     if (!response.ok) throw new Error('Failed to fetch journals');
     return response.json();
 };
+
+/**
+ * One-time backfill: syncs existing voice journals into DailyCheckin table
+ * and recalculates streak. Call once to fix historical data gap.
+ */
+export const backfillStreak = async (): Promise<{
+    checkins_created: number;
+    current_streak: number;
+    longest_streak: number;
+    total_done: number;
+}> => {
+    const response = await secureFetch(`${API_BASE_URL}/streak/backfill`, {
+        method: 'POST',
+    });
+    if (!response.ok) throw new Error('Streak backfill failed');
+    return response.json();
+};
