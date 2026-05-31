@@ -55,17 +55,18 @@ export default function WorkspacePage() {
     const isEmptyState = messages.length === 0 && !isLoading;
 
     // Mic locked state — check localStorage for today's recording
+    // Use en-CA locale date (YYYY-MM-DD in local TZ) to match the client_date sent to backend
     const [micLocked, setMicLocked] = useState<boolean>(() => {
         const sid = localStorage.getItem('active_session_id');
         const uid = localStorage.getItem('user_id');
         const key = `last_journal_date_${sid || uid}`;
-        return localStorage.getItem(key) === new Date().toISOString().split('T')[0];
+        return localStorage.getItem(key) === new Date().toLocaleDateString('en-CA');
     });
 
     // Refresh micLocked when session changes
     useEffect(() => {
         const key = `last_journal_date_${activeSessionId || userId}`;
-        setMicLocked(localStorage.getItem(key) === new Date().toISOString().split('T')[0]);
+        setMicLocked(localStorage.getItem(key) === new Date().toLocaleDateString('en-CA'));
     }, [activeSessionId, userId]);
     
     // Calendar sync states
@@ -359,6 +360,8 @@ export default function WorkspacePage() {
                         onJournalSaved={(entry) => {
                             // Directly update the orb with the saved entry — no refetch needed
                             setTodayEmotion(entry);
+                            // Lock mic for the rest of today in the parent scope too
+                            setMicLocked(true);
                         }}
                         onClose={() => setView('chat')}
                     />

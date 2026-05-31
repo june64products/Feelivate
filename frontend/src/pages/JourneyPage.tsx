@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, Loader2, ArrowLeft, Lock, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Mic, Square, Loader2, ArrowLeft, Lock, ChevronDown, ChevronUp, FileText, Sparkles, Trophy } from 'lucide-react';
 import {
     getJournalsForSession,
     getWeeklyReport,
@@ -30,6 +30,87 @@ const EMOTION_COLORS: Record<string, string> = {
 };
 const emotionColor = (label?: string | null) =>
     EMOTION_COLORS[label ?? 'neutral'] ?? '#6b7280';
+
+// ─── Emotion Pie Chart (SVG, no library) ─────────────────────────────────────
+function EmotionPieChart({ days }: { days: WeeklyReportDay[] }) {
+    const recorded = days.filter(d => d.has_journal && d.emotion);
+    if (recorded.length === 0) return null;
+
+    // Count each emotion
+    const counts: Record<string, { count: number; color: string }> = {};
+    recorded.forEach(d => {
+        const label = d.emotion ?? 'neutral';
+        if (!counts[label]) counts[label] = { count: 0, color: emotionColor(label) };
+        counts[label].count++;
+    });
+    const total = recorded.length;
+    const entries = Object.entries(counts);
+
+    // Build SVG pie slices
+    const cx = 70; const cy = 70; const r = 54;
+    let startAngle = -Math.PI / 2;
+    const slices: { path: string; color: string; label: string; pct: number }[] = [];
+    entries.forEach(([label, { count, color }]) => {
+        const angle = (count / total) * 2 * Math.PI;
+        const endAngle = startAngle + angle;
+        const x1 = cx + r * Math.cos(startAngle);
+        const y1 = cy + r * Math.sin(startAngle);
+        const x2 = cx + r * Math.cos(endAngle);
+        const y2 = cy + r * Math.sin(endAngle);
+        const largeArc = angle > Math.PI ? 1 : 0;
+        slices.push({
+            path: `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`,
+            color,
+            label,
+            pct: Math.round((count / total) * 100),
+        });
+        startAngle = endAngle;
+    });
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+            <svg width="140" height="140" viewBox="0 0 140 140">
+                {slices.map((s, i) => (
+                    <motion.path
+                        key={s.label}
+                        d={s.path}
+                        fill={s.color}
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                        style={{ transformOrigin: '70px 70px', filter: `drop-shadow(0 0 6px ${s.color}55)` }}
+                    />
+                ))}
+                {/* Center donut hole */}
+                <circle cx={cx} cy={cy} r={30} fill="#0a0a0b" />
+                <text x={cx} y={cy - 4} textAnchor="middle" fill="white" fontSize="14" fontWeight="700" fontFamily="Inter, sans-serif">
+                    {total}
+                </text>
+                <text x={cx} y={cy + 12} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8" fontFamily="Inter, sans-serif">
+                    days
+                </text>
+            </svg>
+            {/* Legend */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {slices.map(s => (
+                    <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                            width: '10px', height: '10px', borderRadius: '50%',
+                            background: s.color, flexShrink: 0,
+                            boxShadow: `0 0 6px ${s.color}`,
+                        }} />
+                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', fontWeight: 500, textTransform: 'capitalize' }}>
+                            {s.label}
+                        </span>
+                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginLeft: 'auto', paddingLeft: '8px' }}>
+                            {s.pct}%
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 // ─── Consistency ring (SVG, no library) ──────────────────────────────────────
 function ConsistencyRing({ score, doneCount, totalCount }: { score: number; doneCount: number; totalCount: number }) {
@@ -263,11 +344,13 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
 
     // Mic lock — one recording per day per session
+    // Use en-CA locale date (YYYY-MM-DD in local TZ) to match client_date sent to backend
     const micLockKey = `last_journal_date_${sessionId || userId}`;
     const [micLocked, setMicLocked] = useState<boolean>(() => {
         const stored = localStorage.getItem(micLockKey);
-        return stored === new Date().toISOString().split('T')[0];
+        return stored === new Date().toLocaleDateString('en-CA');
     });
+    const [showWeekEndCelebration, setShowWeekEndCelebration] = useState(false);
 
     // Voice recording
     const [isRecording, setIsRecording] = useState(false);
@@ -276,18 +359,17 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const mediaRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
 
-    const today = new Date().toISOString().split('T')[0];
+    // Use local timezone date to avoid UTC vs IST mismatch
+    const today = new Date().toLocaleDateString('en-CA');
 
     useEffect(() => { loadAll(); }, [userId, sessionId]);
 
     const loadAll = async () => {
         try {
             const [j, r, wi] = await Promise.all([
-                // Fetch ALL journals for this user (no session filter) so that
-                // the week calendar shows all voice logs regardless of which session
-                // they were recorded in. This prevents past days showing as "missed"
-                // when the journal was saved under a different session_id.
-                getJournalsForSession(userId, undefined),
+                // Fetch journals scoped to this session so the orb/journey
+                // only shows the current active plan's data.
+                getJournalsForSession(userId, sessionId),
                 getWeeklyReport(userId, sessionId).catch(() => null),
                 sessionId ? getWeekInfo(sessionId).catch(() => null) : Promise.resolve(null),
             ]);
@@ -332,13 +414,23 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 const filtered = prev.filter(j => j.date !== entry.date);
                 return [entry, ...filtered];
             });
-            // Lock mic for the rest of today
+            // Lock mic for the rest of today (use local TZ date to match backend)
             localStorage.setItem(micLockKey, today);
             setMicLocked(true);
             // Refresh report after new journal
             setLoadingReport(true);
             const r = await getWeeklyReport(userId, sessionId).catch(() => null);
-            if (r) setReport(r);
+            if (r) {
+                setReport(r);
+                // Refresh weekInfo to check if this was the last day of the week
+                const wi = sessionId ? await getWeekInfo(sessionId).catch(() => null) : null;
+                if (wi) setWeekInfo(wi);
+                // If today is the last day of the plan week, celebrate!
+                const isLastDay = wi?.week_end ? today >= wi.week_end : false;
+                if (isLastDay && r.status !== 'no_data') {
+                    setTimeout(() => setShowWeekEndCelebration(true), 800);
+                }
+            }
         } catch (e: any) {
             alert(e.message || 'Upload failed');
         } finally {
@@ -412,6 +504,188 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 currentWeek={weekInfo?.current_week ?? 1}
                 micLocked={micLocked}
             />
+
+            {/* ── Week-End Celebration Modal ── */}
+            <AnimatePresence>
+                {showWeekEndCelebration && reportData && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 1000,
+                            background: 'rgba(0,0,0,0.85)',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            padding: '20px',
+                        }}
+                        onClick={() => setShowWeekEndCelebration(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.85, opacity: 0, y: 30 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 22, stiffness: 250, delay: 0.05 }}
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                width: '100%', maxWidth: '500px',
+                                maxHeight: '90vh',
+                                background: 'linear-gradient(145deg, #0d0d10 0%, #13131a 100%)',
+                                border: '1px solid rgba(99,102,241,0.3)',
+                                borderRadius: '24px',
+                                boxShadow: '0 0 0 1px rgba(99,102,241,0.15), 0 40px 80px rgba(0,0,0,0.7), 0 0 60px rgba(99,102,241,0.12)',
+                                overflow: 'hidden',
+                                display: 'flex', flexDirection: 'column',
+                            }}
+                        >
+                            {/* Glow header */}
+                            <div style={{
+                                padding: '28px 28px 20px',
+                                background: 'linear-gradient(180deg, rgba(99,102,241,0.15) 0%, transparent 100%)',
+                                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                textAlign: 'center',
+                                position: 'relative',
+                            }}>
+                                <motion.div
+                                    animate={{ scale: [1, 1.15, 1], rotate: [0, 5, -5, 0] }}
+                                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                                    style={{ display: 'inline-block', marginBottom: '12px' }}
+                                >
+                                    <Trophy size={40} color="#f59e0b" style={{ filter: 'drop-shadow(0 0 16px #f59e0b88)' }} />
+                                </motion.div>
+                                <h2 style={{
+                                    fontSize: '22px', fontWeight: 800, color: 'white',
+                                    letterSpacing: '-0.03em', margin: '0 0 6px',
+                                    fontFamily: "'Inter', sans-serif",
+                                }}>
+                                    Week {reportData.week_number} Complete! 🎉
+                                </h2>
+                                {reportData.week_theme && (
+                                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', margin: 0 }}>
+                                        {reportData.week_theme}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Body — scrollable */}
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+                                {/* Stats row */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                                    <div style={{
+                                        padding: '14px', borderRadius: '14px',
+                                        background: 'rgba(16,185,129,0.08)',
+                                        border: '1px solid rgba(16,185,129,0.18)',
+                                        textAlign: 'center',
+                                    }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#10b981', letterSpacing: '-0.03em' }}>
+                                            {reportData.consistency_score}%
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Consistency</div>
+                                    </div>
+                                    <div style={{
+                                        padding: '14px', borderRadius: '14px',
+                                        background: 'rgba(99,102,241,0.08)',
+                                        border: '1px solid rgba(99,102,241,0.18)',
+                                        textAlign: 'center',
+                                    }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#818cf8', letterSpacing: '-0.03em' }}>
+                                            {reportData.avg_score}/10
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Avg Mood</div>
+                                    </div>
+                                    <div style={{
+                                        padding: '14px', borderRadius: '14px',
+                                        background: 'rgba(245,158,11,0.08)',
+                                        border: '1px solid rgba(245,158,11,0.18)',
+                                        textAlign: 'center',
+                                    }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.03em' }}>
+                                            {reportData.days_done}/{reportData.past_days_count ?? 7}
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Days Done</div>
+                                    </div>
+                                </div>
+
+                                {/* Emotion Pie Chart */}
+                                <div style={{
+                                    padding: '16px', borderRadius: '14px',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid rgba(255,255,255,0.07)',
+                                    marginBottom: '14px',
+                                }}>
+                                    <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '14px' }}>Emotion Distribution</p>
+                                    <EmotionPieChart days={weekDays} />
+                                </div>
+
+                                {/* Key insight */}
+                                {reportData.hidden_insight && (
+                                    <div style={{
+                                        padding: '14px 16px', borderRadius: '12px',
+                                        background: 'rgba(99,102,241,0.08)',
+                                        border: '1px solid rgba(99,102,241,0.2)',
+                                        marginBottom: '14px',
+                                    }}>
+                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Hidden Insight</p>
+                                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.78)', lineHeight: 1.6, margin: 0 }}>{reportData.hidden_insight}</p>
+                                    </div>
+                                )}
+
+                                {/* Next week focus */}
+                                {reportData.next_week_focus && (
+                                    <div style={{
+                                        padding: '14px 16px', borderRadius: '12px',
+                                        background: 'rgba(16,185,129,0.07)',
+                                        border: '1px solid rgba(16,185,129,0.2)',
+                                        marginBottom: '14px',
+                                    }}>
+                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(16,185,129,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Key Focus for Next Week</p>
+                                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.78)', lineHeight: 1.6, margin: 0 }}>{reportData.next_week_focus}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer CTA */}
+                            <div style={{
+                                padding: '16px 24px',
+                                borderTop: '1px solid rgba(255,255,255,0.06)',
+                                display: 'flex', gap: '10px',
+                            }}>
+                                <button
+                                    onClick={() => setShowWeekEndCelebration(false)}
+                                    style={{
+                                        flex: 1, padding: '11px', borderRadius: '12px',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        background: 'transparent', color: 'rgba(255,255,255,0.5)',
+                                        fontSize: '13px', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+                                    }}
+                                >
+                                    View Full Report
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowWeekEndCelebration(false);
+                                        const event = new CustomEvent('request-next-week-plan', {
+                                            detail: { week: (reportData.week_number || 1) + 1 }
+                                        });
+                                        window.dispatchEvent(event);
+                                        setTimeout(() => window.dispatchEvent(new CustomEvent('close-journey')), 100);
+                                    }}
+                                    style={{
+                                        flex: 1, padding: '11px', borderRadius: '12px',
+                                        border: 'none',
+                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                        color: 'white', fontSize: '13px', fontWeight: 700,
+                                        cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+                                        boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                                    }}
+                                >
+                                    Plan Week {(reportData.week_number || 1) + 1} →
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {/* ── Header ── */}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
@@ -729,12 +1003,23 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             </div>
                                         </div>
 
+                                        {/* ── Emotion Distribution Pie Chart ── */}
+                                        {weekDays.some(d => d.has_journal) && (
+                                            <div>
+                                                <p style={{
+                                                    fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                                                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px',
+                                                }}>Emotion Distribution</p>
+                                                <EmotionPieChart days={weekDays} />
+                                            </div>
+                                        )}
+
                                         {/* ── Emotional arc chart ── */}
                                         <div>
                                             <p style={{
                                                 fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
                                                 textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px',
-                                            }}>Emotional Arc</p>
+                                            }}>Daily Emotional Arc</p>
                                             <EmotionChart days={weekDays} />
                                             {reportData.emotional_arc && (
                                                 <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, marginTop: '10px' }}>
@@ -855,67 +1140,157 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 }}>
                                     No weekly reports found for this session yet.
                                 </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     {archivedReports.map((aw) => {
                                         const isExpanded = expandedWeek === aw.week_number;
+                                        const arConsistency = aw.report?.consistency_score ?? 0;
+                                        const arDaysDone = aw.report?.days_done ?? 0;
+                                        const arPastDays = aw.report?.past_days_count ?? 7;
+                                        const arDays: WeeklyReportDay[] = aw.report?.days ?? [];
                                         return (
                                             <div
                                                 key={aw.week_number}
                                                 style={{
-                                                    borderRadius: '12px',
-                                                    border: '1px solid rgba(255,255,255,0.07)',
-                                                    background: 'rgba(255,255,255,0.02)',
+                                                    borderRadius: '16px',
+                                                    border: isExpanded ? '1px solid rgba(99,102,241,0.25)' : '1px solid rgba(255,255,255,0.07)',
+                                                    background: isExpanded ? 'rgba(99,102,241,0.04)' : 'rgba(255,255,255,0.02)',
                                                     overflow: 'hidden',
+                                                    transition: 'border-color 0.2s, background 0.2s',
                                                 }}
                                             >
+                                                {/* Archive card header */}
                                                 <button
                                                     onClick={() => setExpandedWeek(isExpanded ? null : aw.week_number)}
                                                     style={{
-                                                        width: '100%', padding: '14px 16px', display: 'flex',
+                                                        width: '100%', padding: '16px 18px', display: 'flex',
                                                         alignItems: 'center', justifyContent: 'space-between',
                                                         background: 'transparent', border: 'none',
                                                         color: 'white', cursor: 'pointer',
+                                                        fontFamily: "'Inter', sans-serif",
                                                     }}
                                                 >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                                                         <div style={{
-                                                            width: '32px', height: '32px', borderRadius: '8px',
-                                                            background: 'rgba(99,102,241,0.1)',
+                                                            width: '38px', height: '38px', borderRadius: '10px',
+                                                            background: isExpanded ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.08)',
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            transition: 'background 0.2s',
                                                         }}>
-                                                            <FileText size={16} color="#818cf8" />
+                                                            {isExpanded
+                                                                ? <Sparkles size={16} color="#818cf8" />
+                                                                : <FileText size={16} color="#818cf8" />
+                                                            }
                                                         </div>
                                                         <div style={{ textAlign: 'left' }}>
-                                                            <div style={{ fontSize: '13px', fontWeight: 600 }}>Week {aw.week_number} Report</div>
-                                                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>
+                                                            <div style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '-0.01em' }}>Week {aw.week_number} Report</div>
+                                                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>
                                                                 {aw.week_start} – {aw.week_end}
+                                                                {aw.report?.consistency_score !== undefined && (
+                                                                    <span style={{ marginLeft: '10px', color: arConsistency >= 70 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>
+                                                                        {arConsistency}% consistency
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    {isExpanded ? <ChevronUp size={16} color="#71717a" /> : <ChevronDown size={16} color="#71717a" />}
+                                                    <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                                                        <ChevronDown size={16} color="#71717a" />
+                                                    </motion.div>
                                                 </button>
+
+                                                {/* Expanded content */}
                                                 <AnimatePresence>
                                                     {isExpanded && (
                                                         <motion.div
+                                                            key={`expanded-${aw.week_number}`}
                                                             initial={{ height: 0, opacity: 0 }}
                                                             animate={{ height: 'auto', opacity: 1 }}
                                                             exit={{ height: 0, opacity: 0 }}
+                                                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                                                             style={{ overflow: 'hidden' }}
                                                         >
                                                             <div style={{
-                                                                padding: '0 16px 16px',
-                                                                borderTop: '1px solid rgba(255,255,255,0.04)',
-                                                                marginTop: '4px', paddingTop: '16px',
+                                                                padding: '4px 18px 20px',
+                                                                borderTop: '1px solid rgba(255,255,255,0.06)',
                                                             }}>
-                                                                <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-                                                                    <StatCard label="Consistency" value={`${aw.report?.consistency_score ?? 0}%`} color="#10b981" />
-                                                                    <StatCard label="Avg Mood" value={`${aw.report?.avg_score ?? 0}/10`} color="#60a5fa" />
+                                                                {/* Stats + ring row */}
+                                                                <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                                                                    <ConsistencyRing
+                                                                        score={arConsistency}
+                                                                        doneCount={arDaysDone}
+                                                                        totalCount={arPastDays}
+                                                                    />
+                                                                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                                                        <StatCard
+                                                                            label="Avg Mood"
+                                                                            value={`${aw.report?.avg_score ?? 0}/10`}
+                                                                            sub={aw.report?.dominant_emotion}
+                                                                            color={emotionColor(aw.report?.dominant_emotion)}
+                                                                        />
+                                                                        <StatCard
+                                                                            label="Days Done"
+                                                                            value={`${arDaysDone}/${arPastDays}`}
+                                                                            sub={`${aw.report?.days_missed ?? 0} missed`}
+                                                                            color={arDaysDone > (aw.report?.days_missed ?? 0) ? '#10b981' : '#ef4444'}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                                                    <AnalysisBlock label="Emotional Arc" content={aw.report?.emotional_arc ?? ''} />
-                                                                    <AnalysisBlock label="What went well" content={aw.report?.what_went_well ?? ''} />
-                                                                    <AnalysisBlock label="Where you slipped" content={aw.report?.where_you_slipped ?? ''} />
+
+                                                                {/* Week theme */}
+                                                                {aw.report?.week_theme && (
+                                                                    <div style={{
+                                                                        marginTop: '14px', padding: '8px 12px', borderRadius: '10px',
+                                                                        background: 'rgba(99,102,241,0.07)',
+                                                                        border: '1px solid rgba(99,102,241,0.15)',
+                                                                        fontSize: '12px', color: '#818cf8', fontWeight: 500,
+                                                                    }}>
+                                                                        ✦ {aw.report.week_theme}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Emotion distribution pie */}
+                                                                {arDays.length > 0 && arDays.some(d => d.has_journal) && (
+                                                                    <div style={{ marginTop: '16px' }}>
+                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>Emotion Distribution</p>
+                                                                        <EmotionPieChart days={arDays} />
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Emotional arc bar chart */}
+                                                                {arDays.length > 0 && (
+                                                                    <div style={{ marginTop: '16px' }}>
+                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Daily Arc</p>
+                                                                        <EmotionChart days={arDays} />
+                                                                    </div>
+                                                                )}
+
+                                                                {/* AI narrative blocks */}
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
+                                                                    {aw.report?.emotional_arc && <AnalysisBlock label="Emotional Arc" content={aw.report.emotional_arc} />}
+                                                                    {aw.report?.what_went_well && <AnalysisBlock label="What Went Well" content={aw.report.what_went_well} />}
+                                                                    {aw.report?.where_you_slipped && <AnalysisBlock label="Where You Slipped" content={aw.report.where_you_slipped} />}
+                                                                    {aw.report?.consistency_analysis && <AnalysisBlock label="Consistency Analysis" content={aw.report.consistency_analysis} />}
+                                                                    {aw.report?.hidden_insight && (
+                                                                        <div style={{
+                                                                            padding: '14px 16px', borderRadius: '12px',
+                                                                            background: 'rgba(99,102,241,0.08)',
+                                                                            border: '1px solid rgba(99,102,241,0.2)',
+                                                                        }}>
+                                                                            <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Hidden Insight</p>
+                                                                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, margin: 0 }}>{aw.report.hidden_insight}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {aw.report?.next_week_focus && (
+                                                                        <div style={{
+                                                                            padding: '14px 16px', borderRadius: '12px',
+                                                                            background: 'rgba(16,185,129,0.07)',
+                                                                            border: '1px solid rgba(16,185,129,0.2)',
+                                                                        }}>
+                                                                            <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(16,185,129,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Next Week Focus</p>
+                                                                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, margin: 0 }}>{aw.report.next_week_focus}</p>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </motion.div>
@@ -935,6 +1310,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 @keyframes pulse-rec {
                     0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
                     50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+                }
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
                 }
             `}</style>
         </div>
