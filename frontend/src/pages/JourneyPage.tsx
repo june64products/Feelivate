@@ -1098,7 +1098,10 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         borderBottom: '1px solid rgba(255,255,255,0.06)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     }}>
-
+                                        <div>
+                                            <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
+                                                Week {reportData.week_number !== undefined ? reportData.week_number : 'N'} Review
+                                            </p>
                                             {reportData.week_theme && (
                                                 <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>
                                                     {reportData.week_theme}
