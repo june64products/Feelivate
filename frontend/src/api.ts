@@ -14,6 +14,13 @@ export const getClientTimezone = (): string => {
     }
 };
 
+/** Returns the local date string in YYYY-MM-DD format, safely handling timezone offsets. */
+export const getLocalISODate = (): string => {
+    const d = new Date();
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+};
+
 const getToken = () => localStorage.getItem('access_token');
 
 /** Clears auth state and redirects to login. */
@@ -251,8 +258,7 @@ export interface StreakData {
 }
 
 export const getStreak = async (userId: string): Promise<StreakData> => {
-    // Pass local date (YYYY-MM-DD in IST) so backend uses the right today/yesterday boundary
-    const clientDate = new Date().toLocaleDateString('en-CA');
+    const clientDate = getLocalISODate();
     const response = await secureFetch(`${API_BASE_URL}/streak/${userId}?client_date=${clientDate}`);
     if (!response.ok) throw new Error('Failed to fetch streak');
     return response.json();
@@ -263,8 +269,7 @@ export const submitCheckin = async (
     sessionId?: string,
     note?: string,
 ): Promise<{ date: string; status: string; current_streak: number; longest_streak: number; total_done: number }> => {
-    // Pass local date to avoid UTC vs IST (or any timezone) mismatch on the backend
-    const clientDate = new Date().toLocaleDateString('en-CA'); // en-CA gives YYYY-MM-DD in local TZ
+    const clientDate = getLocalISODate();
     const response = await secureFetch(`${API_BASE_URL}/checkin`, {
         method: 'POST',
         body: JSON.stringify({ status, session_id: sessionId, note, client_date: clientDate }),
@@ -342,7 +347,11 @@ export interface TodayEmotionResult {
 }
 
 export const getTodayEmotion = async (userId: string, sessionId?: string): Promise<TodayEmotionResult> => {
-    const qs = sessionId ? `?session_id=${sessionId}` : '';
+    const clientDate = getLocalISODate();
+    const params = new URLSearchParams();
+    if (sessionId) params.set('session_id', sessionId);
+    params.set('client_date', clientDate);
+    const qs = params.toString() ? `?${params.toString()}` : '';
     const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/today-emotion${qs}`);
     if (!response.ok) throw new Error('Failed to fetch today emotion');
     return response.json();
@@ -474,7 +483,7 @@ export const uploadVoiceJournalForSession = async (audioBlob: Blob, sessionId?: 
     formData.append('audio', audioBlob, `journal.${ext}`);
 
     // Pass local date to avoid UTC vs IST timezone mismatch
-    const clientDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
+    const clientDate = getLocalISODate();
     const params = new URLSearchParams();
     if (sessionId) params.set('session_id', sessionId);
     params.set('client_date', clientDate);
@@ -508,8 +517,7 @@ export const backfillStreak = async (): Promise<{
     longest_streak: number;
     total_done: number;
 }> => {
-    // Pass local date (YYYY-MM-DD in IST) so backend uses the right today/yesterday boundary
-    const clientDate = new Date().toLocaleDateString('en-CA');
+    const clientDate = getLocalISODate();
     const response = await secureFetch(`${API_BASE_URL}/streak/backfill?client_date=${clientDate}`, {
         method: 'POST',
     });

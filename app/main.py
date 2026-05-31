@@ -1019,6 +1019,7 @@ async def get_week_info(
 
     current_week = session_rec.current_week or 1
     ws, we, day_count = _get_week_bounds(session_rec.plan_start_date, current_week)
+    # Use client's local date if provided via query param, otherwise fallback to server date
     today = date.today().isoformat()
     is_week_complete = today > we
 
@@ -1279,7 +1280,8 @@ async def create_voice_journal(
         existing.emotion_label = emotion["label"]
         existing.emotion_score = emotion["score"]
         existing.one_liner = emotion["one_liner"]
-        if session_id and not existing.session_id:
+        # Always update session_id to the latest active session
+        if session_id:
             existing.session_id = session_id
     else:
         entry = VoiceJournal(
@@ -1305,8 +1307,9 @@ async def create_voice_journal(
         # Only upgrade to 'done' — never downgrade a done checkin
         if existing_checkin.status != "done":
             existing_checkin.status = "done"
-            if session_id and not existing_checkin.session_id:
-                existing_checkin.session_id = session_id
+        # Always update session_id to the latest active session
+        if session_id:
+            existing_checkin.session_id = session_id
     else:
         db.add(DailyCheckin(
             user_id=user_id,
@@ -1407,30 +1410,35 @@ async def get_journals(
 async def get_today_emotion(
     user_id: str,
     session_id: Optional[str] = None,
+    client_date: Optional[str] = None,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Return today's voice journal entry if it exists. Used by the chat-side emotion orb.
-    If session_id provided, filters to that session only.
+    Pass client_date (YYYY-MM-DD) from user's local timezone to avoid UTC mismatch.
     Returns null if no entry recorded today.
     """
     from datetime import date
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    today = date.today().isoformat()
-    q = (
+    # Use client's local date if provided to avoid UTC vs IST timezone mismatch
+    if client_date:
+        try:
+            today = date.fromisoformat(client_date).isoformat()
+        except ValueError:
+            today = date.today().isoformat()
+    else:
+        today = date.today().isoformat()
+
+    # Look for any journal entry from this user for today, regardless of session
+    entry = (
         db.query(VoiceJournal)
         .filter(VoiceJournal.user_id == user_id, VoiceJournal.date == today)
+        .order_by(VoiceJournal.created_at.desc())
+        .first()
     )
-    if session_id:
-        entry = q.filter(VoiceJournal.session_id == session_id).order_by(VoiceJournal.created_at.desc()).first()
-        # Fallback: old records may not have session_id stored
-        if not entry:
-            entry = q.order_by(VoiceJournal.created_at.desc()).first()
-    else:
-        entry = q.order_by(VoiceJournal.created_at.desc()).first()
     if not entry:
         return {"has_entry": False, "entry": None}
     return {
@@ -1482,15 +1490,19 @@ async def get_weekly_report(
         ws = week_start_d.isoformat()
         we = (week_start_d + timedelta(days=6)).isoformat()
 
-    # ── 1. Fetch this week's voice journals (session-scoped if possible) ──────
-    q = db.query(VoiceJournal).filter(
-        VoiceJournal.user_id == user_id,
-        VoiceJournal.date >= ws,
-        VoiceJournal.date <= we,
+    # ── 1. Fetch this week's voice journals (ALL user journals in date range) ────
+    # Journals are one-per-user-per-day, not session-scoped. A journal recorded
+    # under any session should count for the weekly report of any session.
+    journals = (
+        db.query(VoiceJournal)
+        .filter(
+            VoiceJournal.user_id == user_id,
+            VoiceJournal.date >= ws,
+            VoiceJournal.date <= we,
+        )
+        .order_by(VoiceJournal.date.asc())
+        .all()
     )
-    if session_id:
-        q = q.filter(VoiceJournal.session_id == session_id)
-    journals = q.order_by(VoiceJournal.date.asc()).all()
 
     if not journals:
         return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we, "week_number": wk_num}

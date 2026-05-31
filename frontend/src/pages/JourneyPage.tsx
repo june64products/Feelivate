@@ -12,6 +12,7 @@ import {
     type WeeklyReportDay,
     type WeekInfo,
     type ArchivedWeekReport,
+    getLocalISODate
 } from '../api';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 
@@ -161,8 +162,6 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
     const gap = 8;
     const totalW = days.length * (barW + gap) - gap;
 
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
     return (
         <svg width="100%" viewBox={`0 0 ${totalW + 4} ${chartH + 32}`} style={{ overflow: 'visible' }}>
             {days.map((d, i) => {
@@ -172,7 +171,8 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
                 const x = i * (barW + gap);
                 const y = chartH - barH;
                 const color = hasJournal ? emotionColor(d.emotion) : 'rgba(255,255,255,0.08)';
-                const dayName = dayNames[i] ?? `D${i + 1}`;
+                const dayDate = new Date(d.date);
+                const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
 
                 return (
                     <g key={d.date}>
@@ -211,8 +211,6 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
 
 // ─── 7-day calendar strip ─────────────────────────────────────────────────────
 function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[]; today: string; planStartDate?: string }) {
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
     return (
         <div style={{
             display: 'grid',
@@ -220,6 +218,8 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
             gap: '6px',
         }}>
             {days.map((d, i) => {
+                const dayDate = new Date(d.date);
+                const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
                 const isBeforePlan = planStartDate ? d.date < planStartDate : false;
                 const isPast = d.date < today;
                 const isToday = d.date === today;
@@ -230,7 +230,7 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
                 return (
                     <div key={d.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                         <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
-                            {dayNames[i]}
+                            {dayName}
                         </span>
                         <motion.div
                             initial={{ scale: 0 }}
@@ -343,12 +343,11 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const [activeTab, setActiveTab] = useState<'overview' | 'archive'>('overview');
     const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
 
-    // Mic lock — one recording per day per session
-    // Use en-CA locale date (YYYY-MM-DD in local TZ) to match client_date sent to backend
-    const micLockKey = `last_journal_date_${sessionId || userId}`;
     const [micLocked, setMicLocked] = useState<boolean>(() => {
-        const stored = localStorage.getItem(micLockKey);
-        return stored === new Date().toLocaleDateString('en-CA');
+        const uid = localStorage.getItem('user_id');
+        const key = `last_journal_date_${uid}`;
+        const stored = localStorage.getItem(key);
+        return stored === getLocalISODate();
     });
     const [showWeekEndCelebration, setShowWeekEndCelebration] = useState(false);
 
@@ -359,23 +358,40 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const mediaRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
 
-    // Use local timezone date to avoid UTC vs IST mismatch
-    const today = new Date().toLocaleDateString('en-CA');
+    const today = getLocalISODate();
 
     useEffect(() => { loadAll(); }, [userId, sessionId]);
 
     const loadAll = async () => {
         try {
-            const [j, r, wi] = await Promise.all([
-                // Fetch journals scoped to this session so the orb/journey
-                // only shows the current active plan's data.
-                getJournalsForSession(userId, sessionId),
-                getWeeklyReport(userId, sessionId).catch(() => null),
-                sessionId ? getWeekInfo(sessionId).catch(() => null) : Promise.resolve(null),
+            // 1. Always fetch weekInfo first — we need current_week for the report query
+            let wi: WeekInfo | null = null;
+            if (sessionId) {
+                wi = await getWeekInfo(sessionId).catch(() => null);
+                setWeekInfo(wi);
+            }
+
+            const weekNum = wi?.current_week;
+
+            // 2. Fetch journals (ALL user journals, not session-filtered),
+            //    weekly report (session-scoped), and archived reports in parallel
+            const [j, r, ar] = await Promise.all([
+                getJournalsForSession(userId, undefined),
+                sessionId ? getWeeklyReport(userId, sessionId, weekNum).catch(() => null) : null,
+                sessionId ? getSessionReports(sessionId).catch(() => []) : [],
             ]);
             setJournals(j);
             setReport(r);
-            setWeekInfo(wi);
+            setArchivedReports(ar);
+
+            // 3. If we have a journal for today, also set micLocked
+            const todayJ = j.find(jj => jj.date === getLocalISODate());
+            if (todayJ) {
+                setMicLocked(true);
+                const uid = localStorage.getItem('user_id');
+                const key = `last_journal_date_${uid}`;
+                localStorage.setItem(key, getLocalISODate());
+            }
         } finally {
             setLoadingReport(false);
         }
@@ -414,18 +430,20 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 const filtered = prev.filter(j => j.date !== entry.date);
                 return [entry, ...filtered];
             });
-            // Lock mic for the rest of today (use local TZ date to match backend)
-            localStorage.setItem(micLockKey, today);
+            const uid = localStorage.getItem('user_id');
+            const key = `last_journal_date_${uid}`;
+            localStorage.setItem(key, getLocalISODate());
             setMicLocked(true);
-            // Refresh report after new journal
+
+            // Refresh the weekly report
             setLoadingReport(true);
-            const r = await getWeeklyReport(userId, sessionId).catch(() => null);
+            const wk = weekInfo?.current_week;
+            const r = await getWeeklyReport(userId, sessionId, wk).catch(() => null);
             if (r) {
                 setReport(r);
-                // Refresh weekInfo to check if this was the last day of the week
+                // Refresh weekInfo for last-day-of-week detection
                 const wi = sessionId ? await getWeekInfo(sessionId).catch(() => null) : null;
                 if (wi) setWeekInfo(wi);
-                // If today is the last day of the plan week, celebrate!
                 const isLastDay = wi?.week_end ? today >= wi.week_end : false;
                 if (isLastDay && r.status !== 'no_data') {
                     setTimeout(() => setShowWeekEndCelebration(true), 800);
@@ -453,27 +471,28 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
         }
     };
 
-    const todayEntry = journals.find(j => j.date === today);
     const reportData = report?.report;
 
-    // Build day structure — ALWAYS anchor to the Monday of today's physical week
-    // so that today's voice journal always appears on the correct day in the calendar.
-    // planStartDate is used only to visually cross out pre-plan days.
+    // Build weekDays — the 7-day calendar for the current week
     const weekDays: WeeklyReportDay[] = (() => {
+        // Prefer server-generated per-day data from report (most accurate)
         if (reportData?.days && reportData.days.length > 0) return reportData.days;
+
+        // Fallback: build from local journal data
         const jMap: Record<string, JournalEntry> = {};
         journals.forEach(j => { jMap[j.date] = j; });
 
-        // Always use the Monday of the current physical week (local date)
+        // Anchor to the Monday of today's physical week
         const todayLocal = new Date();
+        const dow = todayLocal.getDay() || 7;
         const startDate = new Date(todayLocal);
-        const dow = startDate.getDay() || 7; // Mon=1..Sun=7
-        startDate.setDate(startDate.getDate() - dow + 1);
+        startDate.setDate(todayLocal.getDate() - dow + 1);
 
         return Array.from({ length: 7 }, (_, i) => {
             const day = new Date(startDate);
             day.setDate(startDate.getDate() + i);
-            const dateStr = day.toISOString().split('T')[0];
+            const tzOffset = day.getTimezoneOffset() * 60000;
+            const dateStr = new Date(day.getTime() - tzOffset).toISOString().split('T')[0];
             const j = jMap[dateStr];
             const isPast = dateStr < today;
             return {
@@ -486,6 +505,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             } as WeeklyReportDay;
         });
     })();
+
+    // Derive todayEntry from weekDays for consistent state
+    const todayEntry = weekDays.find(d => d.date === today && d.has_journal) ? journals.find(j => j.date === today) : null;
 
     const consistencyScore = reportData?.consistency_score ?? 0;
     const avgScore = reportData?.avg_score ?? 0;

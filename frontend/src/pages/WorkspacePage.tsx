@@ -11,6 +11,7 @@ import {
     stopGoogleCalendarSync,
     getTodayEmotion,
     type TodayEmotionResult,
+    getLocalISODate,
 } from '../api';
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
@@ -55,18 +56,20 @@ export default function WorkspacePage() {
     const isEmptyState = messages.length === 0 && !isLoading;
 
     // Mic locked state — check localStorage for today's recording
-    // Use en-CA locale date (YYYY-MM-DD in local TZ) to match the client_date sent to backend
+    // Use getLocalISODate (YYYY-MM-DD in local TZ) to match the client_date sent to backend
     const [micLocked, setMicLocked] = useState<boolean>(() => {
-        const sid = localStorage.getItem('active_session_id');
         const uid = localStorage.getItem('user_id');
-        const key = `last_journal_date_${sid || uid}`;
-        return localStorage.getItem(key) === new Date().toLocaleDateString('en-CA');
+        const key = `last_journal_date_${uid}`;
+        return localStorage.getItem(key) === getLocalISODate();
     });
 
-    // Refresh micLocked when session changes
+    // Refresh micLocked on mount
     useEffect(() => {
-        const key = `last_journal_date_${activeSessionId || userId}`;
-        setMicLocked(localStorage.getItem(key) === new Date().toLocaleDateString('en-CA'));
+        const uid = localStorage.getItem('user_id');
+        if (uid) {
+            const key = `last_journal_date_${uid}`;
+            setMicLocked(localStorage.getItem(key) === getLocalISODate());
+        }
     }, [activeSessionId, userId]);
     
     // Calendar sync states
@@ -362,6 +365,11 @@ export default function WorkspacePage() {
                             setTodayEmotion(entry);
                             // Lock mic for the rest of today in the parent scope too
                             setMicLocked(true);
+                            // Persist to localStorage so mic stays locked after page refresh
+                            const uid = localStorage.getItem('user_id');
+                            if (uid) {
+                                localStorage.setItem(`last_journal_date_${uid}`, getLocalISODate());
+                            }
                         }}
                         onClose={() => setView('chat')}
                     />
