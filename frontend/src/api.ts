@@ -364,11 +364,14 @@ export const getTodayEmotion = async (userId: string, sessionId?: string): Promi
 
 export interface WeeklyReportDay {
     date: string;
+    day_label: string;
+    planned_task: string;
     emotion: string | null;
     score: number | null;
     one_liner: string | null;
     checkin: 'done' | 'skipped' | 'missed' | 'pending';
     has_journal: boolean;
+    coaching_insight: string;
 }
 
 export interface WeeklyReport {
@@ -395,6 +398,7 @@ export interface WeeklyReport {
         hidden_insight: string;
         next_week_focus: string;
         next_week_plan_context: string;
+        daily_analysis?: string[];
         // Per-day data
         days: WeeklyReportDay[];
     };

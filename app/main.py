@@ -1466,7 +1466,7 @@ async def get_weekly_report(
     Session-scoped: uses plan_start_date to compute correct week bounds.
     week_number defaults to the session's current_week.
     """
-    from .llm import call_llm
+    from .llm import call_llm, call_with_fallback_chain
     from datetime import date, timedelta
 
     if user_id != current_user.id:
@@ -1570,17 +1570,19 @@ async def get_weekly_report(
     plan_vs_actual = ""
     if week_plan_days:
         lines = []
-        for pd in week_plan_days[:7]:
+        for idx, pd in enumerate(week_plan_days[:7]):
             day_label = pd.get("day", "")
             task = pd.get("action", "")
-            # Try to find the date for this plan day
-            day_status = "unknown"
-            for d, s in checkin_map.items():
-                lines.append(f"  Planned: '{task[:100]}' | Checkin: {s}")
-                break
+            if idx < len(all_week_days):
+                d = all_week_days[idx]
+                s = checkin_map.get(d, "pending")
+                j_info = ""
+                if d in journal_by_date:
+                    j_info = f" | Voice Journal: {journal_by_date[d].emotion_label} ({journal_by_date[d].emotion_score}/10) - '{journal_by_date[d].one_liner}'"
+                lines.append(f"  Day {idx+1} ({day_label}): Planned: '{task}' | Checkin: {s}{j_info}")
             else:
-                lines.append(f"  Planned: '{task[:100]}' | Checkin: {day_status}")
-        plan_vs_actual = "\nWEEK PLAN vs ACTUAL:\n" + "\n".join(lines)
+                lines.append(f"  Day {idx+1} ({day_label}): Planned: '{task}' | Checkin: pending")
+        plan_vs_actual = "\nWEEK PLAN vs ACTUAL CHECK-INS & JOURNALS:\n" + "\n".join(lines)
 
     prompt = f"""You are a world-class performance coach and behavioral analyst. Your job is to write a deep, honest, insightful WEEK REVIEW for this user.
 
@@ -1592,7 +1594,7 @@ You have access to:
 Be direct, specific, and honest. This is NOT a therapy session — it's a performance review. Call out exactly where consistency broke, what patterns emerged, and what needs to change next week.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WEEK DATA: {ws} to {we} (Week {week_number or 'N'})
+WEEK DATA: {ws} to {we} (Week {wk_num})
 Theme: {week_plan_theme or 'Personal growth'}
 Days with checkin done: {days_done}/{past_days_count}
 Days missed: {days_missed}
@@ -1613,15 +1615,36 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
   "consistency_analysis": "Detailed 3-4 sentence analysis of their consistency pattern. When did they slip? Why? Was it emotional or external?",
   "hidden_insight": "One non-obvious insight you noticed about their emotional patterns that they probably haven't noticed themselves.",
   "next_week_focus": "The single most important thing they must do differently next week based on this data. Make it very specific and actionable.",
-  "next_week_plan_context": "2-3 bullet points of what the next week plan should account for, based on this week's performance. Format: bullet per line with \\n separator."
+  "next_week_plan_context": "2-3 bullet points of what the next week plan should account for, based on this week's performance. Format: bullet per line with \\n separator.",
+  "daily_analysis": [
+    "coaching_insight for Day 1: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 1 based on their plan vs actual log.",
+    "coaching_insight for Day 2: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 2 based on their plan vs actual log.",
+    "coaching_insight for Day 3: 1-2 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 3 based on their plan vs actual log.",
+    "coaching_insight for Day 4: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 4 based on their plan vs actual log.",
+    "coaching_insight for Day 5: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 5 based on their plan vs actual log.",
+    "coaching_insight for Day 6: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 6 based on their plan vs actual log.",
+    "coaching_insight for Day 7: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 7 based on their plan vs actual log."
+  ]
 }}"""
 
     try:
-        raw = await asyncio.to_thread(call_llm, prompt, temperature=0.4, max_tokens=900)
+        messages = [
+            {"role": "system", "content": "You are a world-class performance coach and behavioral analyst. You must output raw JSON only matching the schema exactly."},
+            {"role": "user", "content": prompt}
+        ]
+        raw = await asyncio.to_thread(call_with_fallback_chain, messages, temperature=0.4, max_tokens=2500)
+        # Strip thinking blocks if generated
+        raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL)
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
         start_idx = raw.find("{")
         end_idx = raw.rfind("}")
         ai_data = json.loads(raw[start_idx:end_idx + 1]) if start_idx != -1 else {}
+        
+        daily_list = ai_data.get("daily_analysis", [])
+        if not isinstance(daily_list, list):
+            daily_list = []
+        while len(daily_list) < 7:
+            daily_list.append("")
     except Exception as e:
         logger.error(f"Weekly report AI generation failed: {e}")
         ai_data = {
@@ -1634,6 +1657,7 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
             "next_week_focus": "Keep showing up every day.",
             "next_week_plan_context": "",
         }
+        daily_list = ["", "", "", "", "", "", ""]
 
     # ── 7. Build the final report dict ──────────────────────────────────────
     report_data = {
@@ -1649,17 +1673,20 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
         "week_end": we,
         "week_number": wk_num,
         "week_theme": week_plan_theme,
-        # Per-day data for charts
+        # Per-day data for charts and detailed breakdown
         "days": [
             {
                 "date": d,
+                "day_label": week_plan_days[i].get("day", f"Day {i+1}") if i < len(week_plan_days) else f"Day {i+1}",
+                "planned_task": week_plan_days[i].get("action", "") if i < len(week_plan_days) else "",
                 "emotion": journal_by_date[d].emotion_label if d in journal_by_date else None,
                 "score": journal_by_date[d].emotion_score if d in journal_by_date else None,
                 "one_liner": journal_by_date[d].one_liner if d in journal_by_date else None,
                 "checkin": checkin_map.get(d, "pending"),
                 "has_journal": d in journal_by_date,
+                "coaching_insight": daily_list[i] if i < len(daily_list) else "",
             }
-            for d in all_week_days
+            for i, d in enumerate(all_week_days)
         ],
     }
 

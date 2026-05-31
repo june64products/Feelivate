@@ -117,8 +117,9 @@ function EmotionPieChart({ days }: { days: WeeklyReportDay[] }) {
 function ConsistencyRing({ score, doneCount, totalCount }: { score: number; doneCount: number; totalCount: number }) {
     const r = 46;
     const circ = 2 * Math.PI * r;
-    const filled = circ * (score / 100);
-    const ringColor = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
+    const scoreVal = isNaN(score) ? 0 : score;
+    const filled = circ * (Math.min(100, Math.max(0, scoreVal)) / 100);
+    const ringColor = scoreVal >= 80 ? '#10b981' : scoreVal >= 50 ? '#f59e0b' : '#ef4444';
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
@@ -140,7 +141,7 @@ function ConsistencyRing({ score, doneCount, totalCount }: { score: number; done
                 />
                 {/* Score text */}
                 <text x="60" y="56" textAnchor="middle" fill="white" fontSize="22" fontWeight="700" fontFamily="Inter, sans-serif">
-                    {score}%
+                    {scoreVal}%
                 </text>
                 <text x="60" y="73" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="10" fontFamily="Inter, sans-serif">
                     consistency
@@ -206,6 +207,119 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
                 );
             })}
         </svg>
+    );
+}
+
+// ─── Day-by-Day Rich Plan vs Actual execution breakdown ────────────────────────
+function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+            <p style={{
+                fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px',
+            }}>
+                Daily Execution Breakdown
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {days.map((d, i) => {
+                    const hasDone = d.checkin === 'done' || d.has_journal;
+                    const isMissed = d.checkin === 'missed';
+                    const isPending = d.checkin === 'pending';
+                    const statusColor = hasDone ? '#10b981' : isMissed ? '#ef4444' : 'rgba(255,255,255,0.3)';
+                    const statusBg = hasDone ? 'rgba(16,185,129,0.08)' : isMissed ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)';
+                    const statusLabel = hasDone ? 'Done' : isMissed ? 'Missed' : 'Upcoming';
+
+                    return (
+                        <div key={d.date} style={{
+                            padding: '14px 16px',
+                            borderRadius: '12px',
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px',
+                        }}>
+                            {/* Day Header */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'white' }}>
+                                        {d.day_label || `Day ${i + 1}`}
+                                    </span>
+                                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>
+                                        {d.date}
+                                    </span>
+                                </div>
+                                <span style={{
+                                    fontSize: '9px', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
+                                    background: statusBg, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.04em'
+                                }}>
+                                    {statusLabel}
+                                </span>
+                            </div>
+
+                            {/* Grid: Plan vs Actual */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className="journey-flex-col">
+                                {/* Planned Task Column */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                        Planned Task
+                                    </span>
+                                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', margin: 0, lineHeight: 1.5 }}>
+                                        {d.planned_task || 'No task planned for this day.'}
+                                    </p>
+                                </div>
+
+                                {/* Actual Outcome Column */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                        Actual Journal
+                                    </span>
+                                    {d.has_journal ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span style={{
+                                                    width: '6px', height: '6px', borderRadius: '50%',
+                                                    background: emotionColor(d.emotion),
+                                                    boxShadow: `0 0 6px ${emotionColor(d.emotion)}`
+                                                }} />
+                                                <span style={{ fontSize: '12px', fontWeight: 600, color: emotionColor(d.emotion), textTransform: 'capitalize' }}>
+                                                    {d.emotion} ({d.score}/10)
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>
+                                                "{d.one_liner}"
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <p style={{ fontSize: '11.5px', color: isMissed ? '#f87171' : 'rgba(255,255,255,0.3)', margin: 0, opacity: isMissed ? 0.8 : 0.6 }}>
+                                            {isMissed ? '✕ Missed check-in & voice entry' : '— Pending voice entry'}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Coaching Insight if available */}
+                            {d.coaching_insight && (
+                                <div style={{
+                                    marginTop: '4px',
+                                    padding: '10px 12px',
+                                    borderRadius: '8px',
+                                    background: 'rgba(99,102,241,0.04)',
+                                    borderLeft: '2px solid rgba(99,102,241,0.5)',
+                                }}>
+                                    <span style={{ fontSize: '9px', color: 'rgba(129,140,248,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '2px' }}>
+                                        AI coaching insight
+                                    </span>
+                                    <p style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.45 }}>
+                                        {d.coaching_insight}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
     );
 }
 
@@ -687,7 +801,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     onClick={() => {
                                         setShowWeekEndCelebration(false);
                                         const event = new CustomEvent('request-next-week-plan', {
-                                            detail: { week: (reportData.week_number || 1) + 1 }
+                                            detail: { week: (reportData.week_number ?? 1) + 1 }
                                         });
                                         window.dispatchEvent(event);
                                         setTimeout(() => window.dispatchEvent(new CustomEvent('close-journey')), 100);
@@ -701,7 +815,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
                                     }}
                                 >
-                                    Plan Week {(reportData.week_number || 1) + 1} →
+                                    Plan Week {(reportData.week_number ?? 1) + 1} →
                                 </button>
                             </div>
                         </motion.div>
@@ -984,10 +1098,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         borderBottom: '1px solid rgba(255,255,255,0.06)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     }}>
-                                        <div>
-                                            <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
-                                                Week {reportData.week_number || 'N'} Review
-                                            </p>
+
                                             {reportData.week_theme && (
                                                 <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>
                                                     {reportData.week_theme}
@@ -1070,6 +1181,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             </div>
                                         )}
 
+                                        {/* ── Daily Breakdown ── */}
+                                        <DailyBreakdown days={weekDays} />
+
                                         {/* ── Next week focus ── */}
                                         {reportData.next_week_focus && (
                                             <div style={{
@@ -1096,7 +1210,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         }}>
                                             <div>
                                                 <p style={{ fontSize: '12px', fontWeight: 600, color: 'white', margin: 0 }}>
-                                                    Ready for Week {(reportData.week_number || 1) + 1}?
+                                                    Ready for Week {(reportData.week_number ?? 1) + 1}?
                                                 </p>
                                                 <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>
                                                     AI will build it using this week's performance data.
@@ -1106,7 +1220,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 onClick={() => {
                                                     // Communicate back to WorkspacePage to open chat and send a specific prompt
                                                     const event = new CustomEvent('request-next-week-plan', {
-                                                        detail: { week: (reportData.week_number || 1) + 1 }
+                                                        detail: { week: (reportData.week_number ?? 1) + 1 }
                                                     });
                                                     window.dispatchEvent(event);
                                                     // Close journey
@@ -1126,7 +1240,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
                                                 onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
                                             >
-                                                Plan Week {(reportData.week_number || 1) + 1}
+                                                Plan Week {(reportData.week_number ?? 1) + 1}
                                             </button>
                                         </div>
                                     </div>
@@ -1285,6 +1399,11 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                         <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Daily Arc</p>
                                                                         <EmotionChart days={arDays} />
                                                                     </div>
+                                                                )}
+
+                                                                {/* Daily Breakdown */}
+                                                                {arDays.length > 0 && (
+                                                                    <DailyBreakdown days={arDays} />
                                                                 )}
 
                                                                 {/* AI narrative blocks */}
