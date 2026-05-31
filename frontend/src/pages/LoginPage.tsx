@@ -57,13 +57,14 @@ export default function LoginPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
       display: 'flex',
       flexDirection: 'column',
       background: '#FF4D00',
       fontFamily: "'Inter', system-ui, sans-serif",
       color: '#000000',
       overflowX: 'hidden',
+      overflowY: 'auto',
     }}>
       {/* Fonts & Styles */}
       <style>{`
