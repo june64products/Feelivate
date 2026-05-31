@@ -195,7 +195,10 @@ export const syncGoogleCalendar = async (sessionId: string, userId: string, pref
     const response = await secureFetch(`${API_BASE_URL}/calendar/sync/${sessionId}?user_id=${userId}&preferred_time=${preferredTime}`, {
         method: 'POST',
     });
-    if (!response.ok) throw new Error('Failed to sync calendar');
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to sync calendar');
+    }
     return response.json();
 };
 
