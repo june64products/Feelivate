@@ -732,10 +732,12 @@ async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db
 # STREAK & DAILY CHECK-IN
 # ============================================================
 
-def _recalculate_streak(db: DBSession, user_id: str) -> UserStreak:
+def _recalculate_streak(db: DBSession, user_id: str, client_date: Optional[str] = None) -> UserStreak:
     """
     Recalculate current and longest streak from daily_checkins.
     Called after every checkin mutation. O(n) but checkins are small.
+    Pass client_date (YYYY-MM-DD) from the user's local timezone to avoid
+    UTC vs IST mismatch when checking today/yesterday boundaries.
     """
     from datetime import date, timedelta
 
@@ -748,10 +750,21 @@ def _recalculate_streak(db: DBSession, user_id: str) -> UserStreak:
     )
     done_dates = sorted({r.date for r in done_rows}, reverse=True)
 
-    today = date.today().isoformat()
-    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    # Use client local date if provided (avoids UTC vs IST mismatch)
+    if client_date:
+        try:
+            today_d = date.fromisoformat(client_date)
+        except ValueError:
+            today_d = date.today()
+    else:
+        today_d = date.today()
 
-    # Current streak: consecutive days ending today or yesterday
+    today = today_d.isoformat()
+    yesterday = (today_d - timedelta(days=1)).isoformat()
+
+    # Current streak: count consecutive done days ending at or before today.
+    # Streak is still alive if the most recent done day is today OR yesterday
+    # (user hasn't done today yet but hasn't broken the chain).
     current = 0
     if done_dates and done_dates[0] in (today, yesterday):
         expected = done_dates[0]
@@ -763,18 +776,18 @@ def _recalculate_streak(db: DBSession, user_id: str) -> UserStreak:
             else:
                 break
 
-    # Longest streak: scan all done dates
+    # Longest streak: scan all done dates ascending
     longest = 0
     run = 0
-    prev_date = None
+    prev_date_str = None
     for d in sorted(done_dates):
-        if prev_date is None:
+        if prev_date_str is None:
             run = 1
         else:
-            delta = (date.fromisoformat(d) - date.fromisoformat(prev_date)).days
+            delta = (date.fromisoformat(d) - date.fromisoformat(prev_date_str)).days
             run = run + 1 if delta == 1 else 1
         longest = max(longest, run)
-        prev_date = d
+        prev_date_str = d
 
     # Upsert UserStreak
     streak_rec = db.query(UserStreak).filter(UserStreak.user_id == user_id).first()
@@ -782,7 +795,8 @@ def _recalculate_streak(db: DBSession, user_id: str) -> UserStreak:
         streak_rec = UserStreak(user_id=user_id)
         db.add(streak_rec)
     streak_rec.current_streak = current
-    streak_rec.longest_streak = max(longest, streak_rec.longest_streak)
+    # longest_streak should always be the historical maximum — never decrease
+    streak_rec.longest_streak = max(longest, streak_rec.longest_streak or 0)
     streak_rec.total_done = len(done_dates)
     streak_rec.last_checkin = done_dates[0] if done_dates else None
     db.commit()
@@ -832,7 +846,8 @@ async def daily_checkin(
         db.add(checkin)
     db.commit()
 
-    streak = _recalculate_streak(db, user_id)
+    # Pass client_date so streak boundary uses user's local timezone
+    streak = _recalculate_streak(db, user_id, client_date=today)
     return {
         "date": today,
         "status": payload.status,
@@ -845,21 +860,30 @@ async def daily_checkin(
 @app.get("/streak/{user_id}", tags=["streak"])
 async def get_streak(
     user_id: str,
+    client_date: Optional[str] = None,  # YYYY-MM-DD from user's local timezone
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return streak stats + last 7 days checkin statuses for the UI calendar strip."""
+    """Return streak stats + last 7 days checkin statuses for the UI calendar strip.
+    Pass client_date query param so streak boundary and week strip use user's local date.
+    """
     from datetime import date, timedelta
 
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    streak_rec = db.query(UserStreak).filter(UserStreak.user_id == user_id).first()
+    # Re-calculate streak using client's local date so UTC vs IST doesn't break it
+    streak_rec = _recalculate_streak(db, user_id, client_date=client_date)
 
-    # Build Mon–Sun of the CURRENT calendar week (not rolling 7 days)
-    from datetime import date, timedelta
-    # Accept client_date query param to handle timezone (e.g. IST vs UTC)
-    today_d = date.today()
+    # Build Mon–Sun of the CURRENT calendar week using client's local date
+    if client_date:
+        try:
+            today_d = date.fromisoformat(client_date)
+        except ValueError:
+            today_d = date.today()
+    else:
+        today_d = date.today()
+
     # weekday(): Monday=0, Sunday=6
     week_monday = today_d - timedelta(days=today_d.weekday())
     days = []
@@ -1289,7 +1313,8 @@ async def create_voice_journal(
             status="done",
         ))
     db.commit()
-    _recalculate_streak(db, user_id)
+    # Pass today (client date) so streak boundary uses user's local timezone
+    _recalculate_streak(db, user_id, client_date=today)
 
     return {
         "date": today,
@@ -1303,14 +1328,15 @@ async def create_voice_journal(
 
 @app.post("/streak/backfill", tags=["streak"])
 async def backfill_streak_from_journals(
+    client_date: Optional[str] = None,  # YYYY-MM-DD from user's local timezone
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    One-time backfill: create DailyCheckin 'done' entries for every existing
-    VoiceJournal that doesn't already have a checkin. Recalculates streak.
-    Call this once to fix historical data gap (voice journals recorded before
-    the auto-checkin feature existed).
+    Backfill: create DailyCheckin 'done' entries for every existing VoiceJournal
+    that doesn't already have a checkin. Recalculates streak.
+    Idempotent — safe to call on every app load.
+    Pass client_date so streak boundary uses user's local timezone.
     """
     user_id = current_user.id
     journals = (
@@ -1336,7 +1362,7 @@ async def backfill_streak_from_journals(
         elif existing.status != "done":
             existing.status = "done"
     db.commit()
-    streak = _recalculate_streak(db, user_id)
+    streak = _recalculate_streak(db, user_id, client_date=client_date)
     return {
         "checkins_created": created,
         "current_streak": streak.current_streak,

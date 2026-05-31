@@ -20,11 +20,21 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
     useEffect(() => {
         if (!userId || !isPlanActive) return;
         // Always run backfill on mount — it is idempotent (no duplicate checkins created).
-        // This ensures any voice journals recorded before the auto-checkin feature
-        // existed are synced into DailyCheckin and the streak is always accurate.
+        // Backfill ensures voice journals recorded before auto-checkin existed are synced.
+        // We pass client_date from the API so streak boundary uses IST, not server UTC.
         backfillStreak()
-            .catch(() => { /* non-fatal */ })
-            .finally(() => loadStreak());
+            .then((result) => {
+                // Immediately apply streak numbers returned by backfill
+                setStreak(prev => ({
+                    current_streak: result.current_streak,
+                    longest_streak: result.longest_streak,
+                    total_done: result.total_done,
+                    last_checkin: prev?.last_checkin ?? null,
+                    days_this_week: prev?.days_this_week ?? [],
+                }));
+            })
+            .catch(() => { /* non-fatal, loadStreak will still run */ })
+            .finally(() => loadStreak()); // Full refresh for days_this_week
     }, [userId, isPlanActive]);
 
     const loadStreak = async () => {

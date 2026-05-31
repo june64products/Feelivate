@@ -235,7 +235,9 @@ export interface StreakData {
 }
 
 export const getStreak = async (userId: string): Promise<StreakData> => {
-    const response = await secureFetch(`${API_BASE_URL}/streak/${userId}`);
+    // Pass local date (YYYY-MM-DD in IST) so backend uses the right today/yesterday boundary
+    const clientDate = new Date().toLocaleDateString('en-CA');
+    const response = await secureFetch(`${API_BASE_URL}/streak/${userId}?client_date=${clientDate}`);
     if (!response.ok) throw new Error('Failed to fetch streak');
     return response.json();
 };
@@ -481,8 +483,8 @@ export const getJournalsForSession = async (userId: string, sessionId?: string, 
 };
 
 /**
- * One-time backfill: syncs existing voice journals into DailyCheckin table
- * and recalculates streak. Call once to fix historical data gap.
+ * Backfill: syncs existing voice journals into DailyCheckin table
+ * and recalculates streak. Idempotent — safe to call on every mount.
  */
 export const backfillStreak = async (): Promise<{
     checkins_created: number;
@@ -490,7 +492,9 @@ export const backfillStreak = async (): Promise<{
     longest_streak: number;
     total_done: number;
 }> => {
-    const response = await secureFetch(`${API_BASE_URL}/streak/backfill`, {
+    // Pass local date (YYYY-MM-DD in IST) so backend uses the right today/yesterday boundary
+    const clientDate = new Date().toLocaleDateString('en-CA');
+    const response = await secureFetch(`${API_BASE_URL}/streak/backfill?client_date=${clientDate}`, {
         method: 'POST',
     });
     if (!response.ok) throw new Error('Streak backfill failed');
