@@ -187,7 +187,10 @@ export const getGoogleAuthUrl = async () => {
 
 export const confirmGoogleAuth = async (code: string, userId: string) => {
     const response = await secureFetch(`${API_BASE_URL}/auth/google/callback?code=${code}&user_id=${userId}`);
-    if (!response.ok) throw new Error('Failed to confirm Google Auth');
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to confirm Google Auth');
+    }
     return response.json();
 };
 
