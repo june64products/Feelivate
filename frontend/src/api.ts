@@ -245,9 +245,11 @@ export const submitCheckin = async (
     sessionId?: string,
     note?: string,
 ): Promise<{ date: string; status: string; current_streak: number; longest_streak: number; total_done: number }> => {
+    // Pass local date to avoid UTC vs IST (or any timezone) mismatch on the backend
+    const clientDate = new Date().toLocaleDateString('en-CA'); // en-CA gives YYYY-MM-DD in local TZ
     const response = await secureFetch(`${API_BASE_URL}/checkin`, {
         method: 'POST',
-        body: JSON.stringify({ status, session_id: sessionId, note }),
+        body: JSON.stringify({ status, session_id: sessionId, note, client_date: clientDate }),
     });
     if (!response.ok) throw new Error('Check-in failed');
     return response.json();
@@ -453,7 +455,13 @@ export const uploadVoiceJournalForSession = async (audioBlob: Blob, sessionId?: 
     const ext = audioBlob.type.includes('mp4') ? 'mp4' : 'webm';
     formData.append('audio', audioBlob, `journal.${ext}`);
 
-    const qs = sessionId ? `?session_id=${sessionId}` : '';
+    // Pass local date to avoid UTC vs IST timezone mismatch
+    const clientDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
+    const params = new URLSearchParams();
+    if (sessionId) params.set('session_id', sessionId);
+    params.set('client_date', clientDate);
+    const qs = `?${params.toString()}`;
+
     const response = await secureFetch(`${API_BASE_URL}/journal/voice${qs}`, {
         method: 'POST',
         body: formData,

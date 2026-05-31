@@ -116,9 +116,10 @@ class MessageCreate(BaseModel):
     content: str
 
 class CheckinRequest(BaseModel):
-    status: str           # "done" | "skipped"
+    status: str                       # "done" | "skipped"
     note: Optional[str] = None
     session_id: Optional[str] = None
+    client_date: Optional[str] = None  # ISO date from client local timezone e.g. "2026-05-31"
 
 class WeeklyReviewRequest(BaseModel):
     week_number: int
@@ -797,10 +798,12 @@ async def daily_checkin(
 ):
     """
     Mark today as done or skipped. Idempotent — calling twice updates the status.
+    Accepts optional client_date (ISO string) to handle timezone differences.
     Returns updated streak.
     """
     from datetime import date
-    today = date.today().isoformat()
+    # Use client's local date if provided (avoids UTC vs IST timezone mismatch)
+    today = payload.client_date if payload.client_date else date.today().isoformat()
     user_id = current_user.id
 
     if payload.status not in ("done", "skipped"):
@@ -855,6 +858,7 @@ async def get_streak(
 
     # Build Mon–Sun of the CURRENT calendar week (not rolling 7 days)
     from datetime import date, timedelta
+    # Accept client_date query param to handle timezone (e.g. IST vs UTC)
     today_d = date.today()
     # weekday(): Monday=0, Sunday=6
     week_monday = today_d - timedelta(days=today_d.weekday())
@@ -1203,6 +1207,7 @@ async def _analyze_emotion(transcript: str) -> dict:
 async def create_voice_journal(
     audio: UploadFile = File(...),
     session_id: Optional[str] = None,
+    client_date: Optional[str] = None,  # ISO date from client local timezone
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1210,6 +1215,7 @@ async def create_voice_journal(
     Upload a voice note → transcribe (Groq Whisper) → analyze emotion (LLM) → save.
     Session-scoped: pass session_id query param to tag entry to a session.
     One entry per user per day; calling again updates the existing entry.
+    Pass client_date (ISO string) to use local timezone instead of UTC.
     """
     from .llm import call_groq_transcribe
     from datetime import date
@@ -1219,7 +1225,8 @@ async def create_voice_journal(
         raise HTTPException(status_code=400, detail="Audio file is empty")
 
     filename = audio.filename or "recording.webm"
-    today = date.today().isoformat()
+    # Use client's local date if provided to avoid UTC vs IST timezone mismatch
+    today = client_date if client_date else date.today().isoformat()
     user_id = current_user.id
 
     # 1. Transcribe

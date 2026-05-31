@@ -19,19 +19,12 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
 
     useEffect(() => {
         if (!userId || !isPlanActive) return;
-        // One-time backfill: sync historical voice journals → DailyCheckin → streak
-        // Runs once per browser session (localStorage guard) to fix past data.
-        const backfillKey = `streak_backfilled_${userId}`;
-        if (!localStorage.getItem(backfillKey)) {
-            backfillStreak()
-                .then(() => {
-                    localStorage.setItem(backfillKey, '1');
-                })
-                .catch(() => { /* non-fatal */ })
-                .finally(() => loadStreak());
-        } else {
-            loadStreak();
-        }
+        // Always run backfill on mount — it is idempotent (no duplicate checkins created).
+        // This ensures any voice journals recorded before the auto-checkin feature
+        // existed are synced into DailyCheckin and the streak is always accurate.
+        backfillStreak()
+            .catch(() => { /* non-fatal */ })
+            .finally(() => loadStreak());
     }, [userId, isPlanActive]);
 
     const loadStreak = async () => {
@@ -60,20 +53,26 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
         setCheckinLoading(true);
         try {
             const result = await submitCheckin(status);
+            // Immediately update UI with fresh data from server response
             setTodayStatus(status);
-            setStreak(prev => prev ? {
-                ...prev,
-                current_streak: result.current_streak,
-                longest_streak: result.longest_streak,
-                total_done: result.total_done,
-                days_this_week: prev.days_this_week.map(d =>
-                    d.date === today ? { ...d, status } : d
-                ),
-            } : prev);
+            setStreak(prev => {
+                const updated = {
+                    current_streak: result.current_streak,
+                    longest_streak: result.longest_streak,
+                    total_done: result.total_done,
+                    last_checkin: result.date,
+                    days_this_week: prev
+                        ? prev.days_this_week.map(d => d.date === today ? { ...d, status } : d)
+                        : [{ date: today, status }],
+                };
+                return updated;
+            });
             if (status === 'done') {
                 setShowCelebration(true);
                 setTimeout(() => setShowCelebration(false), 2200);
             }
+            // Also do a background refresh to make sure everything is in sync
+            loadStreak();
         } catch (e) {
             console.error('Check-in failed:', e);
         } finally {
