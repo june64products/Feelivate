@@ -163,6 +163,12 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
     const gap = 8;
     const totalW = days.length * (barW + gap) - gap;
 
+    // Helper: parse date string in LOCAL timezone (avoids UTC-midnight shift)
+    const parseLocalDate = (dateStr: string) => {
+        const [y, mo, dd] = dateStr.split('-').map(Number);
+        return new Date(y, mo - 1, dd);
+    };
+
     return (
         <svg width="100%" viewBox={`0 0 ${totalW + 4} ${chartH + 32}`} style={{ overflow: 'visible' }}>
             {days.map((d, i) => {
@@ -172,7 +178,7 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
                 const x = i * (barW + gap);
                 const y = chartH - barH;
                 const color = hasJournal ? emotionColor(d.emotion) : 'rgba(255,255,255,0.08)';
-                const dayDate = new Date(d.date);
+                const dayDate = parseLocalDate(d.date);
                 const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
 
                 return (
@@ -186,7 +192,7 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
                             animate={{ y, height: barH }}
                             transition={{ duration: 0.7, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
                         />
-                        {/* Day label */}
+                        {/* Day label — aligned to column centre */}
                         <text x={x + barW / 2} y={chartH + 16} textAnchor="middle"
                             fill="rgba(255,255,255,0.4)" fontSize="9" fontFamily="Inter, sans-serif">
                             {dayName}
@@ -324,6 +330,11 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
 
 // ─── 7-day calendar strip ─────────────────────────────────────────────────────
 function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[]; today: string; planStartDate?: string }) {
+    // Parse in local timezone to get correct weekday
+    const parseLocalDate = (dateStr: string) => {
+        const [y, mo, dd] = dateStr.split('-').map(Number);
+        return new Date(y, mo - 1, dd);
+    };
     return (
         <div style={{
             display: 'grid',
@@ -331,7 +342,7 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
             gap: '6px',
         }}>
             {days.map((d, i) => {
-                const dayDate = new Date(d.date);
+                const dayDate = parseLocalDate(d.date);
                 const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
                 const isBeforePlan = planStartDate ? d.date < planStartDate : false;
                 const isPast = d.date < today;
@@ -557,7 +568,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 // Refresh weekInfo for last-day-of-week detection
                 const wi = sessionId ? await getWeekInfo(sessionId).catch(() => null) : null;
                 if (wi) setWeekInfo(wi);
-                const isLastDay = wi?.week_end ? today >= wi.week_end : false;
+                // Celebration fires ONLY on the very last day of the week (today === week_end)
+                const isLastDay = wi?.week_end ? today === wi.week_end : false;
                 if (isLastDay && r.status !== 'no_data') {
                     setTimeout(() => setShowWeekEndCelebration(true), 800);
                 }
@@ -1064,8 +1076,29 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 </div>
                             </div>
 
-                            {/* ── Weekly Report ── */}
-                            {loadingReport ? (
+                            {/* ── Weekly Report — only shown when week is complete ── */}
+                            {(() => {
+                                const isWeekComplete = weekInfo?.week_end
+                                    ? today >= weekInfo.week_end
+                                    : (weekInfo?.is_week_complete ?? false);
+                                return (
+                                    <>
+                                    {!isWeekComplete && weekDays.some(d => d.has_journal) && (
+                                        <div style={{
+                                            borderRadius: '16px', padding: '18px 20px',
+                                            background: 'rgba(99,102,241,0.04)',
+                                            border: '1px dashed rgba(99,102,241,0.2)',
+                                            textAlign: 'center', lineHeight: 1.6,
+                                        }}>
+                                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.55)', margin: 0 }}>
+                                                ✦ Great start! Keep logging each day.
+                                            </p>
+                                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: '4px 0 0' }}>
+                                                Your full AI week review will appear after {weekInfo?.week_end ?? 'the last day'}.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {loadingReport ? (
                                 <div style={{
                                     borderRadius: '16px', padding: '32px', textAlign: 'center',
                                     background: 'rgba(255,255,255,0.02)',
@@ -1074,7 +1107,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 }}>
                                     Generating week report...
                                 </div>
-                            ) : report?.status === 'no_data' ? (
+                            ) : !isWeekComplete ? null
+                              : report?.status === 'no_data' ? (
                                 <div style={{
                                     borderRadius: '16px', padding: '28px', textAlign: 'center',
                                     background: 'rgba(255,255,255,0.02)',
@@ -1248,6 +1282,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     </div>
                                 </div>
                             ) : null}
+                                    </>
+                                );
+                            })()}
                         </motion.div>
                     ) : (
                         /* ── Archive tab ── */
