@@ -1175,11 +1175,16 @@ async def get_session_reports(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return all weekly reports for a session, ordered by week number."""
+    """Return all COMPLETED weekly reports for a session, ordered by week number.
+    Partial (in-progress) weekly reports are excluded from the overview — they
+    are only shown inside the active week view of JourneyPage.
+    """
+    from datetime import date
     session_rec = db.query(Session).filter(Session.id == session_id).first()
     if not session_rec or session_rec.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    today_str = date.today().isoformat()
     reports = (
         db.query(WeeklyReport)
         .filter(WeeklyReport.session_id == session_id)
@@ -1189,6 +1194,9 @@ async def get_session_reports(
 
     result = []
     for r in reports:
+        # Exclude reports whose week hasn't ended yet (partial/premature)
+        if r.week_end and r.week_end > today_str:
+            continue
         try:
             report_data = json.loads(r.report_json)
         except Exception:
@@ -1718,7 +1726,8 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
         ))
     db.commit()
 
-    return {"status": "generated", "week_start": ws, "week_end": we, "week_number": wk_num, "report": report_data}
+    return {"status": "generated", "week_start": ws, "week_end": we, "week_number": wk_num, "report": report_data, "is_partial": today.isoformat() <= we}
+
 
 
 # ============================================================

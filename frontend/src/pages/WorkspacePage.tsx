@@ -21,6 +21,8 @@ import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
 import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
+import StreakBar from '../components/workspace/StreakBar';
+
 
 
 
@@ -73,7 +75,7 @@ export default function WorkspacePage() {
     const [syncMessage, setSyncMessage] = useState("");
     const [syncError, setSyncError] = useState("");
 
-    // Auth validation
+    // Auth validation + cross-tab account switch detection
     useEffect(() => {
         const token = localStorage.getItem('access_token');
         if (!userId || !token) {
@@ -88,7 +90,23 @@ export default function WorkspacePage() {
                 .then(res => { if (res.has_entry) setTodayEmotion(res.entry); })
                 .catch(() => {});
         }
+
+        // Cross-tab account contamination fix:
+        // If another tab changes user_id (different account login), force redirect to login
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'user_id' && e.newValue !== userId) {
+                // Another account logged in — clear state and go to login
+                navigate('/login');
+            }
+            if (e.key === 'access_token' && !e.newValue) {
+                // Token was cleared in another tab (logout)
+                navigate('/login');
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
     }, [userId, navigate]);
+
 
     // Fetch active session detail
     useEffect(() => {
@@ -537,10 +555,10 @@ export default function WorkspacePage() {
             </AnimatePresence>
 
             {/* Locked Weeks Panel (Desktop: Fixed Right / Mobile: Relative under Header) */}
-            {isPlanApproved && activeSessionId && (
+            {(isPlanApproved || planHistory.length > 0) && activeSessionId && (
                 <LockedWeeksPanel
                     sessionId={activeSessionId}
-                    currentWeek={activePlan?.week_number ?? 1}
+                    currentWeek={activePlan?.week_number ?? (planHistory.length > 0 ? planHistory[planHistory.length - 1]?.week_number ?? 1 : 1)}
                     micLocked={micLocked}
                     activePlan={activePlan}
                     planHistory={planHistory}
@@ -677,6 +695,13 @@ export default function WorkspacePage() {
                 refreshKey={sidebarRefreshKey}
                 isPlanActive={isPlanApproved}
             />
+
+            {/* ── Persistent Streak Widget — Bottom Left ──────── */}
+            {isPlanApproved && userId && (
+                <div className="streak-widget">
+                    <StreakBar userId={userId} isPlanActive={isPlanApproved} />
+                </div>
+            )}
 
             </>)} {/* end view === 'chat' */}
 

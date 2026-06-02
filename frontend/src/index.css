@@ -100,8 +100,10 @@ body {
 .floating-dock {
   position: fixed;
   bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -517,9 +519,14 @@ body {
     left: 12px;
     right: 12px;
     bottom: 12px;
-    transform: none;
+    width: auto;
     border-radius: 16px;
     padding: 4px 6px;
+  }
+
+  /* Streak widget — hide on mobile (too cramped) */
+  .streak-widget {
+    display: none;
   }
 
   /* Session popover — full width on mobile */
@@ -634,37 +641,95 @@ body {
 }
 
 /* ============================================ */
-/* LOGIN PAGE FOOTER                           */
+/* LOGIN PAGE FOOTER — Claude-style horizontal  */
 /* ============================================ */
 
 .login-footer {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 12px;
   padding: 20px 0 28px;
   font-family: var(--font-sans);
+  width: 100%;
+  max-width: 420px;
 }
 
-.login-footer .brand-name {
-  font-size: 14px;
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-logo-img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 4px;
+  opacity: 0.7;
+}
+
+.footer-brand {
+  font-size: 12.5px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.45);
   letter-spacing: -0.02em;
 }
 
-.login-footer .by-line {
+.footer-copy {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.2);
+  font-weight: 400;
+}
+
+.footer-sep {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.footer-right {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.footer-by {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.25);
   font-weight: 500;
 }
 
-.login-footer .by-line img {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+.footer-june64-img {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
   object-fit: contain;
+}
+
+.footer-june64-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: -0.01em;
+}
+
+/* ============================================ */
+/* STREAK WIDGET — Bottom Left                 */
+/* ============================================ */
+
+.streak-widget {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 100;
+  background: rgba(12, 12, 18, 0.85);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 10px 14px;
+  min-width: 160px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  font-family: var(--font-sans);
 }

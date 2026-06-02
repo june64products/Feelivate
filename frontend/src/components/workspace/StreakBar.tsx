@@ -115,8 +115,7 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
 
     return (
         <div style={{
-            padding: '14px 14px 16px',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
+            padding: '0',
             background: 'transparent',
             flexShrink: 0,
         }}>

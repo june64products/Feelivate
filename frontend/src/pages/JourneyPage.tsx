@@ -657,6 +657,22 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             background: 'var(--bg-primary)', overflow: 'hidden',
             position: 'relative',
         }}>
+            {/* Ambient glow */}
+            <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+                <div style={{
+                    position: 'absolute', top: '-20%', left: '30%',
+                    width: '600px', height: '600px',
+                    background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)',
+                    borderRadius: '50%', filter: 'blur(80px)',
+                }} />
+                <div style={{
+                    position: 'absolute', bottom: '-10%', right: '10%',
+                    width: '400px', height: '400px',
+                    background: 'radial-gradient(circle, rgba(217,119,87,0.06) 0%, transparent 70%)',
+                    borderRadius: '50%', filter: 'blur(60px)',
+                }} />
+            </div>
+
             {/* Floating locked weeks panel — right edge */}
             <LockedWeeksPanel
                 sessionId={sessionId}
@@ -847,52 +863,88 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                     </motion.div>
                 )}
             </AnimatePresence>
-            {/* ── Header ── */}
+
+            {/* ══════════════════════════════════════════════════════════ */}
+            {/* ── Premium Header ──────────────────────────────────────── */}
+            {/* ══════════════════════════════════════════════════════════ */}
             <div style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '14px 20px',
+                display: 'flex', alignItems: 'center', gap: '14px',
+                padding: '16px 24px',
+                background: 'rgba(10,10,14,0.7)',
+                backdropFilter: 'blur(20px)',
                 borderBottom: '1px solid rgba(255,255,255,0.06)',
                 flexShrink: 0,
+                zIndex: 10,
+                position: 'relative',
             }}>
                 {onClose && (
-                    <button
+                    <motion.button
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                         onClick={onClose}
                         style={{
-                            width: '32px', height: '32px', borderRadius: '8px',
-                            border: 'none', background: 'rgba(255,255,255,0.06)',
+                            width: '34px', height: '34px', borderRadius: '10px',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            background: 'rgba(255,255,255,0.04)',
                             color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0, transition: 'all 0.15s',
                         }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'white'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
                     >
                         <ArrowLeft size={16} />
-                    </button>
+                    </motion.button>
                 )}
-                <div style={{ flex: 1 }}>
-                    <h1 style={{
-                        fontSize: '16px', fontWeight: 700, color: 'white',
-                        letterSpacing: '-0.02em', margin: 0,
+
+                {/* Brand + Title */}
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                        width: '32px', height: '32px',
+                        background: 'linear-gradient(135deg, rgba(167,139,250,0.2), rgba(99,102,241,0.3))',
+                        border: '1px solid rgba(167,139,250,0.25)',
+                        borderRadius: '10px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                        My Journey
-                    </h1>
-                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: 0, marginTop: '2px' }}>
-                        {report?.week_start && `Week of ${report.week_start}`}
-                    </p>
+                        <Sparkles size={14} color="#a78bfa" />
+                    </div>
+                    <div>
+                        <h1 style={{
+                            fontSize: '15px', fontWeight: 700, color: 'white',
+                            letterSpacing: '-0.02em', margin: 0,
+                            fontFamily: "'Inter', sans-serif",
+                        }}>
+                            My Journey
+                        </h1>
+                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0, marginTop: '1px', fontFamily: "'Inter', sans-serif" }}>
+                            {weekInfo?.has_plan
+                                ? `Week ${weekInfo.current_week} · ${report?.week_start ?? ''} ${report?.week_end ? `→ ${report.week_end}` : ''}`
+                                : 'Voice journals & weekly performance'}
+                        </p>
+                    </div>
                 </div>
 
-                {/* Tabs */}
-                <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: '3px' }}>
+                {/* Tab pills */}
+                <div style={{
+                    display: 'flex', gap: '3px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: '12px', padding: '3px',
+                }}>
                     {(['overview', 'archive'] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => tab === 'archive' ? handleArchiveTab() : setActiveTab('overview')}
                             style={{
-                                padding: '5px 14px', borderRadius: '7px', border: 'none',
-                                background: activeTab === tab ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                color: activeTab === tab ? 'white' : 'rgba(255,255,255,0.4)',
+                                padding: '6px 16px', borderRadius: '9px', border: 'none',
+                                background: activeTab === tab
+                                    ? 'rgba(167,139,250,0.15)'
+                                    : 'transparent',
+                                color: activeTab === tab ? '#c4b5fd' : 'rgba(255,255,255,0.35)',
                                 fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                                 transition: 'all 0.15s',
                                 fontFamily: 'var(--font-sans)',
                                 textTransform: 'capitalize',
+                                boxShadow: activeTab === tab ? '0 0 12px rgba(167,139,250,0.2)' : 'none',
                             }}
                         >
                             {tab}
@@ -902,7 +954,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             </div>
 
             {/* ── Body ── */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', position: 'relative', zIndex: 1 }}>
+                <div style={{ maxWidth: '720px', margin: '0 auto' }}>
                 <AnimatePresence mode="wait">
                     {activeTab === 'overview' ? (
                         <motion.div
@@ -1498,6 +1551,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                         </motion.div>
                     )}
                 </AnimatePresence>
+                </div>{/* end maxWidth container */}
             </div>
 
             <style>{`

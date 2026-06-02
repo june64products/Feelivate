@@ -59,11 +59,15 @@ export default function LoginPage() {
     try {
       if (isLogin) {
         const res = await login({ email: formData.email, password: formData.password });
+        // Clear any stale session from a different account
+        localStorage.removeItem('active_session_id');
         localStorage.setItem('user_id', res.user_id);
         localStorage.setItem('user_name', res.name || res.full_name || formData.email.split('@')[0]);
         navigate('/app');
       } else {
         const res = await signup({ email: formData.email, password: formData.password, name: formData.name });
+        // Clear any stale session from a different account
+        localStorage.removeItem('active_session_id');
         localStorage.setItem('user_id', res.user_id);
         localStorage.setItem('user_name', formData.name || res.name || formData.email.split('@')[0]);
         navigate('/app');
@@ -291,15 +295,17 @@ export default function LoginPage() {
               type="submit" disabled={loading}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                background: '#ffffff', color: '#060608', border: 'none',
+                background: 'linear-gradient(135deg, #d97757 0%, #c96840 100%)',
+                color: '#fff', border: 'none',
                 padding: '14px', borderRadius: '12px',
                 fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'opacity 0.18s, transform 0.15s',
+                transition: 'opacity 0.18s, transform 0.15s, box-shadow 0.18s',
                 marginTop: '4px', opacity: loading ? 0.7 : 1,
                 letterSpacing: '-0.02em',
+                boxShadow: '0 4px 20px rgba(217,119,87,0.35)',
               }}
-              onMouseEnter={e => { if (!loading) { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'scale(1.01)'; } }}
-              onMouseLeave={e => { if (!loading) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; } }}
+              onMouseEnter={e => { if (!loading) { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'scale(1.01)'; e.currentTarget.style.boxShadow = '0 6px 28px rgba(217,119,87,0.5)'; } }}
+              onMouseLeave={e => { if (!loading) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(217,119,87,0.35)'; } }}
             >
               {loading
                 ? <Loader2 size={16} className="animate-spin" />
@@ -351,14 +357,19 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* ── Footer: Feelivate + By June64 ─────────────────────────────── */}
+        {/* ── Footer: Claude-style horizontal ──────────────────────────── */}
         <div className="login-footer" style={{ marginTop: '32px' }}>
-          <span className="brand-name">Feelivate</span>
-          <span className="by-line">
-            By
-            <img src="/june64-logo.png" alt="June64" />
-            June64
-          </span>
+          <div className="footer-left">
+            <img src="/logo_2_backup.png" alt="Feelivate" className="footer-logo-img" />
+            <span className="footer-brand">Feelivate</span>
+            <span className="footer-copy">© 2024</span>
+          </div>
+          <div className="footer-sep" />
+          <div className="footer-right">
+            <span className="footer-by">By</span>
+            <img src="/june64-logo.png" alt="June64" className="footer-june64-img" />
+            <span className="footer-june64-text">June64</span>
+          </div>
         </div>
       </motion.div>
 
