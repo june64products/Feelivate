@@ -19,16 +19,16 @@ import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 
 // ─── Emotion color palette ────────────────────────────────────────────────────
 const EMOTION_COLORS: Record<string, string> = {
-    motivated:   '#f59e0b',
-    stressed:    '#ef4444',
-    focused:     '#6366f1',
-    anxious:     '#f97316',
-    confident:   '#10b981',
-    drained:     '#8b5cf6',
-    excited:     '#ec4899',
-    neutral:     '#6b7280',
-    frustrated:  '#dc2626',
-    hopeful:     '#22c55e',
+    motivated: '#f59e0b',
+    stressed: '#ef4444',
+    focused: '#6366f1',
+    anxious: '#f97316',
+    confident: '#10b981',
+    drained: '#8b5cf6',
+    excited: '#ec4899',
+    neutral: '#6b7280',
+    frustrated: '#dc2626',
+    hopeful: '#22c55e',
 };
 const emotionColor = (label?: string | null) =>
     EMOTION_COLORS[label ?? 'neutral'] ?? '#6b7280';
@@ -84,11 +84,11 @@ function EmotionPieChart({ days }: { days: WeeklyReportDay[] }) {
                     />
                 ))}
                 {/* Center donut hole */}
-                <circle cx={cx} cy={cy} r={30} fill="#0a0a0b" />
-                <text x={cx} y={cy - 4} textAnchor="middle" fill="white" fontSize="14" fontWeight="700" fontFamily="Inter, sans-serif">
+                <circle cx={cx} cy={cy} r={30} fill="var(--bg-surface)" />
+                <text x={cx} y={cy - 4} textAnchor="middle" fill="var(--text-primary)" fontSize="14" fontWeight="700" fontFamily="Inter, sans-serif">
                     {total}
                 </text>
-                <text x={cx} y={cy + 12} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8" fontFamily="Inter, sans-serif">
+                <text x={cx} y={cy + 12} textAnchor="middle" fill="var(--text-muted)" fontSize="8" fontFamily="Inter, sans-serif">
                     days
                 </text>
             </svg>
@@ -101,10 +101,10 @@ function EmotionPieChart({ days }: { days: WeeklyReportDay[] }) {
                             background: s.color, flexShrink: 0,
                             boxShadow: `0 0 6px ${s.color}`,
                         }} />
-                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', fontWeight: 500, textTransform: 'capitalize' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'capitalize' }}>
                             {s.label}
                         </span>
-                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginLeft: 'auto', paddingLeft: '8px' }}>
+                        <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto', paddingLeft: '8px' }}>
                             {s.pct}%
                         </span>
                     </div>
@@ -126,7 +126,7 @@ function ConsistencyRing({ score, doneCount, totalCount }: { score: number; done
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
             <svg width="120" height="120" viewBox="0 0 120 120">
                 {/* Background ring */}
-                <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+                <circle cx="60" cy="60" r={r} fill="none" stroke="var(--border-subtle)" strokeWidth="10" />
                 {/* Progress ring */}
                 <motion.circle
                     cx="60" cy="60" r={r}
@@ -149,7 +149,7 @@ function ConsistencyRing({ score, doneCount, totalCount }: { score: number; done
                 </text>
             </svg>
             <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
                     {doneCount} of {totalCount} days completed
                 </p>
             </div>
@@ -178,14 +178,14 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
                 const barH = hasJournal ? Math.max(6, Math.round((score / 10) * chartH)) : 0;
                 const x = i * (barW + gap);
                 const y = chartH - barH;
-                const color = hasJournal ? emotionColor(d.emotion) : 'rgba(255,255,255,0.08)';
+                const color = hasJournal ? emotionColor(d.emotion) : 'var(--border-subtle)';
                 const dayDate = parseLocalDate(d.date);
                 const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
 
                 return (
                     <g key={d.date}>
                         {/* Background slot */}
-                        <rect x={x} y={0} width={barW} height={chartH} rx={4} fill="rgba(255,255,255,0.04)" />
+                        <rect x={x} y={0} width={barW} height={chartH} rx={4} fill="var(--bg-raised)" />
                         {/* Score bar */}
                         <motion.rect
                             x={x} y={chartH} width={barW} height={0} rx={4} fill={color}
@@ -222,7 +222,7 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
             <p style={{
-                fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
                 textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px',
             }}>
                 Daily Execution Breakdown
@@ -232,15 +232,15 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                     const hasDone = d.checkin === 'done' || d.has_journal;
                     const isMissed = d.checkin === 'missed';
                     const statusColor = hasDone ? '#10b981' : isMissed ? '#ef4444' : 'rgba(255,255,255,0.3)';
-                    const statusBg = hasDone ? 'rgba(16,185,129,0.08)' : isMissed ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)';
+                    const statusBg = hasDone ? 'rgba(16,185,129,0.08)' : isMissed ? 'rgba(239,68,68,0.08)' : 'var(--bg-raised)';
                     const statusLabel = hasDone ? 'Done' : isMissed ? 'Missed' : 'Upcoming';
 
                     return (
                         <div key={d.date} style={{
                             padding: '14px 16px',
                             borderRadius: '12px',
-                            background: 'rgba(255,255,255,0.02)',
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            background: 'var(--bg-raised)',
+                            border: '1px solid var(--border-subtle)',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '10px',
@@ -267,17 +267,17 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className="journey-flex-col">
                                 {/* Planned Task Column */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                         Planned Task
                                     </span>
-                                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', margin: 0, lineHeight: 1.5 }}>
+                                    <p style={{ fontSize: '12px', color: 'var(--text-primary)', margin: 0, lineHeight: 1.5 }}>
                                         {d.planned_task || 'No task planned for this day.'}
                                     </p>
                                 </div>
 
                                 {/* Actual Outcome Column */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                         Actual Journal
                                     </span>
                                     {d.has_journal ? (
@@ -292,7 +292,7 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                                                     {d.emotion} ({d.score}/10)
                                                 </span>
                                             </div>
-                                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>
+                                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>
                                                 "{d.one_liner}"
                                             </p>
                                         </div>
@@ -316,7 +316,7 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                                     <span style={{ fontSize: '9px', color: 'rgba(129,140,248,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '2px' }}>
                                         AI coaching insight
                                     </span>
-                                    <p style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.45 }}>
+                                    <p style={{ fontSize: '11.5px', color: 'var(--text-primary)', margin: 0, lineHeight: 1.45 }}>
                                         {d.coaching_insight}
                                     </p>
                                 </div>
@@ -354,7 +354,7 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
 
                 return (
                     <div key={d.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
+                        <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>
                             {dayName}
                         </span>
                         <motion.div
@@ -420,13 +420,13 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
         <div style={{
             padding: '14px 16px',
             borderRadius: '12px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.07)',
+            background: 'var(--bg-raised)',
+            border: '1px solid var(--border-subtle)',
             display: 'flex', flexDirection: 'column', gap: '4px',
         }}>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-            <span style={{ fontSize: '24px', fontWeight: 700, color: color ?? 'white', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</span>
-            {sub && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{sub}</span>}
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+            <span style={{ fontSize: '24px', fontWeight: 700, color: color ?? 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</span>
+            {sub && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{sub}</span>}
         </div>
     );
 }
@@ -438,14 +438,14 @@ function AnalysisBlock({ label, content }: { label: string; content: string }) {
         <div style={{
             padding: '14px 16px',
             borderRadius: '12px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.07)',
+            background: 'var(--bg-raised)',
+            border: '1px solid var(--border-subtle)',
         }}>
             <p style={{
-                fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
                 textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
             }}>{label}</p>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, margin: 0 }}>{content}</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>{content}</p>
         </div>
     );
 }
@@ -654,25 +654,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     return (
         <div style={{
             flex: 1, display: 'flex', flexDirection: 'column', height: '100%',
-            background: 'var(--bg-primary)', overflow: 'hidden',
+            background: 'var(--bg-page)', overflow: 'hidden',
             position: 'relative',
         }}>
-            {/* Ambient glow */}
-            <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
-                <div style={{
-                    position: 'absolute', top: '-20%', left: '30%',
-                    width: '600px', height: '600px',
-                    background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)',
-                    borderRadius: '50%', filter: 'blur(80px)',
-                }} />
-                <div style={{
-                    position: 'absolute', bottom: '-10%', right: '10%',
-                    width: '400px', height: '400px',
-                    background: 'radial-gradient(circle, rgba(217,119,87,0.06) 0%, transparent 70%)',
-                    borderRadius: '50%', filter: 'blur(60px)',
-                }} />
-            </div>
-
             {/* Floating locked weeks panel — right edge */}
             <LockedWeeksPanel
                 sessionId={sessionId}
@@ -691,7 +675,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                         exit={{ opacity: 0 }}
                         style={{
                             position: 'fixed', inset: 0, zIndex: 1000,
-                            background: 'rgba(0,0,0,0.85)',
+                            background: 'var(--bg-page)',
                             backdropFilter: 'blur(8px)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             padding: '20px',
@@ -707,10 +691,10 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             style={{
                                 width: '100%', maxWidth: '500px',
                                 maxHeight: '90vh',
-                                background: 'linear-gradient(145deg, #0d0d10 0%, #13131a 100%)',
+                                background: 'var(--bg-surface)',
                                 border: '1px solid rgba(99,102,241,0.3)',
                                 borderRadius: '24px',
-                                boxShadow: '0 0 0 1px rgba(99,102,241,0.15), 0 40px 80px rgba(0,0,0,0.7), 0 0 60px rgba(99,102,241,0.12)',
+                                boxShadow: 'var(--shadow-modal)',
                                 overflow: 'hidden',
                                 display: 'flex', flexDirection: 'column',
                             }}
@@ -719,7 +703,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             <div style={{
                                 padding: '28px 28px 20px',
                                 background: 'linear-gradient(180deg, rgba(99,102,241,0.15) 0%, transparent 100%)',
-                                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                borderBottom: '1px solid var(--border-subtle)',
                                 textAlign: 'center',
                                 position: 'relative',
                             }}>
@@ -738,7 +722,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     Week {reportData.week_number} Complete! 🎉
                                 </h2>
                                 {reportData.week_theme && (
-                                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', margin: 0 }}>
+                                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
                                         {reportData.week_theme}
                                     </p>
                                 )}
@@ -757,7 +741,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         <div style={{ fontSize: '24px', fontWeight: 800, color: '#10b981', letterSpacing: '-0.03em' }}>
                                             {reportData.consistency_score}%
                                         </div>
-                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Consistency</div>
+                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Consistency</div>
                                     </div>
                                     <div style={{
                                         padding: '14px', borderRadius: '14px',
@@ -768,7 +752,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         <div style={{ fontSize: '24px', fontWeight: 800, color: '#818cf8', letterSpacing: '-0.03em' }}>
                                             {reportData.avg_score}/10
                                         </div>
-                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Avg Mood</div>
+                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Avg Mood</div>
                                     </div>
                                     <div style={{
                                         padding: '14px', borderRadius: '14px',
@@ -779,18 +763,18 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         <div style={{ fontSize: '24px', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.03em' }}>
                                             {reportData.days_done}/{reportData.past_days_count ?? 7}
                                         </div>
-                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Days Done</div>
+                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Days Done</div>
                                     </div>
                                 </div>
 
                                 {/* Emotion Pie Chart */}
                                 <div style={{
                                     padding: '16px', borderRadius: '14px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.07)',
+                                    background: 'var(--bg-raised)',
+                                    border: '1px solid var(--border-subtle)',
                                     marginBottom: '14px',
                                 }}>
-                                    <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '14px' }}>Emotion Distribution</p>
+                                    <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '14px' }}>Emotion Distribution</p>
                                     <EmotionPieChart days={weekDays} />
                                 </div>
 
@@ -803,7 +787,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         marginBottom: '14px',
                                     }}>
                                         <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Hidden Insight</p>
-                                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.78)', lineHeight: 1.6, margin: 0 }}>{reportData.hidden_insight}</p>
+                                        <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>{reportData.hidden_insight}</p>
                                     </div>
                                 )}
 
@@ -816,7 +800,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         marginBottom: '14px',
                                     }}>
                                         <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(16,185,129,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Key Focus for Next Week</p>
-                                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.78)', lineHeight: 1.6, margin: 0 }}>{reportData.next_week_focus}</p>
+                                        <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>{reportData.next_week_focus}</p>
                                     </div>
                                 )}
                             </div>
@@ -824,7 +808,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             {/* Footer CTA */}
                             <div style={{
                                 padding: '16px 24px',
-                                borderTop: '1px solid rgba(255,255,255,0.06)',
+                                borderTop: '1px solid var(--border-subtle)',
                                 display: 'flex', gap: '10px',
                             }}>
                                 <button
@@ -832,7 +816,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     style={{
                                         flex: 1, padding: '11px', borderRadius: '12px',
                                         border: '1px solid rgba(255,255,255,0.1)',
-                                        background: 'transparent', color: 'rgba(255,255,255,0.5)',
+                                        background: 'transparent', color: 'var(--text-secondary)',
                                         fontSize: '13px', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
                                     }}
                                 >
@@ -863,88 +847,52 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* ══════════════════════════════════════════════════════════ */}
-            {/* ── Premium Header ──────────────────────────────────────── */}
-            {/* ══════════════════════════════════════════════════════════ */}
+            {/* ── Header ── */}
             <div style={{
-                display: 'flex', alignItems: 'center', gap: '14px',
-                padding: '16px 24px',
-                background: 'rgba(10,10,14,0.7)',
-                backdropFilter: 'blur(20px)',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '14px 20px',
+                borderBottom: '1px solid var(--border-subtle)',
                 flexShrink: 0,
-                zIndex: 10,
-                position: 'relative',
             }}>
                 {onClose && (
-                    <motion.button
-                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    <button
                         onClick={onClose}
                         style={{
-                            width: '34px', height: '34px', borderRadius: '10px',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            background: 'rgba(255,255,255,0.04)',
-                            color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
+                            width: '32px', height: '32px', borderRadius: '8px',
+                            border: 'none', background: 'var(--bg-hover)',
+                            color: 'var(--text-secondary)', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            flexShrink: 0, transition: 'all 0.15s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'white'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
                     >
                         <ArrowLeft size={16} />
-                    </motion.button>
+                    </button>
                 )}
-
-                {/* Brand + Title */}
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                        width: '32px', height: '32px',
-                        background: 'linear-gradient(135deg, rgba(167,139,250,0.2), rgba(99,102,241,0.3))',
-                        border: '1px solid rgba(167,139,250,0.25)',
-                        borderRadius: '10px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                <div style={{ flex: 1 }}>
+                    <h1 style={{
+                        fontSize: '16px', fontWeight: 700, color: 'white',
+                        letterSpacing: '-0.02em', margin: 0,
                     }}>
-                        <Sparkles size={14} color="#a78bfa" />
-                    </div>
-                    <div>
-                        <h1 style={{
-                            fontSize: '15px', fontWeight: 700, color: 'white',
-                            letterSpacing: '-0.02em', margin: 0,
-                            fontFamily: "'Inter', sans-serif",
-                        }}>
-                            My Journey
-                        </h1>
-                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0, marginTop: '1px', fontFamily: "'Inter', sans-serif" }}>
-                            {weekInfo?.has_plan
-                                ? `Week ${weekInfo.current_week} · ${report?.week_start ?? ''} ${report?.week_end ? `→ ${report.week_end}` : ''}`
-                                : 'Voice journals & weekly performance'}
-                        </p>
-                    </div>
+                        My Journey
+                    </h1>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, marginTop: '2px' }}>
+                        {report?.week_start && `Week of ${report.week_start}`}
+                    </p>
                 </div>
 
-                {/* Tab pills */}
-                <div style={{
-                    display: 'flex', gap: '3px',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: '12px', padding: '3px',
-                }}>
+                {/* Tabs */}
+                <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-raised)', borderRadius: '10px', padding: '3px' }}>
                     {(['overview', 'archive'] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => tab === 'archive' ? handleArchiveTab() : setActiveTab('overview')}
                             style={{
-                                padding: '6px 16px', borderRadius: '9px', border: 'none',
-                                background: activeTab === tab
-                                    ? 'rgba(167,139,250,0.15)'
-                                    : 'transparent',
-                                color: activeTab === tab ? '#c4b5fd' : 'rgba(255,255,255,0.35)',
+                                padding: '5px 14px', borderRadius: '7px', border: 'none',
+                                background: activeTab === tab ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                color: activeTab === tab ? 'white' : 'rgba(255,255,255,0.4)',
                                 fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                                 transition: 'all 0.15s',
                                 fontFamily: 'var(--font-sans)',
                                 textTransform: 'capitalize',
-                                boxShadow: activeTab === tab ? '0 0 12px rgba(167,139,250,0.2)' : 'none',
                             }}
                         >
                             {tab}
@@ -954,8 +902,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             </div>
 
             {/* ── Body ── */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', position: 'relative', zIndex: 1 }}>
-                <div style={{ maxWidth: '720px', margin: '0 auto' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
                 <AnimatePresence mode="wait">
                     {activeTab === 'overview' ? (
                         <motion.div
@@ -969,15 +916,15 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             {/* ── Voice recorder card ── */}
                             <div style={{
                                 borderRadius: '16px', padding: '20px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.08)',
+                                background: 'var(--bg-raised)',
+                                border: '1px solid var(--border-medium)',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                                     <div>
                                         <p style={{ fontSize: '13px', fontWeight: 600, color: 'white', margin: 0 }}>
                                             {todayEntry ? 'Today logged' : "Today's voice log"}
                                         </p>
-                                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '3px 0 0' }}>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '3px 0 0' }}>
                                             {todayEntry
                                                 ? `${todayEntry.emotion_label} — ${todayEntry.emotion_score}/10`
                                                 : 'Speak about your day. AI detects your emotion.'}
@@ -1003,7 +950,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     <AnimatePresence mode="wait">
                                         {isUploading ? (
                                             <motion.div key="uploading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                                style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>
+                                                style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '13px' }}>
                                                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
                                                 Analyzing your mood...
                                             </motion.div>
@@ -1070,7 +1017,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 padding: '10px 14px', borderRadius: '10px',
                                                 background: `${emotionColor(justSaved.emotion_label)}14`,
                                                 border: `1px solid ${emotionColor(justSaved.emotion_label)}30`,
-                                                fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.5,
+                                                fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.5,
                                             }}>
                                             <span style={{ fontWeight: 600, color: emotionColor(justSaved.emotion_label) }}>
                                                 {justSaved.emotion_label} ({justSaved.emotion_score}/10)
@@ -1083,18 +1030,18 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
 
                             <div style={{
                                 borderRadius: '16px', padding: '18px 20px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.07)',
+                                background: 'var(--bg-raised)',
+                                border: '1px solid var(--border-subtle)',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                                     <p style={{
-                                        fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                                        fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
                                         textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0,
                                     }}>
                                         {weekInfo?.has_plan ? `Week ${weekInfo.current_week}` : 'This Week'}
                                     </p>
                                     {weekInfo?.has_plan && weekInfo.week_start && weekInfo.week_end && (
-                                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', fontWeight: 500 }}>
+                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500 }}>
                                             {weekInfo.week_start} – {weekInfo.week_end}
                                         </span>
                                     )}
@@ -1136,7 +1083,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         </button>
                                     )}
                                     {weekInfo?.has_plan && !weekInfo.is_week_complete && weekInfo.week_end && (
-                                        <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.2)', fontWeight: 500 }}>
+                                        <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500 }}>
                                             Week ends {weekInfo.week_end}
                                         </span>
                                     )}
@@ -1150,205 +1097,205 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     : (weekInfo?.is_week_complete ?? false);
                                 return (
                                     <>
-                                    {!isWeekComplete && weekDays.some(d => d.has_journal) && (
-                                        <div style={{
-                                            borderRadius: '16px', padding: '18px 20px',
-                                            background: 'rgba(99,102,241,0.04)',
-                                            border: '1px dashed rgba(99,102,241,0.2)',
-                                            textAlign: 'center', lineHeight: 1.6,
-                                        }}>
-                                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.55)', margin: 0 }}>
-                                                ✦ Great start! Keep logging each day.
-                                            </p>
-                                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: '4px 0 0' }}>
-                                                Your full AI week review will appear after {weekInfo?.week_end ?? 'the last day'}.
-                                            </p>
-                                        </div>
-                                    )}
-                                    {loadingReport ? (
-                                <div style={{
-                                    borderRadius: '16px', padding: '32px', textAlign: 'center',
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid rgba(255,255,255,0.06)',
-                                    color: 'rgba(255,255,255,0.3)', fontSize: '13px',
-                                }}>
-                                    Generating week report...
-                                </div>
-                            ) : !isWeekComplete ? null
-                              : report?.status === 'no_data' ? (
-                                <div style={{
-                                    borderRadius: '16px', padding: '28px', textAlign: 'center',
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '1px dashed rgba(255,255,255,0.1)',
-                                    color: 'rgba(255,255,255,0.3)', fontSize: '13px', lineHeight: 1.6,
-                                }}>
-                                    Record voice journals across the week.<br />
-                                    At the end of the week, your AI performance review will appear here.
-                                </div>
-                            ) : reportData ? (
-                                <div style={{
-                                    borderRadius: '16px',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    background: 'rgba(255,255,255,0.02)',
-                                    overflow: 'hidden',
-                                }}>
-                                    {/* Report header */}
-                                    <div style={{
-                                        padding: '16px 20px',
-                                        borderBottom: '1px solid rgba(255,255,255,0.06)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    }}>
-                                        <div>
-                                            <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
-                                                Week {reportData.week_number !== undefined ? reportData.week_number : 'N'} Review
-                                            </p>
-                                            {reportData.week_theme && (
-                                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>
-                                                    {reportData.week_theme}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <span style={{
-                                            fontSize: '10px', fontWeight: 700, padding: '3px 10px',
-                                            borderRadius: '20px',
-                                            background: consistencyScore >= 80 ? 'rgba(16,185,129,0.12)' : consistencyScore >= 50 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)',
-                                            color: consistencyScore >= 80 ? '#10b981' : consistencyScore >= 50 ? '#f59e0b' : '#ef4444',
-                                        }}>
-                                            {report?.week_start} — {report?.week_end}
-                                        </span>
-                                    </div>
-
-                                    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-                                        {/* ── Performance stats row ── */}
-                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                            <ConsistencyRing score={consistencyScore} doneCount={daysDone} totalCount={reportData.past_days_count ?? 7} />
-                                            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                                <StatCard
-                                                    label="Avg Mood"
-                                                    value={`${avgScore}/10`}
-                                                    sub={reportData.dominant_emotion}
-                                                    color={emotionColor(reportData.dominant_emotion)}
-                                                />
-                                                <StatCard
-                                                    label="Days Done"
-                                                    value={daysDone}
-                                                    sub={`${daysMissed} missed`}
-                                                    color={daysDone > daysMissed ? '#10b981' : '#ef4444'}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* ── Emotion Distribution Pie Chart ── */}
-                                        {weekDays.some(d => d.has_journal) && (
-                                            <div>
-                                                <p style={{
-                                                    fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-                                                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px',
-                                                }}>Emotion Distribution</p>
-                                                <EmotionPieChart days={weekDays} />
-                                            </div>
-                                        )}
-
-                                        {/* ── Emotional arc chart ── */}
-                                        <div>
-                                            <p style={{
-                                                fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-                                                textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px',
-                                            }}>Daily Emotional Arc</p>
-                                            <EmotionChart days={weekDays} />
-                                            {reportData.emotional_arc && (
-                                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, marginTop: '10px' }}>
-                                                    {reportData.emotional_arc}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        {/* ── AI analysis blocks ── */}
-                                        <AnalysisBlock label="What Went Well" content={reportData.what_went_well} />
-                                        <AnalysisBlock label="Where You Slipped" content={reportData.where_you_slipped} />
-                                        <AnalysisBlock label="Consistency Analysis" content={reportData.consistency_analysis} />
-                                        {reportData.hidden_insight && (
+                                        {!isWeekComplete && weekDays.some(d => d.has_journal) && (
                                             <div style={{
-                                                padding: '14px 16px', borderRadius: '12px',
-                                                background: 'rgba(99,102,241,0.08)',
-                                                border: '1px solid rgba(99,102,241,0.2)',
+                                                borderRadius: '16px', padding: '18px 20px',
+                                                background: 'rgba(99,102,241,0.04)',
+                                                border: '1px dashed rgba(99,102,241,0.2)',
+                                                textAlign: 'center', lineHeight: 1.6,
                                             }}>
-                                                <p style={{
-                                                    fontSize: '10px', fontWeight: 700, color: 'rgba(99,102,241,0.7)',
-                                                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
-                                                }}>Hidden Insight</p>
-                                                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, margin: 0 }}>
-                                                    {reportData.hidden_insight}
+                                                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                                                    ✦ Great start! Keep logging each day.
+                                                </p>
+                                                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                                                    Your full AI week review will appear after {weekInfo?.week_end ?? 'the last day'}.
                                                 </p>
                                             </div>
                                         )}
-
-                                        {/* ── Daily Breakdown ── */}
-                                        <DailyBreakdown days={weekDays} />
-
-                                        {/* ── Next week focus ── */}
-                                        {reportData.next_week_focus && (
+                                        {loadingReport ? (
                                             <div style={{
-                                                padding: '16px', borderRadius: '12px',
-                                                background: 'rgba(16,185,129,0.07)',
-                                                border: '1px solid rgba(16,185,129,0.2)',
+                                                borderRadius: '16px', padding: '32px', textAlign: 'center',
+                                                background: 'var(--bg-raised)',
+                                                border: '1px solid var(--border-subtle)',
+                                                color: 'var(--text-muted)', fontSize: '13px',
                                             }}>
-                                                <p style={{
-                                                    fontSize: '10px', fontWeight: 700, color: 'rgba(16,185,129,0.7)',
-                                                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
-                                                }}>Next Week: Key Focus</p>
-                                                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, margin: 0 }}>
-                                                    {reportData.next_week_focus}
-                                                </p>
+                                                Generating week report...
                                             </div>
-                                        )}
+                                        ) : !isWeekComplete ? null
+                                            : report?.status === 'no_data' ? (
+                                                <div style={{
+                                                    borderRadius: '16px', padding: '28px', textAlign: 'center',
+                                                    background: 'rgba(255,255,255,0.02)',
+                                                    border: '1px dashed rgba(255,255,255,0.1)',
+                                                    color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6,
+                                                }}>
+                                                    Record voice journals across the week.<br />
+                                                    At the end of the week, your AI performance review will appear here.
+                                                </div>
+                                            ) : reportData ? (
+                                                <div style={{
+                                                    borderRadius: '16px',
+                                                    border: '1px solid var(--border-medium)',
+                                                    background: 'var(--bg-raised)',
+                                                    overflow: 'hidden',
+                                                }}>
+                                                    {/* Report header */}
+                                                    <div style={{
+                                                        padding: '16px 20px',
+                                                        borderBottom: '1px solid var(--border-subtle)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                    }}>
+                                                        <div>
+                                                            <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
+                                                                Week {reportData.week_number !== undefined ? reportData.week_number : 'N'} Review
+                                                            </p>
+                                                            {reportData.week_theme && (
+                                                                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                                                                    {reportData.week_theme}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <span style={{
+                                                            fontSize: '10px', fontWeight: 700, padding: '3px 10px',
+                                                            borderRadius: '20px',
+                                                            background: consistencyScore >= 80 ? 'rgba(16,185,129,0.12)' : consistencyScore >= 50 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)',
+                                                            color: consistencyScore >= 80 ? '#10b981' : consistencyScore >= 50 ? '#f59e0b' : '#ef4444',
+                                                        }}>
+                                                            {report?.week_start} — {report?.week_end}
+                                                        </span>
+                                                    </div>
 
-                                        {/* Plan Week N+1 prompt */}
-                                        <div style={{
-                                            padding: '14px 16px', borderRadius: '12px',
-                                            background: 'rgba(255,255,255,0.04)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                        }}>
-                                            <div>
-                                                <p style={{ fontSize: '12px', fontWeight: 600, color: 'white', margin: 0 }}>
-                                                    Ready for Week {(reportData.week_number ?? 1) + 1}?
-                                                </p>
-                                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>
-                                                    AI will build it using this week's performance data.
-                                                </p>
-                                            </div>
-                                            <button
-                                                onClick={() => {
-                                                    // Communicate back to WorkspacePage to open chat and send a specific prompt
-                                                    const event = new CustomEvent('request-next-week-plan', {
-                                                        detail: { week: (reportData.week_number ?? 1) + 1 }
-                                                    });
-                                                    window.dispatchEvent(event);
-                                                    // Close journey
-                                                    setTimeout(() => {
-                                                        const closeEvent = new CustomEvent('close-journey');
-                                                        window.dispatchEvent(closeEvent);
-                                                    }, 100);
-                                                }}
-                                                style={{
-                                                    padding: '8px 16px', borderRadius: '10px',
-                                                    border: 'none',
-                                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                                    color: 'white', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                                                    flexShrink: 0, fontFamily: 'var(--font-sans)',
-                                                    transition: 'opacity 0.2s',
-                                                }}
-                                                onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-                                            >
-                                                Plan Week {(reportData.week_number ?? 1) + 1}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : null}
+                                                    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                                                        {/* ── Performance stats row ── */}
+                                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                                            <ConsistencyRing score={consistencyScore} doneCount={daysDone} totalCount={reportData.past_days_count ?? 7} />
+                                                            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                                                <StatCard
+                                                                    label="Avg Mood"
+                                                                    value={`${avgScore}/10`}
+                                                                    sub={reportData.dominant_emotion}
+                                                                    color={emotionColor(reportData.dominant_emotion)}
+                                                                />
+                                                                <StatCard
+                                                                    label="Days Done"
+                                                                    value={daysDone}
+                                                                    sub={`${daysMissed} missed`}
+                                                                    color={daysDone > daysMissed ? '#10b981' : '#ef4444'}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* ── Emotion Distribution Pie Chart ── */}
+                                                        {weekDays.some(d => d.has_journal) && (
+                                                            <div>
+                                                                <p style={{
+                                                                    fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+                                                                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px',
+                                                                }}>Emotion Distribution</p>
+                                                                <EmotionPieChart days={weekDays} />
+                                                            </div>
+                                                        )}
+
+                                                        {/* ── Emotional arc chart ── */}
+                                                        <div>
+                                                            <p style={{
+                                                                fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+                                                                textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px',
+                                                            }}>Daily Emotional Arc</p>
+                                                            <EmotionChart days={weekDays} />
+                                                            {reportData.emotional_arc && (
+                                                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: '10px' }}>
+                                                                    {reportData.emotional_arc}
+                                                                </p>
+                                                            )}
+                                                        </div>
+
+                                                        {/* ── AI analysis blocks ── */}
+                                                        <AnalysisBlock label="What Went Well" content={reportData.what_went_well} />
+                                                        <AnalysisBlock label="Where You Slipped" content={reportData.where_you_slipped} />
+                                                        <AnalysisBlock label="Consistency Analysis" content={reportData.consistency_analysis} />
+                                                        {reportData.hidden_insight && (
+                                                            <div style={{
+                                                                padding: '14px 16px', borderRadius: '12px',
+                                                                background: 'rgba(99,102,241,0.08)',
+                                                                border: '1px solid rgba(99,102,241,0.2)',
+                                                            }}>
+                                                                <p style={{
+                                                                    fontSize: '10px', fontWeight: 700, color: 'rgba(99,102,241,0.7)',
+                                                                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
+                                                                }}>Hidden Insight</p>
+                                                                <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>
+                                                                    {reportData.hidden_insight}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {/* ── Daily Breakdown ── */}
+                                                        <DailyBreakdown days={weekDays} />
+
+                                                        {/* ── Next week focus ── */}
+                                                        {reportData.next_week_focus && (
+                                                            <div style={{
+                                                                padding: '16px', borderRadius: '12px',
+                                                                background: 'rgba(16,185,129,0.07)',
+                                                                border: '1px solid rgba(16,185,129,0.2)',
+                                                            }}>
+                                                                <p style={{
+                                                                    fontSize: '10px', fontWeight: 700, color: 'rgba(16,185,129,0.7)',
+                                                                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
+                                                                }}>Next Week: Key Focus</p>
+                                                                <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>
+                                                                    {reportData.next_week_focus}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Plan Week N+1 prompt */}
+                                                        <div style={{
+                                                            padding: '14px 16px', borderRadius: '12px',
+                                                            background: 'var(--bg-raised)',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                        }}>
+                                                            <div>
+                                                                <p style={{ fontSize: '12px', fontWeight: 600, color: 'white', margin: 0 }}>
+                                                                    Ready for Week {(reportData.week_number ?? 1) + 1}?
+                                                                </p>
+                                                                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                                                                    AI will build it using this week's performance data.
+                                                                </p>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    // Communicate back to WorkspacePage to open chat and send a specific prompt
+                                                                    const event = new CustomEvent('request-next-week-plan', {
+                                                                        detail: { week: (reportData.week_number ?? 1) + 1 }
+                                                                    });
+                                                                    window.dispatchEvent(event);
+                                                                    // Close journey
+                                                                    setTimeout(() => {
+                                                                        const closeEvent = new CustomEvent('close-journey');
+                                                                        window.dispatchEvent(closeEvent);
+                                                                    }, 100);
+                                                                }}
+                                                                style={{
+                                                                    padding: '8px 16px', borderRadius: '10px',
+                                                                    border: 'none',
+                                                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                                    color: 'white', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                                                                    flexShrink: 0, fontFamily: 'var(--font-sans)',
+                                                                    transition: 'opacity 0.2s',
+                                                                }}
+                                                                onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                                                                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                                                            >
+                                                                Plan Week {(reportData.week_number ?? 1) + 1}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : null}
                                     </>
                                 );
                             })()}
@@ -1363,14 +1310,14 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             transition={{ duration: 0.2 }}
                         >
                             <p style={{
-                                fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                                fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
                                 textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px',
                             }}>
                                 Session Weekly Reports
                             </p>
 
                             {loadingArchive ? (
-                                <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
+                                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>
                                     <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 10px' }} />
                                     Loading archive...
                                 </div>
@@ -1378,11 +1325,11 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 <div style={{
                                     textAlign: 'center', padding: '40px',
                                     border: '1px dashed rgba(255,255,255,0.1)',
-                                    borderRadius: '12px', color: 'rgba(255,255,255,0.3)', fontSize: '13px',
+                                    borderRadius: '12px', color: 'var(--text-muted)', fontSize: '13px',
                                 }}>
                                     No weekly reports found for this session yet.
                                 </div>
-                                ) : (
+                            ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     {archivedReports.map((aw) => {
                                         const isExpanded = expandedWeek === aw.week_number;
@@ -1395,8 +1342,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 key={aw.week_number}
                                                 style={{
                                                     borderRadius: '16px',
-                                                    border: isExpanded ? '1px solid rgba(99,102,241,0.25)' : '1px solid rgba(255,255,255,0.07)',
-                                                    background: isExpanded ? 'rgba(99,102,241,0.04)' : 'rgba(255,255,255,0.02)',
+                                                    border: isExpanded ? '1px solid var(--accent-faint-md)' : '1px solid var(--border-subtle)',
+                                                    background: isExpanded ? 'var(--accent-faint)' : 'var(--bg-raised)',
                                                     overflow: 'hidden',
                                                     transition: 'border-color 0.2s, background 0.2s',
                                                 }}
@@ -1426,7 +1373,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         </div>
                                                         <div style={{ textAlign: 'left' }}>
                                                             <div style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '-0.01em' }}>Week {aw.week_number} Report</div>
-                                                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>
+                                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                                                                 {aw.week_start} – {aw.week_end}
                                                                 {aw.report?.consistency_score !== undefined && (
                                                                     <span style={{ marginLeft: '10px', color: arConsistency >= 70 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>
@@ -1454,7 +1401,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         >
                                                             <div style={{
                                                                 padding: '4px 18px 20px',
-                                                                borderTop: '1px solid rgba(255,255,255,0.06)',
+                                                                borderTop: '1px solid var(--border-subtle)',
                                                             }}>
                                                                 {/* Stats + ring row */}
                                                                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -1494,7 +1441,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                 {/* Emotion distribution pie */}
                                                                 {arDays.length > 0 && arDays.some(d => d.has_journal) && (
                                                                     <div style={{ marginTop: '16px' }}>
-                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>Emotion Distribution</p>
+                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>Emotion Distribution</p>
                                                                         <EmotionPieChart days={arDays} />
                                                                     </div>
                                                                 )}
@@ -1502,7 +1449,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                 {/* Emotional arc bar chart */}
                                                                 {arDays.length > 0 && (
                                                                     <div style={{ marginTop: '16px' }}>
-                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Daily Arc</p>
+                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Daily Arc</p>
                                                                         <EmotionChart days={arDays} />
                                                                     </div>
                                                                 )}
@@ -1525,7 +1472,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                             border: '1px solid rgba(99,102,241,0.2)',
                                                                         }}>
                                                                             <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Hidden Insight</p>
-                                                                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, margin: 0 }}>{aw.report.hidden_insight}</p>
+                                                                            <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>{aw.report.hidden_insight}</p>
                                                                         </div>
                                                                     )}
                                                                     {aw.report?.next_week_focus && (
@@ -1535,7 +1482,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                             border: '1px solid rgba(16,185,129,0.2)',
                                                                         }}>
                                                                             <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(16,185,129,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Next Week Focus</p>
-                                                                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, margin: 0 }}>{aw.report.next_week_focus}</p>
+                                                                            <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>{aw.report.next_week_focus}</p>
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -1551,7 +1498,6 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                         </motion.div>
                     )}
                 </AnimatePresence>
-                </div>{/* end maxWidth container */}
             </div>
 
             <style>{`

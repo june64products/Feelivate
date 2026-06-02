@@ -27,3 +27,12 @@ eval.db
 
 # Logs
 *.log
+
+# Media & Temp
+VIDEO 1.mov
+VIDEO 2.mov
+SCREENSHOT\ OF\ VIDEO\ 1/
+scratch/
+SCREENSHOT\ OF\ VIDEO\ 1
+
+
