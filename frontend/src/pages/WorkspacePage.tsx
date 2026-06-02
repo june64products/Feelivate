@@ -33,6 +33,7 @@ export default function WorkspacePage() {
     );
     const [messages, setMessages] = useState<any[]>([]);
     const [activePlan, setActivePlan] = useState<any | null>(null);
+    const [planHistory, setPlanHistory] = useState<any[]>([]);
     const [isPlanApproved, setIsPlanApproved] = useState(false);
     
     const [isLoading, setIsLoading] = useState(false);
@@ -128,6 +129,7 @@ export default function WorkspacePage() {
                 
                 setMessages(msgs);
                 setActivePlan(data.plan || null);
+                setPlanHistory(data.plan_history || []);
                 setIsPlanApproved(phase === 'active');
                 setIsSessionCompleted(phase === 'completed');
                 setSessionFocus(data.focus || '');
@@ -566,6 +568,7 @@ export default function WorkspacePage() {
                         currentWeek={activePlan?.week_number ?? 1}
                         micLocked={micLocked}
                         activePlan={activePlan}
+                        planHistory={planHistory}
                     />
                 )}
 

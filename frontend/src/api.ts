@@ -167,6 +167,7 @@ export interface SessionDetail {
     current_week: number;
     phase: string;
     plan: any | null;
+    plan_history: any[];
     messages: { role: string; content: string; created_at: string }[];
 }
 

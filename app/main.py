@@ -447,7 +447,7 @@ async def approve_plan(
     system_msg = ChatMessage(
         session_id=session_id,
         role="assistant",
-        content=f"Week {session_rec.current_week} plan approved and locked! Let's do this. How are you feeling about Day 1?"
+        content=f"Week {session_rec.current_week} plan approved and locked! Let's go — your plan is set. You can chat with me anytime, or head to the Journey page to log your daily voice entry."
     )
     db.add(system_msg)
     db.commit()
@@ -542,6 +542,16 @@ async def get_session_detail(session_id: str, db: DBSession = Depends(get_db), c
             plan = json.loads(session.week_plan_json)
         except:
             pass
+
+    # Parse plan history (all approved weeks)
+    plan_history = []
+    if session.result_json:
+        try:
+            parsed = json.loads(session.result_json)
+            if isinstance(parsed, list):
+                plan_history = parsed
+        except:
+            pass
     
     return {
         "id": session.id,
@@ -550,6 +560,7 @@ async def get_session_detail(session_id: str, db: DBSession = Depends(get_db), c
         "current_week": session.current_week,
         "phase": session.phase,
         "plan": plan,
+        "plan_history": plan_history,
         "messages": [{"role": m.role, "content": m.content, "created_at": m.created_at} for m in messages]
     }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, X, Lock, Sparkles, FileText } from 'lucide-react';
+import { ChevronRight, ChevronDown, X, Lock, Sparkles, FileText, ChevronUp, Mic } from 'lucide-react';
 import { getSessionReports, type ArchivedWeekReport } from '../../api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,6 +24,7 @@ interface LockedWeeksPanelProps {
     currentWeek: number;           // the ongoing week number (0-indexed)
     micLocked: boolean;            // if today is locked
     activePlan?: any;              // current plan data
+    planHistory?: any[];           // all past approved week plans
     onClose?: () => void;
 }
 
@@ -53,6 +54,33 @@ function MiniAnalysis({ label, content }: { label: string; content: string }) {
     );
 }
 
+// ─── Week Plan day list ───────────────────────────────────────────────────────
+function WeekPlanDays({ plan, accentColor }: { plan: any; accentColor: string }) {
+    if (!plan?.days?.length) return null;
+    return (
+        <div style={{ marginTop: '4px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', paddingLeft: '2px' }}>
+                Week {plan.week_number} · {plan.theme}
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                {plan.days.map((day: any, idx: number) => (
+                    <div key={idx} style={{
+                        display: 'flex', gap: '10px', padding: '10px 14px',
+                        borderBottom: idx < plan.days.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
+                    }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: accentColor, minWidth: '70px', marginTop: '2px', flexShrink: 0 }}>
+                            {day.day}
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
+                            {day.action}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 // ─── Week drawer (slides in from right) ──────────────────────────────────────
 function WeekDrawer({
     weekNumber,
@@ -60,6 +88,7 @@ function WeekDrawer({
     isOngoing,
     isActiveCurrent,
     activePlan,
+    weekPlan,
     drawerTop,
     onClose,
 }: {
@@ -68,16 +97,20 @@ function WeekDrawer({
     isOngoing: boolean;
     isActiveCurrent: boolean;
     activePlan?: any;
+    weekPlan?: any;         // plan for this specific week from planHistory
     drawerTop?: number;
     onClose: () => void;
 }) {
     const isCurrentWeek = isOngoing || isActiveCurrent;
-    const accentColor = isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : '#6b7280';
-    const accentBg = isOngoing ? 'rgba(99,102,241,0.08)' : isActiveCurrent ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)';
-    const accentBorder = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)';
+    const isLockedPast = !isCurrentWeek;
+    const accentColor = isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : '#a78bfa';
+    const accentBg = isOngoing ? 'rgba(99,102,241,0.08)' : isActiveCurrent ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.07)';
+    const accentBorder = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.2)' : 'rgba(139,92,246,0.18)';
 
     const r = report?.report;
+    const planToShow = isCurrentWeek ? activePlan : weekPlan;
 
+    const [showReport, setShowReport] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
         const check = () => setIsMobile(window.innerWidth <= 768);
@@ -85,6 +118,9 @@ function WeekDrawer({
         window.addEventListener('resize', check);
         return () => window.removeEventListener('resize', check);
     }, []);
+
+    // Last voice entry (from report days if available)
+    const lastJournalDay = r?.days?.slice().reverse().find((d: any) => d.has_journal);
 
     return (
         <motion.div
@@ -99,8 +135,8 @@ function WeekDrawer({
                 right: 60, // offset from the pill panel
                 top: drawerTop !== undefined ? Math.min(drawerTop, typeof window !== 'undefined' ? window.innerHeight - 350 : 500) : 80,
                 transform: 'none',
-                width: '300px',
-                maxHeight: '80vh',
+                width: '310px',
+                maxHeight: '82vh',
                 background: '#111112',
                 border: `1px solid ${accentBorder}`,
                 borderRadius: '16px',
@@ -123,22 +159,22 @@ function WeekDrawer({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                         width: '28px', height: '28px', borderRadius: '8px',
-                        background: isOngoing ? 'rgba(99,102,241,0.15)' : isActiveCurrent ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)',
+                        background: isOngoing ? 'rgba(99,102,241,0.15)' : isActiveCurrent ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.12)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                         {isOngoing
                             ? <Sparkles size={13} color={accentColor} />
                             : isActiveCurrent
                             ? <span style={{ fontSize: '12px', color: accentColor }}>▶</span>
-                            : <FileText size={13} color={accentColor} />
+                            : <Lock size={13} color={accentColor} />
                         }
                     </div>
                     <div>
                         <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
-                            Week {weekNumber}
+                            Week {weekNumber} {isLockedPast ? '— Plan' : ''}
                         </p>
                         <p style={{ fontSize: '10px', color: isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : 'rgba(255,255,255,0.35)', margin: 0, marginTop: '1px' }}>
-                            {isOngoing ? 'Recorded Today ✦' : isActiveCurrent ? 'Active Now' : (report ? `${report.week_start} – ${report.week_end}` : 'Locked')}
+                            {isOngoing ? 'Recorded Today ✦' : isActiveCurrent ? 'Active Now' : (report ? `${report.week_start} – ${report.week_end}` : 'Completed')}
                         </p>
                     </div>
                 </div>
@@ -157,82 +193,135 @@ function WeekDrawer({
 
             {/* Content */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+                {/* ── CURRENT WEEK: show active state + plan ── */}
                 {isCurrentWeek && !r && (
                     <div style={{
-                        padding: '20px', borderRadius: '12px',
+                        padding: '16px', borderRadius: '12px',
                         background: isOngoing ? 'rgba(99,102,241,0.06)' : 'rgba(16,185,129,0.06)',
                         border: `1px dashed ${isOngoing ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)'}`,
                         textAlign: 'center',
                     }}>
-                        {isOngoing 
+                        {isOngoing
                             ? <Sparkles size={20} color="#818cf8" style={{ margin: '0 auto 10px' }} />
                             : <div style={{ fontSize: '20px', color: '#34d399', margin: '0 auto 10px', lineHeight: 1 }}>▶</div>
                         }
                         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
-                            This is your current active week.
+                            {isOngoing ? 'Voice logged today ✦' : 'This is your current active week.'}
                         </p>
                         <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '4px 0 0 0' }}>
-                            Keep journaling — your report appears at week end.
+                            {isOngoing ? 'Great work keeping up the momentum.' : 'Keep journaling — report appears at week end.'}
                         </p>
                     </div>
                 )}
 
-                {/* Show Plan if it's the current week */}
-                {isCurrentWeek && activePlan && activePlan.days && (
-                    <div style={{ marginTop: '4px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'white', marginBottom: '8px', paddingLeft: '4px' }}>
-                            Week {activePlan.week_number} Plan: {activePlan.theme}
+                {/* ── Show the week's plan (current or past) ── */}
+                {planToShow && planToShow.days ? (
+                    <WeekPlanDays plan={planToShow} accentColor={accentColor} />
+                ) : (
+                    !isCurrentWeek && (
+                        <div style={{
+                            padding: '16px', borderRadius: '12px',
+                            border: '1px dashed rgba(255,255,255,0.1)',
+                            textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px', lineHeight: 1.6,
+                        }}>
+                            <FileText size={18} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }} />
+                            Plan data not available for this week.
                         </div>
-                        <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                            {activePlan.days.map((day: any, idx: number) => (
-                                <div key={idx} style={{
-                                    display: 'flex', gap: '10px', padding: '12px 14px',
-                                    borderBottom: idx < activePlan.days.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
-                                }}>
-                                    <div style={{ fontSize: '11px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: accentColor, minWidth: '70px', marginTop: '2px' }}>
-                                        {day.day}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
-                                        {day.action}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    )
                 )}
 
-                {!isCurrentWeek && !r && (
+                {/* ── Last voice entry for LOCKED past weeks ── */}
+                {isLockedPast && lastJournalDay && (
                     <div style={{
-                        padding: '20px', borderRadius: '12px',
-                        border: '1px dashed rgba(255,255,255,0.1)',
-                        textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px', lineHeight: 1.6,
+                        padding: '10px 12px', borderRadius: '10px',
+                        background: 'rgba(167,139,250,0.06)',
+                        border: '1px solid rgba(167,139,250,0.15)',
+                        display: 'flex', alignItems: 'flex-start', gap: '8px',
                     }}>
-                        <Lock size={18} style={{ margin: '0 auto 10px', display: 'block' }} />
-                        No report available for this week yet.
+                        <Mic size={13} color="#a78bfa" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>
+                            <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(167,139,250,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>
+                                Last Voice Entry
+                            </p>
+                            <p style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.45, fontStyle: 'italic' }}>
+                                "{lastJournalDay.one_liner}"
+                            </p>
+                            {lastJournalDay.emotion && (
+                                <p style={{ fontSize: '10px', color: 'rgba(167,139,250,0.6)', margin: '3px 0 0', fontWeight: 600 }}>
+                                    {lastJournalDay.emotion} · {lastJournalDay.score}/10
+                                </p>
+                            )}
+                        </div>
                     </div>
                 )}
 
-                {r && (
+                {/* ── Collapsible Report Summary for LOCKED past weeks ── */}
+                {isLockedPast && r && (
+                    <div style={{ borderRadius: '10px', border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                        <button
+                            onClick={() => setShowReport(p => !p)}
+                            style={{
+                                width: '100%', padding: '10px 12px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                background: 'rgba(255,255,255,0.03)', border: 'none',
+                                color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
+                                fontFamily: "'Inter', sans-serif", fontSize: '10px', fontWeight: 700,
+                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                            }}
+                        >
+                            <span>📊 Week Performance</span>
+                            {showReport ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                        <AnimatePresence>
+                            {showReport && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                                    style={{ overflow: 'hidden' }}
+                                >
+                                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <MiniStatCard label="Consistency" value={`${r.consistency_score ?? 0}%`} color="#10b981" />
+                                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#60a5fa" />
+                                        </div>
+                                        {r.week_theme && (
+                                            <div style={{
+                                                padding: '8px 12px', borderRadius: '10px',
+                                                background: 'rgba(99,102,241,0.07)',
+                                                border: '1px solid rgba(99,102,241,0.15)',
+                                                fontSize: '11px', color: '#818cf8', fontWeight: 500,
+                                            }}>
+                                                ✦ {r.week_theme}
+                                            </div>
+                                        )}
+                                        <MiniAnalysis label="What Went Well" content={r.what_went_well ?? ''} />
+                                        <MiniAnalysis label="Where You Slipped" content={r.where_you_slipped ?? ''} />
+                                        {r.hidden_insight && (
+                                            <div style={{
+                                                padding: '10px 12px', borderRadius: '10px',
+                                                background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)',
+                                            }}>
+                                                <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Hidden Insight</p>
+                                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, margin: 0 }}>{r.hidden_insight}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                )}
+
+                {/* ── Current week report if available ── */}
+                {isCurrentWeek && r && (
                     <>
-                        {/* Stats */}
                         <div style={{ display: 'flex', gap: '8px' }}>
                             <MiniStatCard label="Consistency" value={`${r.consistency_score ?? 0}%`} color="#10b981" />
                             <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#60a5fa" />
                         </div>
-
-                        {/* Theme badge */}
-                        {r.week_theme && (
-                            <div style={{
-                                padding: '8px 12px', borderRadius: '10px',
-                                background: 'rgba(99,102,241,0.07)',
-                                border: '1px solid rgba(99,102,241,0.15)',
-                                fontSize: '11px', color: '#818cf8', fontWeight: 500,
-                            }}>
-                                ✦ {r.week_theme}
-                            </div>
-                        )}
-
-                        {/* Analysis blocks */}
                         <MiniAnalysis label="Emotional Arc" content={r.emotional_arc ?? ''} />
                         <MiniAnalysis label="What Went Well" content={r.what_went_well ?? ''} />
                         <MiniAnalysis label="Where You Slipped" content={r.where_you_slipped ?? ''} />
@@ -254,7 +343,7 @@ function WeekDrawer({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, activePlan }: LockedWeeksPanelProps) {
+export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, activePlan, planHistory = [] }: LockedWeeksPanelProps) {
     const [reports, setReports] = useState<ArchivedWeekReport[]>([]);
     const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -279,7 +368,6 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
         }
     });
     // Always add current week — isOngoing=true means mic was locked today (recorded)
-    // isOngoing=false means plan is active but no recording yet today
     weekItems.push({ weekNumber: currentWeek, isOngoing: micLocked, isLocked: false });
 
     // Sort all
@@ -319,6 +407,10 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
     const getReportForWeek = (wn: number): ArchivedWeekReport | null =>
         reports.find(r => r.week_number === wn) ?? null;
 
+    // Get the plan for a specific week number from planHistory
+    const getPlanForWeek = (wn: number): any | null =>
+        planHistory.find((p: any) => p.week_number === wn) ?? null;
+
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -328,6 +420,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
     }, []);
 
     const selectedReport = selectedWeek !== null ? getReportForWeek(selectedWeek) : null;
+    const selectedWeekPlan = selectedWeek !== null && selectedWeek !== currentWeek ? getPlanForWeek(selectedWeek) : null;
     const isSelectedOngoing = selectedWeek === currentWeek;
 
     return (
@@ -449,9 +542,10 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                     <WeekDrawer
                         weekNumber={selectedWeek}
                         report={selectedReport}
-                        isOngoing={isSelectedOngoing}
+                        isOngoing={isSelectedOngoing && micLocked}
                         isActiveCurrent={selectedWeek === currentWeek && !micLocked}
                         activePlan={activePlan}
+                        weekPlan={selectedWeekPlan}
                         drawerTop={drawerTop}
                         onClose={() => setSelectedWeek(null)}
                     />
@@ -474,30 +568,30 @@ function WeekPill({
 }) {
     const { weekNumber, isOngoing, isLocked } = item;
     // isOngoing = true → recorded today (indigo/sparkle)
-    // isLocked = true → completed past week (gray/lock)
+    // isLocked = true → completed past week (purple/lock)
     // neither → active current week, not recorded yet (emerald/play)
     const isActiveCurrent = !isOngoing && !isLocked;
 
     const bgColor = isSelected
-        ? isOngoing ? 'rgba(99,102,241,0.3)' : isActiveCurrent ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.12)'
-        : isOngoing ? 'rgba(99,102,241,0.12)' : isActiveCurrent ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)';
+        ? isOngoing ? 'rgba(99,102,241,0.3)' : isActiveCurrent ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.25)'
+        : isOngoing ? 'rgba(99,102,241,0.12)' : isActiveCurrent ? 'rgba(16,185,129,0.1)' : 'rgba(139,92,246,0.08)';
 
     const borderColor = isSelected
-        ? isOngoing ? 'rgba(99,102,241,0.6)' : isActiveCurrent ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.25)'
-        : isOngoing ? 'rgba(99,102,241,0.25)' : isActiveCurrent ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)';
+        ? isOngoing ? 'rgba(99,102,241,0.6)' : isActiveCurrent ? 'rgba(16,185,129,0.5)' : 'rgba(139,92,246,0.55)'
+        : isOngoing ? 'rgba(99,102,241,0.25)' : isActiveCurrent ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.22)';
 
     const textColor = isSelected
-        ? isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : 'white'
-        : isOngoing ? '#818cf8' : isActiveCurrent ? '#10b981' : 'rgba(255,255,255,0.4)';
+        ? isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : '#c4b5fd'
+        : isOngoing ? '#818cf8' : isActiveCurrent ? '#10b981' : '#a78bfa';
 
-    const hoverBg = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.09)';
-    const hoverColor = isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : 'rgba(255,255,255,0.8)';
+    const hoverBg = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.18)' : 'rgba(139,92,246,0.16)';
+    const hoverColor = isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : '#c4b5fd';
 
     const titleText = isOngoing
         ? `Week ${weekNumber} — recorded today ✦`
         : isActiveCurrent
-        ? `Week ${weekNumber} — active (click to view)`
-        : `Week ${weekNumber} — locked`;
+        ? `Week ${weekNumber} — active (click to view plan)`
+        : `Week ${weekNumber} — tap to view plan`;
 
     return (
         <motion.button
@@ -541,7 +635,6 @@ function WeekPill({
                 W{weekNumber}
             </span>
 
-
             {/* Selected indicator dot */}
             {isSelected && (
                 <motion.div
@@ -553,7 +646,7 @@ function WeekPill({
                         transform: 'translateY(-50%)',
                         width: '4px', height: '14px',
                         borderRadius: '0 3px 3px 0',
-                        background: isOngoing ? '#818cf8' : '#e4e4e7',
+                        background: isOngoing ? '#818cf8' : isLocked ? '#a78bfa' : '#34d399',
                     }}
                 />
             )}

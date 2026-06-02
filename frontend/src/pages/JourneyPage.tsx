@@ -6,6 +6,7 @@ import {
     getWeeklyReport,
     getWeekInfo,
     getSessionReports,
+    getSessionDetail,
     uploadVoiceJournalForSession,
     type JournalEntry,
     type WeeklyReport,
@@ -462,6 +463,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const [report, setReport] = useState<WeeklyReport | null>(null);
     const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
     const [archivedReports, setArchivedReports] = useState<ArchivedWeekReport[]>([]);
+    const [planHistory, setPlanHistory] = useState<any[]>([]);
+    const [currentPlan, setCurrentPlan] = useState<any | null>(null);
     const [loadingReport, setLoadingReport] = useState(true);
     const [loadingArchive, setLoadingArchive] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'archive'>('overview');
@@ -508,7 +511,16 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             setReport(r);
             setArchivedReports(ar);
 
-            // 3. If we have a journal for today, also set micLocked
+            // 4. Fetch session plan + plan history
+            if (sessionId) {
+                const detail = await getSessionDetail(sessionId).catch(() => null);
+                if (detail) {
+                    setPlanHistory(detail.plan_history || []);
+                    setCurrentPlan(detail.plan || null);
+                }
+            }
+
+            // 5. If we have a journal for today, also set micLocked
             const todayJ = j.find(jj => jj.date === getLocalISODate());
             if (todayJ) {
                 setMicLocked(true);
@@ -650,6 +662,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 sessionId={sessionId}
                 currentWeek={weekInfo?.current_week ?? 1}
                 micLocked={micLocked}
+                activePlan={currentPlan}
+                planHistory={planHistory}
             />
 
             {/* ── Week-End Celebration Modal ── */}
