@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, AlertCircle, Sparkles } from 'lucide-react';
+import { Calendar, PanelLeft, AlertCircle, Sparkles } from 'lucide-react';
 import {
     chatWithMentor,
     approvePlan,
@@ -21,7 +21,7 @@ import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
 import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
-import Topbar from '../components/layout/Topbar';
+
 
 
 export default function WorkspacePage() {
@@ -49,6 +49,7 @@ export default function WorkspacePage() {
     const [view, setView] = useState<'chat' | 'journey'>('chat');
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showCompleteModal, setShowCompleteModal] = useState(false);
+    const [isSessionCompleted, setIsSessionCompleted] = useState(false);
     const [sessionFocus, setSessionFocus] = useState<string>('');
     const [todayEmotion, setTodayEmotion] = useState<TodayEmotionResult['entry'] | null>(null);
 
@@ -130,6 +131,7 @@ export default function WorkspacePage() {
                 setActivePlan(data.plan || null);
                 setPlanHistory(data.plan_history || []);
                 setIsPlanApproved(phase === 'active');
+                setIsSessionCompleted(phase === 'completed');
                 setSessionFocus(data.focus || '');
             } catch (err: any) {
                 console.error("Failed to load session details:", err);
@@ -178,6 +180,7 @@ export default function WorkspacePage() {
         localStorage.setItem('active_session_id', sessionId);
         // Reset session-specific state
         setTodayEmotion(null);
+        setIsSessionCompleted(false);
         setView('chat');
         // Re-fetch today's emotion scoped to the newly selected session
         if (userId) {
@@ -315,28 +318,13 @@ export default function WorkspacePage() {
     return (
         <div style={{
             display: 'flex',
-            flexDirection: 'column',
             height: '100vh',
             width: '100vw',
-            background: 'var(--bg-page)',
+            background: 'var(--bg-primary)',
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-sans)',
             overflow: 'hidden',
         }}>
-            {/* Fixed Topbar */}
-            <Topbar
-                onLogout={handleLogout}
-                activePlan={activePlan}
-                userId={userId}
-            />
-
-            {/* Below-topbar row: sidebar + main */}
-            <div style={{
-                display: 'flex',
-                flex: 1,
-                overflow: 'hidden',
-                marginTop: 'var(--topbar-height)',
-            }}>
             {/* Sidebar Overlay Backdrop for Mobile */}
             {!isSidebarCollapsed && (
                 <div
@@ -346,19 +334,21 @@ export default function WorkspacePage() {
             )}
 
             {/* Sidebar */}
-            <SessionSidebar
-                userId={userId || ''}
-                activeSessionId={activeSessionId}
-                onSelectSession={(id) => { handleSelectSession(id); setView('chat'); setIsSidebarCollapsed(true); }}
-                onNewChat={() => { handleNewChat(); setView('chat'); setIsSidebarCollapsed(true); }}
-                onJourney={() => { setView('journey'); setIsSidebarCollapsed(true); }}
-                isCollapsed={isSidebarCollapsed}
-                onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                refreshKey={sidebarRefreshKey}
-                isPlanActive={isPlanApproved}
-            />
+            <div className={`sidebar-root ${!isSidebarCollapsed ? 'expanded' : 'collapsed'}`}>
+                <SessionSidebar
+                    userId={userId || ''}
+                    activeSessionId={activeSessionId}
+                    onSelectSession={(id) => { handleSelectSession(id); setView('chat'); setIsSidebarCollapsed(true); }}
+                    onNewChat={() => { handleNewChat(); setView('chat'); setIsSidebarCollapsed(true); }}
+                    onJourney={() => { setView('journey'); setIsSidebarCollapsed(true); }}
+                    isCollapsed={isSidebarCollapsed}
+                    onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    refreshKey={sidebarRefreshKey}
+                    isPlanActive={isPlanApproved}
+                />
+            </div>
 
-            {/* Main content area */}
+            {/* Chat Area */}
             <div style={{
                 flex: 1,
                 display: 'flex',
@@ -366,7 +356,6 @@ export default function WorkspacePage() {
                 height: '100%',
                 position: 'relative',
                 overflow: 'hidden',
-                background: 'var(--bg-page)',
             }}>
                 {/* Journey view — full-panel replacement */}
                 {view === 'journey' && userId && (
@@ -460,45 +449,116 @@ export default function WorkspacePage() {
                         )}
                     </AnimatePresence>
 
-                    {/* Header — mobile hamburger menu only (topbar handles desktop) */}
-                    <div className="show-on-mobile" style={{
-                        minHeight: '48px',
-                        padding: '8px 16px',
+                    {/* Header */}
+                    <div className="mobile-header" style={{
+                        minHeight: '56px',
+                        height: 'auto',
+                        padding: 'calc(env(safe-area-inset-top, 0px) + 8px) 20px 8px 20px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         flexShrink: 0,
                         zIndex: 15,
                         position: 'relative',
-                        borderBottom: '1px solid var(--border-subtle)',
+                        fontFamily: "'Inter', sans-serif"
                     }}>
-                        <button
-                            onClick={() => setIsSidebarCollapsed(false)}
-                            style={{
-                                width: 32, height: 32, borderRadius: '8px',
-                                border: 'none', background: 'transparent',
-                                color: 'var(--text-muted)', cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}
-                        >
-                            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                        </button>
-                        {isPlanApproved && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {/* Always show hamburger on mobile; show only when collapsed on desktop */}
                             <button
-                                onClick={() => setShowCalendarModal(true)}
+                                className={isSidebarCollapsed ? '' : 'hide-on-mobile'}
+                                onClick={() => setIsSidebarCollapsed(false)}
                                 style={{
-                                    display: 'flex', alignItems: 'center', gap: '6px',
-                                    padding: '6px 12px', borderRadius: '20px',
-                                    border: '1px solid var(--accent-green-faint)',
-                                    background: 'var(--accent-green-faint)',
-                                    color: 'var(--accent-green)', fontSize: '12px',
-                                    fontWeight: 500, cursor: 'pointer',
+                                    width: '32px', height: '32px', borderRadius: '8px',
+                                    border: 'none', background: 'transparent',
+                                    color: '#a1a1aa', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 }}
                             >
-                                <Calendar size={12} />
-                                Sync
+                                <PanelLeft size={18} />
                             </button>
-                        )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            {isPlanApproved && (
+                                <button
+                                    onClick={() => setShowCalendarModal(true)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        padding: '6px 14px', borderRadius: '20px',
+                                        border: '1px solid rgba(74,222,128,0.25)',
+                                        background: 'rgba(74,222,128,0.05)',
+                                        color: '#4ade80', fontSize: '12.5px',
+                                        fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
+                                        fontFamily: "'Inter', sans-serif",
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.1)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.05)'; }}
+                                >
+                                    <Calendar size={12} />
+                                    Calendar Sync
+                                </button>
+                            )}
+                            {/* Pricing */}
+                            <span
+                                className="hide-on-mobile"
+                                style={{
+                                    fontSize: '13.5px', color: '#71717a', cursor: 'pointer',
+                                    fontWeight: 500, fontFamily: "'Inter', sans-serif",
+                                    transition: 'color 0.15s',
+                                }}
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#a1a1aa'}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#71717a'}
+                            >
+                                Pricing
+                            </span>
+
+                            {/* Upgrade */}
+                            <button className="upgrade-btn hide-on-mobile">
+                                Upgrade
+                            </button>
+
+                            {/* Running indicator — shown when plan is active */}
+                            {isPlanApproved && !isSessionCompleted && activeSessionId && (
+                                <button
+                                    onClick={() => setShowCompleteModal(true)}
+                                    title="Stop plan"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '7px',
+                                        padding: '5px 12px', borderRadius: '20px',
+                                        border: '1px solid rgba(239,68,68,0.2)',
+                                        background: 'rgba(239,68,68,0.05)',
+                                        color: '#f87171', fontSize: '12px',
+                                        fontWeight: 500, cursor: 'pointer',
+                                        transition: 'all 0.15s',
+                                        fontFamily: "'Inter', sans-serif",
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; }}
+                                >
+                                    <div style={{
+                                        width: '6px', height: '6px', borderRadius: '50%',
+                                        background: '#f87171',
+                                        animation: 'pulse 1.5s ease-in-out infinite',
+                                    }} />
+                                    Running
+                                </button>
+                            )}
+
+                            {/* User avatar with first+last initials */}
+                            <div
+                                className="user-avatar"
+                                onClick={handleLogout}
+                                title="Logout"
+                            >
+                                {(() => {
+                                    const name = localStorage.getItem('user_name') || '';
+                                    const parts = name.trim().split(' ');
+                                    const first = parts[0]?.[0]?.toUpperCase() || '';
+                                    const last = parts.length > 1 ? parts[parts.length - 1][0]?.toUpperCase() : '';
+                                    return first + last || 'U';
+                                })()}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Locked Weeks Panel (Desktop: Fixed Right / Mobile: Relative under Header) */}
@@ -538,7 +598,7 @@ export default function WorkspacePage() {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.65, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-                                    style={{ textAlign: 'center', marginBottom: '36px', fontFamily: 'var(--font-sans)' }}
+                                    style={{ textAlign: 'center', marginBottom: '36px', fontFamily: "'Inter', sans-serif" }}
                                 >
                                     {/* Logo + Name row */}
                                     <div style={{
@@ -547,10 +607,9 @@ export default function WorkspacePage() {
                                     }}>
                                         <div style={{
                                             width: '38px', height: '38px',
-                                            background: 'var(--bg-surface)', borderRadius: '10px',
+                                            background: '#fff', borderRadius: '10px',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             overflow: 'hidden', flexShrink: 0,
-                                            border: '1px solid var(--border-subtle)',
                                         }}>
                                             <img
                                                 src="/logo_2_backup.png"
@@ -560,7 +619,7 @@ export default function WorkspacePage() {
                                         </div>
                                         <h1 style={{
                                             fontSize: '30px', fontWeight: 700,
-                                            letterSpacing: '-0.025em', color: 'var(--text-primary)', margin: 0,
+                                            letterSpacing: '-0.025em', color: '#f0f0f0', margin: 0,
                                         }}>
                                             FEELIVATE
                                         </h1>
@@ -569,7 +628,7 @@ export default function WorkspacePage() {
                                     {/* Personalised greeting */}
                                     <h2 style={{
                                         fontSize: '26px', fontWeight: 500,
-                                        color: 'var(--text-secondary)',
+                                        color: '#a1a1aa',
                                         letterSpacing: '-0.01em',
                                         margin: 0,
                                         lineHeight: 1.3,
@@ -614,7 +673,7 @@ export default function WorkspacePage() {
                         )}
                     </AnimatePresence>
 
-                    {/* Bottom Input */}
+                    {/* Bottom Input (always visible in chat state, hidden in empty state since input is inline there) */}
                     <AnimatePresence>
                         {!isEmptyState && (
                             <motion.div
@@ -624,7 +683,7 @@ export default function WorkspacePage() {
                                 transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                                 style={{
                                     padding: '0 20px 24px',
-                                    background: `linear-gradient(180deg, transparent, var(--bg-page) 20%)`,
+                                    background: 'linear-gradient(180deg, transparent, var(--bg-primary) 20%)',
                                     flexShrink: 0,
                                     position: 'relative',
                                     zIndex: 10,
@@ -640,8 +699,6 @@ export default function WorkspacePage() {
                     </AnimatePresence>
                 </>)} {/* end view === 'chat' */}
             </div>
-
-            </div> {/* end below-topbar row */}
 
             {/* Calendar Sync Modal */}
             <AnimatePresence>
@@ -759,6 +816,7 @@ export default function WorkspacePage() {
                     sessionFocus={sessionFocus}
                     onClose={() => setShowCompleteModal(false)}
                     onConfirmed={() => {
+                        setIsSessionCompleted(true);
                         setIsPlanApproved(false);
                         setShowCompleteModal(false);
                     }}

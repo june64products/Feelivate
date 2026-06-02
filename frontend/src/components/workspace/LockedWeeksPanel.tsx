@@ -33,12 +33,12 @@ function MiniStatCard({ label, value, color }: { label: string; value: string; c
     return (
         <div style={{
             flex: 1, padding: '10px 12px', borderRadius: '10px',
-            background: 'var(--bg-raised)',
-            border: '1px solid var(--border-subtle)',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.07)',
             display: 'flex', flexDirection: 'column', gap: '2px',
         }}>
-            <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-            <span style={{ fontSize: '22px', fontWeight: 700, color: color ?? 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</span>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+            <span style={{ fontSize: '18px', fontWeight: 700, color: color ?? 'white', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</span>
         </div>
     );
 }
@@ -47,9 +47,9 @@ function MiniStatCard({ label, value, color }: { label: string; value: string; c
 function MiniAnalysis({ label, content }: { label: string; content: string }) {
     if (!content) return null;
     return (
-        <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--bg-raised)', border: '1px solid var(--border-subtle)' }}>
-            <p style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>{label}</p>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>{content}</p>
+        <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>{label}</p>
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, margin: 0 }}>{content}</p>
         </div>
     );
 }
@@ -132,26 +132,26 @@ function WeekDrawer({
             className={isMobile ? 'week-drawer-mobile' : ''}
             style={{
                 position: 'fixed',
-                right: 60,
+                right: 60, // offset from the pill panel
                 top: drawerTop !== undefined ? Math.min(drawerTop, typeof window !== 'undefined' ? window.innerHeight - 350 : 500) : 80,
                 transform: 'none',
                 width: '310px',
                 maxHeight: '82vh',
-                background: 'var(--bg-surface)',
+                background: '#111112',
                 border: `1px solid ${accentBorder}`,
                 borderRadius: '16px',
-                boxShadow: 'var(--shadow-modal)',
+                boxShadow: `0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px ${accentBorder}`,
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
                 zIndex: 500,
-                fontFamily: 'var(--font-sans)',
+                fontFamily: "'Inter', sans-serif",
             }}
         >
             {/* Header */}
             <div style={{
                 padding: '14px 16px',
-                borderBottom: '1px solid var(--border-subtle)',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 flexShrink: 0,
                 background: accentBg,
@@ -165,15 +165,15 @@ function WeekDrawer({
                         {isOngoing
                             ? <Sparkles size={13} color={accentColor} />
                             : isActiveCurrent
-                            ? <span style={{ fontSize: '12px', color: accentColor }}>▶</span>
-                            : <Lock size={13} color={accentColor} />
+                                ? <span style={{ fontSize: '12px', color: accentColor }}>▶</span>
+                                : <Lock size={13} color={accentColor} />
                         }
                     </div>
                     <div>
-                        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                            Week {weekNumber} {isLockedPast ? '— Completed' : ''}
+                        <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
+                            Week {weekNumber} {isLockedPast ? '— Plan' : ''}
                         </p>
-                        <p style={{ fontSize: '10px', color: isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : 'var(--text-muted)', margin: 0, marginTop: '1px' }}>
+                        <p style={{ fontSize: '10px', color: isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : 'rgba(255,255,255,0.35)', margin: 0, marginTop: '1px' }}>
                             {isOngoing ? 'Recorded Today ✦' : isActiveCurrent ? 'Active Now' : (report ? `${report.week_start} – ${report.week_end}` : 'Completed')}
                         </p>
                     </div>
@@ -182,8 +182,8 @@ function WeekDrawer({
                     onClick={onClose}
                     style={{
                         width: '26px', height: '26px', borderRadius: '7px',
-                        border: 'none', background: 'var(--bg-raised)',
-                        color: 'var(--text-muted)', cursor: 'pointer',
+                        border: 'none', background: 'rgba(255,255,255,0.06)',
+                        color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                 >
@@ -434,21 +434,22 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                 style={{
                     position: 'fixed',
                     right: 0,
-                    top: '80px',
+                    top: '80px', // Below the profile icon
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px',
                     padding: '8px 0',
-                    background: 'var(--bg-surface)',
-                    borderLeft: '1px solid var(--border-subtle)',
-                    borderTop: '1px solid var(--border-subtle)',
-                    borderBottom: '1px solid var(--border-subtle)',
+                    background: 'rgba(10,10,10,0.92)',
+                    borderLeft: '1px solid rgba(255,255,255,0.08)',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
                     borderRadius: '14px 0 0 14px',
-                    boxShadow: 'var(--shadow-modal)',
+                    boxShadow: '-4px 0 24px rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(12px)',
                     zIndex: 400,
                     minWidth: '52px',
                     alignItems: 'center',
-                    fontFamily: 'var(--font-sans)',
+                    fontFamily: "'Inter', sans-serif",
                 }}
             >
                 {groups.map((group, gi) => {
@@ -554,7 +555,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
     );
 }
 
-// ─── Individual week pill button (MOTIVATIONAL) ───────────────────────────────
+// ─── Individual week pill button ──────────────────────────────────────────────
 
 function WeekPill({
     item,
@@ -566,55 +567,31 @@ function WeekPill({
     onClick: (e: React.MouseEvent) => void;
 }) {
     const { weekNumber, isOngoing, isLocked } = item;
+    // isOngoing = true → recorded today (indigo/sparkle)
+    // isLocked = true → completed past week (purple/lock)
+    // neither → active current week, not recorded yet (emerald/play)
     const isActiveCurrent = !isOngoing && !isLocked;
 
-    // ── Motivational color states ──
-    // isOngoing (recorded today) → indigo/sparkle
-    // isActiveCurrent (active, not recorded) → green/play
-    // isLocked (completed past) → amber/trophy — NOT greyed out
-    const accentC = isOngoing
-        ? 'var(--accent)'
-        : isActiveCurrent
-        ? 'var(--accent-green)'
-        : 'var(--accent-amber)';
+    const bgColor = isSelected
+        ? isOngoing ? 'rgba(99,102,241,0.3)' : isActiveCurrent ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.25)'
+        : isOngoing ? 'rgba(99,102,241,0.12)' : isActiveCurrent ? 'rgba(16,185,129,0.1)' : 'rgba(139,92,246,0.08)';
 
-    const bgBase = isOngoing
-        ? 'var(--accent-faint)'
-        : isActiveCurrent
-        ? 'var(--accent-green-faint)'
-        : 'var(--accent-amber-faint)';
+    const borderColor = isSelected
+        ? isOngoing ? 'rgba(99,102,241,0.6)' : isActiveCurrent ? 'rgba(16,185,129,0.5)' : 'rgba(139,92,246,0.55)'
+        : isOngoing ? 'rgba(99,102,241,0.25)' : isActiveCurrent ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.22)';
 
-    const bgSelected = isOngoing
-        ? 'var(--accent-faint-md)'
-        : isActiveCurrent
-        ? 'rgba(34,197,94,0.18)'
-        : 'rgba(245,158,11,0.18)';
+    const textColor = isSelected
+        ? isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : '#c4b5fd'
+        : isOngoing ? '#818cf8' : isActiveCurrent ? '#10b981' : '#a78bfa';
 
-    const borderC = isSelected
-        ? accentC
-        : isOngoing
-        ? 'var(--accent-faint-md)'
-        : isActiveCurrent
-        ? 'rgba(34,197,94,0.3)'
-        : 'rgba(245,158,11,0.25)';
-
-    const iconEl = isOngoing
-        ? <Sparkles size={10} />
-        : isActiveCurrent
-        ? <span style={{ fontSize: '9px', lineHeight: 1 }}>▶</span>
-        : <span style={{ fontSize: '9px' }}>🏆</span>;
-
-    const subLabel = isOngoing
-        ? '✓'
-        : isActiveCurrent
-        ? 'Now'
-        : 'Done';
+    const hoverBg = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.18)' : 'rgba(139,92,246,0.16)';
+    const hoverColor = isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : '#c4b5fd';
 
     const titleText = isOngoing
-        ? `Week ${weekNumber} — Journaled today ✦`
+        ? `Week ${weekNumber} — recorded today ✦`
         : isActiveCurrent
-        ? `Week ${weekNumber} — Active (tap to view plan)`
-        : `Week ${weekNumber} — Completed! Tap to see your report`;
+            ? `Week ${weekNumber} — active (click to view plan)`
+            : `Week ${weekNumber} — tap to view plan`;
 
     return (
         <motion.button
@@ -629,46 +606,36 @@ function WeekPill({
                 width: '44px',
                 padding: '7px 4px',
                 borderRadius: '9px',
-                border: `1px solid ${borderC}`,
-                background: isSelected ? bgSelected : bgBase,
-                color: accentC,
+                border: `1px solid ${borderColor}`,
+                background: bgColor,
+                color: textColor,
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
-                transition: 'all 0.15s var(--ease-standard)',
-                fontFamily: 'var(--font-sans)',
+                transition: 'all 0.15s',
+                fontFamily: "'Inter', sans-serif",
                 position: 'relative',
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+            onMouseEnter={e => {
+                e.currentTarget.style.background = hoverBg;
+                e.currentTarget.style.color = hoverColor;
+            }}
+            onMouseLeave={e => {
+                e.currentTarget.style.background = bgColor;
+                e.currentTarget.style.color = textColor;
+            }}
         >
             {/* Icon */}
-            {iconEl}
-
+            {isOngoing
+                ? <Sparkles size={10} />
+                : isActiveCurrent
+                    ? <span style={{ fontSize: '9px', lineHeight: 1 }}>▶</span>
+                    : <Lock size={10} />
+            }
             <span style={{ fontSize: '8.5px', fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1 }}>
                 W{weekNumber}
             </span>
 
-            {/* Status sub-label */}
-            <span style={{ fontSize: '7px', fontWeight: 600, opacity: 0.7, lineHeight: 1 }}>
-                {subLabel}
-            </span>
-
-            {/* Glow on active current */}
-            {isActiveCurrent && (
-                <motion.div
-                    animate={{ opacity: [0.5, 0.9, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                    style={{
-                        position: 'absolute',
-                        inset: -2,
-                        borderRadius: '11px',
-                        border: '1.5px solid var(--accent-green)',
-                        pointerEvents: 'none',
-                    }}
-                />
-            )}
-
-            {/* Selected indicator */}
+            {/* Selected indicator dot */}
             {isSelected && (
                 <motion.div
                     layoutId="selected-dot"
@@ -679,7 +646,7 @@ function WeekPill({
                         transform: 'translateY(-50%)',
                         width: '4px', height: '14px',
                         borderRadius: '0 3px 3px 0',
-                        background: accentC,
+                        background: isOngoing ? '#818cf8' : isLocked ? '#a78bfa' : '#34d399',
                     }}
                 />
             )}

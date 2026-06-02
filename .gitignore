@@ -28,11 +28,8 @@ eval.db
 # Logs
 *.log
 
-# Media & Temp
+# Media
 VIDEO 1.mov
 VIDEO 2.mov
-SCREENSHOT\ OF\ VIDEO\ 1/
+SCREENSHOT OF VIDEO 1/
 scratch/
-SCREENSHOT\ OF\ VIDEO\ 1
-
-

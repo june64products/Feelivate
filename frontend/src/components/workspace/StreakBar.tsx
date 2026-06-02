@@ -116,7 +116,7 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
     return (
         <div style={{
             padding: '14px 14px 16px',
-            borderTop: '1px solid var(--border-subtle)',
+            borderTop: '1px solid rgba(255,255,255,0.05)',
             background: 'transparent',
             flexShrink: 0,
         }}>
@@ -135,28 +135,28 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                                 exit={{ scale: 0, opacity: 0 }}
                                 transition={{ type: 'spring', stiffness: 400 }}
                             >
-                                <Check size={15} color="var(--accent-green)" />
+                                <Check size={15} color="#4ade80" />
                             </motion.div>
                         ) : (
                             <Flame
                                 size={15}
-                                color={currentStreak > 0 ? '#d97757' : 'var(--text-muted)'}
+                                color={currentStreak > 0 ? '#d97757' : '#3f3f46'}
                                 fill={currentStreak > 0 ? '#d9775755' : 'none'}
                             />
                         )}
                     </AnimatePresence>
                     <span style={{
                         fontSize: '13px', fontWeight: 600,
-                        color: currentStreak > 0 ? 'var(--text-primary)' : 'var(--text-muted)',
-                        fontFamily: 'var(--font-sans)',
+                        color: currentStreak > 0 ? '#e4e4e7' : '#71717a',
+                        fontFamily: "'Inter', sans-serif",
                     }}>
                         {currentStreak} day streak
                     </span>
                 </div>
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: '4px',
-                    fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500,
-                    fontFamily: 'var(--font-sans)',
+                    fontSize: '11px', color: '#52525b', fontWeight: 500,
+                    fontFamily: "'Inter', sans-serif",
                 }}>
                     <TrendingUp size={11} />
                     Best: {longestStreak}
@@ -168,10 +168,10 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                 {days.map((d) => {
                     const isToday = d.date === today;
                     const dotColor =
-                        d.status === 'done' ? 'var(--accent-green)' :
-                            d.status === 'skipped' ? 'var(--border-medium)' :
-                                isToday ? 'var(--accent-faint-md)' :
-                                    'var(--border-subtle)';
+                        d.status === 'done' ? '#4ade80' :
+                            d.status === 'skipped' ? '#3f3f46' :
+                                isToday ? 'rgba(255,255,255,0.25)' :
+                                    'rgba(255,255,255,0.07)';
                     return (
                         <div
                             key={d.date}
@@ -179,7 +179,7 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                             style={{
                                 flex: 1, height: '4px', borderRadius: '2px',
                                 background: dotColor,
-                                outline: isToday ? '1px solid var(--border-focus)' : 'none',
+                                outline: isToday ? '1px solid rgba(255,255,255,0.35)' : 'none',
                                 outlineOffset: '1px',
                                 transition: 'background 0.25s',
                             }}
@@ -197,19 +197,18 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                         disabled={checkinLoading}
                         style={{
                             flex: 1, padding: '7px 0', borderRadius: '8px',
-                            border: '1px solid var(--accent-green-faint)',
-                            background: 'var(--accent-green-faint)',
-                            color: 'var(--accent-green)',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            background: 'transparent', color: '#e4e4e7',
                             fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-                            fontFamily: 'var(--font-sans)',
+                            fontFamily: "'Inter', sans-serif",
                             transition: 'background 0.15s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.15)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-green-faint)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
                         <Check size={13} />
-                        Done today
+                        Done
                     </motion.button>
                     <motion.button
                         whileTap={{ scale: 0.97 }}
@@ -218,12 +217,12 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                         style={{
                             padding: '7px 12px', borderRadius: '8px',
                             border: '1px solid transparent', background: 'transparent',
-                            color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer',
-                            fontFamily: 'var(--font-sans)',
+                            color: '#52525b', fontSize: '12px', cursor: 'pointer',
+                            fontFamily: "'Inter', sans-serif",
                             transition: 'color 0.15s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#a1a1aa'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#52525b'; }}
                     >
                         Skip
                     </motion.button>
@@ -231,15 +230,15 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
             ) : (
                 <div style={{
                     padding: '7px 10px', borderRadius: '8px',
-                    background: 'var(--bg-raised)',
-                    border: '1px solid var(--border-subtle)',
-                    fontSize: '11.5px', color: 'var(--text-muted)',
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    fontSize: '11.5px', color: '#52525b',
                     textAlign: 'center', fontWeight: 500,
-                    fontFamily: 'var(--font-sans)',
+                    fontFamily: "'Inter', sans-serif",
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
                 }}>
                     {todayStatus === 'done' ? (
-                        <><Check size={12} color="var(--accent-green)" /> Completed today</>
+                        <><Check size={12} color="#4ade80" /> Completed today</>
                     ) : (
                         <><Close size={12} /> Skipped today</>
                     )}
