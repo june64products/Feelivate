@@ -1,93 +1,55 @@
-/* ============================================ */
-/* FONTS                                        */
-/* ============================================ */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ============================================ */
-/* DESIGN TOKENS — Stitch "Serene AI"           */
-/* Lavender Mist Light Theme                    */
+/* DESIGN TOKENS — Blackbox AI Inspired         */
 /* ============================================ */
 
 :root {
-  /* Core Surfaces */
-  --bg-primary: #f8f9ff;
-  --bg-secondary: #eff4ff;
-  --bg-sidebar: rgba(255, 255, 255, 0.4);
-  --bg-surface: rgba(255, 255, 255, 0.85);
-  --bg-input: rgba(255, 255, 255, 0.85);
-  --bg-chat: #f8f9ff;
-  --bg-user-msg: rgba(139, 92, 246, 0.05);
-  --bg-ai-msg: rgba(255, 255, 255, 0.85);
-
-  /* Named Colors (Stitch palette) */
-  --color-surface: #f8f9ff;
-  --color-surface-low: #eff4ff;
-  --color-surface-container: #e6eeff;
-  --color-surface-high: #dee9fc;
-  --color-surface-highest: #d9e3f6;
-  --color-surface-bright: #f8f9ff;
-  --color-surface-dim: #d0dbed;
-  --color-surface-variant: #d9e3f6;
-  --color-on-surface: #121c2a;
-  --color-on-surface-variant: #494454;
-  --color-inverse-surface: #27313f;
-  --color-outline: #7b7486;
-  --color-outline-variant: #cbc3d7;
-
-  /* Primary (violet) */
-  --color-primary: #8b5cf6;
-  --color-primary-deep: #6b38d4;
-  --color-primary-container: #8455ef;
-  --color-on-primary: #ffffff;
-  --color-primary-fixed: #e9ddff;
-  --color-primary-fixed-dim: #d0bcff;
-  --color-secondary-container: #e4e0f5;
-  --color-on-secondary-container: #646274;
+  /* Core — true near-black like Blackbox */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-sidebar: #0a0a0a;
+  --bg-surface: #161616;
+  --bg-input: #1a1a1a;
+  --bg-chat: #0a0a0a;
+  --bg-user-msg: #1c1c1c;
+  --bg-ai-msg: transparent;
 
   /* Text */
-  --text-primary: #121c2a;
-  --text-secondary: #494454;
-  --text-muted: #7b7486;
-  --text-placeholder: rgba(123, 116, 134, 0.55);
+  --text-primary: #f0f0f0;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
+  --text-placeholder: #3f3f46;
 
   /* Accents */
-  --accent-primary: #8b5cf6;
-  --accent-secondary: #e4e0f5;
-  --accent-warm: #8455ef;
+  --accent-primary: #c084fc;
+  --accent-secondary: #818cf8;
+  --accent-warm: #d97757;
   --accent-green: #4ade80;
-  --accent-glow: rgba(139, 92, 246, 0.08);
+  --accent-glow: rgba(192, 132, 252, 0.08);
 
   /* Borders */
-  --border-subtle: rgba(139, 92, 246, 0.08);
-  --border-medium: #cbc3d7;
-  --border-focus: rgba(139, 92, 246, 0.4);
-  --border-card: rgba(230, 238, 255, 0.8);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.1);
+  --border-focus: rgba(255, 255, 255, 0.25);
 
   /* Glass */
-  --glass-surface: rgba(255, 255, 255, 0.7);
-  --glass-hover: rgba(255, 255, 255, 0.9);
-  --glass-sidebar: rgba(255, 255, 255, 0.4);
+  --glass-surface: rgba(255, 255, 255, 0.02);
+  --glass-hover: rgba(255, 255, 255, 0.05);
 
   /* Typography */
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-label: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Layout */
-  --sidebar-collapsed-width: 72px;
+  --sidebar-collapsed-width: 52px;
   --sidebar-expanded-width: 260px;
   --chat-max-width: 780px;
 
   /* Transitions */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --sidebar-transition: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Shadows */
-  --shadow-card: 0 4px 20px rgba(139, 92, 246, 0.06);
-  --shadow-card-hover: 0 8px 32px rgba(139, 92, 246, 0.1);
-  --shadow-float: 0 20px 50px rgba(0, 0, 0, 0.08);
-  --shadow-sidebar: 4px 0 24px rgba(139, 92, 246, 0.05);
+  --sidebar-transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ============================================ */
@@ -120,7 +82,7 @@ body {
 }
 
 /* ============================================ */
-/* SCROLLBAR — lavender tinted                 */
+/* SCROLLBAR                                    */
 /* ============================================ */
 
 ::-webkit-scrollbar {
@@ -132,32 +94,29 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbc3d7;
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #b5acc7;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* ============================================ */
-/* SIDEBAR — Glass Lavender                    */
+/* SIDEBAR — Blackbox Collapsed/Expanded        */
 /* ============================================ */
 
 .sidebar-root {
   position: relative;
   flex-shrink: 0;
   height: 100vh;
-  background: var(--glass-sidebar);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-right: 1px solid rgba(203, 195, 215, 0.35);
+  background: var(--bg-sidebar);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   transition: width var(--sidebar-transition);
   overflow: hidden;
   z-index: 50;
-  box-shadow: var(--shadow-sidebar);
 }
 
 .sidebar-root.collapsed {
@@ -174,15 +133,15 @@ body {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
   font-family: var(--font-sans);
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: 8px;
   transition: background 0.15s, color 0.15s;
   white-space: nowrap;
   text-align: left;
@@ -190,15 +149,13 @@ body {
 }
 
 .nav-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.6);
-  color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
 }
 
 .nav-icon-btn.active {
-  background: rgba(255, 255, 255, 0.85);
-  color: var(--color-primary);
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 
 /* Sidebar label — fades in when expanded */
@@ -221,25 +178,21 @@ body {
 }
 
 /* ============================================ */
-/* CHAT INPUT — Glass Pill (Stitch Style)      */
+/* CHAT INPUT — Blackbox pill style            */
 /* ============================================ */
 
 .chat-input-box {
   position: relative;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  border-radius: 9999px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  transition: border-color 0.2s ease;
   width: 100%;
   padding-bottom: env(safe-area-inset-bottom);
-  box-shadow: var(--shadow-float);
 }
 
 .chat-input-box:focus-within {
-  border-color: rgba(139, 92, 246, 0.3);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08), 0 0 0 2px rgba(139, 92, 246, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .chat-input-box textarea {
@@ -247,9 +200,9 @@ body {
   background: transparent;
   border: none;
   outline: none;
-  color: var(--text-primary);
+  color: #f0f0f0;
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 400;
   line-height: 1.6;
   resize: none;
@@ -260,25 +213,7 @@ body {
 }
 
 .chat-input-box textarea::placeholder {
-  color: var(--text-placeholder);
-}
-
-/* ============================================ */
-/* GLASS CARD                                  */
-/* ============================================ */
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(230, 238, 255, 0.9);
-  box-shadow: var(--shadow-card);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.glass-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
+  color: #52525b;
 }
 
 /* ============================================ */
@@ -326,9 +261,17 @@ body {
 }
 
 @keyframes checkmarkPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.3); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.3);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .plan-slide-in {
@@ -363,16 +306,24 @@ body {
   animation: messageIn 0.3s var(--ease-out-expo) forwards;
 }
 
-/* Loading dots — violet */
+/* Loading dots */
 @keyframes dotBounce {
-  0%, 80%, 100% { transform: translateY(0); }
-  40% { transform: translateY(-6px); }
+
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(-6px);
+  }
 }
 
 .loading-dot {
   width: 5px;
   height: 5px;
-  background: var(--color-primary);
+  background: var(--text-muted);
   border-radius: 50%;
   animation: dotBounce 1.4s ease-in-out infinite;
 }
@@ -390,8 +341,15 @@ body {
 /* ============================================ */
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
 }
 
 @keyframes fadeInUp {
@@ -407,7 +365,9 @@ body {
 }
 
 @keyframes orbGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.3;
     transform: scale(1);
   }
@@ -435,13 +395,23 @@ body {
 /* ============================================ */
 
 @keyframes slideUpSheet {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .bottom-sheet-anim {
@@ -453,18 +423,6 @@ body {
 }
 
 /* ============================================ */
-/* AMBIENT BACKGROUND BLOBS                    */
-/* ============================================ */
-
-.ambient-blob {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  filter: blur(80px);
-  z-index: 0;
-}
-
-/* ============================================ */
 /* RESPONSIVE                                   */
 /* ============================================ */
 
@@ -472,6 +430,7 @@ body {
   :root {
     --sidebar-collapsed-width: 0px;
     --sidebar-expanded-width: 280px;
+    /* Wider for mobile drawer */
     --chat-max-width: 100%;
   }
 
@@ -497,8 +456,8 @@ body {
   .drawer-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(18, 28, 42, 0.35);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
     z-index: 999;
   }
 
@@ -528,7 +487,7 @@ body {
     border-radius: 0 !important;
     border-left: none !important;
     border-top: none !important;
-    border-bottom: 1px solid rgba(203, 195, 215, 0.3) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
     overflow-x: auto !important;
     padding: 8px 16px !important;
     background: transparent !important;
@@ -564,7 +523,7 @@ body {
     transform: none !important;
     animation: none !important;
     z-index: 1000 !important;
-    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.15) !important;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5) !important;
   }
 
   .mobile-header {
@@ -625,29 +584,43 @@ body {
   animation: micPulseRing 1.4s ease-out infinite !important;
 }
 
-/* Waveform bars */
+/* Waveform bars — Blackbox style white bars */
 @keyframes waveBar {
-  0%, 100% { height: 3px; }
-  50% { height: 16px; }
+
+  0%,
+  100% {
+    height: 3px;
+  }
+
+  50% {
+    height: 16px;
+  }
 }
 
 .wave-bar {
   width: 2.5px;
   height: 3px;
   border-radius: 2px;
-  background: var(--color-primary);
+  background: #ffffff;
   animation: waveBar 0.7s ease-in-out infinite;
 }
 
 /* Spinner */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Pulse — for Running indicator */
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -659,55 +632,25 @@ body {
 }
 
 /* ============================================ */
-/* PRIMARY BUTTON (Stitch style)               */
-/* ============================================ */
-
-.btn-primary {
-  padding: 10px 24px;
-  border-radius: 9999px;
-  background: var(--color-primary);
-  border: none;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-  white-space: nowrap;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: scale(1.02);
-  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-}
-
-.btn-primary:active {
-  transform: scale(0.98);
-}
-
-/* ============================================ */
-/* UPGRADE BUTTON (ghost)                      */
+/* UPGRADE BUTTON                              */
 /* ============================================ */
 
 .upgrade-btn {
   padding: 7px 16px;
-  border-radius: 9999px;
-  background: transparent;
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  color: var(--color-primary);
+  border-radius: 20px;
+  background: #ffffff;
+  border: none;
+  color: #000000;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   font-family: var(--font-sans);
-  transition: all 0.15s;
+  transition: opacity 0.15s;
   white-space: nowrap;
 }
 
 .upgrade-btn:hover {
-  background: rgba(139, 92, 246, 0.06);
-  border-color: rgba(139, 92, 246, 0.5);
+  opacity: 0.88;
 }
 
 /* ============================================ */
@@ -715,79 +658,19 @@ body {
 /* ============================================ */
 
 .user-avatar {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-container));
+  background: #d97757;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-size: 12px;
   font-weight: 700;
-  font-family: var(--font-label);
+  font-family: var(--font-sans);
   cursor: pointer;
   flex-shrink: 0;
   letter-spacing: 0.03em;
   user-select: none;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
-}
-
-/* ============================================ */
-/* MESSAGE BUBBLE STYLES                       */
-/* ============================================ */
-
-.msg-bubble-ai {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.04);
-}
-
-.msg-bubble-user {
-  background: rgba(139, 92, 246, 0.05);
-  border: 1px solid rgba(139, 92, 246, 0.12);
-  border-radius: 24px;
-}
-
-/* ============================================ */
-/* SUGGESTION CHIPS                            */
-/* ============================================ */
-
-.suggestion-chip {
-  padding: 8px 18px;
-  border-radius: 9999px;
-  border: 1px solid var(--border-medium);
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: all 0.2s;
-  backdrop-filter: blur(8px);
-}
-
-.suggestion-chip:hover {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(139, 92, 246, 0.3);
-  color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
-}
-
-/* ============================================ */
-/* WEEK PILL BADGE                             */
-/* ============================================ */
-
-.week-pill {
-  background: var(--color-primary);
-  color: white;
-  font-family: var(--font-label);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border-radius: 9999px;
-  padding: 3px 10px;
 }
