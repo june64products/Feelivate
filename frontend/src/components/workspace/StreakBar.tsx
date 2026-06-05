@@ -116,7 +116,7 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
     return (
         <div style={{
             padding: '14px 14px 16px',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
+            borderTop: '1px solid rgba(203,195,215,0.35)',
             background: 'transparent',
             flexShrink: 0,
         }}>
@@ -140,23 +140,23 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                         ) : (
                             <Flame
                                 size={15}
-                                color={currentStreak > 0 ? '#d97757' : '#3f3f46'}
-                                fill={currentStreak > 0 ? '#d9775755' : 'none'}
+                                color={currentStreak > 0 ? '#f97316' : '#cbc3d7'}
+                                fill={currentStreak > 0 ? '#f9731620' : 'none'}
                             />
                         )}
                     </AnimatePresence>
                     <span style={{
                         fontSize: '13px', fontWeight: 600,
-                        color: currentStreak > 0 ? '#e4e4e7' : '#71717a',
-                        fontFamily: "'Inter', sans-serif",
+                        color: currentStreak > 0 ? 'var(--text-primary)' : 'var(--text-muted)',
+                        fontFamily: "var(--font-label)",
                     }}>
                         {currentStreak} day streak
                     </span>
                 </div>
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: '4px',
-                    fontSize: '11px', color: '#52525b', fontWeight: 500,
-                    fontFamily: "'Inter', sans-serif",
+                    fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500,
+                    fontFamily: "var(--font-label)",
                 }}>
                     <TrendingUp size={11} />
                     Best: {longestStreak}
@@ -169,9 +169,9 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                     const isToday = d.date === today;
                     const dotColor =
                         d.status === 'done' ? '#4ade80' :
-                            d.status === 'skipped' ? '#3f3f46' :
-                                isToday ? 'rgba(255,255,255,0.25)' :
-                                    'rgba(255,255,255,0.07)';
+                            d.status === 'skipped' ? '#e4dff3' :
+                                isToday ? 'rgba(139,92,246,0.4)' :
+                                    'rgba(203,195,215,0.4)';
                     return (
                         <div
                             key={d.date}
@@ -179,7 +179,7 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                             style={{
                                 flex: 1, height: '4px', borderRadius: '2px',
                                 background: dotColor,
-                                outline: isToday ? '1px solid rgba(255,255,255,0.35)' : 'none',
+                                outline: isToday ? '1px solid rgba(139,92,246,0.4)' : 'none',
                                 outlineOffset: '1px',
                                 transition: 'background 0.25s',
                             }}
@@ -196,16 +196,16 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                         onClick={() => handleCheckin('done')}
                         disabled={checkinLoading}
                         style={{
-                            flex: 1, padding: '7px 0', borderRadius: '8px',
-                            border: '1px solid rgba(255,255,255,0.12)',
-                            background: 'transparent', color: '#e4e4e7',
-                            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                            flex: 1, padding: '7px 0', borderRadius: '9999px',
+                            border: '1px solid rgba(139,92,246,0.25)',
+                            background: 'rgba(139,92,246,0.06)', color: 'var(--color-primary)',
+                            fontSize: '12px', fontWeight: 700, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-                            fontFamily: "'Inter', sans-serif",
+                            fontFamily: "var(--font-label)",
                             transition: 'background 0.15s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.12)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.06)'; }}
                     >
                         <Check size={13} />
                         Done
@@ -215,26 +215,26 @@ export default function StreakBar({ userId, isPlanActive }: StreakBarProps) {
                         onClick={() => handleCheckin('skipped')}
                         disabled={checkinLoading}
                         style={{
-                            padding: '7px 12px', borderRadius: '8px',
+                            padding: '7px 12px', borderRadius: '9999px',
                             border: '1px solid transparent', background: 'transparent',
-                            color: '#52525b', fontSize: '12px', cursor: 'pointer',
-                            fontFamily: "'Inter', sans-serif",
+                            color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer',
+                            fontFamily: "var(--font-label)",
                             transition: 'color 0.15s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#a1a1aa'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = '#52525b'; }}
+                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}
                     >
                         Skip
                     </motion.button>
                 </div>
             ) : (
                 <div style={{
-                    padding: '7px 10px', borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    fontSize: '11.5px', color: '#52525b',
+                    padding: '7px 10px', borderRadius: '9999px',
+                    background: 'rgba(139,92,246,0.04)',
+                    border: '1px solid rgba(203,195,215,0.4)',
+                    fontSize: '11.5px', color: 'var(--text-muted)',
                     textAlign: 'center', fontWeight: 500,
-                    fontFamily: "'Inter', sans-serif",
+                    fontFamily: "var(--font-label)",
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
                 }}>
                     {todayStatus === 'done' ? (

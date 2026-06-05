@@ -41,21 +41,22 @@ export default function SessionSidebar({
 
     const Logo = () => (
         <div style={{
-            width: '26px', height: '26px',
-            background: '#fff',
-            borderRadius: '7px',
+            width: '38px', height: '38px',
+            background: 'linear-gradient(135deg, #8b5cf6, #8455ef)',
+            borderRadius: '12px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden', flexShrink: 0,
+            boxShadow: '0 4px 12px rgba(139,92,246,0.35)',
         }}>
-            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '17px', height: '17px', objectFit: 'contain' }} />
+            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '22px', height: '22px', objectFit: 'contain', filter: 'brightness(10)' }} />
         </div>
     );
 
     const iconBtnBase: React.CSSProperties = {
-        width: '36px', height: '36px',
+        width: '40px', height: '40px',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        borderRadius: '9px', border: 'none',
-        background: 'transparent', color: '#71717a',
+        borderRadius: '12px', border: 'none',
+        background: 'transparent', color: 'var(--text-secondary)',
         cursor: 'pointer', transition: 'background 0.15s, color 0.15s',
         flexShrink: 0,
     };
@@ -64,23 +65,26 @@ export default function SessionSidebar({
     if (isCollapsed) {
         return (
             <div style={{
-                width: '52px',
+                width: '72px',
                 height: '100vh',
-                background: '#0a0a0a',
-                borderRight: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(255,255,255,0.4)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                borderRight: '1px solid rgba(203,195,215,0.35)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                padding: '14px 0',
-                gap: '4px',
+                padding: '20px 0',
+                gap: '6px',
                 flexShrink: 0,
+                boxShadow: '4px 0 24px rgba(139,92,246,0.05)',
             }}>
                 {/* Logo — click to expand */}
                 <button
                     onClick={onToggleCollapse}
                     title="Expand sidebar"
-                    style={{ ...iconBtnBase, marginBottom: '10px' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                    style={{ ...iconBtnBase, marginBottom: '12px', width: '44px', height: '44px' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                 >
                     <Logo />
@@ -91,8 +95,8 @@ export default function SessionSidebar({
                     onClick={onNewChat}
                     title="New Chat"
                     style={iconBtnBase}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#71717a'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.color = '#8b5cf6'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                 >
                     <Plus size={18} />
                 </button>
@@ -101,8 +105,8 @@ export default function SessionSidebar({
                 <button
                     title="History"
                     style={iconBtnBase}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#71717a'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.color = '#8b5cf6'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                 >
                     <Clock size={18} />
                 </button>
@@ -113,8 +117,8 @@ export default function SessionSidebar({
                         onClick={onJourney}
                         title="My Journey"
                         style={iconBtnBase}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#71717a'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.color = '#8b5cf6'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                     >
                         <BookOpen size={18} />
                     </button>
@@ -128,47 +132,56 @@ export default function SessionSidebar({
         <div style={{
             width: '260px',
             height: '100vh',
-            background: '#0a0a0a',
-            borderRight: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(255,255,255,0.45)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderRight: '1px solid rgba(203,195,215,0.35)',
             display: 'flex',
             flexDirection: 'column',
             flexShrink: 0,
             overflow: 'hidden',
-            fontFamily: "'Inter', sans-serif",
-            transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+            fontFamily: "var(--font-sans)",
+            transition: 'width 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '4px 0 24px rgba(139,92,246,0.06)',
         }}>
             {/* Header: Logo + FEELIVATE + Collapse */}
             <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 14px 10px',
+                padding: '20px 16px 14px',
                 flexShrink: 0,
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Logo />
-                    <span style={{
-                        fontWeight: 700, fontSize: '15px', color: '#f0f0f0',
-                        letterSpacing: '-0.02em', fontFamily: "'Inter', sans-serif",
-                    }}>
-                        FEELIVATE
-                    </span>
+                    <div>
+                        <span style={{
+                            fontWeight: 700, fontSize: '16px', color: 'var(--text-primary)',
+                            letterSpacing: '-0.025em', fontFamily: "var(--font-sans)",
+                            lineHeight: 1,
+                        }}>
+                            Feelivate
+                        </span>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-label)', marginTop: '2px' }}>
+                            Your AI Mentor
+                        </div>
+                    </div>
                 </div>
                 <button
                     onClick={onToggleCollapse}
                     title="Collapse sidebar"
                     style={iconBtnBase}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#71717a'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.07)'; e.currentTarget.style.color = '#8b5cf6'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                 >
                     <PanelLeft size={16} />
                 </button>
             </div>
 
             {/* Nav items */}
-            <div style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: '1px', flexShrink: 0 }}>
-                <NavItem icon={<Plus size={16} />} label="New" onClick={onNewChat} />
+            <div style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
+                <NavItem icon={<Plus size={16} />} label="New Chat" onClick={onNewChat} />
                 <NavItem icon={<Clock size={16} />} label="History" />
                 {isPlanActive && (
-                    <NavItem icon={<BookOpen size={16} />} label="My Journey" onClick={onJourney} />
+                    <NavItem icon={<BookOpen size={16} />} label="My Journey" onClick={onJourney} accent />
                 )}
             </div>
 
@@ -177,23 +190,24 @@ export default function SessionSidebar({
                 flex: 1, overflowY: 'auto',
                 padding: '12px 10px 8px',
                 marginTop: '8px',
-                borderTop: '1px solid rgba(255,255,255,0.05)',
+                borderTop: '1px solid rgba(203,195,215,0.3)',
             }}>
                 {sessions.length > 0 && (
                     <div style={{
-                        fontSize: '10.5px', fontWeight: 600, color: '#3f3f46',
-                        padding: '0 8px 8px',
+                        fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)',
+                        padding: '0 10px 8px',
                         letterSpacing: '0.06em', textTransform: 'uppercase',
+                        fontFamily: 'var(--font-label)',
                     }}>
                         Recent
                     </div>
                 )}
                 {loading ? (
-                    <div style={{ padding: '10px 8px', color: '#3f3f46', fontSize: '12px' }}>
+                    <div style={{ padding: '10px 10px', color: 'var(--text-muted)', fontSize: '12px', fontFamily: 'var(--font-label)' }}>
                         Loading...
                     </div>
                 ) : sessions.length === 0 ? (
-                    <div style={{ padding: '10px 8px', color: '#3f3f46', fontSize: '12px' }}>
+                    <div style={{ padding: '10px 10px', color: 'var(--text-muted)', fontSize: '12px', fontFamily: 'var(--font-label)' }}>
                         No conversations yet
                     </div>
                 ) : (
@@ -203,27 +217,31 @@ export default function SessionSidebar({
                             onClick={() => onSelectSession(session.id)}
                             style={{
                                 width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
-                                padding: '8px 10px', borderRadius: '8px', border: 'none',
+                                padding: '9px 10px', borderRadius: '10px', border: 'none',
                                 background: session.id === activeSessionId
-                                    ? 'rgba(255,255,255,0.07)'
+                                    ? 'rgba(255,255,255,0.85)'
                                     : 'transparent',
-                                color: session.id === activeSessionId ? '#e4e4e7' : '#71717a',
-                                cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                                transition: 'all 0.12s', marginBottom: '1px',
-                                fontFamily: "'Inter', sans-serif",
+                                color: session.id === activeSessionId ? '#8b5cf6' : 'var(--text-secondary)',
+                                fontWeight: session.id === activeSessionId ? 600 : 400,
+                                cursor: 'pointer', fontSize: '13.5px', textAlign: 'left',
+                                transition: 'all 0.15s', marginBottom: '2px',
+                                fontFamily: "var(--font-sans)",
+                                boxShadow: session.id === activeSessionId ? '0 2px 8px rgba(139,92,246,0.1)' : 'none',
                             }}
                             onMouseEnter={e => {
-                                if (session.id !== activeSessionId)
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                                e.currentTarget.style.color = '#a1a1aa';
+                                if (session.id !== activeSessionId) {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.6)';
+                                    e.currentTarget.style.color = 'var(--text-primary)';
+                                }
                             }}
                             onMouseLeave={e => {
-                                if (session.id !== activeSessionId)
+                                if (session.id !== activeSessionId) {
                                     e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.color = '#71717a';
+                                    e.currentTarget.style.color = 'var(--text-secondary)';
+                                }
                             }}
                         >
-                            <MessageSquare size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
+                            <MessageSquare size={13} style={{ flexShrink: 0, opacity: 0.6 }} />
                             <span style={{
                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                 flex: 1, fontSize: '13px',
@@ -243,8 +261,8 @@ export default function SessionSidebar({
 
 /* Reusable nav item */
 function NavItem({
-    icon, label, onClick,
-}: { icon: React.ReactNode; label: string; onClick?: () => void }) {
+    icon, label, onClick, accent,
+}: { icon: React.ReactNode; label: string; onClick?: () => void; accent?: boolean }) {
     const [hovered, setHovered] = useState(false);
     return (
         <button
@@ -253,16 +271,25 @@ function NavItem({
             onMouseLeave={() => setHovered(false)}
             style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '9px 10px', borderRadius: '8px', border: 'none',
-                background: hovered ? 'rgba(255,255,255,0.05)' : 'transparent',
-                color: hovered ? '#e4e4e7' : '#a1a1aa',
+                padding: '10px 12px', borderRadius: '12px', border: 'none',
+                background: hovered
+                    ? accent ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.7)'
+                    : 'transparent',
+                color: accent
+                    ? hovered ? '#8b5cf6' : 'var(--color-primary)'
+                    : hovered ? 'var(--color-primary)' : 'var(--text-secondary)',
                 cursor: onClick ? 'pointer' : 'default',
-                fontSize: '13.5px', fontWeight: 500,
-                transition: 'all 0.12s', textAlign: 'left',
-                fontFamily: "'Inter', sans-serif",
+                fontSize: '14px', fontWeight: 500,
+                transition: 'all 0.15s', textAlign: 'left',
+                fontFamily: "var(--font-sans)",
             }}
         >
-            <span style={{ color: hovered ? '#a1a1aa' : '#52525b', transition: 'color 0.12s', flexShrink: 0 }}>
+            <span style={{
+                color: accent
+                    ? '#8b5cf6'
+                    : hovered ? 'var(--color-primary)' : 'var(--text-muted)',
+                transition: 'color 0.15s', flexShrink: 0,
+            }}>
                 {icon}
             </span>
             {label}

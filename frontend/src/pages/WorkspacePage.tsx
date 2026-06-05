@@ -393,10 +393,10 @@ export default function WorkspacePage() {
                 {/* Normal chat view */}
                 {view === 'chat' && (<>
 
-                    {/* Ambient Background Orbs — always visible, brightest in empty state */}
+                    {/* Ambient Background Orbs — lavender palette */}
                     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
                         <motion.div
-                            animate={{ opacity: isEmptyState ? 0.45 : 0.18, scale: isEmptyState ? 1.1 : 1 }}
+                            animate={{ opacity: isEmptyState ? 0.55 : 0.25, scale: isEmptyState ? 1.1 : 1 }}
                             transition={{ duration: 1.2, ease: 'easeInOut' }}
                             style={{
                                 position: 'absolute',
@@ -404,37 +404,37 @@ export default function WorkspacePage() {
                                 left: '20%',
                                 width: '500px',
                                 height: '500px',
-                                background: 'radial-gradient(circle, rgba(192,132,252,0.25) 0%, transparent 70%)',
+                                background: 'radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)',
                                 borderRadius: '50%',
-                                filter: 'blur(60px)',
+                                filter: 'blur(70px)',
                             }}
                         />
                         <motion.div
-                            animate={{ opacity: isEmptyState ? 0.35 : 0.12, scale: isEmptyState ? 1.05 : 1 }}
+                            animate={{ opacity: isEmptyState ? 0.45 : 0.18, scale: isEmptyState ? 1.05 : 1 }}
                             transition={{ duration: 1.2, ease: 'easeInOut', delay: 0.1 }}
                             style={{
                                 position: 'absolute',
                                 bottom: '-5%',
-                                right: '15%',
+                                right: '10%',
                                 width: '600px',
                                 height: '600px',
-                                background: 'radial-gradient(circle, rgba(129,140,248,0.2) 0%, transparent 70%)',
+                                background: 'radial-gradient(circle, rgba(132,85,239,0.13) 0%, transparent 70%)',
                                 borderRadius: '50%',
-                                filter: 'blur(80px)',
+                                filter: 'blur(90px)',
                             }}
                         />
                         <motion.div
-                            animate={{ opacity: isEmptyState ? 0.25 : 0.08 }}
+                            animate={{ opacity: isEmptyState ? 0.35 : 0.1 }}
                             transition={{ duration: 1.2, ease: 'easeInOut', delay: 0.2 }}
                             style={{
                                 position: 'absolute',
                                 top: '40%',
                                 left: '60%',
-                                width: '300px',
-                                height: '300px',
-                                background: 'radial-gradient(circle, rgba(201,100,66,0.2) 0%, transparent 70%)',
+                                width: '320px',
+                                height: '320px',
+                                background: 'radial-gradient(circle, rgba(228,224,245,0.5) 0%, transparent 70%)',
                                 borderRadius: '50%',
-                                filter: 'blur(50px)',
+                                filter: 'blur(60px)',
                             }}
                         />
                     </div>
@@ -468,11 +468,14 @@ export default function WorkspacePage() {
                                 className={isSidebarCollapsed ? '' : 'hide-on-mobile'}
                                 onClick={() => setIsSidebarCollapsed(false)}
                                 style={{
-                                    width: '32px', height: '32px', borderRadius: '8px',
+                                    width: '34px', height: '34px', borderRadius: '10px',
                                     border: 'none', background: 'transparent',
-                                    color: '#a1a1aa', cursor: 'pointer',
+                                    color: 'var(--text-secondary)', cursor: 'pointer',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'background 0.15s, color 0.15s',
                                 }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                             >
                                 <PanelLeft size={18} />
                             </button>
@@ -484,17 +487,17 @@ export default function WorkspacePage() {
                                     onClick={() => setShowCalendarModal(true)}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '6px',
-                                        padding: '6px 14px', borderRadius: '20px',
-                                        border: '1px solid rgba(74,222,128,0.25)',
-                                        background: 'rgba(74,222,128,0.05)',
-                                        color: '#4ade80', fontSize: '12.5px',
-                                        fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
-                                        fontFamily: "'Inter', sans-serif",
+                                        padding: '7px 16px', borderRadius: '9999px',
+                                        border: '1px solid rgba(74,222,128,0.3)',
+                                        background: 'rgba(74,222,128,0.07)',
+                                        color: '#22c55e', fontSize: '13px',
+                                        fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                                        fontFamily: "var(--font-sans)",
                                     }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.1)'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.05)'; }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.13)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.07)'; }}
                                 >
-                                    <Calendar size={12} />
+                                    <Calendar size={13} />
                                     Calendar Sync
                                 </button>
                             )}
@@ -502,12 +505,12 @@ export default function WorkspacePage() {
                             <span
                                 className="hide-on-mobile"
                                 style={{
-                                    fontSize: '13.5px', color: '#71717a', cursor: 'pointer',
-                                    fontWeight: 500, fontFamily: "'Inter', sans-serif",
+                                    fontSize: '14px', color: 'var(--text-secondary)', cursor: 'pointer',
+                                    fontWeight: 500, fontFamily: "var(--font-sans)",
                                     transition: 'color 0.15s',
                                 }}
-                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#a1a1aa'}
-                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#71717a'}
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)'}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'}
                             >
                                 Pricing
                             </span>
@@ -524,20 +527,20 @@ export default function WorkspacePage() {
                                     title="Stop plan"
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '7px',
-                                        padding: '5px 12px', borderRadius: '20px',
+                                        padding: '6px 14px', borderRadius: '9999px',
                                         border: '1px solid rgba(239,68,68,0.2)',
                                         background: 'rgba(239,68,68,0.05)',
-                                        color: '#f87171', fontSize: '12px',
-                                        fontWeight: 500, cursor: 'pointer',
+                                        color: '#ef4444', fontSize: '13px',
+                                        fontWeight: 600, cursor: 'pointer',
                                         transition: 'all 0.15s',
-                                        fontFamily: "'Inter', sans-serif",
+                                        fontFamily: "var(--font-sans)",
                                     }}
                                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
                                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; }}
                                 >
                                     <div style={{
                                         width: '6px', height: '6px', borderRadius: '50%',
-                                        background: '#f87171',
+                                        background: '#ef4444',
                                         animation: 'pulse 1.5s ease-in-out infinite',
                                     }} />
                                     Running
@@ -598,7 +601,7 @@ export default function WorkspacePage() {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.65, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-                                    style={{ textAlign: 'center', marginBottom: '36px', fontFamily: "'Inter', sans-serif" }}
+                                    style={{ textAlign: 'center', marginBottom: '36px', fontFamily: "var(--font-sans)" }}
                                 >
                                     {/* Logo + Name row */}
                                     <div style={{
@@ -606,32 +609,34 @@ export default function WorkspacePage() {
                                         gap: '14px', marginBottom: '22px'
                                     }}>
                                         <div style={{
-                                            width: '38px', height: '38px',
-                                            background: '#fff', borderRadius: '10px',
+                                            width: '48px', height: '48px',
+                                            background: 'linear-gradient(135deg, #8b5cf6, #8455ef)',
+                                            borderRadius: '16px',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             overflow: 'hidden', flexShrink: 0,
+                                            boxShadow: '0 8px 24px rgba(139,92,246,0.3)',
                                         }}>
                                             <img
                                                 src="/logo_2_backup.png"
                                                 alt="Feelivate"
-                                                style={{ width: '26px', height: '26px', objectFit: 'contain' }}
+                                                style={{ width: '30px', height: '30px', objectFit: 'contain', filter: 'brightness(10)' }}
                                             />
                                         </div>
                                         <h1 style={{
-                                            fontSize: '30px', fontWeight: 700,
-                                            letterSpacing: '-0.025em', color: '#f0f0f0', margin: 0,
+                                            fontSize: '32px', fontWeight: 800,
+                                            letterSpacing: '-0.03em', color: 'var(--text-primary)', margin: 0,
                                         }}>
-                                            FEELIVATE
+                                            Feelivate
                                         </h1>
                                     </div>
 
                                     {/* Personalised greeting */}
                                     <h2 style={{
-                                        fontSize: '26px', fontWeight: 500,
-                                        color: '#a1a1aa',
+                                        fontSize: '22px', fontWeight: 500,
+                                        color: 'var(--text-secondary)',
                                         letterSpacing: '-0.01em',
                                         margin: 0,
-                                        lineHeight: 1.3,
+                                        lineHeight: 1.4,
                                     }}>
                                         Hi {localStorage.getItem('user_name')?.split(' ')[0] || 'there'}, what's on your mind?
                                     </h2>

@@ -32,13 +32,13 @@ interface LockedWeeksPanelProps {
 function MiniStatCard({ label, value, color }: { label: string; value: string; color?: string }) {
     return (
         <div style={{
-            flex: 1, padding: '10px 12px', borderRadius: '10px',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.07)',
+            flex: 1, padding: '10px 12px', borderRadius: '12px',
+            background: 'rgba(139,92,246,0.04)',
+            border: '1px solid rgba(203,195,215,0.5)',
             display: 'flex', flexDirection: 'column', gap: '2px',
         }}>
-            <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-            <span style={{ fontSize: '18px', fontWeight: 700, color: color ?? 'white', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</span>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+            <span style={{ fontSize: '18px', fontWeight: 700, color: color ?? 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</span>
         </div>
     );
 }
@@ -47,9 +47,9 @@ function MiniStatCard({ label, value, color }: { label: string; value: string; c
 function MiniAnalysis({ label, content }: { label: string; content: string }) {
     if (!content) return null;
     return (
-        <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>{label}</p>
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, margin: 0 }}>{content}</p>
+        <div style={{ padding: '10px 12px', borderRadius: '12px', background: 'rgba(139,92,246,0.03)', border: '1px solid rgba(203,195,215,0.4)' }}>
+            <p style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>{label}</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>{content}</p>
         </div>
     );
 }
@@ -59,19 +59,19 @@ function WeekPlanDays({ plan, accentColor }: { plan: any; accentColor: string })
     if (!plan?.days?.length) return null;
     return (
         <div style={{ marginTop: '4px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', paddingLeft: '2px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', paddingLeft: '2px' }}>
                 Week {plan.week_number} · {plan.theme}
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+            <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: '14px', border: '1px solid rgba(230,238,255,0.9)', overflow: 'hidden' }}>
                 {plan.days.map((day: any, idx: number) => (
                     <div key={idx} style={{
                         display: 'flex', gap: '10px', padding: '10px 14px',
-                        borderBottom: idx < plan.days.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
+                        borderBottom: idx < plan.days.length - 1 ? '1px solid rgba(203,195,215,0.3)' : 'none'
                     }}>
-                        <div style={{ fontSize: '10px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: accentColor, minWidth: '70px', marginTop: '2px', flexShrink: 0 }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, fontFamily: 'var(--font-label)', color: accentColor, minWidth: '70px', marginTop: '2px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                             {day.day}
                         </div>
-                        <div style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                             {day.action}
                         </div>
                     </div>
@@ -132,26 +132,28 @@ function WeekDrawer({
             className={isMobile ? 'week-drawer-mobile' : ''}
             style={{
                 position: 'fixed',
-                right: 60, // offset from the pill panel
+                right: 60,
                 top: drawerTop !== undefined ? Math.min(drawerTop, typeof window !== 'undefined' ? window.innerHeight - 350 : 500) : 80,
                 transform: 'none',
-                width: '310px',
+                width: '320px',
                 maxHeight: '82vh',
-                background: '#111112',
+                background: 'rgba(255,255,255,0.92)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
                 border: `1px solid ${accentBorder}`,
-                borderRadius: '16px',
-                boxShadow: `0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px ${accentBorder}`,
+                borderRadius: '20px',
+                boxShadow: `0 20px 60px rgba(139,92,246,0.12), 0 0 0 1px ${accentBorder}`,
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
                 zIndex: 500,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: "var(--font-sans)",
             }}
         >
             {/* Header */}
             <div style={{
                 padding: '14px 16px',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                borderBottom: '1px solid rgba(203,195,215,0.4)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 flexShrink: 0,
                 background: accentBg,
@@ -170,10 +172,10 @@ function WeekDrawer({
                         }
                     </div>
                     <div>
-                        <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
+                        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                             Week {weekNumber} {isLockedPast ? '— Plan' : ''}
                         </p>
-                        <p style={{ fontSize: '10px', color: isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : 'rgba(255,255,255,0.35)', margin: 0, marginTop: '1px' }}>
+                        <p style={{ fontSize: '10px', color: isOngoing ? '#6366f1' : isActiveCurrent ? '#10b981' : 'var(--text-muted)', margin: 0, marginTop: '1px' }}>
                             {isOngoing ? 'Recorded Today ✦' : isActiveCurrent ? 'Active Now' : (report ? `${report.week_start} – ${report.week_end}` : 'Completed')}
                         </p>
                     </div>
@@ -181,9 +183,9 @@ function WeekDrawer({
                 <button
                     onClick={onClose}
                     style={{
-                        width: '26px', height: '26px', borderRadius: '7px',
-                        border: 'none', background: 'rgba(255,255,255,0.06)',
-                        color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                        width: '26px', height: '26px', borderRadius: '8px',
+                        border: 'none', background: 'rgba(139,92,246,0.08)',
+                        color: 'var(--text-muted)', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                 >
@@ -221,9 +223,9 @@ function WeekDrawer({
                 ) : (
                     !isCurrentWeek && (
                         <div style={{
-                            padding: '16px', borderRadius: '12px',
-                            border: '1px dashed rgba(255,255,255,0.1)',
-                            textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px', lineHeight: 1.6,
+                            padding: '16px', borderRadius: '14px',
+                            border: '1px dashed rgba(203,195,215,0.4)',
+                            textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', lineHeight: 1.6,
                         }}>
                             <FileText size={18} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }} />
                             Plan data not available for this week.
@@ -234,21 +236,21 @@ function WeekDrawer({
                 {/* ── Last voice entry for LOCKED past weeks ── */}
                 {isLockedPast && lastJournalDay && (
                     <div style={{
-                        padding: '10px 12px', borderRadius: '10px',
-                        background: 'rgba(167,139,250,0.06)',
-                        border: '1px solid rgba(167,139,250,0.15)',
+                        padding: '10px 12px', borderRadius: '12px',
+                        background: 'rgba(139,92,246,0.05)',
+                        border: '1px solid rgba(139,92,246,0.15)',
                         display: 'flex', alignItems: 'flex-start', gap: '8px',
                     }}>
-                        <Mic size={13} color="#a78bfa" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <Mic size={13} color="#8b5cf6" style={{ flexShrink: 0, marginTop: '2px' }} />
                         <div>
-                            <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(167,139,250,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>
+                            <p style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>
                                 Last Voice Entry
                             </p>
-                            <p style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.45, fontStyle: 'italic' }}>
+                            <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45, fontStyle: 'italic' }}>
                                 "{lastJournalDay.one_liner}"
                             </p>
                             {lastJournalDay.emotion && (
-                                <p style={{ fontSize: '10px', color: 'rgba(167,139,250,0.6)', margin: '3px 0 0', fontWeight: 600 }}>
+                                <p style={{ fontSize: '10px', color: 'var(--color-primary)', margin: '3px 0 0', fontWeight: 600 }}>
                                     {lastJournalDay.emotion} · {lastJournalDay.score}/10
                                 </p>
                             )}
@@ -320,18 +322,18 @@ function WeekDrawer({
                     <>
                         <div style={{ display: 'flex', gap: '8px' }}>
                             <MiniStatCard label="Consistency" value={`${r.consistency_score ?? 0}%`} color="#10b981" />
-                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#60a5fa" />
+                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#6366f1" />
                         </div>
                         <MiniAnalysis label="Emotional Arc" content={r.emotional_arc ?? ''} />
                         <MiniAnalysis label="What Went Well" content={r.what_went_well ?? ''} />
                         <MiniAnalysis label="Where You Slipped" content={r.where_you_slipped ?? ''} />
                         {r.hidden_insight && (
                             <div style={{
-                                padding: '10px 12px', borderRadius: '10px',
-                                background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)',
+                                padding: '10px 12px', borderRadius: '12px',
+                                background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.12)',
                             }}>
-                                <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Hidden Insight</p>
-                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, margin: 0 }}>{r.hidden_insight}</p>
+                                <p style={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Hidden Insight</p>
+                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>{r.hidden_insight}</p>
                             </div>
                         )}
                     </>
@@ -434,22 +436,23 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                 style={{
                     position: 'fixed',
                     right: 0,
-                    top: '80px', // Below the profile icon
+                    top: '80px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px',
                     padding: '8px 0',
-                    background: 'rgba(10,10,10,0.92)',
-                    borderLeft: '1px solid rgba(255,255,255,0.08)',
-                    borderTop: '1px solid rgba(255,255,255,0.06)',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(255,255,255,0.65)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderLeft: '1px solid rgba(203,195,215,0.4)',
+                    borderTop: '1px solid rgba(230,238,255,0.7)',
+                    borderBottom: '1px solid rgba(230,238,255,0.7)',
                     borderRadius: '14px 0 0 14px',
-                    boxShadow: '-4px 0 24px rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(12px)',
+                    boxShadow: '-4px 0 24px rgba(139,92,246,0.08)',
                     zIndex: 400,
                     minWidth: '52px',
                     alignItems: 'center',
-                    fontFamily: "'Inter', sans-serif",
+                    fontFamily: "var(--font-label)",
                 }}
             >
                 {groups.map((group, gi) => {
@@ -468,17 +471,17 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                                     style={{
                                         width: '44px',
                                         padding: '7px 4px',
-                                        borderRadius: '9px',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        background: isGroupExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-                                        color: 'rgba(255,255,255,0.55)',
+                                        borderRadius: '10px',
+                                        border: '1px solid rgba(203,195,215,0.4)',
+                                        background: isGroupExpanded ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.5)',
+                                        color: isGroupExpanded ? 'var(--color-primary)' : 'var(--text-secondary)',
                                         cursor: 'pointer',
                                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
                                         transition: 'all 0.15s',
-                                        fontFamily: "'Inter', sans-serif",
+                                        fontFamily: "var(--font-label)",
                                     }}
-                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'white'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = isGroupExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.1)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = isGroupExpanded ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.5)'; e.currentTarget.style.color = isGroupExpanded ? 'var(--color-primary)' : 'var(--text-secondary)'; }}
                                 >
                                     <span style={{ fontSize: '8px', fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.1, textAlign: 'center' }}>
                                         {group.startWeek}–{group.endWeek}
@@ -511,7 +514,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
 
                                 {/* Divider between groups */}
                                 {gi < groups.length - 1 && (
-                                    <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
+                                    <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(203,195,215,0.4)', margin: '2px 0' }} />
                                 )}
                             </div>
                         );
@@ -529,7 +532,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                                 />
                             ))}
                             {gi < groups.length - 1 && (
-                                <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
+                                <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(203,195,215,0.4)', margin: '2px 0' }} />
                             )}
                         </div>
                     );
@@ -555,7 +558,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
     );
 }
 
-// ─── Individual week pill button ──────────────────────────────────────────────
+// ─── Individual week pill button ──────────────────────────────────────────────────────
 
 function WeekPill({
     item,
@@ -567,28 +570,25 @@ function WeekPill({
     onClick: (e: React.MouseEvent) => void;
 }) {
     const { weekNumber, isOngoing, isLocked } = item;
-    // isOngoing = true → recorded today (indigo/sparkle)
-    // isLocked = true → completed past week (purple/lock)
-    // neither → active current week, not recorded yet (emerald/play)
     const isActiveCurrent = !isOngoing && !isLocked;
 
     const bgColor = isSelected
-        ? isOngoing ? 'rgba(99,102,241,0.3)' : isActiveCurrent ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.25)'
-        : isOngoing ? 'rgba(99,102,241,0.12)' : isActiveCurrent ? 'rgba(16,185,129,0.1)' : 'rgba(139,92,246,0.08)';
+        ? isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.18)' : 'rgba(139,92,246,0.18)'
+        : isOngoing ? 'rgba(99,102,241,0.08)' : isActiveCurrent ? 'rgba(16,185,129,0.07)' : 'rgba(139,92,246,0.06)';
 
     const borderColor = isSelected
-        ? isOngoing ? 'rgba(99,102,241,0.6)' : isActiveCurrent ? 'rgba(16,185,129,0.5)' : 'rgba(139,92,246,0.55)'
-        : isOngoing ? 'rgba(99,102,241,0.25)' : isActiveCurrent ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.22)';
+        ? isOngoing ? 'rgba(99,102,241,0.5)' : isActiveCurrent ? 'rgba(16,185,129,0.5)' : 'rgba(139,92,246,0.5)'
+        : isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.2)';
 
     const textColor = isSelected
-        ? isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : '#c4b5fd'
-        : isOngoing ? '#818cf8' : isActiveCurrent ? '#10b981' : '#a78bfa';
+        ? isOngoing ? '#6366f1' : isActiveCurrent ? '#10b981' : 'var(--color-primary)'
+        : isOngoing ? '#818cf8' : isActiveCurrent ? '#10b981' : '#8b5cf6';
 
-    const hoverBg = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.18)' : 'rgba(139,92,246,0.16)';
-    const hoverColor = isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : '#c4b5fd';
+    const hoverBg = isOngoing ? 'rgba(99,102,241,0.15)' : isActiveCurrent ? 'rgba(16,185,129,0.12)' : 'rgba(139,92,246,0.12)';
+    const hoverColor = isOngoing ? '#6366f1' : isActiveCurrent ? '#10b981' : 'var(--color-primary)';
 
     const titleText = isOngoing
-        ? `Week ${weekNumber} — recorded today ✦`
+        ? `Week ${weekNumber} — recorded today ✶`
         : isActiveCurrent
             ? `Week ${weekNumber} — active (click to view plan)`
             : `Week ${weekNumber} — tap to view plan`;
@@ -605,14 +605,14 @@ function WeekPill({
             style={{
                 width: '44px',
                 padding: '7px 4px',
-                borderRadius: '9px',
+                borderRadius: '10px',
                 border: `1px solid ${borderColor}`,
                 background: bgColor,
                 color: textColor,
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
                 transition: 'all 0.15s',
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: "var(--font-label)",
                 position: 'relative',
             }}
             onMouseEnter={e => {
@@ -646,7 +646,7 @@ function WeekPill({
                         transform: 'translateY(-50%)',
                         width: '4px', height: '14px',
                         borderRadius: '0 3px 3px 0',
-                        background: isOngoing ? '#818cf8' : isLocked ? '#a78bfa' : '#34d399',
+                        background: isOngoing ? '#6366f1' : isLocked ? 'var(--color-primary)' : '#10b981',
                     }}
                 />
             )}

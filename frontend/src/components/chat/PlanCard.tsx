@@ -45,10 +45,10 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    padding: '10px 16px',
-                    background: 'rgba(16, 185, 129, 0.08)',
-                    border: '1px solid rgba(16, 185, 129, 0.2)',
-                    borderRadius: '14px',
+                    padding: '12px 18px',
+                    background: 'rgba(139,92,246,0.06)',
+                    border: '1px solid rgba(139,92,246,0.18)',
+                    borderRadius: '9999px',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     margin: '8px 0',
@@ -56,14 +56,15 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
             >
                 <div style={{
                     width: '24px', height: '24px', borderRadius: '50%',
-                    background: 'rgba(16, 185, 129, 0.15)',
+                    background: 'rgba(139,92,246,0.12)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                    <Calendar size={12} style={{ color: 'var(--accent-green)' }} />
+                    <Calendar size={12} style={{ color: 'var(--color-primary)' }} />
                 </div>
                 <span style={{
-                    flex: 1, fontSize: '13px', fontWeight: 500,
-                    color: 'var(--accent-green)',
+                    flex: 1, fontSize: '14px', fontWeight: 600,
+                    color: 'var(--color-primary)',
+                    fontFamily: 'var(--font-sans)',
                 }}>
                     📅 Week {plan.week_number} Active — {plan.week_label}
                 </span>
@@ -81,65 +82,78 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
         <motion.div
             className={approveAnimation ? 'plan-float-up' : 'plan-slide-in'}
             style={{
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-medium)',
-                borderRadius: '16px',
+                background: 'rgba(255,255,255,0.88)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(230,238,255,0.9)',
+                borderRadius: '24px',
                 overflow: 'hidden',
                 margin: '12px 0',
+                boxShadow: '0 4px 24px rgba(139,92,246,0.07)',
+                fontFamily: 'var(--font-sans)',
             }}
         >
             {/* Header */}
             <div style={{
-                padding: '16px 20px',
-                borderBottom: '1px solid var(--border-subtle)',
+                padding: '18px 22px',
+                borderBottom: '1px solid rgba(230,238,255,0.7)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
+                gap: '14px',
+                background: 'linear-gradient(135deg, rgba(139,92,246,0.05), rgba(132,85,239,0.03))',
             }}>
                 <div style={{
-                    width: '32px', height: '32px', borderRadius: '10px',
-                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                    width: '36px', height: '36px', borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #8b5cf6, #8455ef)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
                 }}>
                     <Sparkles size={16} style={{ color: 'white' }} />
                 </div>
                 <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '-0.01em' }}>
                         Week {plan.week_number}: {plan.theme}
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {plan.week_label} • Win: {plan.win_condition}
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '3px', fontFamily: 'var(--font-label)' }}>
+                        {plan.week_label} • 🎯 {plan.win_condition}
                     </div>
                 </div>
             </div>
 
             {/* Days */}
-            <div style={{ padding: '12px 20px' }}>
-                {plan.days.map((day, idx) => (
+            <div style={{ padding: '12px 20px 4px' }}>
+                {plan.days.map((day: any, idx: number) => (
                     <div
                         key={idx}
                         style={{
                             display: 'flex',
-                            gap: '12px',
-                            padding: '10px 0',
-                            borderBottom: idx < plan.days.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                            gap: '14px',
+                            padding: '12px 16px',
+                            borderRadius: '16px',
+                            background: 'rgba(255,255,255,0.6)',
+                            border: '1px solid rgba(230,238,255,0.8)',
+                            marginBottom: '8px',
+                            transition: 'border-color 0.2s',
                         }}
                     >
                         <div style={{
                             fontSize: '12px',
-                            fontWeight: 600,
-                            color: 'var(--accent-primary)',
-                            fontFamily: 'var(--font-mono)',
-                            minWidth: '100px',
+                            fontWeight: 700,
+                            color: 'var(--color-primary)',
+                            fontFamily: 'var(--font-label)',
+                            minWidth: '90px',
                             flexShrink: 0,
-                            paddingTop: '2px',
+                            paddingTop: '1px',
+                            letterSpacing: '0.03em',
+                            textTransform: 'uppercase',
                         }}>
                             {day.day}
                         </div>
                         <div style={{
-                            fontSize: '13px',
+                            fontSize: '14px',
                             color: 'var(--text-secondary)',
-                            lineHeight: '1.5',
+                            lineHeight: '1.55',
+                            fontFamily: 'var(--font-sans)',
                         }}>
                             {day.action}
                         </div>
@@ -149,8 +163,8 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
 
             {/* Actions */}
             <div style={{
-                padding: '12px 20px 16px',
-                borderTop: '1px solid var(--border-subtle)',
+                padding: '14px 20px 20px',
+                borderTop: '1px solid rgba(230,238,255,0.7)',
                 display: 'flex',
                 gap: '10px',
             }}>
@@ -162,16 +176,20 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '8px',
-                        padding: '10px 16px',
-                        borderRadius: '12px',
+                        padding: '12px 20px',
+                        borderRadius: '9999px',
                         border: 'none',
-                        background: 'var(--accent-green)',
+                        background: 'var(--color-primary)',
                         color: 'white',
-                        fontSize: '13px',
-                        fontWeight: 600,
+                        fontSize: '14px',
+                        fontWeight: 700,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
+                        fontFamily: 'var(--font-sans)',
+                        boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,92,246,0.4)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(139,92,246,0.3)'; }}
                 >
                     <Check size={16} />
                     Looks good, let's go!
@@ -179,16 +197,19 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                 <button
                     onClick={() => onRequestChange("I want to change something in this plan")}
                     style={{
-                        padding: '10px 16px',
-                        borderRadius: '12px',
-                        border: '1px solid var(--border-medium)',
+                        padding: '12px 20px',
+                        borderRadius: '9999px',
+                        border: '1px solid rgba(139,92,246,0.25)',
                         background: 'transparent',
-                        color: 'var(--text-secondary)',
-                        fontSize: '13px',
-                        fontWeight: 500,
+                        color: 'var(--color-primary)',
+                        fontSize: '14px',
+                        fontWeight: 600,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
+                        fontFamily: 'var(--font-sans)',
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.06)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                 >
                     Tweak this
                 </button>
