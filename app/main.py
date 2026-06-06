@@ -790,7 +790,7 @@ async def send_email_otp(
     )
 
     if not success:
-        raise HTTPException(status_code=500, detail="Email bhejne me error aaya. Please try again.")
+        raise HTTPException(status_code=500, detail="Failed to send email. Please try again.")
 
     return {"message": "Verification code sent! Please check your inbox.", "expires_in": 600}
 
@@ -812,15 +812,15 @@ async def verify_email_otp(
         raise HTTPException(status_code=404, detail="User not found")
 
     if not user.email_otp_code or not user.email_otp_expiry:
-        raise HTTPException(status_code=400, detail="Pehle OTP send karein.")
+        raise HTTPException(status_code=400, detail="No OTP found. Please request a new code.")
 
     # Check expiry
     if datetime.utcnow() > user.email_otp_expiry:
-        raise HTTPException(status_code=400, detail="OTP expire ho gaya hai. Please dobara bhejein.")
+        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new code.")
 
     # Check code
     if user.email_otp_code.strip() != payload.code.strip():
-        raise HTTPException(status_code=400, detail="Galat OTP code. Please check karein.")
+        raise HTTPException(status_code=400, detail="Incorrect OTP. Please check your email and try again.")
 
     # Enable notifications
     user.notification_email = payload.email
@@ -830,7 +830,7 @@ async def verify_email_otp(
     db.commit()
 
     return {
-        "message": "Email verified! Daily notifications enable ho gayi hain.",
+        "message": "Email verified! Daily notifications are now active.",
         "notification_email": payload.email,
     }
 
@@ -853,7 +853,7 @@ async def stop_email_notifications(
     user.notification_email = None
     db.commit()
 
-    return {"message": "Email notifications band kar di gayi hain."}
+    return {"message": "Email notifications have been stopped."}
 
 
 @app.get("/notifications/email/status", tags=["notifications"])

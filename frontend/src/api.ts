@@ -232,7 +232,7 @@ export const sendEmailOTP = async (userId: string, email: string) => {
     });
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.detail || 'OTP bhejne me failure. Try again.');
+        throw new Error(err.detail || 'Failed to send OTP. Please try again.');
     }
     return response.json();
 };
@@ -244,7 +244,7 @@ export const verifyEmailOTP = async (userId: string, email: string, code: string
     });
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.detail || 'OTP verify nahi hua. Try again.');
+        throw new Error(err.detail || 'OTP verification failed. Please try again.');
     }
     return response.json();
 };

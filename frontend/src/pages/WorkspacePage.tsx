@@ -878,13 +878,13 @@ export default function WorkspacePage() {
                                         }}><Bell size={18} color="#c084fc" /></div>
                                         <div>
                                             <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>Daily Task Alerts</h3>
-                                            <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>Har din ka task seedha inbox me</p>
+                                            <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>Get your daily tasks straight to your inbox</p>
                                         </div>
                                     </div>
 
                                     <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, marginBottom: '20px' }}>
-                                        Apna email daalein. Hum aapko <strong style={{ color: '#c084fc' }}>Monday se Sunday</strong> tak,
-                                        har roz ek personalized task + AI motivation message bhejenge.
+                                        Enter your email to receive a <strong style={{ color: '#c084fc' }}>personalized daily task</strong> from
+                                        Monday to Sunday, along with an AI-written motivation message made just for you.
                                     </p>
 
                                     <div style={{ marginBottom: '16px' }}>
@@ -937,7 +937,7 @@ export default function WorkspacePage() {
                                         }}
                                     >
                                         {notifLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Mail size={15} />}
-                                        {notifLoading ? 'Bhej rahe hain...' : 'Send Verification Code'}
+                                        {notifLoading ? 'Sending...' : 'Send Verification Code'}
                                     </button>
                                 </>
                             )}
@@ -953,7 +953,7 @@ export default function WorkspacePage() {
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         }}><Mail size={18} color="#c084fc" /></div>
                                         <div>
-                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>Code Verify Karein</h3>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>Verify Your Code</h3>
                                             <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>{notifEmail}</p>
                                         </div>
                                     </div>
@@ -965,8 +965,8 @@ export default function WorkspacePage() {
                                     )}
 
                                     <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, marginBottom: '16px' }}>
-                                        Humne <strong style={{ color: '#c084fc' }}>{notifEmail}</strong> par ek 6-digit code bheja hai.
-                                        Woh code niche daalein:
+                                        We've sent a 6-digit code to <strong style={{ color: '#c084fc' }}>{notifEmail}</strong>.
+                                        Enter it below to activate your daily alerts.
                                     </p>
 
                                     <div style={{ marginBottom: '16px' }}>
@@ -1007,7 +1007,7 @@ export default function WorkspacePage() {
                                                 color: '#71717a', fontSize: '13px', cursor: 'pointer',
                                                 fontFamily: "'Inter', sans-serif",
                                             }}
-                                        >← Wapas</button>
+                                        >← Back</button>
                                         <button
                                             onClick={handleVerifyOTP}
                                             disabled={notifLoading || notifOtp.length < 6}
@@ -1023,7 +1023,7 @@ export default function WorkspacePage() {
                                             }}
                                         >
                                             {notifLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
-                                            {notifLoading ? 'Verify ho raha hai...' : 'Verify & Subscribe'}
+                                            {notifLoading ? 'Verifying...' : 'Verify & Subscribe'}
                                         </button>
                                     </div>
                                 </>
@@ -1048,7 +1048,7 @@ export default function WorkspacePage() {
                                             <Bell size={24} color="#c084fc" />
                                         </motion.div>
                                         <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#f4f4f5', margin: '0 0 6px' }}>Daily Alerts Active! 🎉</h3>
-                                        <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>Notifications ja rahi hain</p>
+                                        <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>Your daily emails are now scheduled</p>
                                     </div>
 
                                     <div style={{
@@ -1066,8 +1066,8 @@ export default function WorkspacePage() {
                                         borderRadius: '10px', padding: '12px 14px',
                                         marginBottom: '20px',
                                     }}>
-                                        <p style={{ fontSize: '12px', color: '#52525b', margin: '0 0 6px', fontWeight: 600 }}>Aapko milega:</p>
-                                        {['🎯 Har din ka specific task', '🤖 AI-written personalized message', '💡 Sirf aapke liye motivation thought'].map(t => (
+                                        <p style={{ fontSize: '12px', color: '#52525b', margin: '0 0 6px', fontWeight: 600 }}>What you'll receive each day:</p>
+                                        {['🎯 Your specific task for the day', '🤖 AI-written personalized guidance', '💡 A motivational thought crafted just for you'].map(t => (
                                             <p key={t} style={{ fontSize: '12px', color: '#71717a', margin: '3px 0' }}>{t}</p>
                                         ))}
                                     </div>
@@ -1094,7 +1094,7 @@ export default function WorkspacePage() {
                                         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; }}
                                     >
                                         {notifLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <BellOff size={14} />}
-                                        {notifLoading ? 'Band kar rahe hain...' : 'Stop Notifications'}
+                                        {notifLoading ? 'Unsubscribing...' : 'Stop Notifications'}
                                     </button>
                                 </>
                             )}
