@@ -34,26 +34,34 @@ from .observability import REQUESTS_TOTAL
 load_dotenv()
 
 from contextlib import asynccontextmanager
-from apscheduler.schedulers.background import BackgroundScheduler
 
-# ── APScheduler ─────────────────────────────────────────────────────────────
-_scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+# ── APScheduler (optional — server starts even if not installed) ─────────────
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    _scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+    _SCHEDULER_AVAILABLE = True
+except ImportError:
+    _scheduler = None
+    _SCHEDULER_AVAILABLE = False
+    logger.warning("[Scheduler] APScheduler not installed — daily emails disabled. Install it via: pip install APScheduler pytz")
 
 @asynccontextmanager
 async def lifespan(app):
     """Start scheduler on startup, stop on shutdown."""
-    _scheduler.add_job(
-        run_daily_email_scheduler,
-        trigger="cron",
-        minute="*",   # every minute — checks if any user's preferred time matches
-        id="daily_email_scheduler",
-        replace_existing=True,
-    )
-    _scheduler.start()
-    logger.info("[Scheduler] APScheduler started — checking every minute for daily emails")
+    if _SCHEDULER_AVAILABLE and _scheduler:
+        _scheduler.add_job(
+            run_daily_email_scheduler,
+            trigger="cron",
+            minute="*",   # every minute — checks if any user's preferred time matches
+            id="daily_email_scheduler",
+            replace_existing=True,
+        )
+        _scheduler.start()
+        logger.info("[Scheduler] APScheduler started — checking every minute for daily emails")
     yield
-    _scheduler.shutdown(wait=False)
-    logger.info("[Scheduler] APScheduler shut down")
+    if _SCHEDULER_AVAILABLE and _scheduler:
+        _scheduler.shutdown(wait=False)
+        logger.info("[Scheduler] APScheduler shut down")
 
 app = FastAPI(title="Feelivate API", version="3.0.0", lifespan=lifespan)
 
