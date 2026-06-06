@@ -109,6 +109,21 @@ def on_startup():
         logger.error(traceback.format_exc())
 
 
+@app.post("/admin/migrate", tags=["admin"])
+def run_migrations_endpoint():
+    """
+    Emergency endpoint: run DB migrations manually.
+    Safe to call multiple times — all statements use IF NOT EXISTS.
+    """
+    try:
+        from .database import init_db as _init_db
+        _init_db()
+        return {"status": "ok", "message": "Migrations complete."}
+    except Exception as e:
+        import traceback
+        return {"status": "error", "message": str(e), "trace": traceback.format_exc()}
+
+
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     REQUESTS_TOTAL.labels(route=str(request.url.path), method=request.method, status="500").inc()
