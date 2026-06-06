@@ -27,13 +27,35 @@ from .models import (
     DailyCheckin, UserStreak, VoiceJournal, WeeklyReport,
 )
 from .calendar_service import calendar_service
-from .email_service import generate_otp, send_verification_email, send_daily_task_email
+from .email_service import generate_otp, send_verification_email, send_daily_task_email, run_daily_email_scheduler
 from .security import get_password_hash, verify_password, create_access_token, decode_access_token
 from .observability import REQUESTS_TOTAL
 
 load_dotenv()
 
-app = FastAPI(title="Feelivate API", version="3.0.0")
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.background import BackgroundScheduler
+
+# ── APScheduler ─────────────────────────────────────────────────────────────
+_scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+
+@asynccontextmanager
+async def lifespan(app):
+    """Start scheduler on startup, stop on shutdown."""
+    _scheduler.add_job(
+        run_daily_email_scheduler,
+        trigger="cron",
+        minute="*",   # every minute — checks if any user's preferred time matches
+        id="daily_email_scheduler",
+        replace_existing=True,
+    )
+    _scheduler.start()
+    logger.info("[Scheduler] APScheduler started — checking every minute for daily emails")
+    yield
+    _scheduler.shutdown(wait=False)
+    logger.info("[Scheduler] APScheduler shut down")
+
+app = FastAPI(title="Feelivate API", version="3.0.0", lifespan=lifespan)
 
 # CORS
 _raw_origins = os.environ.get(
@@ -755,9 +777,14 @@ class VerifyEmailOTPRequest(BaseModel):
     email: str
     code: str
     session_id: Optional[str] = None
+    preferred_time: str = "08:00"  # HH:MM in IST — user's chosen notification time
 
 class StopEmailNotificationRequest(BaseModel):
     user_id: str
+
+class UpdateNotificationTimeRequest(BaseModel):
+    user_id: str
+    preferred_time: str  # HH:MM format in IST
 
 
 @app.post("/notifications/email/send-otp", tags=["notifications"])
@@ -822,16 +849,24 @@ async def verify_email_otp(
     if user.email_otp_code.strip() != payload.code.strip():
         raise HTTPException(status_code=400, detail="Incorrect OTP. Please check your email and try again.")
 
-    # Enable notifications
+    # Enable notifications with preferred time
     user.notification_email = payload.email
     user.email_notifications_enabled = 1
     user.email_otp_code = None
     user.email_otp_expiry = None
+    # Validate and save preferred notification time (HH:MM)
+    import re as _re
+    pt = payload.preferred_time.strip()
+    if _re.match(r'^([01]\d|2[0-3]):[0-5]\d$', pt):
+        user.preferred_notification_time = pt
+    else:
+        user.preferred_notification_time = "08:00"
     db.commit()
 
     return {
         "message": "Email verified! Daily notifications are now active.",
         "notification_email": payload.email,
+        "preferred_time": user.preferred_notification_time,
     }
 
 
@@ -871,7 +906,29 @@ async def get_email_notification_status(
     return {
         "enabled": bool(user.email_notifications_enabled),
         "notification_email": user.notification_email,
+        "preferred_time": user.preferred_notification_time or "08:00",
     }
+
+
+@app.put("/notifications/email/update-time", tags=["notifications"])
+async def update_notification_time(
+    payload: UpdateNotificationTimeRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update the user's preferred daily notification time (HH:MM IST)."""
+    import re as _re
+    if payload.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    user = db.query(User).filter(User.id == payload.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    pt = payload.preferred_time.strip()
+    if not _re.match(r'^([01]\d|2[0-3]):[0-5]\d$', pt):
+        raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM (e.g. 08:00)")
+    user.preferred_notification_time = pt
+    db.commit()
+    return {"message": f"Notification time updated to {pt} IST.", "preferred_time": pt}
 
 
 # ============================================================

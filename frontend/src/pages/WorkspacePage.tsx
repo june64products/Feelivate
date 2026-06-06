@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, PanelLeft, AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X } from 'lucide-react';
+import { Calendar, PanelLeft, AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock } from 'lucide-react';
 import {
     chatWithMentor,
     approvePlan,
@@ -16,6 +16,7 @@ import {
     verifyEmailOTP,
     stopEmailNotifications,
     getEmailNotificationStatus,
+    updateNotificationTime,
 } from '../api';
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
@@ -86,14 +87,16 @@ export default function WorkspacePage() {
 
     // Email Notification states
     const [showEmailModal, setShowEmailModal] = useState(false);
-    const [emailModalStep, setEmailModalStep] = useState<'email' | 'otp' | 'subscribed'>('email');
+    const [emailModalStep, setEmailModalStep] = useState<'email' | 'otp' | 'time' | 'subscribed'>('email');
     const [notifEmail, setNotifEmail] = useState('');
     const [notifOtp, setNotifOtp] = useState('');
+    const [notifPreferredTime, setNotifPreferredTime] = useState('08:00');
     const [notifLoading, setNotifLoading] = useState(false);
     const [notifMessage, setNotifMessage] = useState('');
     const [notifError, setNotifError] = useState('');
     const [isNotifEnabled, setIsNotifEnabled] = useState(false);
     const [subscribedEmail, setSubscribedEmail] = useState<string | null>(null);
+    const [subscribedTime, setSubscribedTime] = useState<string>('08:00');
 
     // Auth validation — check both token AND user_id
     useEffect(() => {
@@ -115,6 +118,10 @@ export default function WorkspacePage() {
                 .then(res => {
                     setIsNotifEnabled(res.enabled);
                     setSubscribedEmail(res.notification_email);
+                    if (res.preferred_time) {
+                        setSubscribedTime(res.preferred_time);
+                        setNotifPreferredTime(res.preferred_time);
+                    }
                     if (res.enabled) setEmailModalStep('subscribed');
                 })
                 .catch(() => {});
@@ -372,13 +379,29 @@ export default function WorkspacePage() {
         setNotifLoading(true);
         setNotifError('');
         try {
-            const res = await verifyEmailOTP(userId, notifEmail.trim(), notifOtp.trim(), activeSessionId);
+            await verifyEmailOTP(userId, notifEmail.trim(), notifOtp.trim(), activeSessionId, notifPreferredTime);
             setSubscribedEmail(notifEmail.trim());
             setIsNotifEnabled(true);
-            setNotifMessage(res.message || 'Email verified! Daily notifications start ho gayi.');
+            // Go to time picker step
+            setEmailModalStep('time');
+        } catch (err: any) {
+            setNotifError(err.message || 'OTP is incorrect. Please check your email.');
+        } finally {
+            setNotifLoading(false);
+        }
+    };
+
+    const handleSaveTime = async () => {
+        if (!userId) return;
+        setNotifLoading(true);
+        setNotifError('');
+        try {
+            await updateNotificationTime(userId, notifPreferredTime);
+            setSubscribedTime(notifPreferredTime);
+            setNotifMessage(`Daily alerts set for ${notifPreferredTime} IST every day!`);
             setEmailModalStep('subscribed');
         } catch (err: any) {
-            setNotifError(err.message || 'OTP galat hai. Dobara check karein.');
+            setNotifError(err.message || 'Failed to save time. Please try again.');
         } finally {
             setNotifLoading(false);
         }
@@ -1029,10 +1052,95 @@ export default function WorkspacePage() {
                                 </>
                             )}
 
+                            {/* Step: Time Picker */}
+                            {emailModalStep === 'time' && (
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                                        <div style={{
+                                            width: '38px', height: '38px', borderRadius: '10px',
+                                            background: 'rgba(168,85,247,0.15)',
+                                            border: '1px solid rgba(168,85,247,0.3)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}><Clock size={18} color="#c084fc" /></div>
+                                        <div>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>Choose Your Alert Time</h3>
+                                            <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>When should we send your daily task? (IST)</p>
+                                        </div>
+                                    </div>
+
+                                    <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, marginBottom: '20px' }}>
+                                        Every day at this time, you'll receive your <strong style={{ color: '#c084fc' }}>personalized task</strong> for the day —
+                                        with an AI-written guide and a motivational thought made just for you.
+                                    </p>
+
+                                    {/* Popular times quick select */}
+                                    <p style={{ fontSize: '11px', color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>Quick select</p>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                                        {['06:00', '07:00', '08:00', '09:00', '20:00', '21:00'].map(t => (
+                                            <button key={t} onClick={() => setNotifPreferredTime(t)} style={{
+                                                padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 500,
+                                                border: notifPreferredTime === t ? '1px solid rgba(168,85,247,0.6)' : '1px solid rgba(168,85,247,0.15)',
+                                                background: notifPreferredTime === t ? 'rgba(168,85,247,0.2)' : 'transparent',
+                                                color: notifPreferredTime === t ? '#c084fc' : '#71717a',
+                                                cursor: 'pointer', transition: 'all 0.15s',
+                                                fontFamily: "'Inter', sans-serif",
+                                            }}>{t}</button>
+                                        ))}
+                                    </div>
+
+                                    {/* Custom time input */}
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ fontSize: '11px', fontWeight: 600, color: '#71717a', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                            Or set a custom time
+                                        </label>
+                                        <input
+                                            type="time"
+                                            value={notifPreferredTime}
+                                            onChange={(e) => setNotifPreferredTime(e.target.value)}
+                                            style={{
+                                                width: '100%', padding: '11px 14px', boxSizing: 'border-box',
+                                                borderRadius: '10px', border: '1px solid rgba(168,85,247,0.2)',
+                                                background: 'rgba(0,0,0,0.3)', color: '#c084fc',
+                                                fontSize: '20px', fontWeight: 700, outline: 'none',
+                                                fontFamily: "'Inter', sans-serif", textAlign: 'center',
+                                                cursor: 'pointer',
+                                            }}
+                                            onFocus={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.5)'; }}
+                                            onBlur={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.2)'; }}
+                                        />
+                                        <p style={{ fontSize: '11px', color: '#52525b', margin: '6px 0 0', textAlign: 'center' }}>
+                                            India Standard Time (IST) · UTC+5:30
+                                        </p>
+                                    </div>
+
+                                    {notifError && (
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: '12px', marginBottom: '14px' }}>
+                                            <AlertCircle size={13} /><span>{notifError}</span>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handleSaveTime}
+                                        disabled={notifLoading}
+                                        style={{
+                                            width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
+                                            background: notifLoading ? 'rgba(168,85,247,0.3)' : 'linear-gradient(135deg, #a855f7, #6366f1)',
+                                            color: '#fff', fontSize: '14px', fontWeight: 700,
+                                            cursor: notifLoading ? 'not-allowed' : 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            fontFamily: "'Inter', sans-serif",
+                                        }}
+                                    >
+                                        {notifLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Bell size={15} />}
+                                        {notifLoading ? 'Activating...' : `Activate Daily Alerts at ${notifPreferredTime} IST`}
+                                    </button>
+                                </>
+                            )}
+
                             {/* Step: Subscribed */}
                             {emailModalStep === 'subscribed' && (
                                 <>
-                                    <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                                         <motion.div
                                             initial={{ scale: 0 }}
                                             animate={{ scale: 1 }}
@@ -1042,38 +1150,59 @@ export default function WorkspacePage() {
                                                 background: 'linear-gradient(135deg, rgba(168,85,247,0.3), rgba(99,102,241,0.2))',
                                                 border: '1px solid rgba(168,85,247,0.4)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                margin: '0 auto 16px',
+                                                margin: '0 auto 14px',
                                             }}
                                         >
                                             <Bell size={24} color="#c084fc" />
                                         </motion.div>
-                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#f4f4f5', margin: '0 0 6px' }}>Daily Alerts Active! 🎉</h3>
+                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#f4f4f5', margin: '0 0 4px' }}>Daily Alerts Active! 🎉</h3>
                                         <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>Your daily emails are now scheduled</p>
                                     </div>
 
+                                    {/* Email + time info */}
                                     <div style={{
-                                        background: 'rgba(168,85,247,0.08)',
-                                        border: '1px solid rgba(168,85,247,0.2)',
-                                        borderRadius: '12px', padding: '14px 16px',
-                                        marginBottom: '20px',
+                                        background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)',
+                                        borderRadius: '12px', padding: '14px 16px', marginBottom: '14px',
                                     }}>
-                                        <p style={{ fontSize: '11px', color: '#71717a', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Subscribed Email</p>
-                                        <p style={{ fontSize: '14px', color: '#c084fc', fontWeight: 600, margin: 0 }}>{subscribedEmail}</p>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                            <span style={{ fontSize: '11px', color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Subscribed Email</span>
+                                        </div>
+                                        <p style={{ fontSize: '14px', color: '#c084fc', fontWeight: 600, margin: '0 0 10px' }}>{subscribedEmail}</p>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div>
+                                                <span style={{ fontSize: '11px', color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: '2px' }}>Daily at</span>
+                                                <span style={{ fontSize: '18px', color: '#a78bfa', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>{subscribedTime} IST</span>
+                                            </div>
+                                            <button onClick={() => { setEmailModalStep('time'); setNotifError(''); }} style={{
+                                                padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
+                                                border: '1px solid rgba(168,85,247,0.2)', background: 'transparent',
+                                                color: '#71717a', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+                                            }}>Change time</button>
+                                        </div>
                                     </div>
 
+                                    {/* What you get */}
                                     <div style={{
-                                        background: 'rgba(0,0,0,0.2)',
-                                        borderRadius: '10px', padding: '12px 14px',
-                                        marginBottom: '20px',
+                                        background: 'rgba(0,0,0,0.2)', borderRadius: '10px',
+                                        padding: '12px 14px', marginBottom: '16px',
                                     }}>
-                                        <p style={{ fontSize: '12px', color: '#52525b', margin: '0 0 6px', fontWeight: 600 }}>What you'll receive each day:</p>
-                                        {['🎯 Your specific task for the day', '🤖 AI-written personalized guidance', '💡 A motivational thought crafted just for you'].map(t => (
-                                            <p key={t} style={{ fontSize: '12px', color: '#71717a', margin: '3px 0' }}>{t}</p>
+                                        <p style={{ fontSize: '11px', color: '#52525b', margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>What you'll receive each day</p>
+                                        {[
+                                            '🎯 Your specific task for the day',
+                                            '🤖 AI-written personalized guidance',
+                                            '💡 A motivational thought crafted just for you',
+                                        ].map(t => (
+                                            <p key={t} style={{ fontSize: '12px', color: '#71717a', margin: '4px 0' }}>{t}</p>
                                         ))}
                                     </div>
 
+                                    {notifMessage && (
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(168,85,247,0.08)', color: '#c084fc', fontSize: '12px', marginBottom: '12px' }}>
+                                            <Sparkles size={13} /><span>{notifMessage}</span>
+                                        </div>
+                                    )}
                                     {notifError && (
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: '12px', marginBottom: '14px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: '12px', marginBottom: '12px' }}>
                                             <AlertCircle size={13} /><span>{notifError}</span>
                                         </div>
                                     )}
@@ -1087,8 +1216,7 @@ export default function WorkspacePage() {
                                             background: 'rgba(239,68,68,0.05)',
                                             color: '#f87171', fontSize: '13px', cursor: notifLoading ? 'not-allowed' : 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                                            fontFamily: "'Inter', sans-serif",
-                                            transition: 'all 0.2s',
+                                            fontFamily: "'Inter', sans-serif", transition: 'all 0.2s',
                                         }}
                                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
                                         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; }}
@@ -1098,6 +1226,7 @@ export default function WorkspacePage() {
                                     </button>
                                 </>
                             )}
+
                         </motion.div>
                     </motion.div>
                 )}

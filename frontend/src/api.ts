@@ -237,14 +237,26 @@ export const sendEmailOTP = async (userId: string, email: string) => {
     return response.json();
 };
 
-export const verifyEmailOTP = async (userId: string, email: string, code: string, sessionId?: string | null) => {
+export const verifyEmailOTP = async (userId: string, email: string, code: string, sessionId?: string | null, preferredTime?: string) => {
     const response = await secureFetch(`${API_BASE_URL}/notifications/email/verify-otp`, {
         method: 'POST',
-        body: JSON.stringify({ user_id: userId, email, code, session_id: sessionId }),
+        body: JSON.stringify({ user_id: userId, email, code, session_id: sessionId, preferred_time: preferredTime || '08:00' }),
     });
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.detail || 'OTP verification failed. Please try again.');
+    }
+    return response.json();
+};
+
+export const updateNotificationTime = async (userId: string, preferredTime: string) => {
+    const response = await secureFetch(`${API_BASE_URL}/notifications/email/update-time`, {
+        method: 'PUT',
+        body: JSON.stringify({ user_id: userId, preferred_time: preferredTime }),
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to update notification time.');
     }
     return response.json();
 };

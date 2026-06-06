@@ -37,3 +37,7 @@ google-api-python-client
 
 # Email Notifications (Resend API)
 resend
+
+# Scheduler + Timezone support
+APScheduler==3.10.4
+pytz
