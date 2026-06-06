@@ -97,6 +97,15 @@ export default function WorkspacePage() {
     const [isNotifEnabled, setIsNotifEnabled] = useState(false);
     const [subscribedEmail, setSubscribedEmail] = useState<string | null>(null);
     const [subscribedTime, setSubscribedTime] = useState<string>('08:00');
+    // Timezone — auto-detected from user's browser
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+    const tzOffset = (() => {
+        try {
+            const s = new Intl.DateTimeFormat('en', { timeZoneName: 'short', timeZone: userTimezone }).formatToParts(new Date());
+            return s.find(p => p.type === 'timeZoneName')?.value || userTimezone;
+        } catch { return userTimezone; }
+    })();
+    const [notifTimezone, setNotifTimezone] = useState(userTimezone);
 
     // Auth validation — check both token AND user_id
     useEffect(() => {
@@ -121,6 +130,9 @@ export default function WorkspacePage() {
                     if (res.preferred_time) {
                         setSubscribedTime(res.preferred_time);
                         setNotifPreferredTime(res.preferred_time);
+                    }
+                    if (res.preferred_timezone) {
+                        setNotifTimezone(res.preferred_timezone);
                     }
                     if (res.enabled) setEmailModalStep('subscribed');
                 })
@@ -379,7 +391,7 @@ export default function WorkspacePage() {
         setNotifLoading(true);
         setNotifError('');
         try {
-            await verifyEmailOTP(userId, notifEmail.trim(), notifOtp.trim(), activeSessionId, notifPreferredTime);
+            await verifyEmailOTP(userId, notifEmail.trim(), notifOtp.trim(), activeSessionId, notifPreferredTime, notifTimezone);
             setSubscribedEmail(notifEmail.trim());
             setIsNotifEnabled(true);
             // Go to time picker step
@@ -396,9 +408,9 @@ export default function WorkspacePage() {
         setNotifLoading(true);
         setNotifError('');
         try {
-            await updateNotificationTime(userId, notifPreferredTime);
+            await updateNotificationTime(userId, notifPreferredTime, notifTimezone);
             setSubscribedTime(notifPreferredTime);
-            setNotifMessage(`Daily alerts set for ${notifPreferredTime} IST every day!`);
+            setNotifMessage(`Daily alerts set for ${notifPreferredTime} ${tzOffset} every day!`);
             setEmailModalStep('subscribed');
         } catch (err: any) {
             setNotifError(err.message || 'Failed to save time. Please try again.');
@@ -1109,7 +1121,7 @@ export default function WorkspacePage() {
                                             onBlur={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.2)'; }}
                                         />
                                         <p style={{ fontSize: '11px', color: '#52525b', margin: '6px 0 0', textAlign: 'center' }}>
-                                            India Standard Time (IST) · UTC+5:30
+                                            {userTimezone} &nbsp;·&nbsp; {tzOffset}
                                         </p>
                                     </div>
 

@@ -413,8 +413,7 @@ def get_today_task_for_user(user, db):
                 day_entry = d
                 break
 
-        # Fallback: array index (safe only for full 7-day plans that already
-        # passed the date-range check, so we know the index is valid)
+        # Fallback: array index
         if not day_entry and len(days) == 7 and today_idx < len(days):
             day_entry = days[today_idx]
 
@@ -447,24 +446,27 @@ def get_today_task_for_user(user, db):
 def run_daily_email_scheduler():
     """
     Called every minute by APScheduler.
-    Sends daily task email to users whose preferred_notification_time == current IST HH:MM
-    and who haven't received today's email yet.
+
+    TIMEZONE-AWARE: For each subscribed user, checks the current time
+    in THEIR OWN timezone (preferred_notification_timezone). Sends email
+    if HH:MM in their local timezone matches preferred_notification_time.
+
+    Works for users worldwide — India, Europe, US, anywhere.
     """
     from .database import SessionLocal
     from .models import User
 
-    now_ist          = datetime.now(IST)
-    current_time_str = now_ist.strftime("%H:%M")
-    today_date_str   = now_ist.strftime("%Y-%m-%d")
+    now_utc = datetime.now(pytz.utc)
 
     db = SessionLocal()
     try:
+        # Fetch ALL notification-enabled users (we check per-user timezone below)
         users = (
             db.query(User)
             .filter(
                 User.email_notifications_enabled == 1,
                 User.notification_email.isnot(None),
-                User.preferred_notification_time == current_time_str,
+                User.preferred_notification_time.isnot(None),
             )
             .all()
         )
@@ -472,35 +474,65 @@ def run_daily_email_scheduler():
         if not users:
             return
 
-        logger.info(f"[Scheduler] {current_time_str} IST — {len(users)} user(s) to notify")
-
+        sent_count = 0
         for user in users:
-            if user.last_daily_email_date == today_date_str:
-                logger.info(f"[Scheduler] Already sent today to {user.notification_email}, skipping")
+            try:
+                # Resolve user's timezone (fallback: IST)
+                tz_str = user.preferred_notification_timezone or "Asia/Kolkata"
+                try:
+                    user_tz = pytz.timezone(tz_str)
+                except Exception:
+                    user_tz = IST
+                    tz_str = "Asia/Kolkata"
+
+                # Current HH:MM in user's local timezone
+                now_local      = now_utc.astimezone(user_tz)
+                user_time_str  = now_local.strftime("%H:%M")
+                today_date_str = now_local.strftime("%Y-%m-%d")
+
+                # Does it match their preferred time?
+                if user_time_str != user.preferred_notification_time:
+                    continue
+
+                # Already sent today (in user's local date)?
+                if user.last_daily_email_date == today_date_str:
+                    logger.info(f"[Scheduler] Already sent today ({today_date_str}) to {user.notification_email}")
+                    continue
+
+                logger.info(
+                    f"[Scheduler] Sending to {user.notification_email} "
+                    f"at {user_time_str} {tz_str}"
+                )
+
+                task_info = get_today_task_for_user(user, db)
+                if not task_info:
+                    continue  # week finished or no active plan
+
+                success = send_daily_task_email(
+                    to_email=user.notification_email,
+                    user_name=user.name or "there",
+                    day_label=task_info["day_label"],
+                    task_title=task_info["task_title"],
+                    task_description=task_info["task_description"],
+                    week_number=task_info["week_number"],
+                    week_label=task_info.get("week_label", ""),
+                    session_focus=task_info["session_focus"],
+                    week_theme=task_info["week_theme"],
+                )
+
+                if success:
+                    user.last_daily_email_date = today_date_str
+                    db.commit()
+                    sent_count += 1
+
+            except Exception as user_err:
+                logger.error(f"[Scheduler] Error for user {user.id}: {user_err}")
                 continue
 
-            task_info = get_today_task_for_user(user, db)
-            if not task_info:
-                # Covers: no active plan, week finished, day not in plan
-                continue
-
-            success = send_daily_task_email(
-                to_email=user.notification_email,
-                user_name=user.name or "there",
-                day_label=task_info["day_label"],
-                task_title=task_info["task_title"],
-                task_description=task_info["task_description"],
-                week_number=task_info["week_number"],
-                week_label=task_info.get("week_label", ""),
-                session_focus=task_info["session_focus"],
-                week_theme=task_info["week_theme"],
-            )
-
-            if success:
-                user.last_daily_email_date = today_date_str
-                db.commit()
+        if sent_count:
+            logger.info(f"[Scheduler] Done — {sent_count} email(s) sent this minute")
 
     except Exception as e:
-        logger.error(f"[Scheduler] Error: {e}")
+        logger.error(f"[Scheduler] Fatal error: {e}")
     finally:
         db.close()

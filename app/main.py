@@ -785,14 +785,16 @@ class VerifyEmailOTPRequest(BaseModel):
     email: str
     code: str
     session_id: Optional[str] = None
-    preferred_time: str = "08:00"  # HH:MM in IST — user's chosen notification time
+    preferred_time: str = "08:00"          # HH:MM in user's local timezone
+    preferred_timezone: str = "Asia/Kolkata"  # IANA timezone string
 
 class StopEmailNotificationRequest(BaseModel):
     user_id: str
 
 class UpdateNotificationTimeRequest(BaseModel):
     user_id: str
-    preferred_time: str  # HH:MM format in IST
+    preferred_time: str                       # HH:MM in user's local timezone
+    preferred_timezone: str = "Asia/Kolkata"  # IANA timezone string
 
 
 @app.post("/notifications/email/send-otp", tags=["notifications"])
@@ -857,24 +859,29 @@ async def verify_email_otp(
     if user.email_otp_code.strip() != payload.code.strip():
         raise HTTPException(status_code=400, detail="Incorrect OTP. Please check your email and try again.")
 
-    # Enable notifications with preferred time
+    # Enable notifications with preferred time + timezone
     user.notification_email = payload.email
     user.email_notifications_enabled = 1
     user.email_otp_code = None
     user.email_otp_expiry = None
-    # Validate and save preferred notification time (HH:MM)
     import re as _re
     pt = payload.preferred_time.strip()
-    if _re.match(r'^([01]\d|2[0-3]):[0-5]\d$', pt):
-        user.preferred_notification_time = pt
-    else:
-        user.preferred_notification_time = "08:00"
+    user.preferred_notification_time = pt if _re.match(r'^([01]\d|2[0-3]):[0-5]\d$', pt) else "08:00"
+    # Validate IANA timezone string
+    import pytz as _pytz
+    tz = payload.preferred_timezone.strip()
+    try:
+        _pytz.timezone(tz)
+        user.preferred_notification_timezone = tz
+    except Exception:
+        user.preferred_notification_timezone = "Asia/Kolkata"
     db.commit()
 
     return {
         "message": "Email verified! Daily notifications are now active.",
         "notification_email": payload.email,
         "preferred_time": user.preferred_notification_time,
+        "preferred_timezone": user.preferred_notification_timezone,
     }
 
 
@@ -915,6 +922,7 @@ async def get_email_notification_status(
         "enabled": bool(user.email_notifications_enabled),
         "notification_email": user.notification_email,
         "preferred_time": user.preferred_notification_time or "08:00",
+        "preferred_timezone": user.preferred_notification_timezone or "Asia/Kolkata",
     }
 
 
@@ -924,8 +932,9 @@ async def update_notification_time(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update the user's preferred daily notification time (HH:MM IST)."""
+    """Update the user's preferred daily notification time and timezone."""
     import re as _re
+    import pytz as _pytz
     if payload.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
     user = db.query(User).filter(User.id == payload.user_id).first()
@@ -935,8 +944,18 @@ async def update_notification_time(
     if not _re.match(r'^([01]\d|2[0-3]):[0-5]\d$', pt):
         raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM (e.g. 08:00)")
     user.preferred_notification_time = pt
+    tz = payload.preferred_timezone.strip()
+    try:
+        _pytz.timezone(tz)
+        user.preferred_notification_timezone = tz
+    except Exception:
+        user.preferred_notification_timezone = "Asia/Kolkata"
     db.commit()
-    return {"message": f"Notification time updated to {pt} IST.", "preferred_time": pt}
+    return {
+        "message": f"Notification time updated to {pt} ({user.preferred_notification_timezone}).",
+        "preferred_time": pt,
+        "preferred_timezone": user.preferred_notification_timezone,
+    }
 
 
 # ============================================================

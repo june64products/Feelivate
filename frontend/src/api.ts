@@ -237,10 +237,17 @@ export const sendEmailOTP = async (userId: string, email: string) => {
     return response.json();
 };
 
-export const verifyEmailOTP = async (userId: string, email: string, code: string, sessionId?: string | null, preferredTime?: string) => {
+export const verifyEmailOTP = async (userId: string, email: string, code: string, sessionId?: string | null, preferredTime?: string, preferredTimezone?: string) => {
     const response = await secureFetch(`${API_BASE_URL}/notifications/email/verify-otp`, {
         method: 'POST',
-        body: JSON.stringify({ user_id: userId, email, code, session_id: sessionId, preferred_time: preferredTime || '08:00' }),
+        body: JSON.stringify({
+            user_id: userId,
+            email,
+            code,
+            session_id: sessionId,
+            preferred_time: preferredTime || '08:00',
+            preferred_timezone: preferredTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+        }),
     });
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
@@ -249,10 +256,14 @@ export const verifyEmailOTP = async (userId: string, email: string, code: string
     return response.json();
 };
 
-export const updateNotificationTime = async (userId: string, preferredTime: string) => {
+export const updateNotificationTime = async (userId: string, preferredTime: string, preferredTimezone?: string) => {
     const response = await secureFetch(`${API_BASE_URL}/notifications/email/update-time`, {
         method: 'PUT',
-        body: JSON.stringify({ user_id: userId, preferred_time: preferredTime }),
+        body: JSON.stringify({
+            user_id: userId,
+            preferred_time: preferredTime,
+            preferred_timezone: preferredTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+        }),
     });
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
@@ -273,7 +284,7 @@ export const stopEmailNotifications = async (userId: string) => {
 export const getEmailNotificationStatus = async (userId: string) => {
     const response = await secureFetch(`${API_BASE_URL}/notifications/email/status?user_id=${userId}`);
     if (!response.ok) throw new Error('Failed to fetch notification status');
-    return response.json() as Promise<{ enabled: boolean; notification_email: string | null; preferred_time?: string }>;
+    return response.json() as Promise<{ enabled: boolean; notification_email: string | null; preferred_time?: string; preferred_timezone?: string }>;
 };
 
 

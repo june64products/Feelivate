@@ -150,6 +150,7 @@ def init_db():
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_otp_code VARCHAR;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_otp_expiry TIMESTAMP;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_notification_time VARCHAR DEFAULT '08:00';",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_notification_timezone VARCHAR DEFAULT 'Asia/Kolkata';",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_daily_email_date VARCHAR;",
                 # ── sessions ──
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;",
@@ -184,6 +185,7 @@ def init_db():
                 "ALTER TABLE users ADD COLUMN email_otp_code VARCHAR;",
                 "ALTER TABLE users ADD COLUMN email_otp_expiry TIMESTAMP;",
                 "ALTER TABLE users ADD COLUMN preferred_notification_time VARCHAR DEFAULT '08:00';",
+                "ALTER TABLE users ADD COLUMN preferred_notification_timezone VARCHAR DEFAULT 'Asia/Kolkata';",
                 "ALTER TABLE users ADD COLUMN last_daily_email_date VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN updated_at TIMESTAMP;",
                 "ALTER TABLE sessions ADD COLUMN history TEXT;",
