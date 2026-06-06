@@ -222,6 +222,50 @@ export const stopGoogleCalendarSync = async (userId: string) => {
 };
 
 // ============================================================
+// EMAIL NOTIFICATIONS
+// ============================================================
+
+export const sendEmailOTP = async (userId: string, email: string) => {
+    const response = await secureFetch(`${API_BASE_URL}/notifications/email/send-otp`, {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId, email }),
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'OTP bhejne me failure. Try again.');
+    }
+    return response.json();
+};
+
+export const verifyEmailOTP = async (userId: string, email: string, code: string, sessionId?: string | null) => {
+    const response = await secureFetch(`${API_BASE_URL}/notifications/email/verify-otp`, {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId, email, code, session_id: sessionId }),
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'OTP verify nahi hua. Try again.');
+    }
+    return response.json();
+};
+
+export const stopEmailNotifications = async (userId: string) => {
+    const response = await secureFetch(`${API_BASE_URL}/notifications/email/stop`, {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId }),
+    });
+    if (!response.ok) throw new Error('Failed to stop email notifications');
+    return response.json();
+};
+
+export const getEmailNotificationStatus = async (userId: string) => {
+    const response = await secureFetch(`${API_BASE_URL}/notifications/email/status?user_id=${userId}`);
+    if (!response.ok) throw new Error('Failed to fetch notification status');
+    return response.json() as Promise<{ enabled: boolean; notification_email: string | null }>;
+};
+
+
+// ============================================================
 // VOICE TRANSCRIPTION
 // ============================================================
 

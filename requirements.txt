@@ -34,3 +34,6 @@ python-jose[cryptography]
 google-auth
 google-auth-oauthlib
 google-api-python-client
+
+# Email Notifications (Resend API)
+resend

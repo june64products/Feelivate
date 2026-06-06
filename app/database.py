@@ -145,6 +145,10 @@ def init_db():
                 # ── users ──
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_refresh_token VARCHAR;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_sync_enabled INTEGER DEFAULT 0;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email VARCHAR;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_notifications_enabled INTEGER DEFAULT 0;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_otp_code VARCHAR;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_otp_expiry TIMESTAMP;",
                 # ── sessions ──
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS history TEXT;",
@@ -173,6 +177,10 @@ def init_db():
             migrations = [
                 "ALTER TABLE users ADD COLUMN google_refresh_token VARCHAR;",
                 "ALTER TABLE users ADD COLUMN calendar_sync_enabled INTEGER DEFAULT 0;",
+                "ALTER TABLE users ADD COLUMN notification_email VARCHAR;",
+                "ALTER TABLE users ADD COLUMN email_notifications_enabled INTEGER DEFAULT 0;",
+                "ALTER TABLE users ADD COLUMN email_otp_code VARCHAR;",
+                "ALTER TABLE users ADD COLUMN email_otp_expiry TIMESTAMP;",
                 "ALTER TABLE sessions ADD COLUMN updated_at TIMESTAMP;",
                 "ALTER TABLE sessions ADD COLUMN history TEXT;",
                 "ALTER TABLE sessions ADD COLUMN vision TEXT;",

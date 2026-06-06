@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, PanelLeft, AlertCircle, Sparkles } from 'lucide-react';
+import { Calendar, PanelLeft, AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X } from 'lucide-react';
 import {
     chatWithMentor,
     approvePlan,
@@ -12,6 +12,10 @@ import {
     getTodayEmotion,
     type TodayEmotionResult,
     getLocalISODate,
+    sendEmailOTP,
+    verifyEmailOTP,
+    stopEmailNotifications,
+    getEmailNotificationStatus,
 } from '../api';
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
@@ -80,11 +84,21 @@ export default function WorkspacePage() {
     const [syncMessage, setSyncMessage] = useState("");
     const [syncError, setSyncError] = useState("");
 
+    // Email Notification states
+    const [showEmailModal, setShowEmailModal] = useState(false);
+    const [emailModalStep, setEmailModalStep] = useState<'email' | 'otp' | 'subscribed'>('email');
+    const [notifEmail, setNotifEmail] = useState('');
+    const [notifOtp, setNotifOtp] = useState('');
+    const [notifLoading, setNotifLoading] = useState(false);
+    const [notifMessage, setNotifMessage] = useState('');
+    const [notifError, setNotifError] = useState('');
+    const [isNotifEnabled, setIsNotifEnabled] = useState(false);
+    const [subscribedEmail, setSubscribedEmail] = useState<string | null>(null);
+
     // Auth validation — check both token AND user_id
     useEffect(() => {
         const token = localStorage.getItem('access_token');
         if (!userId || !token) {
-            // Clear any stale data
             localStorage.removeItem('user_id');
             localStorage.removeItem('active_session_id');
             navigate('/login');
@@ -96,6 +110,14 @@ export default function WorkspacePage() {
             getTodayEmotion(userId, storedSession ?? undefined)
                 .then(res => { if (res.has_entry) setTodayEmotion(res.entry); })
                 .catch(() => { });
+            // Load email notification status
+            getEmailNotificationStatus(userId)
+                .then(res => {
+                    setIsNotifEnabled(res.enabled);
+                    setSubscribedEmail(res.notification_email);
+                    if (res.enabled) setEmailModalStep('subscribed');
+                })
+                .catch(() => {});
         }
     }, [userId, navigate]);
 
@@ -315,6 +337,72 @@ export default function WorkspacePage() {
         }
     };
 
+    // ── Email Notification Handlers ──
+    const handleOpenEmailModal = () => {
+        setNotifError('');
+        setNotifMessage('');
+        setNotifOtp('');
+        if (isNotifEnabled) {
+            setEmailModalStep('subscribed');
+        } else {
+            setEmailModalStep('email');
+            setNotifEmail('');
+        }
+        setShowEmailModal(true);
+    };
+
+    const handleSendOTP = async () => {
+        if (!userId || !notifEmail.trim()) return;
+        setNotifLoading(true);
+        setNotifError('');
+        setNotifMessage('');
+        try {
+            await sendEmailOTP(userId, notifEmail.trim());
+            setNotifMessage('OTP bhej diya! Apna inbox check karein.');
+            setEmailModalStep('otp');
+        } catch (err: any) {
+            setNotifError(err.message || 'OTP bhejne me error aaya.');
+        } finally {
+            setNotifLoading(false);
+        }
+    };
+
+    const handleVerifyOTP = async () => {
+        if (!userId || !notifOtp.trim()) return;
+        setNotifLoading(true);
+        setNotifError('');
+        try {
+            const res = await verifyEmailOTP(userId, notifEmail.trim(), notifOtp.trim(), activeSessionId);
+            setSubscribedEmail(notifEmail.trim());
+            setIsNotifEnabled(true);
+            setNotifMessage(res.message || 'Email verified! Daily notifications start ho gayi.');
+            setEmailModalStep('subscribed');
+        } catch (err: any) {
+            setNotifError(err.message || 'OTP galat hai. Dobara check karein.');
+        } finally {
+            setNotifLoading(false);
+        }
+    };
+
+    const handleStopEmailNotifications = async () => {
+        if (!userId) return;
+        setNotifLoading(true);
+        setNotifError('');
+        try {
+            await stopEmailNotifications(userId);
+            setIsNotifEnabled(false);
+            setSubscribedEmail(null);
+            setEmailModalStep('email');
+            setNotifEmail('');
+            setNotifMessage('');
+            setTimeout(() => setShowEmailModal(false), 800);
+        } catch (err: any) {
+            setNotifError(err.message || 'Notifications stop nahi hui. Try again.');
+        } finally {
+            setNotifLoading(false);
+        }
+    };
+
     return (
         <div style={{
             display: 'flex',
@@ -496,6 +584,42 @@ export default function WorkspacePage() {
                                 >
                                     <Calendar size={12} />
                                     Calendar Sync
+                                </button>
+                            )}
+
+                            {/* Email Notification Bell Button */}
+                            {isPlanApproved && (
+                                <button
+                                    onClick={handleOpenEmailModal}
+                                    title={isNotifEnabled ? `Subscribed: ${subscribedEmail}` : 'Get daily email alerts'}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        padding: '6px 14px', borderRadius: '20px',
+                                        border: isNotifEnabled
+                                            ? '1px solid rgba(168,85,247,0.4)'
+                                            : '1px solid rgba(168,85,247,0.2)',
+                                        background: isNotifEnabled
+                                            ? 'rgba(168,85,247,0.15)'
+                                            : 'rgba(168,85,247,0.05)',
+                                        color: '#c084fc', fontSize: '12.5px',
+                                        fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
+                                        fontFamily: "'Inter', sans-serif",
+                                        position: 'relative',
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(168,85,247,0.2)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = isNotifEnabled ? 'rgba(168,85,247,0.15)' : 'rgba(168,85,247,0.05)'; }}
+                                >
+                                    {isNotifEnabled ? <Bell size={12} /> : <Bell size={12} />}
+                                    Daily Alerts
+                                    {isNotifEnabled && (
+                                        <span style={{
+                                            width: '6px', height: '6px', borderRadius: '50%',
+                                            background: '#a855f7',
+                                            display: 'inline-block',
+                                            boxShadow: '0 0 6px rgba(168,85,247,0.8)',
+                                            animation: 'pulse 1.5s ease-in-out infinite',
+                                        }} />
+                                    )}
                                 </button>
                             )}
                             {/* Pricing */}
@@ -699,6 +823,285 @@ export default function WorkspacePage() {
                     </AnimatePresence>
                 </>)} {/* end view === 'chat' */}
             </div>
+
+            {/* ── Email Notification Modal ── */}
+            <AnimatePresence>
+                {showEmailModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', inset: 0,
+                            background: 'rgba(0,0,0,0.7)',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            zIndex: 300, padding: '20px',
+                        }}
+                        onClick={(e) => { if (e.target === e.currentTarget) setShowEmailModal(false); }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                            style={{
+                                width: '100%', maxWidth: '400px',
+                                background: 'linear-gradient(135deg, #1a0a2e, #18181b)',
+                                border: '1px solid rgba(168,85,247,0.25)',
+                                borderRadius: '20px', padding: '28px',
+                                boxShadow: '0 0 60px rgba(168,85,247,0.15), 0 24px 60px rgba(0,0,0,0.6)',
+                                position: 'relative',
+                            }}
+                        >
+                            {/* Close button */}
+                            <button
+                                onClick={() => setShowEmailModal(false)}
+                                style={{
+                                    position: 'absolute', top: '16px', right: '16px',
+                                    width: '28px', height: '28px', borderRadius: '8px',
+                                    border: 'none', background: 'rgba(255,255,255,0.05)',
+                                    color: '#71717a', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}
+                            ><X size={14} /></button>
+
+                            {/* Step: Email Input */}
+                            {emailModalStep === 'email' && (
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                                        <div style={{
+                                            width: '38px', height: '38px', borderRadius: '10px',
+                                            background: 'rgba(168,85,247,0.15)',
+                                            border: '1px solid rgba(168,85,247,0.3)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}><Bell size={18} color="#c084fc" /></div>
+                                        <div>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>Daily Task Alerts</h3>
+                                            <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>Har din ka task seedha inbox me</p>
+                                        </div>
+                                    </div>
+
+                                    <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, marginBottom: '20px' }}>
+                                        Apna email daalein. Hum aapko <strong style={{ color: '#c084fc' }}>Monday se Sunday</strong> tak,
+                                        har roz ek personalized task + AI motivation message bhejenge.
+                                    </p>
+
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{ fontSize: '11px', fontWeight: 600, color: '#71717a', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                            Email Address
+                                        </label>
+                                        <div style={{ position: 'relative' }}>
+                                            <Mail size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#52525b' }} />
+                                            <input
+                                                type="email"
+                                                value={notifEmail}
+                                                onChange={(e) => setNotifEmail(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSendOTP()}
+                                                placeholder="you@example.com"
+                                                style={{
+                                                    width: '100%', padding: '11px 12px 11px 36px',
+                                                    borderRadius: '10px', boxSizing: 'border-box',
+                                                    border: '1px solid rgba(168,85,247,0.2)',
+                                                    background: 'rgba(0,0,0,0.3)',
+                                                    color: '#f4f4f5', fontSize: '14px', outline: 'none',
+                                                    transition: 'border-color 0.2s',
+                                                    fontFamily: "'Inter', sans-serif",
+                                                }}
+                                                onFocus={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.5)'; }}
+                                                onBlur={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.2)'; }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {notifError && (
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: '12px', marginBottom: '14px' }}>
+                                            <AlertCircle size={13} /><span>{notifError}</span>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handleSendOTP}
+                                        disabled={notifLoading || !notifEmail.trim()}
+                                        style={{
+                                            width: '100%', padding: '12px',
+                                            borderRadius: '12px', border: 'none',
+                                            background: notifLoading || !notifEmail.trim()
+                                                ? 'rgba(168,85,247,0.3)'
+                                                : 'linear-gradient(135deg, #a855f7, #6366f1)',
+                                            color: '#fff', fontSize: '14px', fontWeight: 600,
+                                            cursor: notifLoading || !notifEmail.trim() ? 'not-allowed' : 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            transition: 'all 0.2s',
+                                            fontFamily: "'Inter', sans-serif",
+                                        }}
+                                    >
+                                        {notifLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Mail size={15} />}
+                                        {notifLoading ? 'Bhej rahe hain...' : 'Send Verification Code'}
+                                    </button>
+                                </>
+                            )}
+
+                            {/* Step: OTP Input */}
+                            {emailModalStep === 'otp' && (
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                                        <div style={{
+                                            width: '38px', height: '38px', borderRadius: '10px',
+                                            background: 'rgba(168,85,247,0.15)',
+                                            border: '1px solid rgba(168,85,247,0.3)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}><Mail size={18} color="#c084fc" /></div>
+                                        <div>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>Code Verify Karein</h3>
+                                            <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>{notifEmail}</p>
+                                        </div>
+                                    </div>
+
+                                    {notifMessage && (
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(168,85,247,0.08)', color: '#c084fc', fontSize: '12px', marginBottom: '14px' }}>
+                                            <Sparkles size={13} /><span>{notifMessage}</span>
+                                        </div>
+                                    )}
+
+                                    <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, marginBottom: '16px' }}>
+                                        Humne <strong style={{ color: '#c084fc' }}>{notifEmail}</strong> par ek 6-digit code bheja hai.
+                                        Woh code niche daalein:
+                                    </p>
+
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <input
+                                            type="text"
+                                            value={notifOtp}
+                                            onChange={(e) => setNotifOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleVerifyOTP()}
+                                            placeholder="_ _ _ _ _ _"
+                                            maxLength={6}
+                                            style={{
+                                                width: '100%', padding: '14px 16px', boxSizing: 'border-box',
+                                                borderRadius: '12px',
+                                                border: '1px solid rgba(168,85,247,0.25)',
+                                                background: 'rgba(0,0,0,0.3)',
+                                                color: '#c084fc', fontSize: '28px', fontWeight: 700,
+                                                outline: 'none', textAlign: 'center',
+                                                letterSpacing: '12px',
+                                                fontFamily: "'Courier New', monospace",
+                                            }}
+                                            onFocus={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.6)'; }}
+                                            onBlur={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.25)'; }}
+                                        />
+                                    </div>
+
+                                    {notifError && (
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: '12px', marginBottom: '14px' }}>
+                                            <AlertCircle size={13} /><span>{notifError}</span>
+                                        </div>
+                                    )}
+
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button
+                                            onClick={() => { setEmailModalStep('email'); setNotifError(''); setNotifMessage(''); }}
+                                            style={{
+                                                flex: 1, padding: '11px', borderRadius: '10px',
+                                                border: '1px solid rgba(168,85,247,0.2)', background: 'transparent',
+                                                color: '#71717a', fontSize: '13px', cursor: 'pointer',
+                                                fontFamily: "'Inter', sans-serif",
+                                            }}
+                                        >← Wapas</button>
+                                        <button
+                                            onClick={handleVerifyOTP}
+                                            disabled={notifLoading || notifOtp.length < 6}
+                                            style={{
+                                                flex: 2, padding: '11px', borderRadius: '10px', border: 'none',
+                                                background: notifLoading || notifOtp.length < 6
+                                                    ? 'rgba(168,85,247,0.3)'
+                                                    : 'linear-gradient(135deg, #a855f7, #6366f1)',
+                                                color: '#fff', fontSize: '13px', fontWeight: 600,
+                                                cursor: notifLoading || notifOtp.length < 6 ? 'not-allowed' : 'pointer',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                                fontFamily: "'Inter', sans-serif",
+                                            }}
+                                        >
+                                            {notifLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
+                                            {notifLoading ? 'Verify ho raha hai...' : 'Verify & Subscribe'}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Step: Subscribed */}
+                            {emailModalStep === 'subscribed' && (
+                                <>
+                                    <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                                        <motion.div
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            transition={{ type: 'spring', damping: 12, stiffness: 200 }}
+                                            style={{
+                                                width: '56px', height: '56px', borderRadius: '16px',
+                                                background: 'linear-gradient(135deg, rgba(168,85,247,0.3), rgba(99,102,241,0.2))',
+                                                border: '1px solid rgba(168,85,247,0.4)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                margin: '0 auto 16px',
+                                            }}
+                                        >
+                                            <Bell size={24} color="#c084fc" />
+                                        </motion.div>
+                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#f4f4f5', margin: '0 0 6px' }}>Daily Alerts Active! 🎉</h3>
+                                        <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>Notifications ja rahi hain</p>
+                                    </div>
+
+                                    <div style={{
+                                        background: 'rgba(168,85,247,0.08)',
+                                        border: '1px solid rgba(168,85,247,0.2)',
+                                        borderRadius: '12px', padding: '14px 16px',
+                                        marginBottom: '20px',
+                                    }}>
+                                        <p style={{ fontSize: '11px', color: '#71717a', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Subscribed Email</p>
+                                        <p style={{ fontSize: '14px', color: '#c084fc', fontWeight: 600, margin: 0 }}>{subscribedEmail}</p>
+                                    </div>
+
+                                    <div style={{
+                                        background: 'rgba(0,0,0,0.2)',
+                                        borderRadius: '10px', padding: '12px 14px',
+                                        marginBottom: '20px',
+                                    }}>
+                                        <p style={{ fontSize: '12px', color: '#52525b', margin: '0 0 6px', fontWeight: 600 }}>Aapko milega:</p>
+                                        {['🎯 Har din ka specific task', '🤖 AI-written personalized message', '💡 Sirf aapke liye motivation thought'].map(t => (
+                                            <p key={t} style={{ fontSize: '12px', color: '#71717a', margin: '3px 0' }}>{t}</p>
+                                        ))}
+                                    </div>
+
+                                    {notifError && (
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: '12px', marginBottom: '14px' }}>
+                                            <AlertCircle size={13} /><span>{notifError}</span>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handleStopEmailNotifications}
+                                        disabled={notifLoading}
+                                        style={{
+                                            width: '100%', padding: '11px', borderRadius: '10px',
+                                            border: '1px solid rgba(239,68,68,0.25)',
+                                            background: 'rgba(239,68,68,0.05)',
+                                            color: '#f87171', fontSize: '13px', cursor: notifLoading ? 'not-allowed' : 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                            fontFamily: "'Inter', sans-serif",
+                                            transition: 'all 0.2s',
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; }}
+                                    >
+                                        {notifLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <BellOff size={14} />}
+                                        {notifLoading ? 'Band kar rahe hain...' : 'Stop Notifications'}
+                                    </button>
+                                </>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Calendar Sync Modal */}
             <AnimatePresence>

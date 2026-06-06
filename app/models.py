@@ -20,6 +20,12 @@ class User(Base):
     google_refresh_token = Column(String, nullable=True)
     calendar_sync_enabled = Column(Integer, default=0) # 0: disabled, 1: enabled
 
+    # Email Notifications integration
+    notification_email = Column(String, nullable=True)
+    email_notifications_enabled = Column(Integer, default=0) # 0: disabled, 1: enabled
+    email_otp_code = Column(String, nullable=True)
+    email_otp_expiry = Column(DateTime, nullable=True)
+
 class Session(Base):
     __tablename__ = "sessions"
 

@@ -27,6 +27,7 @@ from .models import (
     DailyCheckin, UserStreak, VoiceJournal, WeeklyReport,
 )
 from .calendar_service import calendar_service
+from .email_service import generate_otp, send_verification_email, send_daily_task_email
 from .security import get_password_hash, verify_password, create_access_token, decode_access_token
 from .observability import REQUESTS_TOTAL
 
@@ -739,6 +740,138 @@ async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db
     background_tasks.add_task(calendar_service.clear_roadmap_events, user.google_refresh_token)
     
     return {"message": "Notifications disabled and future events being removed."}
+
+
+# ============================================================
+# EMAIL NOTIFICATIONS
+# ============================================================
+
+class SendEmailOTPRequest(BaseModel):
+    user_id: str
+    email: str
+
+class VerifyEmailOTPRequest(BaseModel):
+    user_id: str
+    email: str
+    code: str
+    session_id: Optional[str] = None
+
+class StopEmailNotificationRequest(BaseModel):
+    user_id: str
+
+
+@app.post("/notifications/email/send-otp", tags=["notifications"])
+async def send_email_otp(
+    payload: SendEmailOTPRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """User ke email par 6-digit OTP bhejta hai, DB me store karta hai."""
+    from datetime import datetime, timedelta
+
+    if payload.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    user = db.query(User).filter(User.id == payload.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    otp = generate_otp()
+    expiry = datetime.utcnow() + timedelta(minutes=10)
+
+    user.email_otp_code = otp
+    user.email_otp_expiry = expiry
+    db.commit()
+
+    success = send_verification_email(
+        to_email=payload.email,
+        otp=otp,
+        user_name=user.name or "there",
+    )
+
+    if not success:
+        raise HTTPException(status_code=500, detail="Email bhejne me error aaya. Please try again.")
+
+    return {"message": "Verification code sent! Please check your inbox.", "expires_in": 600}
+
+
+@app.post("/notifications/email/verify-otp", tags=["notifications"])
+async def verify_email_otp(
+    payload: VerifyEmailOTPRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """OTP verify karta hai, success par email notifications enable karta hai."""
+    from datetime import datetime
+
+    if payload.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    user = db.query(User).filter(User.id == payload.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.email_otp_code or not user.email_otp_expiry:
+        raise HTTPException(status_code=400, detail="Pehle OTP send karein.")
+
+    # Check expiry
+    if datetime.utcnow() > user.email_otp_expiry:
+        raise HTTPException(status_code=400, detail="OTP expire ho gaya hai. Please dobara bhejein.")
+
+    # Check code
+    if user.email_otp_code.strip() != payload.code.strip():
+        raise HTTPException(status_code=400, detail="Galat OTP code. Please check karein.")
+
+    # Enable notifications
+    user.notification_email = payload.email
+    user.email_notifications_enabled = 1
+    user.email_otp_code = None
+    user.email_otp_expiry = None
+    db.commit()
+
+    return {
+        "message": "Email verified! Daily notifications enable ho gayi hain.",
+        "notification_email": payload.email,
+    }
+
+
+@app.post("/notifications/email/stop", tags=["notifications"])
+async def stop_email_notifications(
+    payload: StopEmailNotificationRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """User ke email notifications disable karta hai."""
+    if payload.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    user = db.query(User).filter(User.id == payload.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.email_notifications_enabled = 0
+    user.notification_email = None
+    db.commit()
+
+    return {"message": "Email notifications band kar di gayi hain."}
+
+
+@app.get("/notifications/email/status", tags=["notifications"])
+async def get_email_notification_status(
+    user_id: str,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Returns current email notification subscription status for the user."""
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "enabled": bool(user.email_notifications_enabled),
+        "notification_email": user.notification_email,
+    }
 
 
 # ============================================================
