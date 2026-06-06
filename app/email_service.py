@@ -317,7 +317,7 @@ def send_daily_task_email(
 
 
 # ── Scheduler: send daily emails at user's preferred time ────────────────────
-def get_today_task_for_user(user, db) -> dict | None:
+def get_today_task_for_user(user, db):
     """
     Find the user's active session, parse today's task from the week plan.
     Returns dict with task_title, task_description, week_number, session_focus, week_theme or None.
@@ -344,12 +344,27 @@ def get_today_task_for_user(user, db) -> dict | None:
         if not days:
             return None
 
-        # Today's weekday: Monday=0 ... Sunday=6
-        today_idx = datetime.now(IST).weekday()
-        if today_idx >= len(days):
-            today_idx = len(days) - 1
+        now_ist = datetime.now(IST)
+        today_idx = now_ist.weekday()
+        today_day_name = now_ist.strftime("%A").lower() # e.g. "thursday"
+        today_short = now_ist.strftime("%a").lower()    # e.g. "thu"
 
-        day_entry = days[today_idx]
+        # Try to find the task by matching the day name string
+        day_entry = None
+        for d in days:
+            day_str = str(d.get("day", "")).lower()
+            if today_day_name in day_str or today_short in day_str:
+                day_entry = d
+                break
+
+        # Fallback to index mapping if text match fails (only safe for full 7-day plans)
+        if not day_entry:
+            if len(days) == 7 and today_idx < len(days):
+                day_entry = days[today_idx]
+            else:
+                logger.warning(f"Could not reliably find a task for {today_day_name} in user {user.id}'s plan.")
+                return None
+
         task_title = day_entry.get("action") or day_entry.get("title") or "Today's Task"
         task_desc = day_entry.get("description") or day_entry.get("details") or ""
 
