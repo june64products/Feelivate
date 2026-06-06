@@ -273,7 +273,7 @@ export const stopEmailNotifications = async (userId: string) => {
 export const getEmailNotificationStatus = async (userId: string) => {
     const response = await secureFetch(`${API_BASE_URL}/notifications/email/status?user_id=${userId}`);
     if (!response.ok) throw new Error('Failed to fetch notification status');
-    return response.json() as Promise<{ enabled: boolean; notification_email: string | null }>;
+    return response.json() as Promise<{ enabled: boolean; notification_email: string | null; preferred_time?: string }>;
 };
 
 
