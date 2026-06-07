@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { login, signup } from '../api';
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
@@ -16,35 +16,86 @@ const GoogleIcon = () => (
 
 // ─── Feature Cards ────────────────────────────────────────────────────────────
 const features = [
-  { icon: '🎯', title: 'Goal Intake', desc: 'Tell me your goal once — I ask just 3 smart questions to understand you completely.' },
-  { icon: '📅', title: 'Weekly Action Plans', desc: 'Get a hyper-specific 7-day roadmap. No vague advice — exact tasks, times, and steps.' },
-  { icon: '🔒', title: 'Plan Locking', desc: "Once you approve a week, it's locked in. Commitment is the strategy." },
-  { icon: '📈', title: 'Progressive Growth', desc: 'Every week builds on the last. Week 4 you is not Week 1 you.' },
+  { title: 'Goal Intake', desc: 'Tell me your goal once — I ask just 3 smart questions to understand you completely.' },
+  { title: 'Weekly Action Plans', desc: 'Get a hyper-specific 7-day roadmap. No vague advice — exact tasks, times, and steps.' },
+  { title: 'Plan Locking', desc: "Once you approve a week, it's locked in. Commitment is the strategy." },
 ];
 
-// ─── Shared input style ───────────────────────────────────────────────────────
+// ─── Shared input style — Swiss aesthetic ─────────────────────────────────────
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '13px 14px 13px 42px',
-  borderRadius: '12px',
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: '#1a1a1a',
-  color: '#ffffff',
+  padding: '15px 14px 15px 46px',
+  borderRadius: '4px',
+  border: '1px solid rgba(17,17,17,0.15)',
+  background: '#ffffff',
+  color: '#111111',
   fontSize: '14px',
-  fontWeight: 400,
+  fontWeight: 500,
   outline: 'none',
   transition: 'border-color 0.2s, box-shadow 0.2s',
-  fontFamily: "'Inter', system-ui, sans-serif",
+  fontFamily: "'Satoshi', 'Inter', system-ui, sans-serif",
   letterSpacing: '-0.01em',
 };
 
 // ─── Label style ─────────────────────────────────────────────────────────────
 const labelStyle: React.CSSProperties = {
-  fontSize: '11.5px',
-  fontWeight: 600,
-  color: '#9c9a92',
-  letterSpacing: '0.06em',
+  fontSize: '11px',
+  fontWeight: 700,
+  color: '#838282',
+  letterSpacing: '0.12em',
   textTransform: 'uppercase',
+  fontFamily: "'Satoshi', 'Inter', system-ui, sans-serif",
+};
+
+// ─── Echo Stack Component ────────────────────────────────────────────────────
+const EchoStack = ({ text, fontSize = '11vw' }: { text: string; fontSize?: string }) => {
+  const layers = [
+    { color: '#d9d9d9', offset: -0.16 },
+    { color: '#d1d1d1', offset: -0.12 },
+    { color: '#c9c9c9', offset: -0.08 },
+    { color: '#bfbfbf', offset: -0.04 },
+  ];
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      {layers.map((layer, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: `${layer.offset}em`,
+            color: layer.color,
+            fontSize,
+            fontFamily: "'Clash Display', 'Inter', sans-serif",
+            fontWeight: 700,
+            lineHeight: 0.9,
+            letterSpacing: '-0.05em',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {text}
+        </span>
+      ))}
+      <span
+        style={{
+          position: 'relative',
+          color: '#111111',
+          fontSize,
+          fontFamily: "'Clash Display', 'Inter', sans-serif",
+          fontWeight: 700,
+          lineHeight: 0.9,
+          letterSpacing: '-0.05em',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {text}
+      </span>
+    </div>
+  );
 };
 
 export default function LoginPage() {
@@ -53,7 +104,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showGooglePopup, setShowGooglePopup] = useState(false);
-  const [tryGlow, setTryGlow] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({ email: '', password: '', name: '' });
@@ -84,106 +134,110 @@ export default function LoginPage() {
     }
   };
 
-  const handleTryFeelivate = () => {
-    setTryGlow(true);
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => setTryGlow(false), 2400);
-  };
-
-  // ─── FONT: Inter everywhere ─────────────────────────────────────────────────
-  const pageFont = "'Inter', system-ui, -apple-system, sans-serif";
+  const clashDisplay = "'Clash Display', 'Inter', system-ui, sans-serif";
+  const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
 
   return (
     <div style={{
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      background: '#0d0d0d',
-      fontFamily: pageFont,          // ← Inter for ENTIRE page
-      color: '#ffffff',
+      background: '#f2f2f2',
+      fontFamily: satoshi,
+      color: '#111111',
       overflow: 'hidden',
     }}>
 
-      {/* ── Top Navigation ─────────────────────────────────────────────────── */}
-      <nav style={{
+      {/* ══════════════════════════════════════════════════════════════════════
+          NAVIGATION — Sticky, Swiss minimalist
+          ══════════════════════════════════════════════════════════════════════ */}
+      <nav className="login-nav" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 40px',
-        height: '64px',
-        background: '#0d0d0d',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        padding: '0 48px',
+        height: '80px',
+        background: 'rgba(242, 242, 242, 0.9)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         position: 'sticky',
         top: 0,
         zIndex: 100,
         flexShrink: 0,
+        borderBottom: '1px solid rgba(30,30,30,0.06)',
       }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            width: '34px', height: '34px',
-            background: '#ffffff',
+            width: '38px', height: '38px',
+            background: '#111111',
             borderRadius: '8px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden', flexShrink: 0,
           }}>
-            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '26px', height: '26px', objectFit: 'contain' }} />
+            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '28px', height: '28px', objectFit: 'contain', filter: 'invert(1)' }} />
           </div>
-          {/* Same font as rest of page — Inter Bold */}
-          <span style={{ fontWeight: 700, fontSize: '16px', letterSpacing: '-0.03em', color: '#fff', fontFamily: pageFont }}>
+          <span style={{
+            fontWeight: 700, fontSize: '18px', letterSpacing: '-0.03em',
+            color: '#111111', fontFamily: clashDisplay,
+          }}>
             Feelivate
           </span>
         </div>
 
         {/* Nav Links */}
-        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-          {['Meet Feelivate', 'Platform', 'Solutions', 'Pricing', 'Resources', 'Contact sales'].map(item => (
+        <div className="nav-links-swiss" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {['Platform', 'Solutions', 'About', 'Pricing'].map(item => (
             <button key={item} style={{
               background: 'transparent', border: 'none',
-              color: '#9c9a92', fontSize: '13px', fontWeight: 500,
-              padding: '6px 11px', borderRadius: '8px', cursor: 'pointer',
-              transition: 'color 0.18s, background 0.18s',
-              fontFamily: pageFont,
+              color: '#111111', fontSize: '14px', fontWeight: 500,
+              padding: '8px 14px', borderRadius: '4px', cursor: 'pointer',
+              transition: 'color 120ms ease, background 120ms ease',
+              fontFamily: satoshi, textTransform: 'uppercase',
+              letterSpacing: '0.04em',
             }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#9c9a92'; e.currentTarget.style.background = 'transparent'; }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#b6b5b5'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#111111'; }}
             >{item}</button>
           ))}
         </div>
 
-        {/* Try Feelivate CTA */}
+        {/* Contact CTA — pill button */}
         <button
-          onClick={handleTryFeelivate}
           style={{
-            background: '#ffffff', color: '#0d0d0d', border: 'none',
-            padding: '9px 20px', borderRadius: '10px',
+            background: 'transparent', color: '#111111',
+            border: '1px solid #1e1e1e',
+            padding: '10px 24px', borderRadius: '100px',
             fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-            transition: 'opacity 0.18s, transform 0.15s',
-            fontFamily: pageFont, letterSpacing: '-0.02em',
+            transition: 'background 180ms ease, color 180ms ease',
+            fontFamily: satoshi, letterSpacing: '0.02em',
+            textTransform: 'uppercase',
           }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = '0.87'; e.currentTarget.style.transform = 'scale(1.03)'; }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#1e1e1e'; e.currentTarget.style.color = '#f2f2f2'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#111111'; }}
         >
-          Try Feelivate
+          Contact
         </button>
       </nav>
 
-      {/* ── Main Split ─────────────────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          MAIN SPLIT — Login left, Marketing right
+          ══════════════════════════════════════════════════════════════════════ */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
 
-        {/* ── LEFT: Sign-In Form ─────────────────────────────────────────── */}
+        {/* ── LEFT: Sign-In Form ──────────────────────────────────────────── */}
         <div style={{
-          flex: 1,
+          flex: '0 0 48%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '60px 40px',
-          background: '#0d0d0d',
+          padding: '60px 48px',
+          background: '#f2f2f2',
         }}>
-          <div ref={formRef} style={{ width: '100%', maxWidth: '400px' }}>
+          <div ref={formRef} style={{ width: '100%', maxWidth: '380px' }}>
 
-            {/* Heading — animated when toggling */}
-            <div style={{ marginBottom: '32px' }}>
+            {/* Heading */}
+            <div style={{ marginBottom: '36px' }}>
               <AnimatePresence mode="wait">
                 <motion.h1
                   key={isLogin ? 'login-h' : 'signup-h'}
@@ -192,13 +246,13 @@ export default function LoginPage() {
                   exit={{ opacity: 0, y: 10 }}
                   transition={{ duration: 0.22, ease: 'easeOut' }}
                   style={{
-                    fontSize: '30px', fontWeight: 700,
-                    letterSpacing: '-0.035em', color: '#ffffff',
-                    marginBottom: '8px', lineHeight: 1.18,
-                    fontFamily: pageFont,
+                    fontSize: '36px', fontWeight: 700,
+                    letterSpacing: '-0.05em', color: '#111111',
+                    marginBottom: '12px', lineHeight: 0.95,
+                    fontFamily: clashDisplay,
                   }}
                 >
-                  {isLogin ? 'Sign in to Feelivate' : 'Create your account'}
+                  {isLogin ? 'Sign in' : 'Create account'}
                 </motion.h1>
               </AnimatePresence>
               <AnimatePresence mode="wait">
@@ -208,10 +262,13 @@ export default function LoginPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
                   transition={{ duration: 0.2, ease: 'easeOut', delay: 0.04 }}
-                  style={{ fontSize: '13.5px', color: '#9c9a92', lineHeight: 1.6, fontFamily: pageFont }}
+                  style={{
+                    fontSize: '14px', color: '#838282', lineHeight: 1.6,
+                    fontFamily: satoshi, fontWeight: 500,
+                  }}
                 >
                   {isLogin
-                    ? 'Your AI mentor is waiting. Pick up right where you left off.'
+                    ? 'Your AI mentor is waiting. Pick up where you left off.'
                     : 'Start your journey. Your first weekly plan is one conversation away.'}
                 </motion.p>
               </AnimatePresence>
@@ -225,154 +282,143 @@ export default function LoginPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   style={{
-                    padding: '12px 16px', borderRadius: '10px',
-                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                    color: '#f87171', fontSize: '13px', marginBottom: '18px',
-                    fontFamily: pageFont,
+                    padding: '12px 16px', borderRadius: '4px',
+                    background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                    color: '#dc2626', fontSize: '13px', marginBottom: '18px',
+                    fontFamily: satoshi,
                   }}
                 >{error}</motion.div>
               )}
             </AnimatePresence>
 
-            {/* Glow wrapper */}
-            <motion.div
-              animate={tryGlow ? {
-                boxShadow: [
-                  '0 0 0px 0px rgba(217,119,87,0)',
-                  '0 0 32px 14px rgba(217,119,87,0.32)',
-                  '0 0 52px 22px rgba(217,119,87,0.18)',
-                  '0 0 0px 0px rgba(217,119,87,0)',
-                ],
-              } : { boxShadow: '0 0 0px 0px rgba(217,119,87,0)' }}
-              transition={{ duration: 2.2, ease: 'easeInOut' }}
-              style={{ borderRadius: '16px' }}
-            >
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-                {/* ── Name field (signup only) — smooth height + fade ───── */}
-                <AnimatePresence initial={false}>
-                  {!isLogin && (
-                    <motion.div
-                      key="name-field"
-                      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                      animate={{ opacity: 1, height: 'auto', marginBottom: 0 }}
-                      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                      transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
-                      style={{ overflow: 'hidden' }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingBottom: '2px' }}>
-                        <label style={labelStyle}>Full Name</label>
-                        <div style={{ position: 'relative' }}>
-                          <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#555', display: 'flex' }}>
-                            <UserIcon size={15} />
-                          </span>
-                          <input
-                            type="text" name="name" required placeholder="John Doe"
-                            value={formData.name} onChange={handleInputChange}
-                            style={inputStyle}
-                            onFocus={e => { e.currentTarget.style.borderColor = '#d97757'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,119,87,0.13)'; }}
-                            onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
-                          />
-                        </div>
+              {/* Name field (signup only) */}
+              <AnimatePresence initial={false}>
+                {!isLogin && (
+                  <motion.div
+                    key="name-field"
+                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    animate={{ opacity: 1, height: 'auto', marginBottom: 0 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingBottom: '2px' }}>
+                      <label style={labelStyle}>Full Name</label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#b6b5b5', display: 'flex' }}>
+                          <UserIcon size={16} />
+                        </span>
+                        <input
+                          type="text" name="name" required placeholder="John Doe"
+                          value={formData.name} onChange={handleInputChange}
+                          style={inputStyle}
+                          onFocus={e => { e.currentTarget.style.borderColor = '#111111'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(17,17,17,0.08)'; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = 'rgba(17,17,17,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                        />
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                {/* Email */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={labelStyle}>Email</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#555', display: 'flex' }}>
-                      <Mail size={15} />
-                    </span>
-                    <input
-                      type="email" name="email" required placeholder="Enter your email"
-                      value={formData.email} onChange={handleInputChange}
-                      style={inputStyle}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#d97757'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,119,87,0.13)'; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
-                    />
-                  </div>
+              {/* Email */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={labelStyle}>Email</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#b6b5b5', display: 'flex' }}>
+                    <Mail size={16} />
+                  </span>
+                  <input
+                    type="email" name="email" required placeholder="you@example.com"
+                    value={formData.email} onChange={handleInputChange}
+                    style={inputStyle}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#111111'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(17,17,17,0.08)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(17,17,17,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  />
                 </div>
+              </div>
 
-                {/* Password */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={labelStyle}>Password</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#555', display: 'flex' }}>
-                      <Lock size={15} />
-                    </span>
-                    <input
-                      type="password" name="password" required placeholder="Enter password"
-                      value={formData.password} onChange={handleInputChange}
-                      style={inputStyle}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#d97757'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,119,87,0.13)'; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
-                    />
-                  </div>
+              {/* Password */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={labelStyle}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#b6b5b5', display: 'flex' }}>
+                    <Lock size={16} />
+                  </span>
+                  <input
+                    type="password" name="password" required placeholder="Enter password"
+                    value={formData.password} onChange={handleInputChange}
+                    style={inputStyle}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#111111'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(17,17,17,0.08)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(17,17,17,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  />
                 </div>
+              </div>
 
-                {/* Continue button */}
-                <button
-                  type="submit" disabled={loading}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    background: '#ffffff', color: '#0d0d0d', border: 'none',
-                    padding: '14px', borderRadius: '12px',
-                    fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-                    transition: 'opacity 0.18s, transform 0.15s',
-                    marginTop: '4px', opacity: loading ? 0.7 : 1,
-                    fontFamily: pageFont, letterSpacing: '-0.02em',
-                  }}
-                  onMouseEnter={e => { if (!loading) { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'scale(1.01)'; } }}
-                  onMouseLeave={e => { if (!loading) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; } }}
-                >
-                  {loading
-                    ? <Loader2 size={16} className="animate-spin" />
-                    : <>{isLogin ? 'Continue' : 'Create Account'}<ArrowRight size={15} /></>
-                  }
-                </button>
+              {/* Continue button — sharp, Swiss */}
+              <button
+                type="submit" disabled={loading}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  background: '#111111', color: '#f2f2f2', border: 'none',
+                  padding: '15px', borderRadius: '4px',
+                  fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'opacity 180ms ease, transform 150ms ease',
+                  marginTop: '4px', opacity: loading ? 0.6 : 1,
+                  fontFamily: satoshi, letterSpacing: '0.02em',
+                  textTransform: 'uppercase',
+                }}
+                onMouseEnter={e => { if (!loading) { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1.01)'; } }}
+                onMouseLeave={e => { if (!loading) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; } }}
+              >
+                {loading
+                  ? <Loader2 size={16} className="animate-spin" />
+                  : <>{isLogin ? 'Continue' : 'Create Account'}<ArrowRight size={15} /></>
+                }
+              </button>
 
-                {/* Divider */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '2px 0' }}>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                  <span style={{ fontSize: '11.5px', color: '#555', fontWeight: 500, fontFamily: pageFont }}>OR</span>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                </div>
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '4px 0' }}>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(17,17,17,0.1)' }} />
+                <span style={{ fontSize: '11px', color: '#b6b5b5', fontWeight: 700, fontFamily: satoshi, letterSpacing: '0.1em' }}>OR</span>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(17,17,17,0.1)' }} />
+              </div>
 
-                {/* Google */}
-                <button
-                  type="button" onClick={() => setShowGooglePopup(true)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                    background: 'transparent', color: '#ffffff',
-                    border: '1px solid rgba(255,255,255,0.14)',
-                    padding: '13px', borderRadius: '12px',
-                    fontSize: '14px', fontWeight: 600, cursor: 'pointer',
-                    transition: 'background 0.18s, border-color 0.18s',
-                    fontFamily: pageFont,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.26)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'; }}
-                >
-                  <GoogleIcon />
-                  Continue with Google
-                </button>
-              </form>
-            </motion.div>
+              {/* Google */}
+              <button
+                type="button" onClick={() => setShowGooglePopup(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                  background: '#ffffff', color: '#111111',
+                  border: '1px solid rgba(17,17,17,0.15)',
+                  padding: '14px', borderRadius: '4px',
+                  fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                  transition: 'background 180ms ease, border-color 180ms ease',
+                  fontFamily: satoshi,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f9f9f9'; e.currentTarget.style.borderColor = 'rgba(17,17,17,0.3)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = 'rgba(17,17,17,0.15)'; }}
+              >
+                <GoogleIcon />
+                Continue with Google
+              </button>
+            </form>
 
             {/* Toggle Login / Signup */}
-            <p style={{ marginTop: '26px', textAlign: 'center', fontSize: '13.5px', color: '#9c9a92', fontFamily: pageFont }}>
+            <p style={{ marginTop: '28px', textAlign: 'center', fontSize: '13.5px', color: '#838282', fontFamily: satoshi }}>
               {isLogin ? 'New to Feelivate? ' : 'Already have an account? '}
               <button
                 onClick={() => { setIsLogin(!isLogin); setError(''); }}
                 style={{
-                  background: 'transparent', border: 'none', color: '#d97757',
+                  background: 'transparent', border: 'none', color: '#111111',
                   fontWeight: 700, cursor: 'pointer', padding: 0,
-                  fontSize: '13.5px', transition: 'opacity 0.18s', fontFamily: pageFont,
+                  fontSize: '13.5px', transition: 'opacity 180ms ease', fontFamily: satoshi,
+                  textDecoration: 'underline', textUnderlineOffset: '3px',
                 }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '0.72'}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.6'}
                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}
               >
                 {isLogin ? 'Create account' : 'Log in here'}
@@ -381,187 +427,372 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* ── RIGHT: Brand Panel ─────────────────────────────────────────── */}
-        <div className="brand-panel" style={{
-          flex: 1,
-          background: 'radial-gradient(ellipse at 35% 45%, #1a1208 0%, #111 45%, #0d0d0d 100%)',
-          borderLeft: '1px solid rgba(255,255,255,0.06)',
+        {/* ── RIGHT: Marketing / Brand Panel ──────────────────────────────── */}
+        <div className="brand-panel-swiss" style={{
+          flex: '0 0 52%',
+          background: '#ebebeb',
+          borderLeft: '1px solid rgba(30,30,30,0.08)',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '40px 48px',
+          padding: '60px 64px',
           position: 'relative',
           overflow: 'hidden',
         }}>
 
-          {/* Ambient glow blobs */}
+          {/* Vertical hairline accent */}
           <div style={{
-            position: 'absolute', top: '8%', right: '8%',
-            width: '280px', height: '280px',
-            background: 'radial-gradient(circle, rgba(217,119,87,0.09) 0%, transparent 70%)',
-            filter: 'blur(60px)', pointerEvents: 'none',
-          }} />
-          <div style={{
-            position: 'absolute', bottom: '12%', left: '-8%',
-            width: '220px', height: '220px',
-            background: 'radial-gradient(circle, rgba(217,119,87,0.06) 0%, transparent 70%)',
-            filter: 'blur(80px)', pointerEvents: 'none',
+            position: 'absolute', top: '0', left: '50%',
+            width: '1px', height: '80px',
+            background: 'rgba(30,30,30,0.1)',
           }} />
 
-          {/* ── THE CARD — centered, contained ───────────────────────────── */}
-          <div style={{
-            position: 'relative',
-            zIndex: 2,
-            width: '100%',
-            maxWidth: '440px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.09)',
-            borderRadius: '24px',
-            padding: '36px 32px',
-            backdropFilter: 'blur(12px)',
-          }}>
+          {/* Echo Hero Text */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.77, 0, 0.175, 1] }}
+            style={{ marginBottom: '48px', textAlign: 'center' }}
+          >
+            <EchoStack text="EVOLVE" fontSize="clamp(60px, 9vw, 140px)" />
+          </motion.div>
 
-            {/* Badge */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
-              background: 'rgba(217,119,87,0.1)',
-              border: '1px solid rgba(217,119,87,0.22)',
-              borderRadius: '100px',
-              padding: '4px 12px',
-              marginBottom: '22px',
-            }}>
-              <div style={{
-                width: '18px', height: '18px', background: '#fff',
-                borderRadius: '4px', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', overflow: 'hidden',
-              }}>
-                <img src="/logo_2_backup.png" alt="" style={{ width: '13px', height: '13px', objectFit: 'contain' }} />
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#d97757', letterSpacing: '0.06em', fontFamily: pageFont }}>
-                FEELIVATE AI MENTOR
-              </span>
-            </div>
-
-            {/* Headline */}
+          {/* Tagline */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' }}
+            style={{ textAlign: 'center', maxWidth: '460px', marginBottom: '48px' }}
+          >
             <h2 style={{
-              fontSize: '28px', fontWeight: 700,
-              lineHeight: 1.2, letterSpacing: '-0.03em',
-              color: '#ffffff', marginBottom: '10px',
-              fontFamily: pageFont,
+              fontSize: 'clamp(22px, 2.8vw, 36px)', fontWeight: 700,
+              lineHeight: 1.1, letterSpacing: '-0.05em',
+              color: '#111111', marginBottom: '16px',
+              fontFamily: clashDisplay,
             }}>
-              Tell me your goal once.<br />
-              <span style={{ color: '#d97757' }}>I'll build the rest.</span>
+              Your AI-Powered
+              <br />
+              <span style={{
+                fontStyle: 'italic',
+                fontFamily: "'Georgia', 'Times New Roman', serif",
+                fontWeight: 400,
+                color: '#838282',
+              }}>
+                Behavioral
+              </span>
+              {' '}Mentor
             </h2>
-            <p style={{ fontSize: '13.5px', color: '#9c9a92', lineHeight: 1.65, marginBottom: '28px', fontFamily: pageFont }}>
-              Not a to-do list. A commitment. Hyper-specific weekly plans, locked in, week after week.
-            </p>
-
-            {/* Feature Cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-              {features.map((f, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: 16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.09 + 0.15, duration: 0.36, ease: 'easeOut' }}
-                  style={{
-                    display: 'flex', alignItems: 'flex-start', gap: '12px',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: '12px', padding: '13px 15px',
-                    transition: 'background 0.18s, border-color 0.18s',
-                  }}
-                  whileHover={{ backgroundColor: 'rgba(255,255,255,0.07)', borderColor: 'rgba(217,119,87,0.22)' } as any}
-                >
-                  <span style={{ fontSize: '19px', lineHeight: 1, flexShrink: 0, marginTop: '1px' }}>{f.icon}</span>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '2px', letterSpacing: '-0.01em', fontFamily: pageFont }}>{f.title}</div>
-                    <div style={{ fontSize: '12px', color: '#9c9a92', lineHeight: 1.55, fontFamily: pageFont }}>{f.desc}</div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Quote */}
-            <div style={{
-              padding: '15px 18px',
-              background: 'rgba(217,119,87,0.07)',
-              border: '1px solid rgba(217,119,87,0.18)',
-              borderRadius: '12px',
+            <p style={{
+              fontSize: '15px', color: '#838282', lineHeight: 1.7,
+              fontFamily: satoshi, fontWeight: 500,
             }}>
-              <p style={{ fontSize: '12.5px', color: '#c8c3bb', lineHeight: 1.6, fontStyle: 'italic', margin: 0, fontFamily: pageFont }}>
-                "Week 1 is easy. Week 4 is who you become."
-              </p>
-              <p style={{ fontSize: '10.5px', color: '#d97757', fontWeight: 700, marginTop: '7px', marginBottom: 0, letterSpacing: '0.07em', fontFamily: pageFont }}>
-                — FEELIVATE PHILOSOPHY
-              </p>
-            </div>
+              Not a to-do list. Not vague advice. A hyper-specific weekly commitment engine
+              that builds who you become — week after week.
+            </p>
+          </motion.div>
+
+          {/* Feature Cards — 3-column grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '20px',
+            width: '100%',
+            maxWidth: '540px',
+            marginBottom: '40px',
+          }}>
+            {features.map((f, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 + 0.3, duration: 0.5, ease: 'easeOut' }}
+                style={{
+                  padding: '24px 18px',
+                  border: '1px solid rgba(30,30,30,0.1)',
+                  borderRadius: '2px',
+                  background: 'transparent',
+                  transition: 'background 250ms ease, border-color 250ms ease',
+                  cursor: 'default',
+                }}
+                onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
+                  e.currentTarget.style.background = '#ffffff';
+                  e.currentTarget.style.borderColor = 'rgba(30,30,30,0.2)';
+                }}
+                onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'rgba(30,30,30,0.1)';
+                }}
+              >
+                {/* Geometric icon container */}
+                <div style={{
+                  width: '40px', height: '40px',
+                  border: '1px solid rgba(30,30,30,0.15)',
+                  borderRadius: '2px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: '16px',
+                  transition: 'transform 300ms ease',
+                }}>
+                  <ArrowUpRight size={16} color="#111111" />
+                </div>
+                <h3 style={{
+                  fontSize: '14px', fontWeight: 700,
+                  color: '#111111', marginBottom: '8px',
+                  letterSpacing: '-0.02em',
+                  fontFamily: clashDisplay,
+                }}>{f.title}</h3>
+                <p style={{
+                  fontSize: '12px', color: '#838282',
+                  lineHeight: 1.55, fontFamily: satoshi,
+                  fontWeight: 500,
+                }}>{f.desc}</p>
+              </motion.div>
+            ))}
           </div>
+
+          {/* Philosophy Quote */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
+            style={{
+              textAlign: 'center',
+              maxWidth: '400px',
+              padding: '20px 0',
+              borderTop: '1px solid rgba(30,30,30,0.08)',
+            }}
+          >
+            <p style={{
+              fontSize: '16px', color: '#b6b5b5', lineHeight: 1.6,
+              fontStyle: 'italic', fontFamily: "'Georgia', 'Times New Roman', serif",
+              marginBottom: '8px',
+            }}>
+              "Week 1 is easy. Week 4 is who you become."
+            </p>
+            <p style={{
+              fontSize: '10px', color: '#111111', fontWeight: 700,
+              letterSpacing: '0.15em', fontFamily: satoshi,
+              textTransform: 'uppercase',
+            }}>
+              — Feelivate Philosophy
+            </p>
+          </motion.div>
         </div>
       </div>
 
-      {/* ── Google Coming Soon Popup ─────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          FOOTER — Deep dark theme
+          ══════════════════════════════════════════════════════════════════════ */}
+      <footer style={{
+        background: '#1e1e1e',
+        padding: '48px 48px 32px',
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        flexShrink: 0,
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '32px',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          marginBottom: '40px',
+        }}>
+          {/* Brand Column */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{
+                width: '32px', height: '32px',
+                background: '#f2f2f2',
+                borderRadius: '6px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden',
+              }}>
+                <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
+              </div>
+              <span style={{
+                fontWeight: 700, fontSize: '16px',
+                color: 'rgba(246,246,246,0.9)',
+                fontFamily: clashDisplay, letterSpacing: '-0.03em',
+              }}>
+                Feelivate
+              </span>
+            </div>
+            <p style={{
+              fontSize: '13px', color: 'rgba(246,246,246,0.5)',
+              lineHeight: 1.65, fontFamily: satoshi, fontWeight: 500,
+              marginBottom: '16px',
+            }}>
+              AI-powered behavioral transformation.
+              Hyper-specific weekly plans that build who you become.
+            </p>
+            <p style={{
+              fontSize: '11px', color: 'rgba(246,246,246,0.35)',
+              fontFamily: satoshi, fontWeight: 500,
+              letterSpacing: '0.05em',
+            }}>
+              By <span style={{ fontWeight: 700, color: 'rgba(246,246,246,0.6)', letterSpacing: '0.08em' }}>JUNE64</span>
+            </p>
+          </div>
+
+          {/* Navigation */}
+          <div>
+            <h4 style={{
+              fontSize: '11px', fontWeight: 700,
+              color: 'rgba(246,246,246,0.4)',
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              marginBottom: '16px', fontFamily: satoshi,
+            }}>Navigation</h4>
+            {['Platform', 'Solutions', 'Pricing', 'About'].map(item => (
+              <p key={item} style={{
+                fontSize: '13px', color: 'rgba(246,246,246,0.6)',
+                marginBottom: '10px', cursor: 'pointer',
+                transition: 'color 150ms ease', fontFamily: satoshi,
+                fontWeight: 500,
+              }}
+                onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'rgba(246,246,246,0.9)'; }}
+                onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'rgba(246,246,246,0.6)'; }}
+              >{item}</p>
+            ))}
+          </div>
+
+          {/* Company */}
+          <div>
+            <h4 style={{
+              fontSize: '11px', fontWeight: 700,
+              color: 'rgba(246,246,246,0.4)',
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              marginBottom: '16px', fontFamily: satoshi,
+            }}>Company</h4>
+            {['Careers', 'Blog', 'Press', 'Privacy Policy', 'Terms of Service'].map(item => (
+              <p key={item} style={{
+                fontSize: '13px', color: 'rgba(246,246,246,0.6)',
+                marginBottom: '10px', cursor: 'pointer',
+                transition: 'color 150ms ease', fontFamily: satoshi,
+                fontWeight: 500,
+              }}
+                onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'rgba(246,246,246,0.9)'; }}
+                onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'rgba(246,246,246,0.6)'; }}
+              >{item}</p>
+            ))}
+          </div>
+
+          {/* Contact */}
+          <div>
+            <h4 style={{
+              fontSize: '11px', fontWeight: 700,
+              color: 'rgba(246,246,246,0.4)',
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              marginBottom: '16px', fontFamily: satoshi,
+            }}>Contact</h4>
+            <p style={{ fontSize: '13px', color: 'rgba(246,246,246,0.6)', marginBottom: '10px', fontFamily: satoshi, fontWeight: 500 }}>
+              hello@feelivate.com
+            </p>
+            <p style={{ fontSize: '13px', color: 'rgba(246,246,246,0.6)', marginBottom: '10px', fontFamily: satoshi, fontWeight: 500 }}>
+              @feelivate
+            </p>
+            <p style={{ fontSize: '13px', color: 'rgba(246,246,246,0.6)', marginBottom: '10px', fontFamily: satoshi, fontWeight: 500 }}>
+              San Francisco, CA
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div style={{
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+          paddingTop: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          maxWidth: '1200px',
+          margin: '0 auto',
+        }}>
+          <p style={{
+            fontSize: '12px', color: 'rgba(246,246,246,0.35)',
+            fontFamily: satoshi, fontWeight: 500,
+          }}>
+            © 2026 Feelivate. All rights reserved.
+          </p>
+          <p style={{
+            fontSize: '12px', color: 'rgba(246,246,246,0.35)',
+            fontFamily: satoshi, fontWeight: 500,
+          }}>
+            A product of <span style={{ fontWeight: 700, color: 'rgba(246,246,246,0.55)' }}>JUNE64</span>
+          </p>
+        </div>
+      </footer>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          GOOGLE POPUP — Swiss minimal
+          ══════════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {showGooglePopup && (
           <>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowGooglePopup(false)}
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 200 }}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,0.5)', backdropFilter: 'blur(6px)', zIndex: 200 }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.88, y: 24 }}
+              initial={{ opacity: 0, scale: 0.92, y: 24 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 12 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
               transition={{ type: 'spring', stiffness: 280, damping: 22 }}
               style={{
                 position: 'fixed', top: '50%', left: '50%',
                 transform: 'translate(-50%, -50%)',
-                background: '#161616', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '20px', padding: '36px 32px',
+                background: '#f2f2f2', border: '1px solid rgba(30,30,30,0.12)',
+                borderRadius: '4px', padding: '40px 32px',
                 zIndex: 201, textAlign: 'center',
-                width: '100%', maxWidth: '350px',
-                boxShadow: '0 32px 80px rgba(0,0,0,0.55)',
-                fontFamily: pageFont,
+                width: '100%', maxWidth: '380px',
+                boxShadow: '0 32px 80px rgba(0,0,0,0.15)',
+                fontFamily: satoshi,
               }}
             >
               <button
                 onClick={() => setShowGooglePopup(false)}
                 style={{
                   position: 'absolute', top: '14px', right: '14px',
-                  background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: '8px',
-                  color: '#9c9a92', cursor: 'pointer', padding: '6px',
+                  background: 'rgba(17,17,17,0.05)', border: 'none', borderRadius: '4px',
+                  color: '#838282', cursor: 'pointer', padding: '6px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.18s',
+                  transition: 'background 180ms ease',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.14)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(17,17,17,0.1)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(17,17,17,0.05)'}
               ><X size={15} /></button>
 
               <div style={{
-                width: '52px', height: '52px', background: 'rgba(255,255,255,0.06)',
-                borderRadius: '14px', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', margin: '0 auto 18px',
+                width: '56px', height: '56px', background: '#ffffff',
+                borderRadius: '4px', border: '1px solid rgba(17,17,17,0.1)',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', margin: '0 auto 20px',
               }}>
                 <GoogleIcon />
               </div>
 
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '10px', letterSpacing: '-0.025em', fontFamily: pageFont }}>
-                Google Sign In — Coming Soon
+              <h3 style={{
+                fontSize: '22px', fontWeight: 700, color: '#111111',
+                marginBottom: '10px', letterSpacing: '-0.04em',
+                fontFamily: clashDisplay,
+              }}>
+                Coming Soon
               </h3>
-              <p style={{ fontSize: '13px', color: '#9c9a92', lineHeight: 1.65, marginBottom: '22px', fontFamily: pageFont }}>
-                We're working on Google authentication. For now, please sign in with your email and password — it takes just 30 seconds.
+              <p style={{
+                fontSize: '14px', color: '#838282', lineHeight: 1.65,
+                marginBottom: '24px', fontFamily: satoshi, fontWeight: 500,
+              }}>
+                Google authentication is on its way. For now, sign in with email and password — it takes 30 seconds.
               </p>
 
               <button
                 onClick={() => setShowGooglePopup(false)}
                 style={{
-                  width: '100%', background: '#fff', color: '#0d0d0d', border: 'none',
-                  padding: '13px', borderRadius: '12px', fontSize: '14px',
-                  fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.18s',
-                  fontFamily: pageFont, letterSpacing: '-0.02em',
+                  width: '100%', background: '#111111', color: '#f2f2f2', border: 'none',
+                  padding: '14px', borderRadius: '4px', fontSize: '14px',
+                  fontWeight: 700, cursor: 'pointer', transition: 'opacity 180ms ease',
+                  fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase',
                 }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '0.87'}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}
               >
                 Use Email Instead
@@ -571,21 +802,33 @@ export default function LoginPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Styles ──────────────────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          STYLES — Clash Display + Satoshi + Swiss reset
+          ══════════════════════════════════════════════════════════════════════ */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        @import url('https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,600,700,900&display=swap');
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', system-ui, sans-serif; }
-        input::placeholder { color: #4a4a4a !important; }
+        body { font-family: 'Satoshi', 'Inter', system-ui, sans-serif; }
+
+        input::placeholder { color: #b6b5b5 !important; }
         input { box-sizing: border-box; }
 
-        @media (max-width: 860px) {
-          .brand-panel { display: none !important; }
-          .nav-links   { display: none !important; }
+        /* Responsive */
+        @media (max-width: 960px) {
+          .brand-panel-swiss { display: none !important; }
+          .nav-links-swiss { display: none !important; }
+          footer > div:first-child {
+            grid-template-columns: 1fr 1fr !important;
+          }
         }
-        @media (max-width: 540px) {
-          nav { padding: 0 18px !important; }
+        @media (max-width: 640px) {
+          .login-nav { padding: 0 20px !important; }
+          footer { padding: 32px 20px 24px !important; }
+          footer > div:first-child {
+            grid-template-columns: 1fr !important;
+          }
         }
 
         @keyframes spin {
@@ -593,6 +836,9 @@ export default function LoginPage() {
           to   { transform: rotate(360deg); }
         }
         .animate-spin { animation: spin 0.9s linear infinite; }
+
+        /* Smooth scrolling for whole page */
+        html { scroll-behavior: smooth; }
       `}</style>
     </div>
   );

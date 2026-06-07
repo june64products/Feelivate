@@ -16,8 +16,10 @@ _gemini_configured = False
 # Final fallback is OpenAI gpt-4o (requires OPENAI_API_KEY).
 # NOTE: Use exact IDs from Groq's /models API.
 GROQ_FALLBACK_CHAIN = [
-    "llama-3.3-70b-versatile",    # 1st — Llama 70B (best quality, reliable)
-    "llama-3.1-8b-instant",       # 2nd — small, ultra-fast fallback
+    "openai/gpt-oss-120b",        # 1st — Groq's hosted OSS 120B (primary)
+    "openai/gpt-oss-20b",         # 2nd — Groq's hosted OSS 20B
+    "llama-3.3-70b-versatile",    # 3rd — Llama 70B (reliable fallback)
+    "llama-3.1-8b-instant",       # 4th — small, ultra-fast fallback
 ]
 OPENAI_FALLBACK_MODEL = "gpt-4o"
 # ─────────────────────────────────────────────────────────────────────────────
@@ -387,9 +389,11 @@ def call_with_fallback_chain(
 ) -> str:
     """
     Call LLM with auto-fallback cascade:
-      1. llama-3.3-70b-versatile  (Groq — primary, best quality)
-      2. llama-3.1-8b-instant     (Groq — fast small fallback)
-      3. gpt-4o                   (OpenAI — last resort)
+      1. openai/gpt-oss-120b      (Groq — primary reasoning model)
+      2. openai/gpt-oss-20b       (Groq — secondary reasoning model)
+      3. llama-3.3-70b-versatile  (Groq — reliable fallback)
+      4. llama-3.1-8b-instant     (Groq — fast small fallback)
+      5. gpt-4o                   (OpenAI — last resort)
     """
     tried: List[str] = []
 
