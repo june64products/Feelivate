@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { EchoStack } from '../components/layout/EchoStack';
+import { HorizontalScrollText } from '../components/layout/HorizontalScrollText';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { login, signup } from '../api';
 
@@ -140,14 +142,11 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      height: '100vh',
       display: 'flex',
       flexDirection: 'column',
       background: '#f2f2f2',
       fontFamily: satoshi,
       color: '#111111',
-      overflowY: 'auto',
-      overflowX: 'hidden',
     }}>
 
       {/* ══════════════════════════════════════════════════════════════════════
@@ -584,25 +583,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           TICKER MARQUEE
           ══════════════════════════════════════════════════════════════════════ */}
-      <div style={{
-        width: '100%',
-        overflow: 'hidden',
-        background: '#111111',
-        padding: '16px 0',
-        flexShrink: 0,
-      }}>
-        <div className="marquee-content" style={{
-          display: 'inline-block',
-          whiteSpace: 'nowrap',
-          color: '#f2f2f2',
-          fontSize: '12px',
-          fontWeight: 600,
-          fontFamily: clashDisplay,
-          letterSpacing: '0.12em',
-        }}>
-          {Array(8).fill("AI BEHAVIORAL MENTOR   //   WEEKLY ACTION PLANS   //   DAILY MAIL NOTIFICATIONS   //   STREAK TRACKING   //   WEEKLY REPORTS   //   DAILY EMOTION LOGS   //   VOICE MEMO INTAKE   //   RELENTLESS ACCOUNTABILITY   //   ").join("")}
-        </div>
-      </div>
+      <HorizontalScrollText />
 
       {/* ══════════════════════════════════════════════════════════════════════
           FOOTER — Deep dark theme
