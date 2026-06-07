@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { login, signup } from '../api';
+import PillNav from '../components/PillNav';
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
 const GoogleIcon = () => (
@@ -187,39 +188,24 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {/* Nav Links */}
-        <div className="nav-links-swiss" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {['Platform', 'Solutions', 'About', 'Pricing'].map(item => (
-            <button key={item} style={{
-              background: 'transparent', border: 'none',
-              color: '#111111', fontSize: '14px', fontWeight: 500,
-              padding: '8px 14px', borderRadius: '4px', cursor: 'pointer',
-              transition: 'color 120ms ease, background 120ms ease',
-              fontFamily: satoshi, textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#b6b5b5'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#111111'; }}
-            >{item}</button>
-          ))}
+        {/* Animated Pill Nav — GSAP rising circle animation */}
+        <div className="nav-links-swiss">
+          <PillNav
+            items={[
+              { label: 'Platform' },
+              { label: 'Solutions' },
+              { label: 'About' },
+              { label: 'Pricing' },
+              { label: 'Contact' },
+            ]}
+            baseColor="#111111"
+            pillColor="#f2f2f2"
+            pillTextColor="#111111"
+            hoveredTextColor="#f2f2f2"
+            fontFamily={satoshi}
+            ease="power3.out"
+          />
         </div>
-
-        {/* Contact CTA — pill button */}
-        <button
-          style={{
-            background: 'transparent', color: '#111111',
-            border: '1px solid #1e1e1e',
-            padding: '10px 24px', borderRadius: '100px',
-            fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-            transition: 'background 180ms ease, color 180ms ease',
-            fontFamily: satoshi, letterSpacing: '0.02em',
-            textTransform: 'uppercase',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#1e1e1e'; e.currentTarget.style.color = '#f2f2f2'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#111111'; }}
-        >
-          Contact
-        </button>
       </nav>
 
       {/* ══════════════════════════════════════════════════════════════════════
