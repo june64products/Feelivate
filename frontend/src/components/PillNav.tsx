@@ -233,6 +233,8 @@ const PillNav: React.FC<PillNavProps> = ({
                     color: hoveredTextColor,
                     willChange: 'transform, opacity',
                     pointerEvents: 'none',
+                    opacity: 0,
+                    transform: 'translateY(100%)',
                   }}
                 >
                   {item.label}
