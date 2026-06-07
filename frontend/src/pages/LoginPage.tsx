@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { EchoStack } from '../components/layout/EchoStack';
 import { HorizontalScrollText } from '../components/layout/HorizontalScrollText';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { login, signup } from '../api';
