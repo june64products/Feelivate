@@ -28,6 +28,7 @@ export const HorizontalScrollText = () => {
 
     ScrollTrigger.create({
       trigger: container,
+      scroller: '#login-container',
       start: "top top",
       end: () => `+=${getScrollAmount() * -1}`,
       pin: true,

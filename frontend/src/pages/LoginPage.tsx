@@ -139,13 +139,16 @@ export default function LoginPage() {
   const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
 
   return (
-    <div style={{
+    <div id="login-container" style={{
       minHeight: '100vh',
+      height: '100vh',
       display: 'flex',
       flexDirection: 'column',
       background: '#f2f2f2',
       fontFamily: satoshi,
       color: '#111111',
+      overflowY: 'auto',
+      overflowX: 'hidden',
     }}>
 
       {/* ══════════════════════════════════════════════════════════════════════
