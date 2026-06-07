@@ -516,51 +516,7 @@ export default function WorkspacePage() {
                 {/* Normal chat view */}
                 {view === 'chat' && (<>
 
-                    {/* Ambient Background Orbs — always visible, brightest in empty state */}
-                    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
-                        <motion.div
-                            animate={{ opacity: isEmptyState ? 0.45 : 0.18, scale: isEmptyState ? 1.1 : 1 }}
-                            transition={{ duration: 1.2, ease: 'easeInOut' }}
-                            style={{
-                                position: 'absolute',
-                                top: '-10%',
-                                left: '20%',
-                                width: '500px',
-                                height: '500px',
-                                background: 'radial-gradient(circle, rgba(192,132,252,0.25) 0%, transparent 70%)',
-                                borderRadius: '50%',
-                                filter: 'blur(60px)',
-                            }}
-                        />
-                        <motion.div
-                            animate={{ opacity: isEmptyState ? 0.35 : 0.12, scale: isEmptyState ? 1.05 : 1 }}
-                            transition={{ duration: 1.2, ease: 'easeInOut', delay: 0.1 }}
-                            style={{
-                                position: 'absolute',
-                                bottom: '-5%',
-                                right: '15%',
-                                width: '600px',
-                                height: '600px',
-                                background: 'radial-gradient(circle, rgba(129,140,248,0.2) 0%, transparent 70%)',
-                                borderRadius: '50%',
-                                filter: 'blur(80px)',
-                            }}
-                        />
-                        <motion.div
-                            animate={{ opacity: isEmptyState ? 0.25 : 0.08 }}
-                            transition={{ duration: 1.2, ease: 'easeInOut', delay: 0.2 }}
-                            style={{
-                                position: 'absolute',
-                                top: '40%',
-                                left: '60%',
-                                width: '300px',
-                                height: '300px',
-                                background: 'radial-gradient(circle, rgba(201,100,66,0.2) 0%, transparent 70%)',
-                                borderRadius: '50%',
-                                filter: 'blur(50px)',
-                            }}
-                        />
-                    </div>
+                    {/* Clean Swiss background — no gradient orbs */}
 
                     {/* Emotion Orb — floats on right edge of chat after today's journal */}
                     <AnimatePresence>
@@ -572,7 +528,7 @@ export default function WorkspacePage() {
                         )}
                     </AnimatePresence>
 
-                    {/* Header */}
+                    {/* Header — Swiss minimal */}
                     <div className="mobile-header" style={{
                         minHeight: '56px',
                         height: 'auto',
@@ -583,127 +539,113 @@ export default function WorkspacePage() {
                         flexShrink: 0,
                         zIndex: 15,
                         position: 'relative',
-                        fontFamily: "'Inter', sans-serif"
+                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                        borderBottom: '1px solid rgba(30,30,30,0.04)',
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {/* Always show hamburger on mobile; show only when collapsed on desktop */}
                             <button
                                 className={isSidebarCollapsed ? '' : 'hide-on-mobile'}
                                 onClick={() => setIsSidebarCollapsed(false)}
                                 style={{
                                     width: '32px', height: '32px', borderRadius: '8px',
                                     border: 'none', background: 'transparent',
-                                    color: '#a1a1aa', cursor: 'pointer',
+                                    color: '#838282', cursor: 'pointer',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'color 0.15s',
                                 }}
+                                onMouseEnter={e => { e.currentTarget.style.color = '#111111'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = '#838282'; }}
                             >
                                 <PanelLeft size={18} />
                             </button>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             {isPlanApproved && (
                                 <button
                                     onClick={() => setShowCalendarModal(true)}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '6px',
-                                        padding: '6px 14px', borderRadius: '20px',
-                                        border: '1px solid rgba(74,222,128,0.25)',
-                                        background: 'rgba(74,222,128,0.05)',
-                                        color: '#4ade80', fontSize: '12.5px',
-                                        fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
-                                        fontFamily: "'Inter', sans-serif",
+                                        padding: '6px 14px', borderRadius: '100px',
+                                        border: '1px solid rgba(30,30,30,0.1)',
+                                        background: 'transparent',
+                                        color: '#838282', fontSize: '11px',
+                                        fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
                                     }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.1)'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,222,128,0.05)'; }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#111111'; e.currentTarget.style.color = '#f2f2f2'; e.currentTarget.style.borderColor = '#111111'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#838282'; e.currentTarget.style.borderColor = 'rgba(30,30,30,0.1)'; }}
                                 >
-                                    <Calendar size={12} />
-                                    Calendar Sync
+                                    <Calendar size={11} />
+                                    Calendar
                                 </button>
                             )}
 
-                            {/* Email Notification Bell Button */}
                             {isPlanApproved && (
                                 <button
                                     onClick={handleOpenEmailModal}
                                     title={isNotifEnabled ? `Subscribed: ${subscribedEmail}` : 'Get daily email alerts'}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '6px',
-                                        padding: '6px 14px', borderRadius: '20px',
+                                        padding: '6px 14px', borderRadius: '100px',
                                         border: isNotifEnabled
-                                            ? '1px solid rgba(168,85,247,0.4)'
-                                            : '1px solid rgba(168,85,247,0.2)',
-                                        background: isNotifEnabled
-                                            ? 'rgba(168,85,247,0.15)'
-                                            : 'rgba(168,85,247,0.05)',
-                                        color: '#c084fc', fontSize: '12.5px',
-                                        fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
-                                        fontFamily: "'Inter', sans-serif",
+                                            ? '1px solid #111111'
+                                            : '1px solid rgba(30,30,30,0.1)',
+                                        background: isNotifEnabled ? '#111111' : 'transparent',
+                                        color: isNotifEnabled ? '#f2f2f2' : '#838282',
+                                        fontSize: '11px',
+                                        fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
                                         position: 'relative',
                                     }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(168,85,247,0.2)'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = isNotifEnabled ? 'rgba(168,85,247,0.15)' : 'rgba(168,85,247,0.05)'; }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#111111'; e.currentTarget.style.color = '#f2f2f2'; e.currentTarget.style.borderColor = '#111111'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = isNotifEnabled ? '#111111' : 'transparent'; e.currentTarget.style.color = isNotifEnabled ? '#f2f2f2' : '#838282'; e.currentTarget.style.borderColor = isNotifEnabled ? '#111111' : 'rgba(30,30,30,0.1)'; }}
                                 >
-                                    {isNotifEnabled ? <Bell size={12} /> : <Bell size={12} />}
-                                    Daily Alerts
+                                    {isNotifEnabled ? <Bell size={11} /> : <Bell size={11} />}
+                                    Alerts
                                     {isNotifEnabled && (
                                         <span style={{
-                                            width: '6px', height: '6px', borderRadius: '50%',
-                                            background: '#a855f7',
+                                            width: '5px', height: '5px', borderRadius: '50%',
+                                            background: '#d97757',
                                             display: 'inline-block',
-                                            boxShadow: '0 0 6px rgba(168,85,247,0.8)',
-                                            animation: 'pulse 1.5s ease-in-out infinite',
                                         }} />
                                     )}
                                 </button>
                             )}
-                            {/* Pricing */}
-                            <span
-                                className="hide-on-mobile"
-                                style={{
-                                    fontSize: '13.5px', color: '#71717a', cursor: 'pointer',
-                                    fontWeight: 500, fontFamily: "'Inter', sans-serif",
-                                    transition: 'color 0.15s',
-                                }}
-                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#a1a1aa'}
-                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#71717a'}
-                            >
-                                Pricing
-                            </span>
 
-                            {/* Upgrade */}
                             <button className="upgrade-btn hide-on-mobile">
                                 Upgrade
                             </button>
 
-                            {/* Running indicator — shown when plan is active */}
                             {isPlanApproved && !isSessionCompleted && activeSessionId && (
                                 <button
                                     onClick={() => setShowCompleteModal(true)}
                                     title="Stop plan"
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '7px',
-                                        padding: '5px 12px', borderRadius: '20px',
-                                        border: '1px solid rgba(239,68,68,0.2)',
-                                        background: 'rgba(239,68,68,0.05)',
-                                        color: '#f87171', fontSize: '12px',
-                                        fontWeight: 500, cursor: 'pointer',
+                                        padding: '5px 14px', borderRadius: '100px',
+                                        border: '1px solid rgba(239,68,68,0.25)',
+                                        background: 'transparent',
+                                        color: '#ef4444', fontSize: '11px',
+                                        fontWeight: 700, cursor: 'pointer',
                                         transition: 'all 0.15s',
-                                        fontFamily: "'Inter', sans-serif",
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
                                     }}
-                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                                 >
                                     <div style={{
                                         width: '6px', height: '6px', borderRadius: '50%',
-                                        background: '#f87171',
+                                        background: '#ef4444',
                                         animation: 'pulse 1.5s ease-in-out infinite',
                                     }} />
                                     Running
                                 </button>
                             )}
 
-                            {/* User avatar with first+last initials */}
                             <div
                                 className="user-avatar"
                                 onClick={handleLogout}
@@ -752,12 +694,12 @@ export default function WorkspacePage() {
                                     gap: '0px',
                                 }}
                             >
-                                {/* Hero Text — Feelivate logo + greeting */}
+                                {/* Hero Text — Swiss Echo */}
                                 <motion.div
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.65, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-                                    style={{ textAlign: 'center', marginBottom: '36px', fontFamily: "'Inter', sans-serif" }}
+                                    style={{ textAlign: 'center', marginBottom: '36px' }}
                                 >
                                     {/* Logo + Name row */}
                                     <div style={{
@@ -766,31 +708,33 @@ export default function WorkspacePage() {
                                     }}>
                                         <div style={{
                                             width: '38px', height: '38px',
-                                            background: '#fff', borderRadius: '10px',
+                                            background: '#111111', borderRadius: '8px',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             overflow: 'hidden', flexShrink: 0,
                                         }}>
                                             <img
                                                 src="/logo_2_backup.png"
                                                 alt="Feelivate"
-                                                style={{ width: '26px', height: '26px', objectFit: 'contain' }}
+                                                style={{ width: '26px', height: '26px', objectFit: 'contain', filter: 'invert(1)' }}
                                             />
                                         </div>
                                         <h1 style={{
-                                            fontSize: '30px', fontWeight: 700,
-                                            letterSpacing: '-0.025em', color: '#f0f0f0', margin: 0,
+                                            fontSize: '28px', fontWeight: 700,
+                                            letterSpacing: '0.08em', color: '#111111', margin: 0,
+                                            fontFamily: "'Clash Display', 'Inter', sans-serif",
+                                            textTransform: 'uppercase',
                                         }}>
-                                            FEELIVATE
+                                            Feelivate
                                         </h1>
                                     </div>
 
-                                    {/* Personalised greeting */}
                                     <h2 style={{
                                         fontSize: '26px', fontWeight: 500,
-                                        color: '#a1a1aa',
+                                        color: '#838282',
                                         letterSpacing: '-0.01em',
                                         margin: 0,
                                         lineHeight: 1.3,
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
                                     }}>
                                         Hi {localStorage.getItem('user_name')?.split(' ')[0] || 'there'}, what's on your mind?
                                     </h2>
@@ -868,8 +812,8 @@ export default function WorkspacePage() {
                         exit={{ opacity: 0 }}
                         style={{
                             position: 'fixed', inset: 0,
-                            background: 'rgba(0,0,0,0.7)',
-                            backdropFilter: 'blur(8px)',
+                            background: 'rgba(17,17,17,0.35)',
+                            backdropFilter: 'blur(12px)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             zIndex: 300, padding: '20px',
                         }}
@@ -882,11 +826,12 @@ export default function WorkspacePage() {
                             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
                             style={{
                                 width: '100%', maxWidth: '400px',
-                                background: 'linear-gradient(135deg, #1a0a2e, #18181b)',
-                                border: '1px solid rgba(168,85,247,0.25)',
+                                background: '#ffffff',
+                                border: '1px solid rgba(30,30,30,0.08)',
                                 borderRadius: '20px', padding: '28px',
-                                boxShadow: '0 0 60px rgba(168,85,247,0.15), 0 24px 60px rgba(0,0,0,0.6)',
+                                boxShadow: '0 24px 60px rgba(30,30,30,0.12)',
                                 position: 'relative',
+                                fontFamily: "'Satoshi', 'Inter', sans-serif",
                             }}
                         >
                             {/* Close button */}
@@ -895,10 +840,13 @@ export default function WorkspacePage() {
                                 style={{
                                     position: 'absolute', top: '16px', right: '16px',
                                     width: '28px', height: '28px', borderRadius: '8px',
-                                    border: 'none', background: 'rgba(255,255,255,0.05)',
-                                    color: '#71717a', cursor: 'pointer',
+                                    border: 'none', background: 'rgba(30,30,30,0.04)',
+                                    color: '#b6b5b5', cursor: 'pointer',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'background 0.15s',
                                 }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,30,0.08)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(30,30,30,0.04)'; }}
                             ><X size={14} /></button>
 
                             {/* Step: Email Input */}
@@ -907,27 +855,26 @@ export default function WorkspacePage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                                         <div style={{
                                             width: '38px', height: '38px', borderRadius: '10px',
-                                            background: 'rgba(168,85,247,0.15)',
-                                            border: '1px solid rgba(168,85,247,0.3)',
+                                            background: '#111111',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}><Bell size={18} color="#c084fc" /></div>
+                                        }}><Bell size={18} color="#f2f2f2" /></div>
                                         <div>
-                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>Daily Task Alerts</h3>
-                                            <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>Get your daily tasks straight to your inbox</p>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111111', margin: 0, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Daily Task Alerts</h3>
+                                            <p style={{ fontSize: '12px', color: '#b6b5b5', margin: 0 }}>Get your daily tasks straight to your inbox</p>
                                         </div>
                                     </div>
 
-                                    <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, marginBottom: '20px' }}>
-                                        Enter your email to receive a <strong style={{ color: '#c084fc' }}>personalized daily task</strong> from
+                                    <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, marginBottom: '20px' }}>
+                                        Enter your email to receive a <strong style={{ color: '#111111' }}>personalized daily task</strong> from
                                         Monday to Sunday, along with an AI-written motivation message made just for you.
                                     </p>
 
                                     <div style={{ marginBottom: '16px' }}>
-                                        <label style={{ fontSize: '11px', fontWeight: 600, color: '#71717a', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                        <label style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
                                             Email Address
                                         </label>
                                         <div style={{ position: 'relative' }}>
-                                            <Mail size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#52525b' }} />
+                                            <Mail size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#b6b5b5' }} />
                                             <input
                                                 type="email"
                                                 value={notifEmail}
@@ -937,14 +884,14 @@ export default function WorkspacePage() {
                                                 style={{
                                                     width: '100%', padding: '11px 12px 11px 36px',
                                                     borderRadius: '10px', boxSizing: 'border-box',
-                                                    border: '1px solid rgba(168,85,247,0.2)',
-                                                    background: 'rgba(0,0,0,0.3)',
-                                                    color: '#f4f4f5', fontSize: '14px', outline: 'none',
+                                                    border: '1px solid rgba(30,30,30,0.1)',
+                                                    background: '#ffffff',
+                                                    color: '#111111', fontSize: '14px', outline: 'none',
                                                     transition: 'border-color 0.2s',
-                                                    fontFamily: "'Inter', sans-serif",
+                                                    fontFamily: "'Satoshi', 'Inter', sans-serif",
                                                 }}
-                                                onFocus={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.5)'; }}
-                                                onBlur={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.2)'; }}
+                                                onFocus={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.25)'; }}
+                                                onBlur={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.1)'; }}
                                             />
                                         </div>
                                     </div>
@@ -960,15 +907,16 @@ export default function WorkspacePage() {
                                         disabled={notifLoading || !notifEmail.trim()}
                                         style={{
                                             width: '100%', padding: '12px',
-                                            borderRadius: '12px', border: 'none',
+                                            borderRadius: '100px', border: 'none',
                                             background: notifLoading || !notifEmail.trim()
-                                                ? 'rgba(168,85,247,0.3)'
-                                                : 'linear-gradient(135deg, #a855f7, #6366f1)',
-                                            color: '#fff', fontSize: '14px', fontWeight: 600,
+                                                ? 'rgba(30,30,30,0.15)'
+                                                : '#111111',
+                                            color: '#f2f2f2', fontSize: '12px', fontWeight: 700,
                                             cursor: notifLoading || !notifEmail.trim() ? 'not-allowed' : 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                            transition: 'all 0.2s',
-                                            fontFamily: "'Inter', sans-serif",
+                                            transition: 'all 0.15s',
+                                            fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                            letterSpacing: '0.06em', textTransform: 'uppercase',
                                         }}
                                     >
                                         {notifLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Mail size={15} />}
@@ -983,24 +931,23 @@ export default function WorkspacePage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                                         <div style={{
                                             width: '38px', height: '38px', borderRadius: '10px',
-                                            background: 'rgba(168,85,247,0.15)',
-                                            border: '1px solid rgba(168,85,247,0.3)',
+                                            background: '#111111',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}><Mail size={18} color="#c084fc" /></div>
+                                        }}><Mail size={18} color="#f2f2f2" /></div>
                                         <div>
-                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>Verify Your Code</h3>
-                                            <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>{notifEmail}</p>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111111', margin: 0, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Verify Your Code</h3>
+                                            <p style={{ fontSize: '12px', color: '#b6b5b5', margin: 0 }}>{notifEmail}</p>
                                         </div>
                                     </div>
 
                                     {notifMessage && (
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(168,85,247,0.08)', color: '#c084fc', fontSize: '12px', marginBottom: '14px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(30,30,30,0.04)', color: '#111111', fontSize: '12px', marginBottom: '14px' }}>
                                             <Sparkles size={13} /><span>{notifMessage}</span>
                                         </div>
                                     )}
 
-                                    <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, marginBottom: '16px' }}>
-                                        We've sent a 6-digit code to <strong style={{ color: '#c084fc' }}>{notifEmail}</strong>.
+                                    <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, marginBottom: '16px' }}>
+                                        We've sent a 6-digit code to <strong style={{ color: '#111111' }}>{notifEmail}</strong>.
                                         Enter it below to activate your daily alerts.
                                     </p>
 
@@ -1015,15 +962,15 @@ export default function WorkspacePage() {
                                             style={{
                                                 width: '100%', padding: '14px 16px', boxSizing: 'border-box',
                                                 borderRadius: '12px',
-                                                border: '1px solid rgba(168,85,247,0.25)',
-                                                background: 'rgba(0,0,0,0.3)',
-                                                color: '#c084fc', fontSize: '28px', fontWeight: 700,
+                                                border: '1px solid rgba(30,30,30,0.1)',
+                                                background: '#ffffff',
+                                                color: '#111111', fontSize: '28px', fontWeight: 700,
                                                 outline: 'none', textAlign: 'center',
                                                 letterSpacing: '12px',
                                                 fontFamily: "'Courier New', monospace",
                                             }}
-                                            onFocus={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.6)'; }}
-                                            onBlur={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.25)'; }}
+                                            onFocus={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.25)'; }}
+                                            onBlur={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.1)'; }}
                                         />
                                     </div>
 
@@ -1037,24 +984,26 @@ export default function WorkspacePage() {
                                         <button
                                             onClick={() => { setEmailModalStep('email'); setNotifError(''); setNotifMessage(''); }}
                                             style={{
-                                                flex: 1, padding: '11px', borderRadius: '10px',
-                                                border: '1px solid rgba(168,85,247,0.2)', background: 'transparent',
-                                                color: '#71717a', fontSize: '13px', cursor: 'pointer',
-                                                fontFamily: "'Inter', sans-serif",
+                                                flex: 1, padding: '11px', borderRadius: '100px',
+                                                border: '1px solid rgba(30,30,30,0.1)', background: 'transparent',
+                                                color: '#838282', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                                                fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                                letterSpacing: '0.04em', textTransform: 'uppercase',
                                             }}
                                         >← Back</button>
                                         <button
                                             onClick={handleVerifyOTP}
                                             disabled={notifLoading || notifOtp.length < 6}
                                             style={{
-                                                flex: 2, padding: '11px', borderRadius: '10px', border: 'none',
+                                                flex: 2, padding: '11px', borderRadius: '100px', border: 'none',
                                                 background: notifLoading || notifOtp.length < 6
-                                                    ? 'rgba(168,85,247,0.3)'
-                                                    : 'linear-gradient(135deg, #a855f7, #6366f1)',
-                                                color: '#fff', fontSize: '13px', fontWeight: 600,
+                                                    ? 'rgba(30,30,30,0.15)'
+                                                    : '#111111',
+                                                color: '#f2f2f2', fontSize: '12px', fontWeight: 700,
                                                 cursor: notifLoading || notifOtp.length < 6 ? 'not-allowed' : 'pointer',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                                                fontFamily: "'Inter', sans-serif",
+                                                fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                                letterSpacing: '0.04em', textTransform: 'uppercase',
                                             }}
                                         >
                                             {notifLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
@@ -1070,39 +1019,38 @@ export default function WorkspacePage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                                         <div style={{
                                             width: '38px', height: '38px', borderRadius: '10px',
-                                            background: 'rgba(168,85,247,0.15)',
-                                            border: '1px solid rgba(168,85,247,0.3)',
+                                            background: '#111111',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}><Clock size={18} color="#c084fc" /></div>
+                                        }}><Clock size={18} color="#f2f2f2" /></div>
                                         <div>
-                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#f4f4f5', margin: 0 }}>Choose Your Alert Time</h3>
-                                            <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>When should we send your daily task? (IST)</p>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111111', margin: 0, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Choose Your Alert Time</h3>
+                                            <p style={{ fontSize: '12px', color: '#b6b5b5', margin: 0 }}>When should we send your daily task? (IST)</p>
                                         </div>
                                     </div>
 
-                                    <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.6, marginBottom: '20px' }}>
-                                        Every day at this time, you'll receive your <strong style={{ color: '#c084fc' }}>personalized task</strong> for the day —
+                                    <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, marginBottom: '20px' }}>
+                                        Every day at this time, you'll receive your <strong style={{ color: '#111111' }}>personalized task</strong> for the day —
                                         with an AI-written guide and a motivational thought made just for you.
                                     </p>
 
                                     {/* Popular times quick select */}
-                                    <p style={{ fontSize: '11px', color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>Quick select</p>
+                                    <p style={{ fontSize: '10px', color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px', fontWeight: 700, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Quick select</p>
                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
                                         {['06:00', '07:00', '08:00', '09:00', '20:00', '21:00'].map(t => (
                                             <button key={t} onClick={() => setNotifPreferredTime(t)} style={{
-                                                padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 500,
-                                                border: notifPreferredTime === t ? '1px solid rgba(168,85,247,0.6)' : '1px solid rgba(168,85,247,0.15)',
-                                                background: notifPreferredTime === t ? 'rgba(168,85,247,0.2)' : 'transparent',
-                                                color: notifPreferredTime === t ? '#c084fc' : '#71717a',
+                                                padding: '6px 14px', borderRadius: '100px', fontSize: '12px', fontWeight: 600,
+                                                border: notifPreferredTime === t ? '1px solid #111111' : '1px solid rgba(30,30,30,0.1)',
+                                                background: notifPreferredTime === t ? '#111111' : 'transparent',
+                                                color: notifPreferredTime === t ? '#f2f2f2' : '#838282',
                                                 cursor: 'pointer', transition: 'all 0.15s',
-                                                fontFamily: "'Inter', sans-serif",
+                                                fontFamily: "'Satoshi', 'Inter', sans-serif",
                                             }}>{t}</button>
                                         ))}
                                     </div>
 
                                     {/* Custom time input */}
                                     <div style={{ marginBottom: '20px' }}>
-                                        <label style={{ fontSize: '11px', fontWeight: 600, color: '#71717a', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                        <label style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
                                             Or set a custom time
                                         </label>
                                         <input
@@ -1111,22 +1059,22 @@ export default function WorkspacePage() {
                                             onChange={(e) => setNotifPreferredTime(e.target.value)}
                                             style={{
                                                 width: '100%', padding: '11px 14px', boxSizing: 'border-box',
-                                                borderRadius: '10px', border: '1px solid rgba(168,85,247,0.2)',
-                                                background: 'rgba(0,0,0,0.3)', color: '#c084fc',
+                                                borderRadius: '10px', border: '1px solid rgba(30,30,30,0.1)',
+                                                background: '#ffffff', color: '#111111',
                                                 fontSize: '20px', fontWeight: 700, outline: 'none',
-                                                fontFamily: "'Inter', sans-serif", textAlign: 'center',
+                                                fontFamily: "'Satoshi', 'Inter', sans-serif", textAlign: 'center',
                                                 cursor: 'pointer',
                                             }}
-                                            onFocus={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.5)'; }}
-                                            onBlur={(e) => { e.target.style.borderColor = 'rgba(168,85,247,0.2)'; }}
+                                            onFocus={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.25)'; }}
+                                            onBlur={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.1)'; }}
                                         />
-                                        <p style={{ fontSize: '11px', color: '#52525b', margin: '6px 0 0', textAlign: 'center' }}>
+                                        <p style={{ fontSize: '11px', color: '#b6b5b5', margin: '6px 0 0', textAlign: 'center' }}>
                                             {userTimezone} &nbsp;·&nbsp; {tzOffset}
                                         </p>
                                     </div>
 
                                     {notifError && (
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: '12px', marginBottom: '14px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.06)', color: '#ef4444', fontSize: '12px', marginBottom: '14px' }}>
                                             <AlertCircle size={13} /><span>{notifError}</span>
                                         </div>
                                     )}
@@ -1135,16 +1083,17 @@ export default function WorkspacePage() {
                                         onClick={handleSaveTime}
                                         disabled={notifLoading}
                                         style={{
-                                            width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
-                                            background: notifLoading ? 'rgba(168,85,247,0.3)' : 'linear-gradient(135deg, #a855f7, #6366f1)',
-                                            color: '#fff', fontSize: '14px', fontWeight: 700,
+                                            width: '100%', padding: '13px', borderRadius: '100px', border: 'none',
+                                            background: notifLoading ? 'rgba(30,30,30,0.15)' : '#111111',
+                                            color: '#f2f2f2', fontSize: '12px', fontWeight: 700,
                                             cursor: notifLoading ? 'not-allowed' : 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                            fontFamily: "'Inter', sans-serif",
+                                            fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                            letterSpacing: '0.06em', textTransform: 'uppercase',
                                         }}
                                     >
                                         {notifLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Bell size={15} />}
-                                        {notifLoading ? 'Activating...' : `Activate Daily Alerts at ${notifPreferredTime} IST`}
+                                        {notifLoading ? 'Activating...' : `Activate at ${notifPreferredTime} IST`}
                                     </button>
                                 </>
                             )}
@@ -1158,63 +1107,63 @@ export default function WorkspacePage() {
                                             animate={{ scale: 1 }}
                                             transition={{ type: 'spring', damping: 12, stiffness: 200 }}
                                             style={{
-                                                width: '56px', height: '56px', borderRadius: '16px',
-                                                background: 'linear-gradient(135deg, rgba(168,85,247,0.3), rgba(99,102,241,0.2))',
-                                                border: '1px solid rgba(168,85,247,0.4)',
+                                                width: '56px', height: '56px', borderRadius: '14px',
+                                                background: '#111111',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 margin: '0 auto 14px',
                                             }}
                                         >
-                                            <Bell size={24} color="#c084fc" />
+                                            <Bell size={24} color="#f2f2f2" />
                                         </motion.div>
-                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#f4f4f5', margin: '0 0 4px' }}>Daily Alerts Active! 🎉</h3>
-                                        <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>Your daily emails are now scheduled</p>
+                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111111', margin: '0 0 4px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Daily Alerts Active!</h3>
+                                        <p style={{ fontSize: '12px', color: '#b6b5b5', margin: 0 }}>Your daily emails are now scheduled</p>
                                     </div>
 
                                     {/* Email + time info */}
                                     <div style={{
-                                        background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)',
+                                        background: 'rgba(30,30,30,0.03)', border: '1px solid rgba(30,30,30,0.06)',
                                         borderRadius: '12px', padding: '14px 16px', marginBottom: '14px',
                                     }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                            <span style={{ fontSize: '11px', color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Subscribed Email</span>
+                                            <span style={{ fontSize: '10px', color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Subscribed Email</span>
                                         </div>
-                                        <p style={{ fontSize: '14px', color: '#c084fc', fontWeight: 600, margin: '0 0 10px' }}>{subscribedEmail}</p>
+                                        <p style={{ fontSize: '14px', color: '#111111', fontWeight: 600, margin: '0 0 10px' }}>{subscribedEmail}</p>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div>
-                                                <span style={{ fontSize: '11px', color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: '2px' }}>Daily at</span>
-                                                <span style={{ fontSize: '18px', color: '#a78bfa', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>{subscribedTime} IST</span>
+                                                <span style={{ fontSize: '10px', color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, display: 'block', marginBottom: '2px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Daily at</span>
+                                                <span style={{ fontSize: '18px', color: '#111111', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>{subscribedTime} IST</span>
                                             </div>
                                             <button onClick={() => { setEmailModalStep('time'); setNotifError(''); }} style={{
-                                                padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
-                                                border: '1px solid rgba(168,85,247,0.2)', background: 'transparent',
-                                                color: '#71717a', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+                                                padding: '6px 14px', borderRadius: '100px', fontSize: '11px', fontWeight: 700,
+                                                border: '1px solid rgba(30,30,30,0.1)', background: 'transparent',
+                                                color: '#838282', cursor: 'pointer', fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                                letterSpacing: '0.04em', textTransform: 'uppercase',
                                             }}>Change time</button>
                                         </div>
                                     </div>
 
                                     {/* What you get */}
                                     <div style={{
-                                        background: 'rgba(0,0,0,0.2)', borderRadius: '10px',
+                                        background: 'rgba(30,30,30,0.02)', borderRadius: '10px',
                                         padding: '12px 14px', marginBottom: '16px',
                                     }}>
-                                        <p style={{ fontSize: '11px', color: '#52525b', margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>What you'll receive each day</p>
+                                        <p style={{ fontSize: '10px', color: '#b6b5b5', margin: '0 0 8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>What you'll receive each day</p>
                                         {[
-                                            '🎯 Your specific task for the day',
-                                            '🤖 AI-written personalized guidance',
-                                            '💡 A motivational thought crafted just for you',
+                                            'Your specific task for the day',
+                                            'AI-written personalized guidance',
+                                            'A motivational thought crafted just for you',
                                         ].map(t => (
-                                            <p key={t} style={{ fontSize: '12px', color: '#71717a', margin: '4px 0' }}>{t}</p>
+                                            <p key={t} style={{ fontSize: '12px', color: '#838282', margin: '4px 0' }}>• {t}</p>
                                         ))}
                                     </div>
 
                                     {notifMessage && (
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(168,85,247,0.08)', color: '#c084fc', fontSize: '12px', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(30,30,30,0.04)', color: '#111111', fontSize: '12px', marginBottom: '12px' }}>
                                             <Sparkles size={13} /><span>{notifMessage}</span>
                                         </div>
                                     )}
                                     {notifError && (
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: '12px', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(239,68,68,0.06)', color: '#ef4444', fontSize: '12px', marginBottom: '12px' }}>
                                             <AlertCircle size={13} /><span>{notifError}</span>
                                         </div>
                                     )}
@@ -1223,15 +1172,16 @@ export default function WorkspacePage() {
                                         onClick={handleStopEmailNotifications}
                                         disabled={notifLoading}
                                         style={{
-                                            width: '100%', padding: '11px', borderRadius: '10px',
-                                            border: '1px solid rgba(239,68,68,0.25)',
-                                            background: 'rgba(239,68,68,0.05)',
-                                            color: '#f87171', fontSize: '13px', cursor: notifLoading ? 'not-allowed' : 'pointer',
+                                            width: '100%', padding: '11px', borderRadius: '100px',
+                                            border: '1px solid rgba(239,68,68,0.2)',
+                                            background: 'transparent',
+                                            color: '#ef4444', fontSize: '12px', fontWeight: 700, cursor: notifLoading ? 'not-allowed' : 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                                            fontFamily: "'Inter', sans-serif", transition: 'all 0.2s',
+                                            fontFamily: "'Satoshi', 'Inter', sans-serif", transition: 'all 0.15s',
+                                            letterSpacing: '0.04em', textTransform: 'uppercase',
                                         }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                                     >
                                         {notifLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <BellOff size={14} />}
                                         {notifLoading ? 'Unsubscribing...' : 'Stop Notifications'}
@@ -1249,8 +1199,8 @@ export default function WorkspacePage() {
                 {showCalendarModal && (
                     <div style={{
                         position: 'absolute', inset: 0,
-                        background: 'rgba(0,0,0,0.6)',
-                        backdropFilter: 'blur(4px)',
+                        background: 'rgba(17,17,17,0.35)',
+                        backdropFilter: 'blur(12px)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         zIndex: 200,
                     }}>
@@ -1260,22 +1210,23 @@ export default function WorkspacePage() {
                             exit={{ scale: 0.95, opacity: 0 }}
                             style={{
                                 width: '100%', maxWidth: '380px',
-                                background: 'var(--bg-surface)',
-                                border: '1px solid var(--border-medium)',
-                                borderRadius: '16px', padding: '24px',
-                                boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+                                background: '#ffffff',
+                                border: '1px solid rgba(30,30,30,0.08)',
+                                borderRadius: '20px', padding: '24px',
+                                boxShadow: '0 24px 60px rgba(30,30,30,0.12)',
+                                fontFamily: "'Satoshi', 'Inter', sans-serif",
                             }}
                         >
-                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                                Sync Weekly Roadmap to Calendar
+                            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111111', marginBottom: '8px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
+                                Sync Weekly Roadmap
                             </h3>
-                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
+                            <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.5, marginBottom: '20px' }}>
                                 Connect Feelivate to your Google Calendar. We will automatically sync your week's schedule to notify you each day.
                             </p>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
-                                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
-                                    Preferred Morning Notification Time
+                                <label style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
+                                    Notification Time
                                 </label>
                                 <input
                                     type="time"
@@ -1283,8 +1234,9 @@ export default function WorkspacePage() {
                                     onChange={(e) => setPreferredTime(e.target.value)}
                                     style={{
                                         width: '100%', padding: '10px 12px', borderRadius: '10px',
-                                        border: '1px solid var(--border-medium)', background: 'var(--bg-primary)',
-                                        color: 'var(--text-primary)', fontSize: '14px', outline: 'none',
+                                        border: '1px solid rgba(30,30,30,0.1)', background: '#ffffff',
+                                        color: '#111111', fontSize: '14px', outline: 'none',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
                                     }}
                                 />
                             </div>
@@ -1292,7 +1244,7 @@ export default function WorkspacePage() {
                             {syncMessage && (
                                 <div style={{
                                     padding: '10px 12px', borderRadius: '8px',
-                                    background: 'rgba(16, 185, 129, 0.08)', color: 'var(--accent-green)',
+                                    background: 'rgba(30,30,30,0.04)', color: '#111111',
                                     fontSize: '12px', marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center'
                                 }}>
                                     <Sparkles size={14} />
@@ -1303,7 +1255,7 @@ export default function WorkspacePage() {
                             {syncError && (
                                 <div style={{
                                     padding: '10px 12px', borderRadius: '8px',
-                                    background: 'rgba(239, 68, 68, 0.08)', color: '#f87171',
+                                    background: 'rgba(239, 68, 68, 0.06)', color: '#ef4444',
                                     fontSize: '12px', marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center'
                                 }}>
                                     <AlertCircle size={14} />
@@ -1316,9 +1268,11 @@ export default function WorkspacePage() {
                                     onClick={handleStopSyncCalendar}
                                     disabled={syncLoading}
                                     style={{
-                                        padding: '8px 16px', borderRadius: '10px',
-                                        border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)',
-                                        color: '#f87171', fontSize: '13px', cursor: 'pointer',
+                                        padding: '8px 16px', borderRadius: '100px',
+                                        border: '1px solid rgba(239, 68, 68, 0.2)', background: 'transparent',
+                                        color: '#ef4444', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
                                     }}
                                 >
                                     Stop Sync
@@ -1328,9 +1282,11 @@ export default function WorkspacePage() {
                                     onClick={() => setShowCalendarModal(false)}
                                     disabled={syncLoading}
                                     style={{
-                                        padding: '8px 16px', borderRadius: '10px',
-                                        border: '1px solid var(--border-medium)', background: 'transparent',
-                                        color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer',
+                                        padding: '8px 16px', borderRadius: '100px',
+                                        border: '1px solid rgba(30,30,30,0.1)', background: 'transparent',
+                                        color: '#838282', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
                                     }}
                                 >
                                     Cancel
@@ -1339,10 +1295,12 @@ export default function WorkspacePage() {
                                     onClick={handleSyncCalendar}
                                     disabled={syncLoading}
                                     style={{
-                                        padding: '8px 16px', borderRadius: '10px',
-                                        border: 'none', background: 'var(--accent-green)',
-                                        color: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                                        padding: '8px 16px', borderRadius: '100px',
+                                        border: 'none', background: '#111111',
+                                        color: '#f2f2f2', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
                                         display: 'flex', alignItems: 'center', gap: '6px',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
                                     }}
                                 >
                                     {syncLoading ? "Syncing..." : "Sync Now"}

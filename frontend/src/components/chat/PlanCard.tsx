@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Calendar, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { Check, Calendar, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+
+const clashDisplay = "'Clash Display', 'Inter', sans-serif";
+const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
 
 interface PlanDay {
     day: string;
@@ -45,92 +48,111 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    padding: '10px 16px',
-                    background: 'rgba(16, 185, 129, 0.08)',
-                    border: '1px solid rgba(16, 185, 129, 0.2)',
-                    borderRadius: '14px',
+                    padding: '10px 18px',
+                    background: '#111111',
+                    border: 'none',
+                    borderRadius: '100px',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    margin: '8px 0',
+                    margin: '12px 0',
                 }}
             >
                 <div style={{
-                    width: '24px', height: '24px', borderRadius: '50%',
-                    background: 'rgba(16, 185, 129, 0.15)',
+                    width: '22px', height: '22px', borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                    <Calendar size={12} style={{ color: 'var(--accent-green)' }} />
+                    <Calendar size={11} style={{ color: '#f2f2f2' }} />
                 </div>
                 <span style={{
-                    flex: 1, fontSize: '13px', fontWeight: 500,
-                    color: 'var(--accent-green)',
+                    flex: 1, fontSize: '12px', fontWeight: 700,
+                    color: '#f2f2f2',
+                    fontFamily: satoshi,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
                 }}>
-                    📅 Week {plan.week_number} Active — {plan.week_label}
+                    Week {plan.week_number} Active — {plan.week_label}
                 </span>
                 {isApproved && !isCollapsed ? (
-                    <ChevronUp size={14} style={{ color: 'var(--text-muted)' }} />
+                    <ChevronUp size={14} style={{ color: 'rgba(255,255,255,0.5)' }} />
                 ) : (
-                    <ChevronDown size={14} style={{ color: 'var(--text-muted)' }} />
+                    <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.5)' }} />
                 )}
             </motion.div>
         );
     }
 
-    // Full plan card
+    // Full plan card — Swiss Tabular Layout
     return (
         <motion.div
             className={approveAnimation ? 'plan-float-up' : 'plan-slide-in'}
             style={{
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-medium)',
+                background: '#ffffff',
+                border: '1px solid rgba(30,30,30,0.08)',
                 borderRadius: '16px',
                 overflow: 'hidden',
-                margin: '12px 0',
+                margin: '16px 0',
+                boxShadow: '0 2px 12px rgba(30,30,30,0.04)',
+                position: 'relative',
             }}
         >
             {/* Header */}
             <div style={{
-                padding: '16px 20px',
-                borderBottom: '1px solid var(--border-subtle)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
+                padding: '20px 24px 16px',
+                borderBottom: '1px solid rgba(30,30,30,0.06)',
             }}>
                 <div style={{
-                    width: '32px', height: '32px', borderRadius: '10px',
-                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    fontFamily: satoshi, marginBottom: '6px',
                 }}>
-                    <Sparkles size={16} style={{ color: 'white' }} />
+                    Week {plan.week_number}
                 </div>
-                <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        Week {plan.week_number}: {plan.theme}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {plan.week_label} • Win: {plan.win_condition}
-                    </div>
+                <div style={{
+                    fontSize: '22px', fontWeight: 700, color: '#111111',
+                    fontFamily: clashDisplay, letterSpacing: '-0.03em',
+                    lineHeight: 1.1, marginBottom: '8px',
+                }}>
+                    {plan.theme}
+                </div>
+                <div style={{
+                    fontSize: '13px', color: '#838282',
+                    fontStyle: 'italic',
+                    fontFamily: "'Georgia', 'Times New Roman', serif",
+                    lineHeight: 1.4,
+                }}>
+                    Win: {plan.win_condition}
                 </div>
             </div>
 
-            {/* Days */}
-            <div style={{ padding: '12px 20px' }}>
+            {/* Days — Tabular layout */}
+            <div style={{ padding: '4px 0' }}>
                 {plan.days.map((day, idx) => (
                     <div
                         key={idx}
                         style={{
                             display: 'flex',
-                            gap: '12px',
-                            padding: '10px 0',
-                            borderBottom: idx < plan.days.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                            gap: '0',
+                            padding: '14px 24px',
+                            borderBottom: idx < plan.days.length - 1
+                                ? '1px solid rgba(30,30,30,0.04)'
+                                : 'none',
+                            background: idx % 2 === 1
+                                ? 'rgba(30,30,30,0.015)'
+                                : 'transparent',
+                            transition: 'background 0.15s',
                         }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,30,0.03)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 1 ? 'rgba(30,30,30,0.015)' : 'transparent'; }}
                     >
                         <div style={{
                             fontSize: '12px',
-                            fontWeight: 600,
-                            color: 'var(--accent-primary)',
-                            fontFamily: 'var(--font-mono)',
-                            minWidth: '100px',
+                            fontWeight: 700,
+                            color: '#111111',
+                            fontFamily: clashDisplay,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                            minWidth: '110px',
                             flexShrink: 0,
                             paddingTop: '2px',
                         }}>
@@ -138,8 +160,10 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                         </div>
                         <div style={{
                             fontSize: '13px',
-                            color: 'var(--text-secondary)',
-                            lineHeight: '1.5',
+                            color: '#838282',
+                            lineHeight: '1.6',
+                            fontFamily: satoshi,
+                            fontWeight: 400,
                         }}>
                             {day.action}
                         </div>
@@ -147,10 +171,10 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                 ))}
             </div>
 
-            {/* Actions */}
+            {/* Actions — Swiss pill buttons */}
             <div style={{
-                padding: '12px 20px 16px',
-                borderTop: '1px solid var(--border-subtle)',
+                padding: '16px 24px 20px',
+                borderTop: '1px solid rgba(30,30,30,0.06)',
                 display: 'flex',
                 gap: '10px',
             }}>
@@ -162,35 +186,45 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '8px',
-                        padding: '10px 16px',
-                        borderRadius: '12px',
+                        padding: '12px 20px',
+                        borderRadius: '100px',
                         border: 'none',
-                        background: 'var(--accent-green)',
-                        color: 'white',
-                        fontSize: '13px',
-                        fontWeight: 600,
+                        background: '#111111',
+                        color: '#f2f2f2',
+                        fontSize: '12px',
+                        fontWeight: 700,
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
+                        transition: 'opacity 0.15s',
+                        fontFamily: satoshi,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
                 >
-                    <Check size={16} />
-                    Looks good, let's go!
+                    <ArrowRight size={14} />
+                    Let's go
                 </button>
                 <button
                     onClick={() => onRequestChange("I want to change something in this plan")}
                     style={{
-                        padding: '10px 16px',
-                        borderRadius: '12px',
-                        border: '1px solid var(--border-medium)',
+                        padding: '12px 20px',
+                        borderRadius: '100px',
+                        border: '1px solid #111111',
                         background: 'transparent',
-                        color: 'var(--text-secondary)',
-                        fontSize: '13px',
-                        fontWeight: 500,
+                        color: '#111111',
+                        fontSize: '12px',
+                        fontWeight: 700,
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
+                        transition: 'all 0.15s',
+                        fontFamily: satoshi,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#111111'; e.currentTarget.style.color = '#f2f2f2'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#111111'; }}
                 >
-                    Tweak this
+                    Tweak
                 </button>
             </div>
 
@@ -207,7 +241,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            background: 'rgba(16, 185, 129, 0.1)',
+                            background: 'rgba(17, 17, 17, 0.06)',
                             borderRadius: '16px',
                             backdropFilter: 'blur(4px)',
                         }}
@@ -217,7 +251,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                             animate={{ scale: [0, 1.3, 1] }}
                             transition={{ duration: 0.5, ease: 'easeOut' }}
                         >
-                            <Check size={48} style={{ color: 'var(--accent-green)' }} />
+                            <Check size={48} style={{ color: '#111111' }} />
                         </motion.div>
                     </motion.div>
                 )}

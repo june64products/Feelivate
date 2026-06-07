@@ -1,44 +1,46 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,600,700,900&display=swap');
 
 /* ============================================ */
-/* DESIGN TOKENS — Blackbox AI Inspired         */
+/* DESIGN TOKENS — Swiss Luxury-Brutalist       */
 /* ============================================ */
 
 :root {
-  /* Core — true near-black like Blackbox */
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #111111;
-  --bg-sidebar: #0a0a0a;
-  --bg-surface: #161616;
-  --bg-input: #1a1a1a;
-  --bg-chat: #0a0a0a;
-  --bg-user-msg: #1c1c1c;
+  /* Core — Swiss off-white light theme */
+  --bg-primary: #f2f2f2;
+  --bg-secondary: #ebebeb;
+  --bg-sidebar: #111111;
+  --bg-surface: #ffffff;
+  --bg-input: #ffffff;
+  --bg-chat: #f2f2f2;
+  --bg-user-msg: transparent;
   --bg-ai-msg: transparent;
 
-  /* Text */
-  --text-primary: #f0f0f0;
-  --text-secondary: #a1a1aa;
-  --text-muted: #52525b;
-  --text-placeholder: #3f3f46;
+  /* Text — high-contrast monochromatic */
+  --text-primary: #111111;
+  --text-secondary: #838282;
+  --text-muted: #b6b5b5;
+  --text-placeholder: #b6b5b5;
 
-  /* Accents */
-  --accent-primary: #c084fc;
-  --accent-secondary: #818cf8;
+  /* Accents — editorial minimal */
+  --accent-primary: #111111;
+  --accent-secondary: #838282;
   --accent-warm: #d97757;
-  --accent-green: #4ade80;
-  --accent-glow: rgba(192, 132, 252, 0.08);
+  --accent-green: #111111;
+  --accent-glow: rgba(17, 17, 17, 0.04);
 
-  /* Borders */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-medium: rgba(255, 255, 255, 0.1);
-  --border-focus: rgba(255, 255, 255, 0.25);
+  /* Borders — light hairlines */
+  --border-subtle: rgba(30, 30, 30, 0.06);
+  --border-medium: rgba(30, 30, 30, 0.1);
+  --border-focus: rgba(30, 30, 30, 0.25);
 
   /* Glass */
-  --glass-surface: rgba(255, 255, 255, 0.02);
-  --glass-hover: rgba(255, 255, 255, 0.05);
+  --glass-surface: rgba(30, 30, 30, 0.02);
+  --glass-hover: rgba(30, 30, 30, 0.04);
 
-  /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Typography — Swiss system */
+  --font-sans: 'Satoshi', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Clash Display', 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Layout */
@@ -82,7 +84,7 @@ body {
 }
 
 /* ============================================ */
-/* SCROLLBAR                                    */
+/* SCROLLBAR — Swiss minimal                   */
 /* ============================================ */
 
 ::-webkit-scrollbar {
@@ -94,16 +96,16 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(30, 30, 30, 0.12);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(30, 30, 30, 0.22);
 }
 
 /* ============================================ */
-/* SIDEBAR — Blackbox Collapsed/Expanded        */
+/* SIDEBAR — Dark editorial contrast           */
 /* ============================================ */
 
 .sidebar-root {
@@ -136,7 +138,7 @@ body {
   padding: 9px 12px;
   border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: rgba(255,255,255,0.5);
   font-size: 13.5px;
   font-weight: 500;
   font-family: var(--font-sans);
@@ -178,21 +180,22 @@ body {
 }
 
 /* ============================================ */
-/* CHAT INPUT — Blackbox pill style            */
+/* CHAT INPUT — Swiss pill style               */
 /* ============================================ */
 
 .chat-input-box {
   position: relative;
   background: var(--bg-surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  border: 1px solid rgba(30, 30, 30, 0.08);
+  border-radius: 16px;
   transition: border-color 0.2s ease;
   width: 100%;
   padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 2px 12px rgba(30, 30, 30, 0.04);
 }
 
 .chat-input-box:focus-within {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(30, 30, 30, 0.2);
 }
 
 .chat-input-box textarea {
@@ -200,7 +203,7 @@ body {
   background: transparent;
   border: none;
   outline: none;
-  color: #f0f0f0;
+  color: #111111;
   font-family: var(--font-sans);
   font-size: 14.5px;
   font-weight: 400;
@@ -213,7 +216,7 @@ body {
 }
 
 .chat-input-box textarea::placeholder {
-  color: #52525b;
+  color: #b6b5b5;
 }
 
 /* ============================================ */
@@ -456,8 +459,8 @@ body {
   .drawer-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
     z-index: 999;
   }
 
@@ -487,7 +490,7 @@ body {
     border-radius: 0 !important;
     border-left: none !important;
     border-top: none !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-bottom: 1px solid rgba(30, 30, 30, 0.06) !important;
     overflow-x: auto !important;
     padding: 8px 16px !important;
     background: transparent !important;
@@ -523,7 +526,7 @@ body {
     transform: none !important;
     animation: none !important;
     z-index: 1000 !important;
-    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.3) !important;
   }
 
   .mobile-header {
@@ -584,7 +587,7 @@ body {
   animation: micPulseRing 1.4s ease-out infinite !important;
 }
 
-/* Waveform bars — Blackbox style white bars */
+/* Waveform bars */
 @keyframes waveBar {
 
   0%,
@@ -601,7 +604,7 @@ body {
   width: 2.5px;
   height: 3px;
   border-radius: 2px;
-  background: #ffffff;
+  background: #111111;
   animation: waveBar 0.7s ease-in-out infinite;
 }
 
@@ -632,25 +635,27 @@ body {
 }
 
 /* ============================================ */
-/* UPGRADE BUTTON                              */
+/* UPGRADE BUTTON — Swiss                      */
 /* ============================================ */
 
 .upgrade-btn {
   padding: 7px 16px;
-  border-radius: 20px;
-  background: #ffffff;
+  border-radius: 100px;
+  background: #111111;
   border: none;
-  color: #000000;
-  font-size: 13px;
-  font-weight: 600;
+  color: #f2f2f2;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
   font-family: var(--font-sans);
   transition: opacity 0.15s;
   white-space: nowrap;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .upgrade-btn:hover {
-  opacity: 0.88;
+  opacity: 0.82;
 }
 
 /* ============================================ */

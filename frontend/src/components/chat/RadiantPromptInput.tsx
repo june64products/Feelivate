@@ -2,6 +2,8 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Paperclip, Mic, MicOff, ArrowUp, Loader2, SlidersHorizontal, X } from 'lucide-react';
 import { transcribeAudio } from '../../api';
 
+const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
+
 export interface RadiantPromptInputProps {
     placeholder?: string;
     value?: string;
@@ -133,20 +135,21 @@ export default function RadiantPromptInput({
                 maxWidth: '780px',
                 margin: '0 auto',
                 width: '100%',
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: satoshi,
             }}
             className={className}
         >
-            {/* Main input box — fixed pill that grows cleanly */}
+            {/* Main input box — Swiss white pill */}
             <div
                 style={{
-                    background: '#181818',
+                    background: '#ffffff',
                     border: isFocused
-                        ? '1px solid rgba(255,255,255,0.22)'
-                        : '1px solid rgba(255,255,255,0.09)',
+                        ? '1px solid rgba(30,30,30,0.2)'
+                        : '1px solid rgba(30,30,30,0.08)',
                     borderRadius: '16px',
                     transition: 'border-color 0.18s ease',
                     overflow: 'hidden',
+                    boxShadow: '0 2px 12px rgba(30,30,30,0.04)',
                 }}
             >
                 {/* Top row: Paperclip + Textarea */}
@@ -164,17 +167,17 @@ export default function RadiantPromptInput({
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             width: '28px', height: '28px', borderRadius: '7px',
                             background: 'transparent', border: 'none',
-                            color: '#555', cursor: disabled ? 'not-allowed' : 'pointer',
+                            color: '#b6b5b5', cursor: disabled ? 'not-allowed' : 'pointer',
                             transition: 'color 0.15s', flexShrink: 0, marginTop: '2px',
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = '#888'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = '#555'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#838282'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = '#b6b5b5'; }}
                         aria-label="Add attachment"
                     >
                         <Paperclip size={17} />
                     </button>
 
-                    {/* Textarea — grows properly */}
+                    {/* Textarea — Swiss style */}
                     <textarea
                         ref={textareaRef}
                         value={value}
@@ -194,7 +197,7 @@ export default function RadiantPromptInput({
                             background: 'transparent',
                             border: 'none',
                             outline: 'none',
-                            color: isRecording ? '#f87171' : '#e4e4e7',
+                            color: isRecording ? '#ef4444' : '#111111',
                             fontSize: '14.5px',
                             fontWeight: 400,
                             lineHeight: '1.6',
@@ -203,7 +206,7 @@ export default function RadiantPromptInput({
                             maxHeight: '220px',
                             overflowY: 'auto',
                             padding: '4px 0 4px',
-                            fontFamily: "'Inter', sans-serif",
+                            fontFamily: satoshi,
                         }}
                     />
                 </div>
@@ -225,56 +228,56 @@ export default function RadiantPromptInput({
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '6px',
                                 padding: '4px 10px', borderRadius: '8px',
-                                background: showModels ? 'rgba(255,255,255,0.07)' : 'transparent',
+                                background: showModels ? 'rgba(30,30,30,0.04)' : 'transparent',
                                 border: '1px solid transparent',
-                                color: '#555', cursor: disabled ? 'not-allowed' : 'pointer',
+                                color: '#b6b5b5', cursor: disabled ? 'not-allowed' : 'pointer',
                                 fontSize: '12.5px', fontWeight: 500,
                                 transition: 'all 0.15s', userSelect: 'none',
-                                fontFamily: "'Inter', sans-serif",
+                                fontFamily: satoshi,
                             }}
                             onMouseEnter={(e) => {
-                                if (!showModels) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                e.currentTarget.style.color = '#aaa';
+                                if (!showModels) e.currentTarget.style.background = 'rgba(30,30,30,0.03)';
+                                e.currentTarget.style.color = '#838282';
                             }}
                             onMouseLeave={(e) => {
                                 if (!showModels) e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.color = showModels ? '#aaa' : '#555';
+                                e.currentTarget.style.color = showModels ? '#838282' : '#b6b5b5';
                             }}
                             aria-label="Select model"
                         >
                             <SlidersHorizontal size={14} />
-                            <span style={{ color: '#666', fontSize: '12px' }}>{selectedModel}</span>
+                            <span style={{ color: '#b6b5b5', fontSize: '12px' }}>{selectedModel}</span>
                         </button>
 
-                        {/* Model popup */}
+                        {/* Model popup — Swiss */}
                         {showModels && (
                             <div style={{
                                 position: 'absolute', bottom: 'calc(100% + 10px)', left: 0,
-                                background: '#161616',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: '#ffffff',
+                                border: '1px solid rgba(30,30,30,0.1)',
                                 borderRadius: '14px', padding: '8px',
-                                width: '220px', boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+                                width: '220px', boxShadow: '0 12px 40px rgba(30,30,30,0.1)',
                                 zIndex: 100,
                             }}>
                                 <div style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '6px 8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                    padding: '6px 8px 10px', borderBottom: '1px solid rgba(30,30,30,0.06)',
                                     marginBottom: '4px',
                                 }}>
-                                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#555', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                                         Model
                                     </span>
                                     <button
                                         onClick={() => setShowModels(false)}
-                                        style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex' }}
+                                        style={{ background: 'none', border: 'none', color: '#b6b5b5', cursor: 'pointer', display: 'flex' }}
                                     >
                                         <X size={13} />
                                     </button>
                                 </div>
                                 {[
-                                    { name: 'Groq Llama 3.3', tag: 'Fast', color: '#60a5fa' },
-                                    { name: 'GPT-4o Mini', tag: 'Balanced', color: '#a78bfa' },
-                                    { name: 'OSS 120B', tag: 'Deep', color: '#fbbf24' },
+                                    { name: 'Groq Llama 3.3', tag: 'Fast', color: '#111111' },
+                                    { name: 'GPT-4o Mini', tag: 'Balanced', color: '#838282' },
+                                    { name: 'OSS 120B', tag: 'Deep', color: '#d97757' },
                                 ].map((m) => (
                                     <button
                                         key={m.name}
@@ -283,20 +286,21 @@ export default function RadiantPromptInput({
                                             width: '100%', display: 'flex', alignItems: 'center',
                                             justifyContent: 'space-between', padding: '9px 10px',
                                             borderRadius: '9px', border: 'none',
-                                            background: selectedModel === m.name ? 'rgba(255,255,255,0.06)' : 'transparent',
-                                            color: selectedModel === m.name ? '#e4e4e7' : '#71717a',
+                                            background: selectedModel === m.name ? 'rgba(30,30,30,0.04)' : 'transparent',
+                                            color: selectedModel === m.name ? '#111111' : '#838282',
                                             cursor: 'pointer', fontSize: '13px', fontWeight: 500,
-                                            fontFamily: "'Inter', sans-serif",
+                                            fontFamily: satoshi,
                                             transition: 'all 0.12s',
                                         }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,30,0.03)'; }}
                                         onMouseLeave={e => { if (selectedModel !== m.name) e.currentTarget.style.background = 'transparent'; }}
                                     >
                                         {m.name}
                                         <span style={{
-                                            fontSize: '10px', fontWeight: 600, color: m.color,
-                                            background: `${m.color}18`, padding: '2px 7px',
-                                            borderRadius: '6px',
+                                            fontSize: '10px', fontWeight: 700, color: m.color,
+                                            background: `${m.color}10`, padding: '2px 7px',
+                                            borderRadius: '6px', letterSpacing: '0.04em',
+                                            textTransform: 'uppercase',
                                         }}>
                                             {m.tag}
                                         </span>
@@ -309,7 +313,7 @@ export default function RadiantPromptInput({
                     {/* Right: Mic error + Mic + Send */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {micError && (
-                            <span style={{ fontSize: '11px', color: '#f87171', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '11px', color: '#ef4444', whiteSpace: 'nowrap' }}>
                                 {micError}
                             </span>
                         )}
@@ -327,18 +331,18 @@ export default function RadiantPromptInput({
                                 cursor: (disabled || isTranscribing) ? 'not-allowed' : 'pointer',
                                 transition: 'all 0.18s',
                                 flexShrink: 0,
-                                background: isRecording ? 'rgba(239,68,68,0.15)' : 'transparent',
-                                color: isRecording ? '#f87171' : '#555',
+                                background: isRecording ? 'rgba(239,68,68,0.1)' : 'transparent',
+                                color: isRecording ? '#ef4444' : '#b6b5b5',
                             }}
                             onMouseEnter={(e) => {
                                 if (!isRecording && !isTranscribing && !disabled) {
-                                    e.currentTarget.style.color = '#aaa';
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                    e.currentTarget.style.color = '#838282';
+                                    e.currentTarget.style.background = 'rgba(30,30,30,0.04)';
                                 }
                             }}
                             onMouseLeave={(e) => {
                                 if (!isRecording && !isTranscribing) {
-                                    e.currentTarget.style.color = '#555';
+                                    e.currentTarget.style.color = '#b6b5b5';
                                     e.currentTarget.style.background = 'transparent';
                                 }
                             }}
@@ -351,7 +355,7 @@ export default function RadiantPromptInput({
                             }
                         </button>
 
-                        {/* Send button — white circle like Blackbox waveform */}
+                        {/* Send button — Swiss black circle */}
                         <button
                             type="button"
                             onClick={handleSubmit}
@@ -360,8 +364,8 @@ export default function RadiantPromptInput({
                             style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: '32px', height: '32px', borderRadius: '50%',
-                                background: canSend ? '#ffffff' : 'rgba(255,255,255,0.07)',
-                                color: canSend ? '#000000' : '#444',
+                                background: canSend ? '#111111' : 'rgba(30,30,30,0.06)',
+                                color: canSend ? '#f2f2f2' : '#b6b5b5',
                                 border: 'none',
                                 cursor: canSend ? 'pointer' : 'not-allowed',
                                 transition: 'all 0.18s',
@@ -393,9 +397,9 @@ export default function RadiantPromptInput({
             <p style={{
                 textAlign: 'center',
                 fontSize: '11px',
-                color: '#333',
+                color: '#b6b5b5',
                 marginTop: '10px',
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: satoshi,
             }}>
                 By using Feelivate you agree to our <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>Terms</span> and <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>Privacy Policy</span>
             </p>

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, MessageSquare, BookOpen, Clock, PanelLeft } from 'lucide-react';
+import { gsap } from 'gsap';
 import { getUserSessions } from '../../api';
 import type { SessionPreview } from '../../api';
 import StreakBar from './StreakBar';
@@ -16,6 +17,10 @@ interface SessionSidebarProps {
     isPlanActive: boolean;
 }
 
+/* ── Fonts ───────────────────────────────────────────────────────────────── */
+const clashDisplay = "'Clash Display', 'Inter', sans-serif";
+const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
+
 export default function SessionSidebar({
     userId,
     activeSessionId,
@@ -29,6 +34,7 @@ export default function SessionSidebar({
 }: SessionSidebarProps) {
     const [sessions, setSessions] = useState<SessionPreview[]>([]);
     const [loading, setLoading] = useState(true);
+    const navItemsRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!userId) return;
@@ -39,15 +45,26 @@ export default function SessionSidebar({
             .finally(() => setLoading(false));
     }, [userId, refreshKey]);
 
+    // GSAP entrance animation for nav items
+    useEffect(() => {
+        if (!isCollapsed && navItemsRef.current) {
+            const items = navItemsRef.current.querySelectorAll('.sb-nav-item');
+            gsap.fromTo(items,
+                { opacity: 0, x: -12 },
+                { opacity: 1, x: 0, duration: 0.4, stagger: 0.06, ease: 'power2.out', delay: 0.1 }
+            );
+        }
+    }, [isCollapsed]);
+
     const Logo = () => (
         <div style={{
-            width: '26px', height: '26px',
-            background: '#fff',
+            width: '28px', height: '28px',
+            background: '#f2f2f2',
             borderRadius: '7px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden', flexShrink: 0,
         }}>
-            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '17px', height: '17px', objectFit: 'contain' }} />
+            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
         </div>
     );
 
@@ -55,7 +72,7 @@ export default function SessionSidebar({
         width: '36px', height: '36px',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         borderRadius: '9px', border: 'none',
-        background: 'transparent', color: '#71717a',
+        background: 'transparent', color: 'rgba(255,255,255,0.4)',
         cursor: 'pointer', transition: 'background 0.15s, color 0.15s',
         flexShrink: 0,
     };
@@ -66,8 +83,8 @@ export default function SessionSidebar({
             <div style={{
                 width: '52px',
                 height: '100vh',
-                background: '#0a0a0a',
-                borderRight: '1px solid rgba(255,255,255,0.06)',
+                background: '#111111',
+                borderRight: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -91,8 +108,8 @@ export default function SessionSidebar({
                     onClick={onNewChat}
                     title="New Chat"
                     style={iconBtnBase}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#71717a'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#f2f2f2'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
                 >
                     <Plus size={18} />
                 </button>
@@ -101,8 +118,8 @@ export default function SessionSidebar({
                 <button
                     title="History"
                     style={iconBtnBase}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#71717a'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#f2f2f2'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
                 >
                     <Clock size={18} />
                 </button>
@@ -113,8 +130,8 @@ export default function SessionSidebar({
                         onClick={onJourney}
                         title="My Journey"
                         style={iconBtnBase}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#71717a'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#f2f2f2'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
                     >
                         <BookOpen size={18} />
                     </button>
@@ -128,47 +145,67 @@ export default function SessionSidebar({
         <div style={{
             width: '260px',
             height: '100vh',
-            background: '#0a0a0a',
-            borderRight: '1px solid rgba(255,255,255,0.06)',
+            background: '#111111',
+            borderRight: '1px solid rgba(255,255,255,0.05)',
             display: 'flex',
             flexDirection: 'column',
             flexShrink: 0,
             overflow: 'hidden',
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: satoshi,
             transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
         }}>
             {/* Header: Logo + FEELIVATE + Collapse */}
             <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 14px 10px',
+                padding: '16px 14px 12px',
                 flexShrink: 0,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Logo />
                     <span style={{
-                        fontWeight: 700, fontSize: '15px', color: '#f0f0f0',
-                        letterSpacing: '-0.02em', fontFamily: "'Inter', sans-serif",
+                        fontWeight: 700, fontSize: '14px', color: '#f2f2f2',
+                        letterSpacing: '0.08em', fontFamily: clashDisplay,
+                        textTransform: 'uppercase',
                     }}>
-                        FEELIVATE
+                        Feelivate
                     </span>
                 </div>
                 <button
                     onClick={onToggleCollapse}
                     title="Collapse sidebar"
                     style={iconBtnBase}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#71717a'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#f2f2f2'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
                 >
                     <PanelLeft size={16} />
                 </button>
             </div>
 
-            {/* Nav items */}
-            <div style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: '1px', flexShrink: 0 }}>
-                <NavItem icon={<Plus size={16} />} label="New" onClick={onNewChat} />
-                <NavItem icon={<Clock size={16} />} label="History" />
+            {/* New Chat pill button */}
+            <div style={{ padding: '0 10px 8px' }}>
+                <button
+                    onClick={onNewChat}
+                    style={{
+                        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                        padding: '10px 14px', borderRadius: '100px', border: 'none',
+                        background: '#f2f2f2', color: '#111111',
+                        fontSize: '12px', fontWeight: 700, fontFamily: satoshi,
+                        cursor: 'pointer', transition: 'opacity 0.15s',
+                        letterSpacing: '0.06em', textTransform: 'uppercase',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                >
+                    <Plus size={14} />
+                    New Chat
+                </button>
+            </div>
+
+            {/* Nav items with GSAP hover */}
+            <div ref={navItemsRef} style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: '1px', flexShrink: 0 }}>
+                <SidebarNavItem icon={<Clock size={15} />} label="History" />
                 {isPlanActive && (
-                    <NavItem icon={<BookOpen size={16} />} label="My Journey" onClick={onJourney} />
+                    <SidebarNavItem icon={<BookOpen size={15} />} label="My Journey" onClick={onJourney} />
                 )}
             </div>
 
@@ -181,19 +218,20 @@ export default function SessionSidebar({
             }}>
                 {sessions.length > 0 && (
                     <div style={{
-                        fontSize: '10.5px', fontWeight: 600, color: '#3f3f46',
+                        fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.25)',
                         padding: '0 8px 8px',
-                        letterSpacing: '0.06em', textTransform: 'uppercase',
+                        letterSpacing: '0.12em', textTransform: 'uppercase',
+                        fontFamily: clashDisplay,
                     }}>
                         Recent
                     </div>
                 )}
                 {loading ? (
-                    <div style={{ padding: '10px 8px', color: '#3f3f46', fontSize: '12px' }}>
+                    <div style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.2)', fontSize: '12px' }}>
                         Loading...
                     </div>
                 ) : sessions.length === 0 ? (
-                    <div style={{ padding: '10px 8px', color: '#3f3f46', fontSize: '12px' }}>
+                    <div style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.2)', fontSize: '12px' }}>
                         No conversations yet
                     </div>
                 ) : (
@@ -203,27 +241,27 @@ export default function SessionSidebar({
                             onClick={() => onSelectSession(session.id)}
                             style={{
                                 width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
-                                padding: '8px 10px', borderRadius: '8px', border: 'none',
+                                padding: '9px 10px', borderRadius: '8px', border: 'none',
                                 background: session.id === activeSessionId
-                                    ? 'rgba(255,255,255,0.07)'
+                                    ? 'rgba(255,255,255,0.08)'
                                     : 'transparent',
-                                color: session.id === activeSessionId ? '#e4e4e7' : '#71717a',
+                                color: session.id === activeSessionId ? '#f2f2f2' : 'rgba(255,255,255,0.45)',
                                 cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                                transition: 'all 0.12s', marginBottom: '1px',
-                                fontFamily: "'Inter', sans-serif",
+                                transition: 'all 0.15s', marginBottom: '1px',
+                                fontFamily: satoshi,
                             }}
                             onMouseEnter={e => {
                                 if (session.id !== activeSessionId)
                                     e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                                e.currentTarget.style.color = '#a1a1aa';
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
                             }}
                             onMouseLeave={e => {
                                 if (session.id !== activeSessionId)
                                     e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.color = '#71717a';
+                                e.currentTarget.style.color = session.id === activeSessionId ? '#f2f2f2' : 'rgba(255,255,255,0.45)';
                             }}
                         >
-                            <MessageSquare size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
+                            <MessageSquare size={13} style={{ flexShrink: 0, opacity: 0.4 }} />
                             <span style={{
                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                 flex: 1, fontSize: '13px',
@@ -241,28 +279,69 @@ export default function SessionSidebar({
     );
 }
 
-/* Reusable nav item */
-function NavItem({
+/* ── Sidebar Nav Item with GSAP hover ───────────────────────────────────── */
+function SidebarNavItem({
     icon, label, onClick,
 }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
-    const [hovered, setHovered] = useState(false);
+    const itemRef = useRef<HTMLButtonElement>(null);
+    const bgRef = useRef<HTMLSpanElement>(null);
+
+    const handleEnter = () => {
+        if (bgRef.current) {
+            gsap.to(bgRef.current, { scaleX: 1, opacity: 1, duration: 0.3, ease: 'power3.out' });
+        }
+        if (itemRef.current) {
+            itemRef.current.style.color = '#f2f2f2';
+        }
+    };
+
+    const handleLeave = () => {
+        if (bgRef.current) {
+            gsap.to(bgRef.current, { scaleX: 0, opacity: 0, duration: 0.25, ease: 'power3.in' });
+        }
+        if (itemRef.current) {
+            itemRef.current.style.color = 'rgba(255,255,255,0.5)';
+        }
+    };
+
     return (
         <button
+            ref={itemRef}
+            className="sb-nav-item"
             onClick={onClick}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
+            onMouseEnter={handleEnter}
+            onMouseLeave={handleLeave}
             style={{
+                position: 'relative',
                 width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                 padding: '9px 10px', borderRadius: '8px', border: 'none',
-                background: hovered ? 'rgba(255,255,255,0.05)' : 'transparent',
-                color: hovered ? '#e4e4e7' : '#a1a1aa',
+                background: 'transparent',
+                color: 'rgba(255,255,255,0.5)',
                 cursor: onClick ? 'pointer' : 'default',
-                fontSize: '13.5px', fontWeight: 500,
-                transition: 'all 0.12s', textAlign: 'left',
-                fontFamily: "'Inter', sans-serif",
+                fontSize: '13px', fontWeight: 500,
+                transition: 'color 0.15s', textAlign: 'left',
+                fontFamily: satoshi,
+                overflow: 'hidden',
+                zIndex: 0,
             }}
         >
-            <span style={{ color: hovered ? '#a1a1aa' : '#52525b', transition: 'color 0.12s', flexShrink: 0 }}>
+            {/* GSAP animated background */}
+            <span
+                ref={bgRef}
+                aria-hidden="true"
+                style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '8px',
+                    background: 'rgba(255,255,255,0.06)',
+                    transformOrigin: 'left center',
+                    transform: 'scaleX(0)',
+                    opacity: 0,
+                    zIndex: -1,
+                    pointerEvents: 'none',
+                }}
+            />
+            <span style={{ flexShrink: 0, display: 'flex' }}>
                 {icon}
             </span>
             {label}
