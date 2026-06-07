@@ -140,12 +140,14 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh',
+      height: '100vh',
       display: 'flex',
       flexDirection: 'column',
       background: '#f2f2f2',
       fontFamily: satoshi,
       color: '#111111',
-      overflow: 'hidden',
+      overflowY: 'auto',
+      overflowX: 'hidden',
     }}>
 
       {/* ══════════════════════════════════════════════════════════════════════
