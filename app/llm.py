@@ -14,20 +14,12 @@ _gemini_configured = False
 # ─── Fallback Chain Config ───────────────────────────────────────────────────
 # Each model is tried in order on rate-limit / decommission errors.
 # Final fallback is OpenAI gpt-4o (requires OPENAI_API_KEY).
-# NOTE: Use exact IDs from Groq's /models API (verified active 2026-05).
+# NOTE: Use exact IDs from Groq's /models API.
 GROQ_FALLBACK_CHAIN = [
-    "openai/gpt-oss-120b",        # 1st — Groq's hosted OSS 120B (primary)
-    "openai/gpt-oss-20b",         # 2nd — Groq's hosted OSS 20B
-    "llama-3.3-70b-versatile",    # 3rd — Llama 70B (reliable fallback)
-    "llama-3.1-8b-instant",       # 4th — small, ultra-fast
+    "llama-3.3-70b-versatile",    # 1st — Llama 70B (best quality, reliable)
+    "llama-3.1-8b-instant",       # 2nd — small, ultra-fast fallback
 ]
 OPENAI_FALLBACK_MODEL = "gpt-4o"
-
-# Internal shorthand → real Groq model mapping (legacy support)
-MODEL_MAP = {
-    "gpt-oss-120b": "openai/gpt-oss-120b",
-    "gpt-oss-20b":  "openai/gpt-oss-20b",
-}
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -302,7 +294,7 @@ def create_embedding(text: str) -> List[float]:
 
 def call_llm_chat(
     messages: List[dict],
-    temperature: float = 0.85,
+    temperature: float = 0.7,
     max_tokens: int = 4000,
     model_override: Optional[str] = None,
     presence_penalty: float = 0.4,
@@ -388,17 +380,16 @@ def _is_retryable_error(e: Exception) -> bool:
 
 def call_with_fallback_chain(
     messages: List[dict],
-    temperature: float = 0.85,
+    temperature: float = 0.7,
     max_tokens: int = 4000,
     presence_penalty: float = 0.4,
     frequency_penalty: float = 0.35,
 ) -> str:
     """
     Call LLM with auto-fallback cascade:
-      1. llama-3.3-70b-versatile  (Groq — primary)
-      2. mistral-saba-24b         (Groq — gpt-oss-20b equivalent)
-      3. llama-3.1-8b-instant     (Groq — fast small)
-      4. gpt-4o                   (OpenAI — last resort)
+      1. llama-3.3-70b-versatile  (Groq — primary, best quality)
+      2. llama-3.1-8b-instant     (Groq — fast small fallback)
+      3. gpt-4o                   (OpenAI — last resort)
     """
     tried: List[str] = []
 

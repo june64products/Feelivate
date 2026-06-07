@@ -189,40 +189,127 @@ def _is_personal_query(message: str) -> bool:
 # CORE: THE ONE CHAT ENDPOINT
 # ============================================================
 
+def _extract_json_by_braces(text: str) -> Optional[str]:
+    """Extract the outermost JSON object from text using balanced brace counting.
+    Handles preamble text before JSON and nested braces inside plan actions.
+    Returns the JSON substring or None if no valid object found.
+    """
+    start = None
+    depth = 0
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text):
+        if escape:
+            escape = False
+            continue
+        if ch == '\\' and in_string:
+            escape = True
+            continue
+        if ch == '"' and not escape:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0 and start is not None:
+                return text[start:i + 1]
+    # If we found a start but JSON was truncated (depth > 0), try to close it
+    if start is not None and depth > 0:
+        closer = ']' * text[start:].count('[') + '}' * depth  # rough guess
+        candidate = text[start:] + closer
+        try:
+            json.loads(candidate)
+            return candidate
+        except Exception:
+            pass
+    return None
+
+
 def _parse_llm_response(raw_text: str) -> Dict[str, Any]:
-    """Parse LLM response into {reply, plan} format."""
-    # Strip thinking blocks
-    raw_text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL)
+    """Parse LLM response into {reply, plan} format.
     
-    # Strip markdown code fences FIRST before any JSON extraction
-    # Handles: ```json\n{...}\n```, ```\n{...}\n```, etc.
+    Uses a multi-strategy approach to handle common LLM output issues:
+    1. Direct JSON parse (model output clean JSON)
+    2. Strip markdown fences, then direct parse
+    3. Balanced-brace extraction (handles preamble text before JSON)
+    4. Regex extraction of "reply" field (last resort for broken JSON)
+    """
+    # Strip thinking blocks (some models wrap reasoning in <think> tags)
+    raw_text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL).strip()
+    
+    # Strip markdown code fences: ```json\n{...}\n```, ```\n{...}\n```
     fence_stripped = re.sub(r'```(?:json)?\s*', '', raw_text)
     fence_stripped = fence_stripped.replace('```', '').strip()
     
-    # Try to parse as JSON first
+    # Strategy 1: Try direct json.loads on the full text (fastest path)
+    for text_to_try in [fence_stripped, raw_text]:
+        text_trimmed = text_to_try.strip()
+        if text_trimmed.startswith('{'):
+            try:
+                data = json.loads(text_trimmed)
+                if isinstance(data, dict) and "reply" in data:
+                    return {
+                        "reply": str(data.get("reply", "")),
+                        "plan": data.get("plan", None)
+                    }
+            except json.JSONDecodeError:
+                pass
+
+    # Strategy 2: Balanced-brace extraction (handles preamble text like
+    # "Done — here's your plan:\n\n{...}" or code snippets with nested braces)
+    for text_to_try in [fence_stripped, raw_text]:
+        json_str = _extract_json_by_braces(text_to_try)
+        if json_str:
+            try:
+                data = json.loads(json_str)
+                if isinstance(data, dict) and "reply" in data:
+                    return {
+                        "reply": str(data.get("reply", "")),
+                        "plan": data.get("plan", None)
+                    }
+            except json.JSONDecodeError as e:
+                logger.warning(f"Balanced-brace JSON parse failed: {e}")
+
+    # Strategy 3: Try the old find/rfind approach as another fallback
     for text_to_try in [fence_stripped, raw_text]:
         try:
-            # Find outermost JSON object
             start = text_to_try.find("{")
             end = text_to_try.rfind("}")
             if start != -1 and end != -1 and end > start:
                 json_str = text_to_try[start:end + 1].strip()
                 data = json.loads(json_str)
-                
-                if "reply" in data:
+                if isinstance(data, dict) and "reply" in data:
                     return {
                         "reply": str(data.get("reply", "")),
                         "plan": data.get("plan", None)
                     }
         except (json.JSONDecodeError, Exception) as e:
-            logger.warning(f"JSON parse attempt failed: {e}")
+            logger.warning(f"find/rfind JSON parse attempt failed: {e}")
             continue
+
+    # Strategy 4: Extract "reply" field via regex (handles partially broken JSON
+    # where the plan section has issues but the reply is still extractable)
+    reply_match = re.search(r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)"\s*[,}]', fence_stripped or raw_text)
+    if reply_match:
+        reply_text = reply_match.group(1)
+        # Unescape basic JSON escapes
+        reply_text = reply_text.replace('\\"', '"').replace('\\n', '\n').replace('\\\\', '\\')
+        logger.warning("Used regex fallback to extract reply from broken JSON")
+        return {"reply": reply_text, "plan": None}
     
-    # Fallback: treat entire response as plain text reply
+    # Strategy 5 (final): Treat entire response as plain text reply
     clean_text = fence_stripped or raw_text.strip()
-    # Remove leftover JSON structural characters if it looks like broken JSON
+    # If it looks like it was supposed to be JSON, clean up structural chars
     if clean_text.startswith("{"):
-        clean_text = re.sub(r'[{}"\[\]]', '', clean_text).strip()
+        clean_text = re.sub(r'[{}\[\]]', '', clean_text)
+        clean_text = re.sub(r'"reply"\s*:\s*"?', '', clean_text)
+        clean_text = re.sub(r'",?\s*"plan"\s*:.*', '', clean_text, flags=re.DOTALL)
+        clean_text = clean_text.strip().strip('"').strip()
     
     return {"reply": clean_text or "I'm here — what can I help you with?", "plan": None}
 
@@ -390,7 +477,7 @@ async def chat(
         raw_response = await asyncio.to_thread(
             call_with_fallback_chain,
             prompt_messages,
-            temperature=0.85,
+            temperature=0.7,
             max_tokens=4000,
             presence_penalty=0.4,
             frequency_penalty=0.35
@@ -402,6 +489,27 @@ async def chat(
         parsed = _parse_llm_response(raw_response)
         reply_text = parsed["reply"]
         plan_data = parsed["plan"]
+        
+        # 6a. Casual message guardrail — if user sent a short acknowledgment,
+        # discard any plan the model may have hallucinated.
+        _CASUAL_WORDS = {
+            "ok", "okay", "k", "sure", "yes", "no", "hmm", "haan", "nahi",
+            "theek hai", "acha", "accha", "nice", "cool", "great", "good",
+            "fine", "thanks", "ty", "thankyou", "thank you", "got it",
+            "alright", "right", "yep", "yup", "nope", "hm", "ohh", "oh",
+            "wow", "lol", "haha", "interesting", "understood",
+        }
+        msg_normalized = message.lower().strip().rstrip("!.?,")
+        if plan_data and msg_normalized in _CASUAL_WORDS:
+            logger.info(f"Casual message '{message}' triggered plan — suppressing plan_data")
+            plan_data = None
+        
+        # 6b. Validate plan structure — plan must have 'days' array with items
+        if plan_data and isinstance(plan_data, dict):
+            plan_days = plan_data.get("days")
+            if not isinstance(plan_days, list) or len(plan_days) == 0:
+                logger.warning(f"Plan missing valid 'days' array — discarding: {plan_data.keys()}")
+                plan_data = None
         
         # 7. Save messages to DB
         user_msg = ChatMessage(session_id=session_id, role="user", content=message)
@@ -1411,9 +1519,12 @@ async def complete_session(
     try:
         raw = await asyncio.to_thread(call_llm, prompt, temperature=0.7, max_tokens=600)
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
-        start = raw.find("{")
-        end = raw.rfind("}")
-        report_data = json.loads(raw[start:end + 1]) if start != -1 else {}
+        json_str = _extract_json_by_braces(raw)
+        if not json_str:
+            start = raw.find("{")
+            end = raw.rfind("}")
+            json_str = raw[start:end + 1] if start != -1 else "{}"
+        report_data = json.loads(json_str)
     except Exception as e:
         logger.warning(f"Final report generation failed: {e}")
         report_data = {
@@ -1500,10 +1611,13 @@ async def _analyze_emotion(transcript: str) -> dict:
     try:
         raw = await asyncio.to_thread(call_llm, prompt, temperature=0.2, max_tokens=120)
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
-        start = raw.find("{")
-        end = raw.rfind("}")
-        if start != -1 and end != -1:
-            data = json.loads(raw[start:end + 1])
+        json_str = _extract_json_by_braces(raw)
+        if not json_str:
+            start = raw.find("{")
+            end = raw.rfind("}")
+            json_str = raw[start:end + 1] if start != -1 else None
+        if json_str:
+            data = json.loads(json_str)
             return {
                 "label": data.get("label", "neutral"),
                 "score": max(1, min(10, int(data.get("score", 5)))),
@@ -1938,9 +2052,13 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
         # Strip thinking blocks if generated
         raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL)
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
-        start_idx = raw.find("{")
-        end_idx = raw.rfind("}")
-        ai_data = json.loads(raw[start_idx:end_idx + 1]) if start_idx != -1 else {}
+        # Use robust balanced-brace extraction, fall back to find/rfind
+        json_str = _extract_json_by_braces(raw)
+        if not json_str:
+            start_idx = raw.find("{")
+            end_idx = raw.rfind("}")
+            json_str = raw[start_idx:end_idx + 1] if start_idx != -1 else "{}"
+        ai_data = json.loads(json_str)
         
         daily_list = ai_data.get("daily_analysis", [])
         if not isinstance(daily_list, list):
