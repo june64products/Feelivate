@@ -16,9 +16,9 @@ const GoogleIcon = () => (
 
 // ─── Feature Cards ────────────────────────────────────────────────────────────
 const features = [
-  { title: 'Goal Intake', desc: 'Tell me your goal once — I ask just 3 smart questions to understand you completely.' },
-  { title: 'Weekly Action Plans', desc: 'Get a hyper-specific 7-day roadmap. No vague advice — exact tasks, times, and steps.' },
-  { title: 'Plan Locking', desc: "Once you approve a week, it's locked in. Commitment is the strategy." },
+  { title: 'No More Bullshit', desc: 'Tell us what you want. Our AI strips away the noise and extracts the exact daily micro-actions needed.' },
+  { title: 'Zero Decision Fatigue', desc: 'Forget vague to-do lists. You get a hyper-precise schedule: what to do, when, and exactly how.' },
+  { title: 'The Lock-In Protocol', desc: "Once your week is set, it's locked. You can't edit it to make it easier. You do the work, or you don't." },
 ];
 
 // ─── Shared input style — Swiss aesthetic ─────────────────────────────────────
@@ -457,7 +457,7 @@ export default function LoginPage() {
             transition={{ duration: 0.7, ease: [0.77, 0, 0.175, 1] }}
             style={{ marginBottom: '48px', textAlign: 'center' }}
           >
-            <EchoStack text="EVOLVE" fontSize="clamp(60px, 9vw, 140px)" />
+            <EchoStack text="EXECUTE" fontSize="clamp(60px, 9vw, 140px)" />
           </motion.div>
 
           {/* Tagline */}
@@ -473,7 +473,7 @@ export default function LoginPage() {
               color: '#111111', marginBottom: '16px',
               fontFamily: clashDisplay,
             }}>
-              Your AI-Powered
+              Stop lying to yourself
               <br />
               <span style={{
                 fontStyle: 'italic',
@@ -481,16 +481,15 @@ export default function LoginPage() {
                 fontWeight: 400,
                 color: '#838282',
               }}>
-                Behavioral
+                about
               </span>
-              {' '}Mentor
+              {' '}tomorrow.
             </h2>
             <p style={{
               fontSize: '15px', color: '#838282', lineHeight: 1.7,
               fontFamily: satoshi, fontWeight: 500,
             }}>
-              Not a to-do list. Not vague advice. A hyper-specific weekly commitment engine
-              that builds who you become — week after week.
+              Feelivate is a ruthless AI mentor that breaks your biggest goals into non-negotiable 7-day sprints. No fluff. No escape. Just execution.
             </p>
           </motion.div>
 
@@ -569,7 +568,7 @@ export default function LoginPage() {
               fontStyle: 'italic', fontFamily: "'Georgia', 'Times New Roman', serif",
               marginBottom: '8px',
             }}>
-              "Week 1 is easy. Week 4 is who you become."
+              "Your future self is watching. Don't disappoint them."
             </p>
             <p style={{
               fontSize: '10px', color: '#111111', fontWeight: 700,
