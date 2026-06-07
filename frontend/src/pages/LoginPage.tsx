@@ -600,7 +600,7 @@ export default function LoginPage() {
           fontFamily: clashDisplay,
           letterSpacing: '0.12em',
         }}>
-          {Array(8).fill("AI BEHAVIORAL MENTOR   //   WEEKLY ACTION PLANS   //   ZERO DECISION FATIGUE   //   PLAN LOCKING PROTOCOL   //   HYPER-SPECIFIC SPRINTS   //   RELENTLESS ACCOUNTABILITY   //   ").join("")}
+          {Array(8).fill("AI BEHAVIORAL MENTOR   //   WEEKLY ACTION PLANS   //   DAILY MAIL NOTIFICATIONS   //   STREAK TRACKING   //   WEEKLY REPORTS   //   DAILY EMOTION LOGS   //   VOICE MEMO INTAKE   //   RELENTLESS ACCOUNTABILITY   //   ").join("")}
         </div>
       </div>
 
