@@ -1802,7 +1802,18 @@ async def get_weekly_report(
     if cached:
         try:
             cached_data = json.loads(cached.report_json)
-            if cached_data.get("entry_count") == len(journals):
+            # Validate cache: entry_count must match AND days_done must match actual
+            # journal count for this week (not DailyCheckin count which can be inflated).
+            # We determine "actual" days_done from journal_by_date below, but for a quick
+            # check we count journals that fall within the week bounds.
+            journals_in_week = sum(1 for j in journals if ws <= j.date <= we)
+            cached_days_done = cached_data.get("days_done", -1)
+            cached_entry_count = cached_data.get("entry_count", -1)
+            cache_valid = (
+                cached_entry_count == len(journals)
+                and cached_days_done == journals_in_week  # voice journal = source of truth
+            )
+            if cache_valid:
                 return {"status": "cached", "week_start": ws, "week_end": we, "week_number": wk_num, "report": cached_data}
         except Exception:
             pass
@@ -1836,9 +1847,16 @@ async def get_weekly_report(
     # ── 5. Build the per-day data merge ────────────────────────────────────
     journal_by_date = {j.date: j for j in journals}
     avg_score = round(sum(j.emotion_score or 5 for j in journals) / len(journals), 1)
-    days_done = sum(1 for s in checkin_map.values() if s == "done")
-    days_missed = sum(1 for d, s in checkin_map.items() if s == "missed" and d <= today.isoformat())
-    past_days_count = sum(1 for d in all_week_days if d <= today.isoformat())
+
+    # Use voice journal count for days_done — NOT DailyCheckin.
+    # Reason: backfill marks journal days as "done" in DailyCheckin, but DailyCheckin
+    # can also be inflated by manual checkins or stale backfill data, causing
+    # "2/2 done" to show even when the user recorded only 1 voice entry.
+    # Voice journals are the source of truth for this report.
+    past_days = [d for d in all_week_days if d <= today.isoformat()]
+    past_days_count = len(past_days)
+    days_done = sum(1 for d in past_days if d in journal_by_date)
+    days_missed = past_days_count - days_done
     consistency_score = round((days_done / max(past_days_count, 1)) * 100) if past_days_count > 0 else 0
 
     # ── 6. Build rich AI prompt ─────────────────────────────────────────
@@ -1966,7 +1984,9 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
                 "emotion": journal_by_date[d].emotion_label if d in journal_by_date else None,
                 "score": journal_by_date[d].emotion_score if d in journal_by_date else None,
                 "one_liner": journal_by_date[d].one_liner if d in journal_by_date else None,
-                "checkin": checkin_map.get(d, "pending"),
+                # Use journal presence as source of truth for checkin status
+                # (DailyCheckin can be inflated by backfill; journal IS the record)
+                "checkin": "done" if d in journal_by_date else ("missed" if d <= today.isoformat() else "pending"),
                 "has_journal": d in journal_by_date,
                 "coaching_insight": daily_list[i] if i < len(daily_list) else "",
             }
