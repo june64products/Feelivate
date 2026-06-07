@@ -327,28 +327,52 @@ async def chat(
         # 4d. Auto-fetch the latest weekly report from DB (compressed performance context)
         # This saves tokens vs injecting raw transcripts — report is already AI-summarized.
         # Only inject when plan is active (relevant for building next week).
+        #
+        # IMPORTANT: use session-scoped _get_week_bounds() instead of standard Mon–Sun
+        # calendar-week arithmetic. If the plan started on a non-Monday (e.g. Wednesday),
+        # the report is stored under the session's week_start, not the calendar Mon.
+        # Using calendar-week lookup causes week_report_data to always be None for these
+        # sessions, which means the LLM has no performance context and either asks questions
+        # or silently generates a week_number=1 plan that the lock guard discards.
         week_report_data = None
-        if session_rec.phase == "active":
-            from datetime import date, timedelta
-            today_d = date.today()
-            # Check current week AND previous week (report may be from last week)
-            for offset in [0, -7]:
-                ref = today_d + timedelta(days=offset)
-                week_start = (ref - timedelta(days=ref.weekday())).isoformat()
+        if session_rec.phase == "active" and session_rec.plan_start_date:
+            from datetime import date as _date_cls
+            current_wk = session_rec.current_week or 1
+
+            # Check current week first, then previous week (user may be asking for N+1
+            # while still technically on the last day of week N, or report may be cached
+            # from a completed prior week).
+            for wk_to_check in [current_wk, max(1, current_wk - 1)]:
+                try:
+                    ws_check, _, _ = _get_week_bounds(session_rec.plan_start_date, wk_to_check)
+                except Exception:
+                    continue
                 latest_report = (
                     db.query(WeeklyReport)
                     .filter(
                         WeeklyReport.user_id == user_id,
-                        WeeklyReport.week_start == week_start,
+                        WeeklyReport.session_id == session_id,
+                        WeeklyReport.week_start == ws_check,
                     )
                     .first()
                 )
+                if not latest_report:
+                    # Also try without session_id filter — older reports may not have it set
+                    latest_report = (
+                        db.query(WeeklyReport)
+                        .filter(
+                            WeeklyReport.user_id == user_id,
+                            WeeklyReport.week_start == ws_check,
+                        )
+                        .first()
+                    )
                 if latest_report:
                     try:
                         week_report_data = json.loads(latest_report.report_json)
                     except Exception:
                         pass
-                    break  # Use the most recent one found
+                    if week_report_data:
+                        break  # Use the most recent valid report found
 
         # 5. Build prompt messages
         prompt_messages = build_chat_prompt(
@@ -1248,10 +1272,15 @@ def _get_week_bounds(plan_start_date_str: str, week_number: int):
 @app.get("/sessions/{session_id}/week-info", tags=["sessions"])
 async def get_week_info(
     session_id: str,
+    client_date: Optional[str] = None,  # YYYY-MM-DD from user's local timezone
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return the current week's date bounds and completion status for the session."""
+    """Return the current week's date bounds and completion status for the session.
+    Pass client_date (YYYY-MM-DD) from user's local timezone to avoid UTC vs IST mismatch.
+    is_week_complete is True on the LAST day itself (>=) so the report and Plan Week N+1
+    button both appear on Sunday rather than the day after.
+    """
     from datetime import date
     session_rec = db.query(Session).filter(Session.id == session_id).first()
     if not session_rec or session_rec.user_id != current_user.id:
@@ -1262,9 +1291,21 @@ async def get_week_info(
 
     current_week = session_rec.current_week if session_rec.current_week is not None else 1
     ws, we, day_count = _get_week_bounds(session_rec.plan_start_date, current_week)
-    # Use client's local date if provided via query param, otherwise fallback to server date
-    today = date.today().isoformat()
-    is_week_complete = today > we
+
+    # Use client's local date if provided — avoids UTC vs IST midnight-shift bugs
+    if client_date:
+        try:
+            today = date.fromisoformat(client_date).isoformat()
+        except ValueError:
+            today = date.today().isoformat()
+    else:
+        today = date.today().isoformat()
+
+    # >= so the last day of the week (Sunday/plan-end day) itself counts as "complete".
+    # This allows the weekly report and "Plan Week N+1" button to appear on the final day
+    # after the user records their voice journal, rather than requiring them to wait until
+    # the following day.
+    is_week_complete = today >= we
 
     return {
         "has_plan": True,

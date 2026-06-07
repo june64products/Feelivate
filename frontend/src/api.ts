@@ -498,7 +498,10 @@ export interface WeekInfo {
 }
 
 export const getWeekInfo = async (sessionId: string): Promise<WeekInfo> => {
-    const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/week-info`);
+    // Pass client local date so backend uses IST (or user's TZ) instead of UTC server date.
+    // This prevents Sunday-evening IST appearing as Monday UTC and breaking is_week_complete.
+    const clientDate = getLocalISODate();
+    const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/week-info?client_date=${clientDate}`);
     if (!response.ok) throw new Error('Failed to fetch week info');
     return response.json();
 };
