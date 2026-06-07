@@ -582,6 +582,29 @@ export default function LoginPage() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
+          TICKER MARQUEE
+          ══════════════════════════════════════════════════════════════════════ */}
+      <div style={{
+        width: '100%',
+        overflow: 'hidden',
+        background: '#111111',
+        padding: '16px 0',
+        flexShrink: 0,
+      }}>
+        <div className="marquee-content" style={{
+          display: 'inline-block',
+          whiteSpace: 'nowrap',
+          color: '#f2f2f2',
+          fontSize: '12px',
+          fontWeight: 600,
+          fontFamily: clashDisplay,
+          letterSpacing: '0.12em',
+        }}>
+          {Array(8).fill("AI BEHAVIORAL MENTOR   //   WEEKLY ACTION PLANS   //   ZERO DECISION FATIGUE   //   PLAN LOCKING PROTOCOL   //   HYPER-SPECIFIC SPRINTS   //   RELENTLESS ACCOUNTABILITY   //   ").join("")}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
           FOOTER — Deep dark theme
           ══════════════════════════════════════════════════════════════════════ */}
       <footer style={{
@@ -686,13 +709,13 @@ export default function LoginPage() {
               marginBottom: '16px', fontFamily: satoshi,
             }}>Contact</h4>
             <p style={{ fontSize: '13px', color: 'rgba(246,246,246,0.6)', marginBottom: '10px', fontFamily: satoshi, fontWeight: 500 }}>
-              hello@feelivate.com
+              info@june64.com
             </p>
             <p style={{ fontSize: '13px', color: 'rgba(246,246,246,0.6)', marginBottom: '10px', fontFamily: satoshi, fontWeight: 500 }}>
               @feelivate
             </p>
             <p style={{ fontSize: '13px', color: 'rgba(246,246,246,0.6)', marginBottom: '10px', fontFamily: satoshi, fontWeight: 500 }}>
-              San Francisco, CA
+              London, UK
             </p>
           </div>
         </div>
@@ -837,6 +860,15 @@ export default function LoginPage() {
           to   { transform: rotate(360deg); }
         }
         .animate-spin { animation: spin 0.9s linear infinite; }
+
+        /* Marquee Animation */
+        .marquee-content {
+          animation: scrollMarquee 40s linear infinite;
+        }
+        @keyframes scrollMarquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
 
         /* Smooth scrolling for whole page */
         html { scroll-behavior: smooth; }
