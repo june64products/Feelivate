@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HorizontalScrollText } from '../components/layout/HorizontalScrollText';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { login, signup } from '../api';
 
@@ -139,7 +138,7 @@ export default function LoginPage() {
   const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
 
   return (
-    <div id="login-container" style={{
+    <div style={{
       minHeight: '100vh',
       height: '100vh',
       display: 'flex',
@@ -585,7 +584,25 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           TICKER MARQUEE
           ══════════════════════════════════════════════════════════════════════ */}
-      <HorizontalScrollText />
+      <div style={{
+        width: '100%',
+        overflow: 'hidden',
+        background: '#111111',
+        padding: '16px 0',
+        flexShrink: 0,
+      }}>
+        <div className="marquee-content" style={{
+          display: 'inline-block',
+          whiteSpace: 'nowrap',
+          color: '#f2f2f2',
+          fontSize: '12px',
+          fontWeight: 600,
+          fontFamily: clashDisplay,
+          letterSpacing: '0.12em',
+        }}>
+          {Array(8).fill("AI BEHAVIORAL MENTOR   //   WEEKLY ACTION PLANS   //   DAILY MAIL NOTIFICATIONS   //   STREAK TRACKING   //   WEEKLY REPORTS   //   DAILY EMOTION LOGS   //   VOICE MEMO INTAKE   //   RELENTLESS ACCOUNTABILITY   //   ").join("")}
+        </div>
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
           FOOTER — Deep dark theme
