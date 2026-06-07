@@ -225,7 +225,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN SPLIT — Login left, Marketing right
           ══════════════════════════════════════════════════════════════════════ */}
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+      <div style={{ flex: '1 0 auto', display: 'flex' }}>
 
         {/* ── LEFT: Sign-In Form ──────────────────────────────────────────── */}
         <div style={{
