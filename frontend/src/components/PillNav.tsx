@@ -188,9 +188,6 @@ const PillNav: React.FC<PillNavProps> = ({
                 outlineOffset: '2px',
                 zIndex: 0,
               }}
-              ref={el => {
-                // attach circle ref after mount
-              }}
             >
               {/* Rising circle */}
               <span
