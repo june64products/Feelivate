@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, X, Lock, Sparkles, FileText, ChevronUp, Mic } from 'lucide-react';
+import { ChevronRight, ChevronDown, X, Lock, Sparkles, FileText, ChevronUp, Mic, Menu } from 'lucide-react';
 import { getSessionReports, type ArchivedWeekReport } from '../../api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -437,8 +437,13 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
         planHistory.find((p: any) => p.week_number === wn) ?? null;
 
     const [isMobile, setIsMobile] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        const checkMobile = () => {
+            const mobile = window.innerWidth < 768;
+            setIsMobile(mobile);
+            if (!mobile) setIsMobileMenuOpen(true); // always open on desktop
+        };
         checkMobile();
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
@@ -458,107 +463,141 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                 transition={{ type: 'spring', damping: 22, stiffness: 250, delay: 0.1 }}
                 style={{
                     position: 'fixed',
-                    right: 0,
-                    top: '80px', // Below the profile icon
+                    right: isMobile ? 'auto' : 0,
+                    left: isMobile ? 0 : 'auto',
+                    top: isMobile ? 'auto' : '80px',
+                    bottom: isMobile ? 0 : 'auto',
                     display: 'flex',
-                    flexDirection: 'column',
+                    flexDirection: isMobile ? (isMobileMenuOpen ? 'column' : 'row') : 'column',
                     gap: '4px',
-                    padding: '8px 0',
+                    padding: isMobile ? '8px 16px' : '8px 0',
                     background: 'rgba(10,10,10,0.92)',
-                    borderLeft: '1px solid rgba(255,255,255,0.08)',
+                    borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.08)',
                     borderTop: '1px solid rgba(255,255,255,0.06)',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: '14px 0 0 14px',
-                    boxShadow: '-4px 0 24px rgba(0,0,0,0.4)',
+                    borderBottom: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: isMobile ? '20px 20px 0 0' : '14px 0 0 14px',
+                    boxShadow: isMobile ? '0 -10px 40px rgba(0,0,0,0.4)' : '-4px 0 24px rgba(0,0,0,0.4)',
                     backdropFilter: 'blur(12px)',
                     zIndex: 400,
                     minWidth: '52px',
-                    alignItems: 'center',
+                    width: isMobile ? '100%' : 'auto',
+                    alignItems: isMobile ? 'flex-start' : 'center',
                     fontFamily: "'Inter', sans-serif",
                 }}
             >
-                {groups.map((group, gi) => {
-                    const groupKey = `${group.startWeek}-${group.endWeek}`;
-                    const isGroupExpanded = expandedGroups.has(groupKey);
-                    // If group has 5+ weeks → show as collapsible pill, else show individual buttons
-                    const showGrouped = group.weeks.length >= 5;
+                {/* Hamburger toggle on mobile */}
+                {isMobile && (
+                    <button
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            background: 'transparent', border: 'none',
+                            color: '#f2f2f2', cursor: 'pointer',
+                            padding: '8px 4px', width: '100%',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        <Menu size={20} />
+                        {!isMobileMenuOpen && <span style={{ fontSize: '12px', fontWeight: 600 }}>WEEKS</span>}
+                        {isMobileMenuOpen && <span style={{ fontSize: '12px', fontWeight: 600 }}>CLOSE</span>}
+                    </button>
+                )}
 
-                    if (showGrouped) {
-                        return (
-                            <div key={groupKey} className="week-group-col" style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', width: '100%' }}>
-                                {/* Group toggle button */}
-                                <button
-                                    onClick={() => toggleGroup(groupKey)}
-                                    title={`${group.label} — click to ${isGroupExpanded ? 'collapse' : 'expand'}`}
-                                    style={{
-                                        width: '44px',
-                                        padding: '7px 4px',
-                                        borderRadius: '9px',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        background: isGroupExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-                                        color: 'rgba(255,255,255,0.55)',
-                                        cursor: 'pointer',
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
-                                        transition: 'all 0.15s',
-                                        fontFamily: "'Inter', sans-serif",
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'white'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = isGroupExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; }}
-                                >
-                                    <span style={{ fontSize: '8px', fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.1, textAlign: 'center' }}>
-                                        {group.startWeek}–{group.endWeek}
-                                    </span>
-                                    {isGroupExpanded ? <ChevronDown size={9} /> : <ChevronRight size={9} />}
-                                </button>
+                <AnimatePresence>
+                    {(!isMobile || isMobileMenuOpen) && (
+                        <motion.div
+                            initial={isMobile ? { height: 0, opacity: 0 } : false}
+                            animate={isMobile ? { height: 'auto', opacity: 1 } : false}
+                            exit={isMobile ? { height: 0, opacity: 0 } : false}
+                            style={{ 
+                                display: 'flex', 
+                                flexDirection: isMobile ? 'row' : 'column',
+                                flexWrap: isMobile ? 'wrap' : 'nowrap',
+                                gap: '8px',
+                                width: '100%',
+                                justifyContent: isMobile ? 'center' : 'center',
+                                padding: isMobile ? '10px 0' : '0'
+                            }}
+                        >
+                            {groups.map((group, gi) => {
+                                const groupKey = `${group.startWeek}-${group.endWeek}`;
+                                const isGroupExpanded = expandedGroups.has(groupKey);
+                                const showGrouped = group.weeks.length >= 5;
 
-                                {/* Expanded individual week buttons */}
-                                <AnimatePresence>
-                                    {isGroupExpanded && (
-                                        <motion.div
-                                            className="week-group-col"
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                                            style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', width: '100%' }}
-                                        >
-                                            {group.weeks.map(w => (
-                                                <WeekPill
-                                                    key={w.weekNumber}
-                                                    item={w}
-                                                    isSelected={selectedWeek === w.weekNumber}
-                                                    onClick={(e) => handleWeekClick(w.weekNumber, e)}
-                                                />
-                                            ))}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                if (showGrouped) {
+                                    return (
+                                        <div key={groupKey} className="week-group-col" style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '3px', alignItems: 'center', width: isMobile ? 'auto' : '100%' }}>
+                                            <button
+                                                onClick={() => toggleGroup(groupKey)}
+                                                title={`${group.label} — click to ${isGroupExpanded ? 'collapse' : 'expand'}`}
+                                                style={{
+                                                    width: isMobile ? 'auto' : '44px',
+                                                    padding: '7px 8px',
+                                                    borderRadius: '9px',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    background: isGroupExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+                                                    color: 'rgba(255,255,255,0.55)',
+                                                    cursor: 'pointer',
+                                                    display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: 'center', gap: '4px',
+                                                    transition: 'all 0.15s',
+                                                    fontFamily: "'Inter', sans-serif",
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'white'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = isGroupExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; }}
+                                            >
+                                                <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.1, textAlign: 'center' }}>
+                                                    {group.startWeek}–{group.endWeek}
+                                                </span>
+                                                {isGroupExpanded ? (isMobile ? <ChevronRight size={10} /> : <ChevronDown size={9} />) : (isMobile ? <ChevronDown size={10} /> : <ChevronRight size={9} />)}
+                                            </button>
 
-                                {/* Divider between groups */}
-                                {gi < groups.length - 1 && (
-                                    <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
-                                )}
-                            </div>
-                        );
-                    }
+                                            <AnimatePresence>
+                                                {isGroupExpanded && (
+                                                    <motion.div
+                                                        className="week-group-col"
+                                                        initial={{ opacity: 0, width: isMobile ? 0 : 'auto', height: isMobile ? 'auto' : 0 }}
+                                                        animate={{ opacity: 1, width: 'auto', height: 'auto' }}
+                                                        exit={{ opacity: 0, width: isMobile ? 0 : 'auto', height: isMobile ? 'auto' : 0 }}
+                                                        style={{ overflow: 'hidden', display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '3px', alignItems: 'center', width: isMobile ? 'auto' : '100%' }}
+                                                    >
+                                                        {group.weeks.map(w => (
+                                                            <WeekPill
+                                                                key={w.weekNumber}
+                                                                item={w}
+                                                                isSelected={selectedWeek === w.weekNumber}
+                                                                onClick={(e) => handleWeekClick(w.weekNumber, e)}
+                                                            />
+                                                        ))}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
 
-                    // Less than 5 in group → show individually
-                    return (
-                        <div key={groupKey} className="week-group-col" style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center', width: '100%' }}>
-                            {group.weeks.map(w => (
-                                <WeekPill
-                                    key={w.weekNumber}
-                                    item={w}
-                                    isSelected={selectedWeek === w.weekNumber}
-                                    onClick={(e) => handleWeekClick(w.weekNumber, e)}
-                                />
-                            ))}
-                            {gi < groups.length - 1 && (
-                                <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
-                            )}
-                        </div>
-                    );
-                })}
+                                            {gi < groups.length - 1 && !isMobile && (
+                                                <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
+                                            )}
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div key={groupKey} className="week-group-col" style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '3px', alignItems: 'center', width: isMobile ? 'auto' : '100%', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                                        {group.weeks.map(w => (
+                                            <WeekPill
+                                                key={w.weekNumber}
+                                                item={w}
+                                                isSelected={selectedWeek === w.weekNumber}
+                                                onClick={(e) => handleWeekClick(w.weekNumber, e)}
+                                            />
+                                        ))}
+                                        {gi < groups.length - 1 && !isMobile && (
+                                            <div className="week-divider" style={{ width: '28px', height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </motion.div>
 
             {/* ── Slide-out week drawer ── */}

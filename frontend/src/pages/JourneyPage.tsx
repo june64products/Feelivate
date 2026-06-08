@@ -75,7 +75,7 @@ function EmotionPieChart({ days }: { days: WeeklyReportDay[] }) {
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-            <svg width="140" height="140" viewBox="0 0 140 140">
+            <svg width="140" height="140" viewBox="0 0 140 140" style={{ flexShrink: 0 }}>
                 {slices.map((s, i) => (
                     <motion.path
                         key={s.label}
@@ -269,7 +269,7 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                             </div>
 
                             {/* Grid: Plan vs Actual */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className="journey-flex-col">
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className="grid-col-1-mobile">
                                 {/* Planned Task Column */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     <span style={{ fontSize: '9px', color: '#b6b5b5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: satoshi }}>
@@ -341,11 +341,11 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
         return new Date(y, mo - 1, dd);
     };
     return (
-        <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: '6px',
-        }}>
+            <div className="mobile-horizontal-scroll" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gap: '6px',
+            }}>
             {days.map((d, i) => {
                 const dayDate = parseLocalDate(d.date);
                 const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
@@ -659,6 +659,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             flex: 1, display: 'flex', flexDirection: 'column', height: '100%',
             background: '#f2f2f2', overflow: 'hidden',
             position: 'relative',
+            overflowY: 'auto',
             fontFamily: satoshi,
         }}>
             {/* Floating locked weeks panel — right edge */}
