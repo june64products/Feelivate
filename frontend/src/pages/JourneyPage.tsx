@@ -17,6 +17,10 @@ import {
 } from '../api';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 
+// ─── Fonts ────────────────────────────────────────────────────────────────────
+const clashDisplay = "'Clash Display', 'Inter', sans-serif";
+const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
+
 // ─── Emotion color palette ────────────────────────────────────────────────────
 const EMOTION_COLORS: Record<string, string> = {
     motivated: '#f59e0b',
@@ -84,11 +88,11 @@ function EmotionPieChart({ days }: { days: WeeklyReportDay[] }) {
                     />
                 ))}
                 {/* Center donut hole */}
-                <circle cx={cx} cy={cy} r={30} fill="#0a0a0b" />
-                <text x={cx} y={cy - 4} textAnchor="middle" fill="white" fontSize="14" fontWeight="700" fontFamily="Inter, sans-serif">
+                <circle cx={cx} cy={cy} r={30} fill="#ffffff" />
+                <text x={cx} y={cy - 4} textAnchor="middle" fill="#111111" fontSize="14" fontWeight="700" fontFamily={clashDisplay}>
                     {total}
                 </text>
-                <text x={cx} y={cy + 12} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8" fontFamily="Inter, sans-serif">
+                <text x={cx} y={cy + 12} textAnchor="middle" fill="#b6b5b5" fontSize="8" fontFamily={satoshi}>
                     days
                 </text>
             </svg>
@@ -99,12 +103,11 @@ function EmotionPieChart({ days }: { days: WeeklyReportDay[] }) {
                         <div style={{
                             width: '10px', height: '10px', borderRadius: '50%',
                             background: s.color, flexShrink: 0,
-                            boxShadow: `0 0 6px ${s.color}`,
                         }} />
-                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', fontWeight: 500, textTransform: 'capitalize' }}>
+                        <span style={{ fontSize: '11px', color: '#838282', fontWeight: 500, textTransform: 'capitalize', fontFamily: satoshi }}>
                             {s.label}
                         </span>
-                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginLeft: 'auto', paddingLeft: '8px' }}>
+                        <span style={{ fontSize: '10px', color: '#b6b5b5', marginLeft: 'auto', paddingLeft: '8px', fontFamily: satoshi }}>
                             {s.pct}%
                         </span>
                     </div>
@@ -126,7 +129,7 @@ function ConsistencyRing({ score, doneCount, totalCount }: { score: number; done
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
             <svg width="120" height="120" viewBox="0 0 120 120">
                 {/* Background ring */}
-                <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+                <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(30,30,30,0.06)" strokeWidth="10" />
                 {/* Progress ring */}
                 <motion.circle
                     cx="60" cy="60" r={r}
@@ -141,15 +144,15 @@ function ConsistencyRing({ score, doneCount, totalCount }: { score: number; done
                     style={{ transformOrigin: '60px 60px', transform: 'rotate(-90deg)' }}
                 />
                 {/* Score text */}
-                <text x="60" y="56" textAnchor="middle" fill="white" fontSize="22" fontWeight="700" fontFamily="Inter, sans-serif">
+                <text x="60" y="56" textAnchor="middle" fill="#111111" fontSize="22" fontWeight="700" fontFamily={clashDisplay}>
                     {scoreVal}%
                 </text>
-                <text x="60" y="73" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="10" fontFamily="Inter, sans-serif">
+                <text x="60" y="73" textAnchor="middle" fill="#b6b5b5" fontSize="10" fontFamily={satoshi}>
                     consistency
                 </text>
             </svg>
             <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                <p style={{ fontSize: '12px', color: '#838282', margin: 0, fontFamily: satoshi }}>
                     {doneCount} of {totalCount} days completed
                 </p>
             </div>
@@ -178,14 +181,14 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
                 const barH = hasJournal ? Math.max(6, Math.round((score / 10) * chartH)) : 0;
                 const x = i * (barW + gap);
                 const y = chartH - barH;
-                const color = hasJournal ? emotionColor(d.emotion) : 'rgba(255,255,255,0.08)';
+                const color = hasJournal ? emotionColor(d.emotion) : 'rgba(30,30,30,0.08)';
                 const dayDate = parseLocalDate(d.date);
                 const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
 
                 return (
                     <g key={d.date}>
                         {/* Background slot */}
-                        <rect x={x} y={0} width={barW} height={chartH} rx={4} fill="rgba(255,255,255,0.04)" />
+                        <rect x={x} y={0} width={barW} height={chartH} rx={4} fill="rgba(30,30,30,0.03)" />
                         {/* Score bar */}
                         <motion.rect
                             x={x} y={chartH} width={barW} height={0} rx={4} fill={color}
@@ -195,14 +198,14 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
                         />
                         {/* Day label — aligned to column centre */}
                         <text x={x + barW / 2} y={chartH + 16} textAnchor="middle"
-                            fill="rgba(255,255,255,0.4)" fontSize="9" fontFamily="Inter, sans-serif">
+                            fill="#838282" fontSize="9" fontFamily={satoshi}>
                             {dayName}
                         </text>
                         {/* Score label on top of bar */}
                         {hasJournal && score > 0 && (
                             <motion.text
                                 x={x + barW / 2} y={y - 4} textAnchor="middle"
-                                fill={color} fontSize="9" fontWeight="700" fontFamily="Inter, sans-serif"
+                                fill={color} fontSize="9" fontWeight="700" fontFamily={satoshi}
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: i * 0.06 + 0.5 }}
@@ -222,8 +225,9 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
             <p style={{
-                fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-                textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px',
+                fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px',
+                fontFamily: satoshi,
             }}>
                 Daily Execution Breakdown
             </p>
@@ -231,16 +235,16 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                 {days.map((d, i) => {
                     const hasDone = d.checkin === 'done' || d.has_journal;
                     const isMissed = d.checkin === 'missed';
-                    const statusColor = hasDone ? '#10b981' : isMissed ? '#ef4444' : 'rgba(255,255,255,0.3)';
-                    const statusBg = hasDone ? 'rgba(16,185,129,0.08)' : isMissed ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)';
+                    const statusColor = hasDone ? '#10b981' : isMissed ? '#ef4444' : '#b6b5b5';
+                    const statusBg = hasDone ? 'rgba(16,185,129,0.08)' : isMissed ? 'rgba(239,68,68,0.08)' : 'rgba(30,30,30,0.03)';
                     const statusLabel = hasDone ? 'Done' : isMissed ? 'Missed' : 'Upcoming';
 
                     return (
                         <div key={d.date} style={{
                             padding: '14px 16px',
                             borderRadius: '12px',
-                            background: 'rgba(255,255,255,0.02)',
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            background: '#ffffff',
+                            border: '1px solid rgba(30,30,30,0.06)',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '10px',
@@ -248,16 +252,17 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                             {/* Day Header */}
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'white' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#111111', fontFamily: clashDisplay }}>
                                         {d.day_label || `Day ${i + 1}`}
                                     </span>
-                                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>
+                                    <span style={{ fontSize: '10px', color: '#b6b5b5', fontFamily: satoshi }}>
                                         {d.date}
                                     </span>
                                 </div>
                                 <span style={{
                                     fontSize: '9px', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
-                                    background: statusBg, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.04em'
+                                    background: statusBg, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.04em',
+                                    fontFamily: satoshi,
                                 }}>
                                     {statusLabel}
                                 </span>
@@ -267,17 +272,17 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className="journey-flex-col">
                                 {/* Planned Task Column */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    <span style={{ fontSize: '9px', color: '#b6b5b5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: satoshi }}>
                                         Planned Task
                                     </span>
-                                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', margin: 0, lineHeight: 1.5 }}>
+                                    <p style={{ fontSize: '12px', color: '#838282', margin: 0, lineHeight: 1.5, fontFamily: satoshi }}>
                                         {d.planned_task || 'No task planned for this day.'}
                                     </p>
                                 </div>
 
                                 {/* Actual Outcome Column */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    <span style={{ fontSize: '9px', color: '#b6b5b5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: satoshi }}>
                                         Actual Journal
                                     </span>
                                     {d.has_journal ? (
@@ -286,18 +291,17 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                                                 <span style={{
                                                     width: '6px', height: '6px', borderRadius: '50%',
                                                     background: emotionColor(d.emotion),
-                                                    boxShadow: `0 0 6px ${emotionColor(d.emotion)}`
                                                 }} />
-                                                <span style={{ fontSize: '12px', fontWeight: 600, color: emotionColor(d.emotion), textTransform: 'capitalize' }}>
+                                                <span style={{ fontSize: '12px', fontWeight: 600, color: emotionColor(d.emotion), textTransform: 'capitalize', fontFamily: satoshi }}>
                                                     {d.emotion} ({d.score}/10)
                                                 </span>
                                             </div>
-                                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>
+                                            <p style={{ fontSize: '11px', color: '#838282', margin: 0, fontStyle: 'italic', lineHeight: 1.4, fontFamily: "'Georgia', 'Times New Roman', serif" }}>
                                                 "{d.one_liner}"
                                             </p>
                                         </div>
                                     ) : (
-                                        <p style={{ fontSize: '11.5px', color: isMissed ? '#f87171' : 'rgba(255,255,255,0.3)', margin: 0, opacity: isMissed ? 0.8 : 0.6 }}>
+                                        <p style={{ fontSize: '11.5px', color: isMissed ? '#ef4444' : '#b6b5b5', margin: 0, opacity: isMissed ? 0.8 : 0.6, fontFamily: satoshi }}>
                                             {isMissed ? '✕ Missed check-in & voice entry' : '— Pending voice entry'}
                                         </p>
                                     )}
@@ -310,13 +314,13 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                                     marginTop: '4px',
                                     padding: '10px 12px',
                                     borderRadius: '8px',
-                                    background: 'rgba(99,102,241,0.04)',
-                                    borderLeft: '2px solid rgba(99,102,241,0.5)',
+                                    background: '#f2f2f2',
+                                    borderLeft: '2px solid #111111',
                                 }}>
-                                    <span style={{ fontSize: '9px', color: 'rgba(129,140,248,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '2px' }}>
+                                    <span style={{ fontSize: '9px', color: '#b6b5b5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '2px', fontFamily: satoshi }}>
                                         AI coaching insight
                                     </span>
-                                    <p style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.45 }}>
+                                    <p style={{ fontSize: '11.5px', color: '#838282', margin: 0, lineHeight: 1.45, fontFamily: satoshi }}>
                                         {d.coaching_insight}
                                     </p>
                                 </div>
@@ -350,11 +354,11 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
                 const isToday = d.date === today;
                 const hasDone = d.has_journal;
                 const isMissed = !isBeforePlan && isPast && !hasDone && !isToday;
-                const color = hasDone ? emotionColor(d.emotion) : isMissed ? '#ef4444' : 'rgba(255,255,255,0.15)';
+                const color = hasDone ? emotionColor(d.emotion) : isMissed ? '#ef4444' : '#b6b5b5';
 
                 return (
                     <div key={d.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
+                        <span style={{ fontSize: '9px', color: '#838282', fontWeight: 600, fontFamily: satoshi }}>
                             {dayName}
                         </span>
                         <motion.div
@@ -365,9 +369,8 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
                             style={{
                                 width: '28px', height: '28px', borderRadius: '50%',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: hasDone ? `${color}22` : 'transparent',
+                                background: hasDone ? `${color}15` : 'transparent',
                                 border: `2px solid ${color}`,
-                                boxShadow: hasDone ? `0 0 8px ${color}40` : 'none',
                                 position: 'relative',
                             }}
                         >
@@ -375,7 +378,6 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
                                 <div style={{
                                     width: '10px', height: '10px', borderRadius: '50%',
                                     background: color,
-                                    boxShadow: `0 0 6px ${color}`,
                                 }} />
                             )}
                             {isMissed && (
@@ -387,23 +389,23 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
                             {isBeforePlan && !hasDone && (
                                 <div style={{
                                     width: '12px', height: '2px', borderRadius: '2px',
-                                    background: 'rgba(255,255,255,0.15)',
+                                    background: 'rgba(30,30,30,0.1)',
                                 }} />
                             )}
                             {isToday && !hasDone && !isBeforePlan && (
                                 <div style={{
                                     width: '5px', height: '5px', borderRadius: '50%',
-                                    background: 'rgba(255,255,255,0.4)',
+                                    background: '#b6b5b5',
                                 }} />
                             )}
                         </motion.div>
                         {hasDone && (
-                            <span style={{ fontSize: '8px', color, fontWeight: 600 }}>
+                            <span style={{ fontSize: '8px', color, fontWeight: 600, fontFamily: satoshi }}>
                                 {d.score}/10
                             </span>
                         )}
                         {isMissed && (
-                            <span style={{ fontSize: '8px', color: '#ef4444', fontWeight: 500, opacity: 0.7 }}>
+                            <span style={{ fontSize: '8px', color: '#ef4444', fontWeight: 500, opacity: 0.7, fontFamily: satoshi }}>
                                 missed
                             </span>
                         )}
@@ -420,13 +422,13 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
         <div style={{
             padding: '14px 16px',
             borderRadius: '12px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.07)',
+            background: '#ffffff',
+            border: '1px solid rgba(30,30,30,0.06)',
             display: 'flex', flexDirection: 'column', gap: '4px',
         }}>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-            <span style={{ fontSize: '24px', fontWeight: 700, color: color ?? 'white', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</span>
-            {sub && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{sub}</span>}
+            <span style={{ fontSize: '10px', color: '#b6b5b5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi }}>{label}</span>
+            <span style={{ fontSize: '24px', fontWeight: 700, color: color ?? '#111111', letterSpacing: '-0.02em', lineHeight: 1, fontFamily: clashDisplay }}>{value}</span>
+            {sub && <span style={{ fontSize: '11px', color: '#838282', fontFamily: satoshi }}>{sub}</span>}
         </div>
     );
 }
@@ -438,14 +440,15 @@ function AnalysisBlock({ label, content }: { label: string; content: string }) {
         <div style={{
             padding: '14px 16px',
             borderRadius: '12px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.07)',
+            background: '#ffffff',
+            border: '1px solid rgba(30,30,30,0.06)',
         }}>
             <p style={{
-                fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-                textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
+                fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
+                fontFamily: satoshi,
             }}>{label}</p>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, margin: 0 }}>{content}</p>
+            <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{content}</p>
         </div>
     );
 }
@@ -654,8 +657,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     return (
         <div style={{
             flex: 1, display: 'flex', flexDirection: 'column', height: '100%',
-            background: 'var(--bg-primary)', overflow: 'hidden',
+            background: '#f2f2f2', overflow: 'hidden',
             position: 'relative',
+            fontFamily: satoshi,
         }}>
             {/* Floating locked weeks panel — right edge */}
             <LockedWeeksPanel
@@ -675,7 +679,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                         exit={{ opacity: 0 }}
                         style={{
                             position: 'fixed', inset: 0, zIndex: 1000,
-                            background: 'rgba(0,0,0,0.85)',
+                            background: 'rgba(0,0,0,0.5)',
                             backdropFilter: 'blur(8px)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             padding: '20px',
@@ -691,10 +695,10 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             style={{
                                 width: '100%', maxWidth: '500px',
                                 maxHeight: '90vh',
-                                background: 'linear-gradient(145deg, #0d0d10 0%, #13131a 100%)',
-                                border: '1px solid rgba(99,102,241,0.3)',
+                                background: '#ffffff',
+                                border: '1px solid rgba(30,30,30,0.08)',
                                 borderRadius: '24px',
-                                boxShadow: '0 0 0 1px rgba(99,102,241,0.15), 0 40px 80px rgba(0,0,0,0.7), 0 0 60px rgba(99,102,241,0.12)',
+                                boxShadow: '0 40px 80px rgba(0,0,0,0.15), 0 0 0 1px rgba(30,30,30,0.04)',
                                 overflow: 'hidden',
                                 display: 'flex', flexDirection: 'column',
                             }}
@@ -702,8 +706,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             {/* Glow header */}
                             <div style={{
                                 padding: '28px 28px 20px',
-                                background: 'linear-gradient(180deg, rgba(99,102,241,0.15) 0%, transparent 100%)',
-                                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                background: '#f2f2f2',
+                                borderBottom: '1px solid rgba(30,30,30,0.06)',
                                 textAlign: 'center',
                                 position: 'relative',
                             }}>
@@ -712,17 +716,17 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
                                     style={{ display: 'inline-block', marginBottom: '12px' }}
                                 >
-                                    <Trophy size={40} color="#f59e0b" style={{ filter: 'drop-shadow(0 0 16px #f59e0b88)' }} />
+                                    <Trophy size={40} color="#f59e0b" style={{ filter: 'drop-shadow(0 0 12px #f59e0b55)' }} />
                                 </motion.div>
                                 <h2 style={{
-                                    fontSize: '22px', fontWeight: 800, color: 'white',
-                                    letterSpacing: '-0.03em', margin: '0 0 6px',
-                                    fontFamily: "'Inter', sans-serif",
+                                    fontSize: '24px', fontWeight: 700, color: '#111111',
+                                    letterSpacing: '-0.04em', margin: '0 0 6px',
+                                    fontFamily: clashDisplay,
                                 }}>
-                                    Week {reportData.week_number} Complete! 🎉
+                                    Week {reportData.week_number} Complete!
                                 </h2>
                                 {reportData.week_theme && (
-                                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', margin: 0 }}>
+                                    <p style={{ fontSize: '13px', color: '#838282', margin: 0, fontFamily: satoshi }}>
                                         {reportData.week_theme}
                                     </p>
                                 )}
@@ -734,47 +738,47 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '20px' }}>
                                     <div style={{
                                         padding: '14px', borderRadius: '14px',
-                                        background: 'rgba(16,185,129,0.08)',
-                                        border: '1px solid rgba(16,185,129,0.18)',
+                                        background: '#f2f2f2',
+                                        border: '1px solid rgba(30,30,30,0.04)',
                                         textAlign: 'center',
                                     }}>
-                                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#10b981', letterSpacing: '-0.03em' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#10b981', letterSpacing: '-0.03em', fontFamily: clashDisplay }}>
                                             {reportData.consistency_score}%
                                         </div>
-                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Consistency</div>
+                                        <div style={{ fontSize: '10px', color: '#b6b5b5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '3px', fontFamily: satoshi }}>Consistency</div>
                                     </div>
                                     <div style={{
                                         padding: '14px', borderRadius: '14px',
-                                        background: 'rgba(99,102,241,0.08)',
-                                        border: '1px solid rgba(99,102,241,0.18)',
+                                        background: '#f2f2f2',
+                                        border: '1px solid rgba(30,30,30,0.04)',
                                         textAlign: 'center',
                                     }}>
-                                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#818cf8', letterSpacing: '-0.03em' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#6366f1', letterSpacing: '-0.03em', fontFamily: clashDisplay }}>
                                             {reportData.avg_score}/10
                                         </div>
-                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Avg Mood</div>
+                                        <div style={{ fontSize: '10px', color: '#b6b5b5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '3px', fontFamily: satoshi }}>Avg Mood</div>
                                     </div>
                                     <div style={{
                                         padding: '14px', borderRadius: '14px',
-                                        background: 'rgba(245,158,11,0.08)',
-                                        border: '1px solid rgba(245,158,11,0.18)',
+                                        background: '#f2f2f2',
+                                        border: '1px solid rgba(30,30,30,0.04)',
                                         textAlign: 'center',
                                     }}>
-                                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.03em' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#f59e0b', letterSpacing: '-0.03em', fontFamily: clashDisplay }}>
                                             {reportData.days_done}/{reportData.past_days_count ?? 7}
                                         </div>
-                                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '3px' }}>Days Done</div>
+                                        <div style={{ fontSize: '10px', color: '#b6b5b5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '3px', fontFamily: satoshi }}>Days Done</div>
                                     </div>
                                 </div>
 
                                 {/* Emotion Pie Chart */}
                                 <div style={{
                                     padding: '16px', borderRadius: '14px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.07)',
+                                    background: '#f2f2f2',
+                                    border: '1px solid rgba(30,30,30,0.04)',
                                     marginBottom: '14px',
                                 }}>
-                                    <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '14px' }}>Emotion Distribution</p>
+                                    <p style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px', fontFamily: satoshi }}>Emotion Distribution</p>
                                     <EmotionPieChart days={weekDays} />
                                 </div>
 
@@ -782,12 +786,12 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 {reportData.hidden_insight && (
                                     <div style={{
                                         padding: '14px 16px', borderRadius: '12px',
-                                        background: 'rgba(99,102,241,0.08)',
-                                        border: '1px solid rgba(99,102,241,0.2)',
+                                        background: '#f2f2f2',
+                                        border: '1px solid rgba(30,30,30,0.04)',
                                         marginBottom: '14px',
                                     }}>
-                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Hidden Insight</p>
-                                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.78)', lineHeight: 1.6, margin: 0 }}>{reportData.hidden_insight}</p>
+                                        <p style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Hidden Insight</p>
+                                        <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{reportData.hidden_insight}</p>
                                     </div>
                                 )}
 
@@ -795,12 +799,12 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 {reportData.next_week_focus && (
                                     <div style={{
                                         padding: '14px 16px', borderRadius: '12px',
-                                        background: 'rgba(16,185,129,0.07)',
-                                        border: '1px solid rgba(16,185,129,0.2)',
+                                        background: '#f2f2f2',
+                                        border: '1px solid rgba(30,30,30,0.04)',
                                         marginBottom: '14px',
                                     }}>
-                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(16,185,129,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Key Focus for Next Week</p>
-                                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.78)', lineHeight: 1.6, margin: 0 }}>{reportData.next_week_focus}</p>
+                                        <p style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Key Focus for Next Week</p>
+                                        <p style={{ fontSize: '13px', color: '#111111', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{reportData.next_week_focus}</p>
                                     </div>
                                 )}
                             </div>
@@ -808,16 +812,16 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             {/* Footer CTA */}
                             <div style={{
                                 padding: '16px 24px',
-                                borderTop: '1px solid rgba(255,255,255,0.06)',
+                                borderTop: '1px solid rgba(30,30,30,0.06)',
                                 display: 'flex', gap: '10px',
                             }}>
                                 <button
                                     onClick={() => setShowWeekEndCelebration(false)}
                                     style={{
-                                        flex: 1, padding: '11px', borderRadius: '12px',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        background: 'transparent', color: 'rgba(255,255,255,0.5)',
-                                        fontSize: '13px', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+                                        flex: 1, padding: '11px', borderRadius: '100px',
+                                        border: '1px solid rgba(30,30,30,0.1)',
+                                        background: 'transparent', color: '#838282',
+                                        fontSize: '13px', cursor: 'pointer', fontFamily: satoshi,
                                     }}
                                 >
                                     View Full Report
@@ -832,12 +836,11 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         setTimeout(() => window.dispatchEvent(new CustomEvent('close-journey')), 100);
                                     }}
                                     style={{
-                                        flex: 1, padding: '11px', borderRadius: '12px',
+                                        flex: 1, padding: '11px', borderRadius: '100px',
                                         border: 'none',
-                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                        color: 'white', fontSize: '13px', fontWeight: 700,
-                                        cursor: 'pointer', fontFamily: "'Inter', sans-serif",
-                                        boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                                        background: '#111111',
+                                        color: '#f2f2f2', fontSize: '13px', fontWeight: 700,
+                                        cursor: 'pointer', fontFamily: satoshi,
                                     }}
                                 >
                                     Plan Week {(reportData.week_number ?? 1) + 1} →
@@ -851,48 +854,54 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             <div style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
                 padding: '14px 20px',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                borderBottom: '1px solid rgba(30,30,30,0.06)',
                 flexShrink: 0,
+                background: '#ffffff',
             }}>
                 {onClose && (
                     <button
                         onClick={onClose}
                         style={{
                             width: '32px', height: '32px', borderRadius: '8px',
-                            border: 'none', background: 'rgba(255,255,255,0.06)',
-                            color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
+                            border: '1px solid rgba(30,30,30,0.08)', background: '#f2f2f2',
+                            color: '#838282', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s',
                         }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#111111'; e.currentTarget.style.color = '#f2f2f2'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#f2f2f2'; e.currentTarget.style.color = '#838282'; }}
                     >
                         <ArrowLeft size={16} />
                     </button>
                 )}
                 <div style={{ flex: 1 }}>
                     <h1 style={{
-                        fontSize: '16px', fontWeight: 700, color: 'white',
-                        letterSpacing: '-0.02em', margin: 0,
+                        fontSize: '18px', fontWeight: 700, color: '#111111',
+                        letterSpacing: '-0.03em', margin: 0,
+                        fontFamily: clashDisplay,
                     }}>
                         My Journey
                     </h1>
-                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: 0, marginTop: '2px' }}>
+                    <p style={{ fontSize: '12px', color: '#838282', margin: 0, marginTop: '2px', fontFamily: satoshi }}>
                         {report?.week_start && `Week of ${report.week_start}`}
                     </p>
                 </div>
 
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: '3px' }}>
+                <div style={{ display: 'flex', gap: '0', background: '#f2f2f2', borderRadius: '10px', padding: '3px', border: '1px solid rgba(30,30,30,0.06)' }}>
                     {(['overview', 'archive'] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => tab === 'archive' ? handleArchiveTab() : setActiveTab('overview')}
                             style={{
                                 padding: '5px 14px', borderRadius: '7px', border: 'none',
-                                background: activeTab === tab ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                color: activeTab === tab ? 'white' : 'rgba(255,255,255,0.4)',
+                                background: activeTab === tab ? '#ffffff' : 'transparent',
+                                color: activeTab === tab ? '#111111' : '#b6b5b5',
                                 fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                                 transition: 'all 0.15s',
-                                fontFamily: 'var(--font-sans)',
+                                fontFamily: satoshi,
                                 textTransform: 'capitalize',
+                                boxShadow: activeTab === tab ? '0 1px 3px rgba(30,30,30,0.06)' : 'none',
                             }}
                         >
                             {tab}
@@ -916,15 +925,15 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             {/* ── Voice recorder card ── */}
                             <div style={{
                                 borderRadius: '16px', padding: '20px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.08)',
+                                background: '#ffffff',
+                                border: '1px solid rgba(30,30,30,0.06)',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                                     <div>
-                                        <p style={{ fontSize: '13px', fontWeight: 600, color: 'white', margin: 0 }}>
+                                        <p style={{ fontSize: '13px', fontWeight: 700, color: '#111111', margin: 0, fontFamily: clashDisplay }}>
                                             {todayEntry ? 'Today logged' : "Today's voice log"}
                                         </p>
-                                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '3px 0 0' }}>
+                                        <p style={{ fontSize: '11px', color: '#838282', margin: '3px 0 0', fontFamily: satoshi }}>
                                             {todayEntry
                                                 ? `${todayEntry.emotion_label} — ${todayEntry.emotion_score}/10`
                                                 : 'Speak about your day. AI detects your emotion.'}
@@ -933,9 +942,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     {todayEntry && (
                                         <div style={{
                                             width: '36px', height: '36px', borderRadius: '50%',
-                                            background: `${emotionColor(todayEntry.emotion_label)}22`,
-                                            border: `2px solid ${emotionColor(todayEntry.emotion_label)}55`,
-                                            boxShadow: `0 0 12px ${emotionColor(todayEntry.emotion_label)}40`,
+                                            background: `${emotionColor(todayEntry.emotion_label)}15`,
+                                            border: `2px solid ${emotionColor(todayEntry.emotion_label)}`,
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         }}>
                                             <div style={{
@@ -950,7 +958,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     <AnimatePresence mode="wait">
                                         {isUploading ? (
                                             <motion.div key="uploading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                                style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>
+                                                style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#838282', fontSize: '13px', fontFamily: satoshi }}>
                                                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
                                                 Analyzing your mood...
                                             </motion.div>
@@ -964,14 +972,14 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             >
                                                 <div style={{
                                                     width: '60px', height: '60px', borderRadius: '50%',
-                                                    border: '2px solid rgba(255,255,255,0.1)',
-                                                    background: 'rgba(255,255,255,0.03)',
-                                                    color: '#3f3f46', cursor: 'not-allowed',
+                                                    border: '2px solid rgba(30,30,30,0.08)',
+                                                    background: '#f2f2f2',
+                                                    color: '#b6b5b5', cursor: 'not-allowed',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 }}>
                                                     <Lock size={18} />
                                                 </div>
-                                                <span style={{ fontSize: '11px', color: '#3f3f46', fontWeight: 500 }}>
+                                                <span style={{ fontSize: '11px', color: '#b6b5b5', fontWeight: 500, fontFamily: satoshi }}>
                                                     Recorded today
                                                 </span>
                                             </motion.div>
@@ -996,9 +1004,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 onClick={startRecording}
                                                 style={{
                                                     width: '60px', height: '60px', borderRadius: '50%',
-                                                    border: `2px solid ${todayEntry ? 'rgba(99,102,241,0.3)' : 'rgba(192,132,252,0.4)'}`,
-                                                    background: `${todayEntry ? 'rgba(99,102,241,0.1)' : 'rgba(192,132,252,0.1)'}`,
-                                                    color: 'var(--accent-primary)', cursor: 'pointer',
+                                                    border: `2px solid ${todayEntry ? 'rgba(30,30,30,0.15)' : 'rgba(30,30,30,0.2)'}`,
+                                                    background: `${todayEntry ? '#f2f2f2' : '#ffffff'}`,
+                                                    color: '#111111', cursor: 'pointer',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     transition: 'all 0.2s',
                                                 }}>
@@ -1015,9 +1023,10 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             style={{
                                                 marginTop: '12px',
                                                 padding: '10px 14px', borderRadius: '10px',
-                                                background: `${emotionColor(justSaved.emotion_label)}14`,
+                                                background: `${emotionColor(justSaved.emotion_label)}10`,
                                                 border: `1px solid ${emotionColor(justSaved.emotion_label)}30`,
-                                                fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.5,
+                                                fontSize: '12px', color: '#838282', lineHeight: 1.5,
+                                                fontFamily: satoshi,
                                             }}>
                                             <span style={{ fontWeight: 600, color: emotionColor(justSaved.emotion_label) }}>
                                                 {justSaved.emotion_label} ({justSaved.emotion_score}/10)
@@ -1030,18 +1039,19 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
 
                             <div style={{
                                 borderRadius: '16px', padding: '18px 20px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.07)',
+                                background: '#ffffff',
+                                border: '1px solid rgba(30,30,30,0.06)',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                                     <p style={{
-                                        fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-                                        textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0,
+                                        fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0,
+                                        fontFamily: satoshi,
                                     }}>
                                         {weekInfo?.has_plan ? `Week ${weekInfo.current_week}` : 'This Week'}
                                     </p>
                                     {weekInfo?.has_plan && weekInfo.week_start && weekInfo.week_end && (
-                                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', fontWeight: 500 }}>
+                                        <span style={{ fontSize: '10px', color: '#b6b5b5', fontWeight: 500, fontFamily: satoshi }}>
                                             {weekInfo.week_start} – {weekInfo.week_end}
                                         </span>
                                     )}
@@ -1052,15 +1062,15 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
-                                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>Logged</span>
+                                        <span style={{ fontSize: '10px', color: '#838282', fontFamily: satoshi }}>Logged</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid #ef4444' }} />
-                                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>Missed</span>
+                                        <span style={{ fontSize: '10px', color: '#838282', fontFamily: satoshi }}>Missed</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.2)' }} />
-                                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>Upcoming</span>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid #b6b5b5' }} />
+                                        <span style={{ fontSize: '10px', color: '#838282', fontFamily: satoshi }}>Upcoming</span>
                                     </div>
                                     {/* Plan Week N+1 gating */}
                                     {weekInfo?.has_plan && weekInfo.is_week_complete && (
@@ -1071,19 +1081,19 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             }}
                                             style={{
                                                 marginLeft: 'auto', padding: '4px 10px',
-                                                borderRadius: '8px',
-                                                border: '1px solid rgba(99,102,241,0.3)',
-                                                background: 'rgba(99,102,241,0.08)',
-                                                color: '#818cf8', fontSize: '11px', fontWeight: 600,
+                                                borderRadius: '100px',
+                                                border: 'none',
+                                                background: '#111111',
+                                                color: '#f2f2f2', fontSize: '11px', fontWeight: 600,
                                                 cursor: 'pointer', transition: 'all 0.15s',
-                                                fontFamily: "'Inter', sans-serif",
+                                                fontFamily: satoshi,
                                             }}
                                         >
                                             Plan Week {(weekInfo.current_week ?? 1) + 1}
                                         </button>
                                     )}
                                     {weekInfo?.has_plan && !weekInfo.is_week_complete && weekInfo.week_end && (
-                                        <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.2)', fontWeight: 500 }}>
+                                        <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#b6b5b5', fontWeight: 500, fontFamily: satoshi }}>
                                             Week ends {weekInfo.week_end}
                                         </span>
                                     )}
@@ -1100,14 +1110,14 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         {!isWeekComplete && weekDays.some(d => d.has_journal) && (
                                             <div style={{
                                                 borderRadius: '16px', padding: '18px 20px',
-                                                background: 'rgba(99,102,241,0.04)',
-                                                border: '1px dashed rgba(99,102,241,0.2)',
+                                                background: '#ffffff',
+                                                border: '1px solid rgba(30,30,30,0.06)',
                                                 textAlign: 'center', lineHeight: 1.6,
                                             }}>
-                                                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.55)', margin: 0 }}>
-                                                    ✦ Great start! Keep logging each day.
+                                                <p style={{ fontSize: '13px', color: '#838282', margin: 0, fontFamily: satoshi }}>
+                                                    Great start! Keep logging each day.
                                                 </p>
-                                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: '4px 0 0' }}>
+                                                <p style={{ fontSize: '11px', color: '#b6b5b5', margin: '4px 0 0', fontFamily: satoshi }}>
                                                     Your full AI week review will appear after {weekInfo?.week_end ?? 'the last day'}.
                                                 </p>
                                             </div>
@@ -1115,9 +1125,10 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         {loadingReport ? (
                                             <div style={{
                                                 borderRadius: '16px', padding: '32px', textAlign: 'center',
-                                                background: 'rgba(255,255,255,0.02)',
-                                                border: '1px solid rgba(255,255,255,0.06)',
-                                                color: 'rgba(255,255,255,0.3)', fontSize: '13px',
+                                                background: '#ffffff',
+                                                border: '1px solid rgba(30,30,30,0.06)',
+                                                color: '#b6b5b5', fontSize: '13px',
+                                                fontFamily: satoshi,
                                             }}>
                                                 Generating week report...
                                             </div>
@@ -1125,9 +1136,10 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             : report?.status === 'no_data' ? (
                                                 <div style={{
                                                     borderRadius: '16px', padding: '28px', textAlign: 'center',
-                                                    background: 'rgba(255,255,255,0.02)',
-                                                    border: '1px dashed rgba(255,255,255,0.1)',
-                                                    color: 'rgba(255,255,255,0.3)', fontSize: '13px', lineHeight: 1.6,
+                                                    background: '#ffffff',
+                                                    border: '1px solid rgba(30,30,30,0.06)',
+                                                    color: '#b6b5b5', fontSize: '13px', lineHeight: 1.6,
+                                                    fontFamily: satoshi,
                                                 }}>
                                                     Record voice journals across the week.<br />
                                                     At the end of the week, your AI performance review will appear here.
@@ -1135,31 +1147,32 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             ) : reportData ? (
                                                 <div style={{
                                                     borderRadius: '16px',
-                                                    border: '1px solid rgba(255,255,255,0.08)',
-                                                    background: 'rgba(255,255,255,0.02)',
+                                                    border: '1px solid rgba(30,30,30,0.06)',
+                                                    background: '#ffffff',
                                                     overflow: 'hidden',
                                                 }}>
                                                     {/* Report header */}
                                                     <div style={{
                                                         padding: '16px 20px',
-                                                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                                        borderBottom: '1px solid rgba(30,30,30,0.06)',
                                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                                     }}>
                                                         <div>
-                                                            <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
+                                                            <p style={{ fontSize: '14px', fontWeight: 700, color: '#111111', margin: 0, fontFamily: clashDisplay }}>
                                                                 Week {reportData.week_number !== undefined ? reportData.week_number : 'N'} Review
                                                             </p>
                                                             {reportData.week_theme && (
-                                                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>
+                                                                <p style={{ fontSize: '11px', color: '#838282', margin: '2px 0 0', fontFamily: satoshi }}>
                                                                     {reportData.week_theme}
                                                                 </p>
                                                             )}
                                                         </div>
                                                         <span style={{
                                                             fontSize: '10px', fontWeight: 700, padding: '3px 10px',
-                                                            borderRadius: '20px',
-                                                            background: consistencyScore >= 80 ? 'rgba(16,185,129,0.12)' : consistencyScore >= 50 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)',
-                                                            color: consistencyScore >= 80 ? '#10b981' : consistencyScore >= 50 ? '#f59e0b' : '#ef4444',
+                                                            borderRadius: '100px',
+                                                            background: '#f2f2f2',
+                                                            color: '#838282',
+                                                            fontFamily: satoshi,
                                                         }}>
                                                             {report?.week_start} — {report?.week_end}
                                                         </span>
@@ -1190,8 +1203,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         {weekDays.some(d => d.has_journal) && (
                                                             <div>
                                                                 <p style={{
-                                                                    fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-                                                                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px',
+                                                                    fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                                                                    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px',
+                                                                    fontFamily: satoshi,
                                                                 }}>Emotion Distribution</p>
                                                                 <EmotionPieChart days={weekDays} />
                                                             </div>
@@ -1200,12 +1214,13 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         {/* ── Emotional arc chart ── */}
                                                         <div>
                                                             <p style={{
-                                                                fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-                                                                textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px',
+                                                                fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                                                                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px',
+                                                                fontFamily: satoshi,
                                                             }}>Daily Emotional Arc</p>
                                                             <EmotionChart days={weekDays} />
                                                             {reportData.emotional_arc && (
-                                                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, marginTop: '10px' }}>
+                                                                <p style={{ fontSize: '12px', color: '#838282', lineHeight: 1.5, marginTop: '10px', fontFamily: satoshi }}>
                                                                     {reportData.emotional_arc}
                                                                 </p>
                                                             )}
@@ -1218,14 +1233,15 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         {reportData.hidden_insight && (
                                                             <div style={{
                                                                 padding: '14px 16px', borderRadius: '12px',
-                                                                background: 'rgba(99,102,241,0.08)',
-                                                                border: '1px solid rgba(99,102,241,0.2)',
+                                                                background: '#f2f2f2',
+                                                                border: '1px solid rgba(30,30,30,0.04)',
                                                             }}>
                                                                 <p style={{
-                                                                    fontSize: '10px', fontWeight: 700, color: 'rgba(99,102,241,0.7)',
-                                                                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
+                                                                    fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                                                                    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
+                                                                    fontFamily: satoshi,
                                                                 }}>Hidden Insight</p>
-                                                                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, margin: 0 }}>
+                                                                <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>
                                                                     {reportData.hidden_insight}
                                                                 </p>
                                                             </div>
@@ -1238,14 +1254,15 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         {reportData.next_week_focus && (
                                                             <div style={{
                                                                 padding: '16px', borderRadius: '12px',
-                                                                background: 'rgba(16,185,129,0.07)',
-                                                                border: '1px solid rgba(16,185,129,0.2)',
+                                                                background: '#f2f2f2',
+                                                                border: '1px solid rgba(30,30,30,0.04)',
                                                             }}>
                                                                 <p style={{
-                                                                    fontSize: '10px', fontWeight: 700, color: 'rgba(16,185,129,0.7)',
-                                                                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
+                                                                    fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                                                                    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
+                                                                    fontFamily: satoshi,
                                                                 }}>Next Week: Key Focus</p>
-                                                                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, margin: 0 }}>
+                                                                <p style={{ fontSize: '13px', color: '#111111', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>
                                                                     {reportData.next_week_focus}
                                                                 </p>
                                                             </div>
@@ -1254,15 +1271,15 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         {/* Plan Week N+1 prompt */}
                                                         <div style={{
                                                             padding: '14px 16px', borderRadius: '12px',
-                                                            background: 'rgba(255,255,255,0.04)',
-                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            background: '#f2f2f2',
+                                                            border: '1px solid rgba(30,30,30,0.04)',
                                                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                                         }}>
                                                             <div>
-                                                                <p style={{ fontSize: '12px', fontWeight: 600, color: 'white', margin: 0 }}>
+                                                                <p style={{ fontSize: '12px', fontWeight: 700, color: '#111111', margin: 0, fontFamily: clashDisplay }}>
                                                                     Ready for Week {(reportData.week_number ?? 1) + 1}?
                                                                 </p>
-                                                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>
+                                                                <p style={{ fontSize: '11px', color: '#838282', margin: '2px 0 0', fontFamily: satoshi }}>
                                                                     AI will build it using this week's performance data.
                                                                 </p>
                                                             </div>
@@ -1280,11 +1297,11 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                     }, 100);
                                                                 }}
                                                                 style={{
-                                                                    padding: '8px 16px', borderRadius: '10px',
+                                                                    padding: '8px 16px', borderRadius: '100px',
                                                                     border: 'none',
-                                                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                                                    color: 'white', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                                                                    flexShrink: 0, fontFamily: 'var(--font-sans)',
+                                                                    background: '#111111',
+                                                                    color: '#f2f2f2', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                                                                    flexShrink: 0, fontFamily: satoshi,
                                                                     transition: 'opacity 0.2s',
                                                                 }}
                                                                 onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
@@ -1310,22 +1327,24 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             transition={{ duration: 0.2 }}
                         >
                             <p style={{
-                                fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-                                textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px',
+                                fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px',
+                                fontFamily: satoshi,
                             }}>
                                 Session Weekly Reports
                             </p>
 
                             {loadingArchive ? (
-                                <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
+                                <div style={{ textAlign: 'center', padding: '40px', color: '#b6b5b5', fontSize: '13px', fontFamily: satoshi }}>
                                     <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 10px' }} />
                                     Loading archive...
                                 </div>
                             ) : archivedReports.length === 0 ? (
                                 <div style={{
                                     textAlign: 'center', padding: '40px',
-                                    border: '1px dashed rgba(255,255,255,0.1)',
-                                    borderRadius: '12px', color: 'rgba(255,255,255,0.3)', fontSize: '13px',
+                                    border: '1px solid rgba(30,30,30,0.06)',
+                                    borderRadius: '12px', color: '#838282', fontSize: '13px',
+                                    background: '#ffffff', fontFamily: satoshi,
                                 }}>
                                     No weekly reports found for this session yet.
                                 </div>
@@ -1342,10 +1361,11 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 key={aw.week_number}
                                                 style={{
                                                     borderRadius: '16px',
-                                                    border: isExpanded ? '1px solid rgba(99,102,241,0.25)' : '1px solid rgba(255,255,255,0.07)',
-                                                    background: isExpanded ? 'rgba(99,102,241,0.04)' : 'rgba(255,255,255,0.02)',
+                                                    border: isExpanded ? '1px solid rgba(30,30,30,0.1)' : '1px solid rgba(30,30,30,0.06)',
+                                                    background: '#ffffff',
                                                     overflow: 'hidden',
-                                                    transition: 'border-color 0.2s, background 0.2s',
+                                                    transition: 'border-color 0.2s, box-shadow 0.2s',
+                                                    boxShadow: isExpanded ? '0 2px 12px rgba(30,30,30,0.06)' : 'none',
                                                 }}
                                             >
                                                 {/* Archive card header */}
@@ -1355,25 +1375,25 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         width: '100%', padding: '16px 18px', display: 'flex',
                                                         alignItems: 'center', justifyContent: 'space-between',
                                                         background: 'transparent', border: 'none',
-                                                        color: 'white', cursor: 'pointer',
-                                                        fontFamily: "'Inter', sans-serif",
+                                                    color: '#111111', cursor: 'pointer',
+                                                        fontFamily: satoshi,
                                                     }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                                                         <div style={{
                                                             width: '38px', height: '38px', borderRadius: '10px',
-                                                            background: isExpanded ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.08)',
+                                                            background: '#f2f2f2',
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                             transition: 'background 0.2s',
                                                         }}>
                                                             {isExpanded
-                                                                ? <Sparkles size={16} color="#818cf8" />
-                                                                : <FileText size={16} color="#818cf8" />
+                                                                ? <Sparkles size={16} color="#111111" />
+                                                                : <FileText size={16} color="#838282" />
                                                             }
                                                         </div>
                                                         <div style={{ textAlign: 'left' }}>
-                                                            <div style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '-0.01em' }}>Week {aw.week_number} Report</div>
-                                                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>
+                                                            <div style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '-0.02em', fontFamily: clashDisplay, color: '#111111' }}>Week {aw.week_number} Report</div>
+                                                            <div style={{ fontSize: '11px', color: '#838282', marginTop: '2px', fontFamily: satoshi }}>
                                                                 {aw.week_start} – {aw.week_end}
                                                                 {aw.report?.consistency_score !== undefined && (
                                                                     <span style={{ marginLeft: '10px', color: arConsistency >= 70 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>
@@ -1384,7 +1404,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         </div>
                                                     </div>
                                                     <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                                                        <ChevronDown size={16} color="#71717a" />
+                                                        <ChevronDown size={16} color="#b6b5b5" />
                                                     </motion.div>
                                                 </button>
 
@@ -1401,7 +1421,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         >
                                                             <div style={{
                                                                 padding: '4px 18px 20px',
-                                                                borderTop: '1px solid rgba(255,255,255,0.06)',
+                                                                borderTop: '1px solid rgba(30,30,30,0.06)',
                                                             }}>
                                                                 {/* Stats + ring row */}
                                                                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -1429,19 +1449,20 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                 {/* Week theme */}
                                                                 {aw.report?.week_theme && (
                                                                     <div style={{
-                                                                        marginTop: '14px', padding: '8px 12px', borderRadius: '10px',
-                                                                        background: 'rgba(99,102,241,0.07)',
-                                                                        border: '1px solid rgba(99,102,241,0.15)',
-                                                                        fontSize: '12px', color: '#818cf8', fontWeight: 500,
+                                                                        marginTop: '14px', padding: '10px 14px', borderRadius: '10px',
+                                                                        background: '#f2f2f2',
+                                                                        border: '1px solid rgba(30,30,30,0.04)',
+                                                                        fontSize: '12px', color: '#111111', fontWeight: 600,
+                                                                        fontFamily: clashDisplay,
                                                                     }}>
-                                                                        ✦ {aw.report.week_theme}
+                                                                        {aw.report.week_theme}
                                                                     </div>
                                                                 )}
 
                                                                 {/* Emotion distribution pie */}
                                                                 {arDays.length > 0 && arDays.some(d => d.has_journal) && (
                                                                     <div style={{ marginTop: '16px' }}>
-                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' }}>Emotion Distribution</p>
+                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', fontFamily: satoshi }}>Emotion Distribution</p>
                                                                         <EmotionPieChart days={arDays} />
                                                                     </div>
                                                                 )}
@@ -1449,7 +1470,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                 {/* Emotional arc bar chart */}
                                                                 {arDays.length > 0 && (
                                                                     <div style={{ marginTop: '16px' }}>
-                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Daily Arc</p>
+                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', fontFamily: satoshi }}>Daily Arc</p>
                                                                         <EmotionChart days={arDays} />
                                                                     </div>
                                                                 )}
@@ -1468,21 +1489,21 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                     {aw.report?.hidden_insight && (
                                                                         <div style={{
                                                                             padding: '14px 16px', borderRadius: '12px',
-                                                                            background: 'rgba(99,102,241,0.08)',
-                                                                            border: '1px solid rgba(99,102,241,0.2)',
+                                                                            background: '#f2f2f2',
+                                                                            border: '1px solid rgba(30,30,30,0.04)',
                                                                         }}>
-                                                                            <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Hidden Insight</p>
-                                                                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, margin: 0 }}>{aw.report.hidden_insight}</p>
+                                                                            <p style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Hidden Insight</p>
+                                                                            <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{aw.report.hidden_insight}</p>
                                                                         </div>
                                                                     )}
                                                                     {aw.report?.next_week_focus && (
                                                                         <div style={{
                                                                             padding: '14px 16px', borderRadius: '12px',
-                                                                            background: 'rgba(16,185,129,0.07)',
-                                                                            border: '1px solid rgba(16,185,129,0.2)',
+                                                                            background: '#f2f2f2',
+                                                                            border: '1px solid rgba(30,30,30,0.04)',
                                                                         }}>
-                                                                            <p style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(16,185,129,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Next Week Focus</p>
-                                                                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, margin: 0 }}>{aw.report.next_week_focus}</p>
+                                                                            <p style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Next Week Focus</p>
+                                                                            <p style={{ fontSize: '13px', color: '#111111', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{aw.report.next_week_focus}</p>
                                                                         </div>
                                                                     )}
                                                                 </div>
