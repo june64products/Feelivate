@@ -1,6 +1,5 @@
 import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User } from 'lucide-react';
 import PlanCard from './PlanCard';
 
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
@@ -150,89 +149,92 @@ export default function ChatWindow({
 
             {/* Messages */}
             <div style={{ maxWidth: 'var(--chat-max-width)', margin: '0 auto', padding: '0 20px' }}>
-                {messages.map((msg, idx) => (
-                    <div key={idx}>
-                        <motion.div
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, ease: 'easeOut' }}
-                            style={{
-                                display: 'flex',
-                                gap: '14px',
-                                padding: '18px 0',
-                                alignItems: 'flex-start',
-                                borderBottom: idx < messages.length - 1
-                                    ? '1px solid rgba(30,30,30,0.04)'
-                                    : 'none',
-                            }}
-                        >
-                            {/* Avatar */}
-                            <div
+                {messages.map((msg, idx) => {
+                    const isUser = msg.role === 'user';
+
+                    return (
+                        <div key={idx}>
+                            <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, ease: 'easeOut' }}
                                 style={{
-                                    width: '30px',
-                                    height: '30px',
-                                    borderRadius: msg.role === 'user' ? '50%' : '8px',
-                                    background: msg.role === 'user'
-                                        ? '#d97757'
-                                        : '#111111',
                                     display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    flexShrink: 0,
-                                    marginTop: '2px',
+                                    flexDirection: isUser ? 'row-reverse' : 'row',
+                                    gap: '12px',
+                                    padding: '12px 0',
+                                    alignItems: 'flex-end',
                                 }}
                             >
-                                {msg.role === 'user' ? (
-                                    <User size={14} style={{ color: 'white' }} />
-                                ) : (
-                                    <img
-                                        src="/logo_2_backup.png"
-                                        alt="Feelivate"
-                                        style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '4px', filter: 'invert(1)' }}
-                                    />
+                                {/* Avatar — only for AI */}
+                                {!isUser && (
+                                    <div
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            borderRadius: '8px',
+                                            background: '#111111',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        <img
+                                            src="/logo_2_backup.png"
+                                            alt="Feelivate"
+                                            style={{ width: '16px', height: '16px', objectFit: 'contain', borderRadius: '4px', filter: 'invert(1)' }}
+                                        />
+                                    </div>
                                 )}
-                            </div>
 
-                            {/* Content */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    color: '#b6b5b5',
-                                    marginBottom: '6px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.1em',
-                                    fontFamily: clashDisplay,
-                                }}>
-                                    {msg.role === 'user' ? 'You' : 'Feelivate'}
-                                </div>
+                                {/* Bubble */}
                                 <div
                                     style={{
-                                        fontSize: '14px',
-                                        color: '#111111',
-                                        lineHeight: '1.7',
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                        fontFamily: satoshi,
+                                        maxWidth: '72%',
+                                        padding: isUser ? '12px 18px' : '14px 18px',
+                                        borderRadius: isUser
+                                            ? '18px 18px 4px 18px'
+                                            : '18px 18px 18px 4px',
+                                        background: isUser
+                                            ? '#111111'
+                                            : '#ffffff',
+                                        border: isUser
+                                            ? 'none'
+                                            : '1px solid rgba(30,30,30,0.06)',
+                                        boxShadow: isUser
+                                            ? 'none'
+                                            : '0 1px 4px rgba(30,30,30,0.04)',
                                     }}
-                                    dangerouslySetInnerHTML={{
-                                        __html: formatMarkdown(msg.content)
-                                    }}
-                                />
-                            </div>
-                        </motion.div>
+                                >
+                                    <div
+                                        style={{
+                                            fontSize: '14px',
+                                            color: isUser ? '#f2f2f2' : '#111111',
+                                            lineHeight: '1.7',
+                                            whiteSpace: 'pre-wrap',
+                                            wordBreak: 'break-word',
+                                            fontFamily: satoshi,
+                                        }}
+                                        dangerouslySetInnerHTML={{
+                                            __html: formatMarkdown(msg.content, isUser)
+                                        }}
+                                    />
+                                </div>
+                            </motion.div>
 
-                        {/* If this message has an associated plan, show PlanCard */}
-                        {msg.plan && !isPlanApproved && (
-                            <PlanCard
-                                plan={msg.plan}
-                                onApprove={onApprovePlan}
-                                onRequestChange={onRequestPlanChange}
-                                isApproved={false}
-                            />
-                        )}
-                    </div>
-                ))}
+                            {/* If this message has an associated plan, show PlanCard */}
+                            {msg.plan && !isPlanApproved && (
+                                <PlanCard
+                                    plan={msg.plan}
+                                    onApprove={onApprovePlan}
+                                    onRequestChange={onRequestPlanChange}
+                                    isApproved={false}
+                                />
+                            )}
+                        </div>
+                    );
+                })}
 
                 {/* Loading indicator */}
                 {isLoading && (
@@ -241,13 +243,13 @@ export default function ChatWindow({
                         animate={{ opacity: 1, y: 0 }}
                         style={{
                             display: 'flex',
-                            gap: '14px',
-                            padding: '18px 0',
-                            alignItems: 'flex-start',
+                            gap: '12px',
+                            padding: '12px 0',
+                            alignItems: 'flex-end',
                         }}
                     >
                         <div style={{
-                            width: '30px', height: '30px', borderRadius: '8px',
+                            width: '28px', height: '28px', borderRadius: '8px',
                             background: '#111111',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0,
@@ -255,10 +257,15 @@ export default function ChatWindow({
                             <img
                                 src="/logo_2_backup.png"
                                 alt="Feelivate"
-                                style={{ width: '18px', height: '18px', objectFit: 'contain', borderRadius: '4px', filter: 'invert(1)' }}
+                                style={{ width: '16px', height: '16px', objectFit: 'contain', borderRadius: '4px', filter: 'invert(1)' }}
                             />
                         </div>
-                        <div style={{ paddingTop: '8px' }}>
+                        <div style={{
+                            padding: '14px 18px',
+                            borderRadius: '18px 18px 18px 4px',
+                            background: '#ffffff',
+                            border: '1px solid rgba(30,30,30,0.06)',
+                        }}>
                             <div style={{ display: 'flex', gap: '4px' }}>
                                 <div className="loading-dot" />
                                 <div className="loading-dot" />
@@ -275,15 +282,17 @@ export default function ChatWindow({
 }
 
 // Simple markdown formatter
-function formatMarkdown(text: string): string {
+function formatMarkdown(text: string, isUser = false): string {
     if (!text) return '';
+    const codeBg = isUser ? 'rgba(255,255,255,0.12)' : 'rgba(30,30,30,0.04)';
+    const codeColor = isUser ? '#f2f2f2' : '#111111';
     let html = text
         // Bold
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         // Italic
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         // Inline code
-        .replace(/`(.*?)`/g, '<code style="background:rgba(30,30,30,0.04);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);font-size:12px;color:#111111;">$1</code>')
+        .replace(/`(.*?)`/g, `<code style="background:${codeBg};padding:2px 6px;border-radius:4px;font-family:var(--font-mono);font-size:12px;color:${codeColor};">$1</code>`)
         // Line breaks
         .replace(/\n/g, '<br/>');
     return html;

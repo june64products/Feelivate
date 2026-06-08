@@ -52,6 +52,8 @@ const PillNav: React.FC<PillNavProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ── Layout & animation setup ──────────────────────────────────────────────
+  const entranceDoneRef = useRef(false);
+
   useEffect(() => {
     const layout = () => {
       circleRefs.current.forEach((circle, index) => {
@@ -98,17 +100,20 @@ const PillNav: React.FC<PillNavProps> = ({
     window.addEventListener('resize', layout);
     document.fonts?.ready.then(layout).catch(() => {});
 
-    // Entrance animation
-    const pillEls = containerRef.current?.querySelectorAll<HTMLElement>('.pn-pill');
-    if (pillEls) {
-      gsap.fromTo(pillEls,
-        { opacity: 0, y: -10 },
-        { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power2.out', delay: 0.1 }
-      );
+    // Entrance animation — fire only once
+    if (!entranceDoneRef.current) {
+      entranceDoneRef.current = true;
+      const pillEls = containerRef.current?.querySelectorAll<HTMLElement>('.pn-pill');
+      if (pillEls) {
+        gsap.fromTo(pillEls,
+          { opacity: 0, y: -10 },
+          { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power2.out', delay: 0.1 }
+        );
+      }
     }
 
     return () => window.removeEventListener('resize', layout);
-  }, [items, ease]);
+  }, [items.length, ease]);
 
   const handleEnter = (i: number) => {
     const tl = tlRefs.current[i];

@@ -26,6 +26,8 @@ import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
 import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
+import PillNav from '../components/PillNav';
+import type { PillNavItem } from '../components/PillNav';
 
 
 
@@ -561,59 +563,25 @@ export default function WorkspacePage() {
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {isPlanApproved && (
-                                <button
-                                    onClick={() => setShowCalendarModal(true)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '6px',
-                                        padding: '6px 14px', borderRadius: '100px',
-                                        border: '1px solid rgba(30,30,30,0.1)',
-                                        background: 'transparent',
-                                        color: '#838282', fontSize: '11px',
-                                        fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
-                                        letterSpacing: '0.04em', textTransform: 'uppercase',
-                                    }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#111111'; e.currentTarget.style.color = '#f2f2f2'; e.currentTarget.style.borderColor = '#111111'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#838282'; e.currentTarget.style.borderColor = 'rgba(30,30,30,0.1)'; }}
-                                >
-                                    <Calendar size={11} />
-                                    Calendar
-                                </button>
-                            )}
-
-                            {isPlanApproved && (
-                                <button
-                                    onClick={handleOpenEmailModal}
-                                    title={isNotifEnabled ? `Subscribed: ${subscribedEmail}` : 'Get daily email alerts'}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '6px',
-                                        padding: '6px 14px', borderRadius: '100px',
-                                        border: isNotifEnabled
-                                            ? '1px solid #111111'
-                                            : '1px solid rgba(30,30,30,0.1)',
-                                        background: isNotifEnabled ? '#111111' : 'transparent',
-                                        color: isNotifEnabled ? '#f2f2f2' : '#838282',
-                                        fontSize: '11px',
-                                        fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
-                                        letterSpacing: '0.04em', textTransform: 'uppercase',
-                                        position: 'relative',
-                                    }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#111111'; e.currentTarget.style.color = '#f2f2f2'; e.currentTarget.style.borderColor = '#111111'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = isNotifEnabled ? '#111111' : 'transparent'; e.currentTarget.style.color = isNotifEnabled ? '#f2f2f2' : '#838282'; e.currentTarget.style.borderColor = isNotifEnabled ? '#111111' : 'rgba(30,30,30,0.1)'; }}
-                                >
-                                    {isNotifEnabled ? <Bell size={11} /> : <Bell size={11} />}
-                                    Alerts
-                                    {isNotifEnabled && (
-                                        <span style={{
-                                            width: '5px', height: '5px', borderRadius: '50%',
-                                            background: '#d97757',
-                                            display: 'inline-block',
-                                        }} />
-                                    )}
-                                </button>
-                            )}
+                            {/* PillNav strip for header buttons */}
+                            {isPlanApproved && (() => {
+                                const items: PillNavItem[] = [
+                                    { label: 'Calendar', onClick: () => setShowCalendarModal(true) },
+                                    { label: 'Alerts', onClick: handleOpenEmailModal },
+                                ];
+                                return (
+                                    <PillNav
+                                        items={items}
+                                        activeLabel={isNotifEnabled ? 'Alerts' : undefined}
+                                        baseColor="#111111"
+                                        pillColor="#f2f2f2"
+                                        pillTextColor="#111111"
+                                        hoveredTextColor="#f2f2f2"
+                                        fontFamily="'Satoshi', 'Inter', sans-serif"
+                                        ease="power3.out"
+                                    />
+                                );
+                            })()}
 
                             <button className="upgrade-btn hide-on-mobile">
                                 Upgrade

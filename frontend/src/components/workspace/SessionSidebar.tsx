@@ -279,29 +279,77 @@ export default function SessionSidebar({
     );
 }
 
-/* ── Sidebar Nav Item with GSAP hover ───────────────────────────────────── */
+/* ── Sidebar Nav Item with GSAP vertical rising-circle animation ──────── */
 function SidebarNavItem({
     icon, label, onClick,
 }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
     const itemRef = useRef<HTMLButtonElement>(null);
-    const bgRef = useRef<HTMLSpanElement>(null);
+    const circleRef = useRef<HTMLSpanElement>(null);
+    const labelRef = useRef<HTMLSpanElement>(null);
+    const hoverLabelRef = useRef<HTMLSpanElement>(null);
+    const tlRef = useRef<gsap.core.Timeline | null>(null);
+    const tweenRef = useRef<gsap.core.Tween | null>(null);
+    const layoutDoneRef = useRef(false);
+
+    useEffect(() => {
+        const pill = itemRef.current;
+        const circle = circleRef.current;
+        const lbl = labelRef.current;
+        const hover = hoverLabelRef.current;
+        if (!pill || !circle || !lbl || !hover) return;
+
+        const setup = () => {
+            const { width: w, height: h } = pill.getBoundingClientRect();
+            if (w === 0 || h === 0) return;
+
+            // Compute circle radius large enough to cover the whole pill
+            const R = ((h * h) / 4 + w * w) / (2 * w);
+            const D = Math.ceil(2 * R) + 2;
+            const delta = Math.ceil(R - Math.sqrt(Math.max(0, R * R - (h * h) / 4))) + 1;
+
+            circle.style.width = `${D}px`;
+            circle.style.height = `${D}px`;
+            circle.style.bottom = `${-D / 2 + h / 2}px`;
+            circle.style.left = `${-delta}px`;
+
+            const originX = D - delta;
+
+            gsap.set(circle, {
+                yPercent: 0,
+                scale: 0,
+                transformOrigin: `${originX}px 50%`,
+            });
+
+            gsap.set(lbl, { x: 0 });
+            gsap.set(hover, { x: -(w + 20), opacity: 0 });
+
+            tlRef.current?.kill();
+            const tl = gsap.timeline({ paused: true });
+            tl.to(circle, { scale: 1.2, duration: 0.7, ease: 'power3.out', overwrite: 'auto' }, 0);
+            tl.to(lbl, { x: w + 20, duration: 0.5, ease: 'power3.out', overwrite: 'auto' }, 0);
+            tl.to(hover, { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out', overwrite: 'auto' }, 0);
+            tlRef.current = tl;
+            layoutDoneRef.current = true;
+        };
+
+        setup();
+        window.addEventListener('resize', setup);
+        document.fonts?.ready.then(setup).catch(() => {});
+        return () => window.removeEventListener('resize', setup);
+    }, []);
 
     const handleEnter = () => {
-        if (bgRef.current) {
-            gsap.to(bgRef.current, { scaleX: 1, opacity: 1, duration: 0.3, ease: 'power3.out' });
-        }
-        if (itemRef.current) {
-            itemRef.current.style.color = '#f2f2f2';
-        }
+        const tl = tlRef.current;
+        if (!tl) return;
+        tweenRef.current?.kill();
+        tweenRef.current = tl.tweenTo(tl.duration(), { duration: 0.35, ease: 'power3.out', overwrite: 'auto' });
     };
 
     const handleLeave = () => {
-        if (bgRef.current) {
-            gsap.to(bgRef.current, { scaleX: 0, opacity: 0, duration: 0.25, ease: 'power3.in' });
-        }
-        if (itemRef.current) {
-            itemRef.current.style.color = 'rgba(255,255,255,0.5)';
-        }
+        const tl = tlRef.current;
+        if (!tl) return;
+        tweenRef.current?.kill();
+        tweenRef.current = tl.tweenTo(0, { duration: 0.25, ease: 'power3.out', overwrite: 'auto' });
     };
 
     return (
@@ -315,36 +363,72 @@ function SidebarNavItem({
                 position: 'relative',
                 width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                 padding: '9px 10px', borderRadius: '8px', border: 'none',
-                background: 'transparent',
-                color: 'rgba(255,255,255,0.5)',
+                background: 'rgba(255,255,255,0.04)',
+                color: 'rgba(255,255,255,0.6)',
                 cursor: onClick ? 'pointer' : 'default',
-                fontSize: '13px', fontWeight: 500,
-                transition: 'color 0.15s', textAlign: 'left',
+                fontSize: '13px', fontWeight: 600,
+                textAlign: 'left',
                 fontFamily: satoshi,
                 overflow: 'hidden',
                 zIndex: 0,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
             }}
         >
-            {/* GSAP animated background */}
+            {/* Rising circle from left */}
             <span
-                ref={bgRef}
+                ref={circleRef}
                 aria-hidden="true"
                 style={{
                     position: 'absolute',
-                    inset: 0,
-                    borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.06)',
-                    transformOrigin: 'left center',
-                    transform: 'scaleX(0)',
-                    opacity: 0,
-                    zIndex: -1,
+                    borderRadius: '50%',
+                    background: '#f2f2f2',
+                    zIndex: 1,
                     pointerEvents: 'none',
+                    willChange: 'transform',
+                    display: 'block',
                 }}
             />
-            <span style={{ flexShrink: 0, display: 'flex' }}>
+
+            {/* Icon — always visible */}
+            <span style={{ flexShrink: 0, display: 'flex', position: 'relative', zIndex: 3 }}>
                 {icon}
             </span>
-            {label}
+
+            {/* Label wrapper with slide animation */}
+            <span style={{
+                position: 'relative',
+                display: 'inline-block',
+                lineHeight: 1,
+                zIndex: 2,
+                overflow: 'hidden',
+                flex: 1,
+            }}>
+                {/* Original label — slides out right */}
+                <span
+                    ref={labelRef}
+                    style={{ display: 'inline-block', willChange: 'transform' }}
+                >
+                    {label}
+                </span>
+                {/* Hover label — slides in from left, dark color */}
+                <span
+                    ref={hoverLabelRef}
+                    aria-hidden="true"
+                    style={{
+                        position: 'absolute',
+                        left: 0, top: 0,
+                        width: '100%',
+                        display: 'inline-block',
+                        color: '#111111',
+                        willChange: 'transform, opacity',
+                        pointerEvents: 'none',
+                        opacity: 0,
+                    }}
+                >
+                    {label}
+                </span>
+            </span>
         </button>
     );
 }

@@ -28,50 +28,93 @@ interface LockedWeeksPanelProps {
     onClose?: () => void;
 }
 
-// ─── Small helper: stat card ──────────────────────────────────────────────────
+// ─── Fonts ────────────────────────────────────────────────────────────────────
+const clashDisplay = "'Clash Display', 'Inter', sans-serif";
+const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
+
+// ─── Small helper: stat card — Swiss light ────────────────────────────────────
 function MiniStatCard({ label, value, color }: { label: string; value: string; color?: string }) {
     return (
         <div style={{
-            flex: 1, padding: '10px 12px', borderRadius: '10px',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            display: 'flex', flexDirection: 'column', gap: '2px',
+            flex: 1, padding: '12px 14px', borderRadius: '10px',
+            background: '#ffffff',
+            border: '1px solid rgba(30,30,30,0.06)',
+            display: 'flex', flexDirection: 'column', gap: '3px',
         }}>
-            <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-            <span style={{ fontSize: '18px', fontWeight: 700, color: color ?? 'white', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</span>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi }}>{label}</span>
+            <span style={{ fontSize: '18px', fontWeight: 700, color: color ?? '#111111', letterSpacing: '-0.02em', lineHeight: 1, fontFamily: clashDisplay }}>{value}</span>
         </div>
     );
 }
 
-// ─── Analysis mini block ──────────────────────────────────────────────────────
+// ─── Analysis mini block — Swiss light ────────────────────────────────────────
 function MiniAnalysis({ label, content }: { label: string; content: string }) {
     if (!content) return null;
     return (
-        <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>{label}</p>
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, margin: 0 }}>{content}</p>
+        <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#ffffff', border: '1px solid rgba(30,30,30,0.06)' }}>
+            <p style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px', fontFamily: satoshi }}>{label}</p>
+            <p style={{ fontSize: '12px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{content}</p>
         </div>
     );
 }
 
-// ─── Week Plan day list ───────────────────────────────────────────────────────
-function WeekPlanDays({ plan, accentColor }: { plan: any; accentColor: string }) {
+// ─── Week Plan day list — Swiss tabular matching PlanCard ─────────────────────
+function WeekPlanDays({ plan }: { plan: any }) {
     if (!plan?.days?.length) return null;
     return (
         <div style={{ marginTop: '4px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', paddingLeft: '2px' }}>
-                Week {plan.week_number} · {plan.theme}
+            {/* Header with theme */}
+            <div style={{
+                padding: '14px 16px 10px',
+                borderBottom: '1px solid rgba(30,30,30,0.06)',
+            }}>
+                <div style={{
+                    fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    fontFamily: satoshi, marginBottom: '5px',
+                }}>
+                    Week {plan.week_number}
+                </div>
+                <div style={{
+                    fontSize: '16px', fontWeight: 700, color: '#111111',
+                    fontFamily: clashDisplay, letterSpacing: '-0.03em',
+                    lineHeight: 1.2, marginBottom: '6px',
+                }}>
+                    {plan.theme}
+                </div>
+                {plan.win_condition && (
+                    <div style={{
+                        fontSize: '12px', color: '#838282',
+                        fontStyle: 'italic',
+                        fontFamily: "'Georgia', 'Times New Roman', serif",
+                        lineHeight: 1.4,
+                    }}>
+                        Win: {plan.win_condition}
+                    </div>
+                )}
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+
+            {/* Days — tabular rows with alternating tint */}
+            <div style={{ background: '#ffffff', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
                 {plan.days.map((day: any, idx: number) => (
                     <div key={idx} style={{
-                        display: 'flex', gap: '10px', padding: '10px 14px',
-                        borderBottom: idx < plan.days.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
+                        display: 'flex', gap: '0',
+                        padding: '11px 16px',
+                        borderBottom: idx < plan.days.length - 1 ? '1px solid rgba(30,30,30,0.04)' : 'none',
+                        background: idx % 2 === 1 ? 'rgba(30,30,30,0.015)' : 'transparent',
                     }}>
-                        <div style={{ fontSize: '10px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: accentColor, minWidth: '70px', marginTop: '2px', flexShrink: 0 }}>
+                        <div style={{
+                            fontSize: '11px', fontWeight: 700, color: '#111111',
+                            fontFamily: clashDisplay, letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                            minWidth: '70px', flexShrink: 0, paddingTop: '1px',
+                        }}>
                             {day.day}
                         </div>
-                        <div style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>
+                        <div style={{
+                            fontSize: '12px', color: '#838282',
+                            lineHeight: '1.55', fontFamily: satoshi, fontWeight: 400,
+                        }}>
                             {day.action}
                         </div>
                     </div>
@@ -81,7 +124,7 @@ function WeekPlanDays({ plan, accentColor }: { plan: any; accentColor: string })
     );
 }
 
-// ─── Week drawer (slides in from right) ──────────────────────────────────────
+// ─── Week drawer (slides in from right) — Swiss light theme ─────────────────
 function WeekDrawer({
     weekNumber,
     report,
@@ -97,15 +140,12 @@ function WeekDrawer({
     isOngoing: boolean;
     isActiveCurrent: boolean;
     activePlan?: any;
-    weekPlan?: any;         // plan for this specific week from planHistory
+    weekPlan?: any;
     drawerTop?: number;
     onClose: () => void;
 }) {
     const isCurrentWeek = isOngoing || isActiveCurrent;
     const isLockedPast = !isCurrentWeek;
-    const accentColor = isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : '#a78bfa';
-    const accentBg = isOngoing ? 'rgba(99,102,241,0.08)' : isActiveCurrent ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.07)';
-    const accentBorder = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.2)' : 'rgba(139,92,246,0.18)';
 
     const r = report?.report;
     const planToShow = isCurrentWeek ? activePlan : weekPlan;
@@ -119,7 +159,6 @@ function WeekDrawer({
         return () => window.removeEventListener('resize', check);
     }, []);
 
-    // Last voice entry (from report days if available)
     const lastJournalDay = r?.days?.slice().reverse().find((d: any) => d.has_journal);
 
     return (
@@ -132,123 +171,108 @@ function WeekDrawer({
             className={isMobile ? 'week-drawer-mobile' : ''}
             style={{
                 position: 'fixed',
-                right: 60, // offset from the pill panel
+                right: 60,
                 top: drawerTop !== undefined ? Math.min(drawerTop, typeof window !== 'undefined' ? window.innerHeight - 350 : 500) : 80,
                 transform: 'none',
-                width: '310px',
+                width: '320px',
                 maxHeight: '82vh',
-                background: '#111112',
-                border: `1px solid ${accentBorder}`,
+                background: '#ffffff',
+                border: '1px solid rgba(30,30,30,0.08)',
                 borderRadius: '16px',
-                boxShadow: `0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px ${accentBorder}`,
+                boxShadow: '0 24px 60px rgba(30,30,30,0.12), 0 2px 8px rgba(30,30,30,0.06)',
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
                 zIndex: 500,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: satoshi,
             }}
         >
-            {/* Header */}
+            {/* Header — Swiss minimal */}
             <div style={{
-                padding: '14px 16px',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                padding: '16px 18px',
+                borderBottom: '1px solid rgba(30,30,30,0.06)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 flexShrink: 0,
-                background: accentBg,
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{
-                        width: '28px', height: '28px', borderRadius: '8px',
-                        background: isOngoing ? 'rgba(99,102,241,0.15)' : isActiveCurrent ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.12)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                        {isOngoing
-                            ? <Sparkles size={13} color={accentColor} />
-                            : isActiveCurrent
-                                ? <span style={{ fontSize: '12px', color: accentColor }}>▶</span>
-                                : <Lock size={13} color={accentColor} />
-                        }
-                    </div>
-                    <div>
-                        <p style={{ fontSize: '13px', fontWeight: 700, color: 'white', margin: 0 }}>
-                            Week {weekNumber} {isLockedPast ? '— Plan' : ''}
-                        </p>
-                        <p style={{ fontSize: '10px', color: isOngoing ? '#818cf8' : isActiveCurrent ? '#34d399' : 'rgba(255,255,255,0.35)', margin: 0, marginTop: '1px' }}>
-                            {isOngoing ? 'Recorded Today ✦' : isActiveCurrent ? 'Active Now' : (report ? `${report.week_start} – ${report.week_end}` : 'Completed')}
-                        </p>
-                    </div>
+                <div>
+                    <p style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', margin: 0, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: satoshi }}>
+                        Week {weekNumber} {isLockedPast ? '— Plan' : ''}
+                    </p>
+                    <p style={{ fontSize: '11px', color: '#838282', margin: '2px 0 0 0', fontFamily: satoshi }}>
+                        {isOngoing ? 'Recorded today' : isActiveCurrent ? 'Active now' : (report ? `${report.week_start} – ${report.week_end}` : 'Completed')}
+                    </p>
                 </div>
                 <button
                     onClick={onClose}
                     style={{
-                        width: '26px', height: '26px', borderRadius: '7px',
-                        border: 'none', background: 'rgba(255,255,255,0.06)',
-                        color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                        width: '28px', height: '28px', borderRadius: '8px',
+                        border: '1px solid rgba(30,30,30,0.08)', background: '#f2f2f2',
+                        color: '#838282', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.15s',
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#111111'; e.currentTarget.style.color = '#f2f2f2'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#f2f2f2'; e.currentTarget.style.color = '#838282'; }}
                 >
                     <X size={13} />
                 </button>
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', background: '#fafafa' }}>
 
-                {/* ── CURRENT WEEK: show active state + plan ── */}
+                {/* ── CURRENT WEEK: show active state ── */}
                 {isCurrentWeek && !r && (
                     <div style={{
                         padding: '16px', borderRadius: '12px',
-                        background: isOngoing ? 'rgba(99,102,241,0.06)' : 'rgba(16,185,129,0.06)',
-                        border: `1px dashed ${isOngoing ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)'}`,
+                        background: '#ffffff',
+                        border: '1px solid rgba(30,30,30,0.06)',
                         textAlign: 'center',
                     }}>
-                        {isOngoing
-                            ? <Sparkles size={20} color="#818cf8" style={{ margin: '0 auto 10px' }} />
-                            : <div style={{ fontSize: '20px', color: '#34d399', margin: '0 auto 10px', lineHeight: 1 }}>▶</div>
-                        }
-                        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
-                            {isOngoing ? 'Voice logged today ✦' : 'This is your current active week.'}
+                        <p style={{ fontSize: '12px', color: '#838282', margin: 0, lineHeight: 1.5, fontWeight: 500, fontFamily: satoshi }}>
+                            {isOngoing ? 'Voice logged today — great work.' : 'This is your current active week.'}
                         </p>
-                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: '4px 0 0 0' }}>
-                            {isOngoing ? 'Great work keeping up the momentum.' : 'Keep journaling — report appears at week end.'}
+                        <p style={{ fontSize: '11px', color: '#b6b5b5', margin: '4px 0 0 0', fontFamily: satoshi }}>
+                            {isOngoing ? 'Keep up the momentum.' : 'Keep journaling — report at week end.'}
                         </p>
                     </div>
                 )}
 
-                {/* ── Show the week's plan (current or past) ── */}
+                {/* ── Week plan (current or past) — Swiss tabular ── */}
                 {planToShow && planToShow.days ? (
-                    <WeekPlanDays plan={planToShow} accentColor={accentColor} />
+                    <WeekPlanDays plan={planToShow} />
                 ) : (
                     !isCurrentWeek && (
                         <div style={{
                             padding: '16px', borderRadius: '12px',
-                            border: '1px dashed rgba(255,255,255,0.1)',
-                            textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px', lineHeight: 1.6,
+                            border: '1px solid rgba(30,30,30,0.06)',
+                            textAlign: 'center', color: '#b6b5b5', fontSize: '12px', lineHeight: 1.6,
+                            background: '#ffffff', fontFamily: satoshi,
                         }}>
-                            <FileText size={18} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }} />
+                            <FileText size={18} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4, color: '#b6b5b5' }} />
                             Plan data not available for this week.
                         </div>
                     )
                 )}
 
-                {/* ── Last voice entry for LOCKED past weeks ── */}
+                {/* ── Last voice entry for past weeks ── */}
                 {isLockedPast && lastJournalDay && (
                     <div style={{
-                        padding: '10px 12px', borderRadius: '10px',
-                        background: 'rgba(167,139,250,0.06)',
-                        border: '1px solid rgba(167,139,250,0.15)',
-                        display: 'flex', alignItems: 'flex-start', gap: '8px',
+                        padding: '12px 14px', borderRadius: '10px',
+                        background: '#ffffff',
+                        border: '1px solid rgba(30,30,30,0.06)',
+                        display: 'flex', alignItems: 'flex-start', gap: '10px',
                     }}>
-                        <Mic size={13} color="#a78bfa" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <Mic size={13} color="#838282" style={{ flexShrink: 0, marginTop: '2px' }} />
                         <div>
-                            <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(167,139,250,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>
+                            <p style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '3px', fontFamily: satoshi }}>
                                 Last Voice Entry
                             </p>
-                            <p style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.45, fontStyle: 'italic' }}>
+                            <p style={{ fontSize: '12px', color: '#838282', margin: 0, lineHeight: 1.45, fontStyle: 'italic', fontFamily: "'Georgia', 'Times New Roman', serif" }}>
                                 "{lastJournalDay.one_liner}"
                             </p>
                             {lastJournalDay.emotion && (
-                                <p style={{ fontSize: '10px', color: 'rgba(167,139,250,0.6)', margin: '3px 0 0', fontWeight: 600 }}>
+                                <p style={{ fontSize: '10px', color: '#b6b5b5', margin: '3px 0 0', fontWeight: 600, fontFamily: satoshi }}>
                                     {lastJournalDay.emotion} · {lastJournalDay.score}/10
                                 </p>
                             )}
@@ -256,21 +280,21 @@ function WeekDrawer({
                     </div>
                 )}
 
-                {/* ── Collapsible Report Summary for LOCKED past weeks ── */}
+                {/* ── Collapsible Report Summary ── */}
                 {isLockedPast && r && (
-                    <div style={{ borderRadius: '10px', border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                    <div style={{ borderRadius: '10px', border: '1px solid rgba(30,30,30,0.06)', overflow: 'hidden', background: '#ffffff' }}>
                         <button
                             onClick={() => setShowReport(p => !p)}
                             style={{
-                                width: '100%', padding: '10px 12px',
+                                width: '100%', padding: '11px 14px',
                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                background: 'rgba(255,255,255,0.03)', border: 'none',
-                                color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
-                                fontFamily: "'Inter', sans-serif", fontSize: '10px', fontWeight: 700,
-                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                background: 'transparent', border: 'none',
+                                color: '#838282', cursor: 'pointer',
+                                fontFamily: satoshi, fontSize: '10px', fontWeight: 700,
+                                textTransform: 'uppercase', letterSpacing: '0.08em',
                             }}
                         >
-                            <span>📊 Week Performance</span>
+                            <span>Week Performance</span>
                             {showReport ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                         </button>
                         <AnimatePresence>
@@ -282,30 +306,31 @@ function WeekDrawer({
                                     transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                                     style={{ overflow: 'hidden' }}
                                 >
-                                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(30,30,30,0.06)' }}>
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <MiniStatCard label="Consistency" value={`${r.consistency_score ?? 0}%`} color="#10b981" />
-                                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#60a5fa" />
+                                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#111111" />
                                         </div>
                                         {r.week_theme && (
                                             <div style={{
-                                                padding: '8px 12px', borderRadius: '10px',
-                                                background: 'rgba(99,102,241,0.07)',
-                                                border: '1px solid rgba(99,102,241,0.15)',
-                                                fontSize: '11px', color: '#818cf8', fontWeight: 500,
+                                                padding: '10px 14px', borderRadius: '10px',
+                                                background: '#f2f2f2',
+                                                border: '1px solid rgba(30,30,30,0.04)',
+                                                fontSize: '12px', color: '#111111', fontWeight: 600,
+                                                fontFamily: clashDisplay,
                                             }}>
-                                                ✦ {r.week_theme}
+                                                {r.week_theme}
                                             </div>
                                         )}
                                         <MiniAnalysis label="What Went Well" content={r.what_went_well ?? ''} />
                                         <MiniAnalysis label="Where You Slipped" content={r.where_you_slipped ?? ''} />
                                         {r.hidden_insight && (
                                             <div style={{
-                                                padding: '10px 12px', borderRadius: '10px',
-                                                background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)',
+                                                padding: '12px 14px', borderRadius: '10px',
+                                                background: '#f2f2f2', border: '1px solid rgba(30,30,30,0.04)',
                                             }}>
-                                                <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Hidden Insight</p>
-                                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, margin: 0 }}>{r.hidden_insight}</p>
+                                                <p style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '5px', fontFamily: satoshi }}>Hidden Insight</p>
+                                                <p style={{ fontSize: '12px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{r.hidden_insight}</p>
                                             </div>
                                         )}
                                     </div>
@@ -320,18 +345,18 @@ function WeekDrawer({
                     <>
                         <div style={{ display: 'flex', gap: '8px' }}>
                             <MiniStatCard label="Consistency" value={`${r.consistency_score ?? 0}%`} color="#10b981" />
-                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#60a5fa" />
+                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#111111" />
                         </div>
                         <MiniAnalysis label="Emotional Arc" content={r.emotional_arc ?? ''} />
                         <MiniAnalysis label="What Went Well" content={r.what_went_well ?? ''} />
                         <MiniAnalysis label="Where You Slipped" content={r.where_you_slipped ?? ''} />
                         {r.hidden_insight && (
                             <div style={{
-                                padding: '10px 12px', borderRadius: '10px',
-                                background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)',
+                                padding: '12px 14px', borderRadius: '10px',
+                                background: '#f2f2f2', border: '1px solid rgba(30,30,30,0.04)',
                             }}>
-                                <p style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(99,102,241,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Hidden Insight</p>
-                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, margin: 0 }}>{r.hidden_insight}</p>
+                                <p style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '5px', fontFamily: satoshi }}>Hidden Insight</p>
+                                <p style={{ fontSize: '12px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{r.hidden_insight}</p>
                             </div>
                         )}
                     </>
