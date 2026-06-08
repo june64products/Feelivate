@@ -506,9 +506,9 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                 <AnimatePresence>
                     {(!isMobile || isMobileMenuOpen) && (
                         <motion.div
-                            initial={isMobile ? { height: 0, opacity: 0 } : false}
-                            animate={isMobile ? { height: 'auto', opacity: 1 } : false}
-                            exit={isMobile ? { height: 0, opacity: 0 } : false}
+                            initial={isMobile ? { height: 0, opacity: 0 } : undefined}
+                            animate={isMobile ? { height: 'auto', opacity: 1 } : undefined}
+                            exit={isMobile ? { height: 0, opacity: 0 } : undefined}
                             style={{ 
                                 display: 'flex', 
                                 flexDirection: isMobile ? 'row' : 'column',
