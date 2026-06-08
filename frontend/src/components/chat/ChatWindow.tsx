@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import PlanCard from './PlanCard';
+import { useWindowSize } from '../../hooks/useWindowSize';
 
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -28,6 +29,7 @@ export default function ChatWindow({
 }: ChatWindowProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const { isMobile } = useWindowSize();
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -191,7 +193,7 @@ export default function ChatWindow({
                                 {/* Bubble */}
                                 <div
                                     style={{
-                                        maxWidth: '72%',
+                                        maxWidth: isMobile ? '88%' : '72%',
                                         padding: isUser ? '12px 18px' : '14px 18px',
                                         borderRadius: isUser
                                             ? '18px 18px 4px 18px'

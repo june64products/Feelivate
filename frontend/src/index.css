@@ -557,6 +557,67 @@ body {
   .show-on-mobile {
     display: flex !important;
   }
+
+  /* --- General Responsive Utilities --- */
+  .flex-col-mobile {
+    flex-direction: column !important;
+  }
+  
+  .grid-col-1-mobile {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .flex-col-reverse-mobile {
+    flex-direction: column-reverse !important;
+  }
+
+  .w-full-mobile {
+    width: 100% !important;
+  }
+
+  .h-auto-mobile {
+    height: auto !important;
+  }
+
+  .text-center-mobile {
+    text-align: center !important;
+  }
+
+  .p-mobile-sm {
+    padding: 12px !important;
+  }
+
+  .p-mobile-md {
+    padding: 16px !important;
+  }
+
+  .m-0-mobile {
+    margin: 0 !important;
+  }
+
+  .gap-mobile-sm {
+    gap: 8px !important;
+  }
+
+  .text-mobile-lg {
+    font-size: 24px !important;
+  }
+  
+  .text-mobile-md {
+    font-size: 18px !important;
+  }
+
+  .text-mobile-sm {
+    font-size: 14px !important;
+  }
+  
+  .stack-mobile > * {
+    width: 100% !important;
+    margin-bottom: 16px !important;
+  }
+  .stack-mobile > *:last-child {
+    margin-bottom: 0 !important;
+  }
 }
 
 @media (min-width: 769px) {

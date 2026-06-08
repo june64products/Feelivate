@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Shield, Zap, Calendar } from 'lucide-react';
+import { useWindowSize } from '../hooks/useWindowSize';
 
 export default function LandingPage() {
     const navigate = useNavigate();
+    const { isMobile } = useWindowSize();
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -37,7 +39,7 @@ export default function LandingPage() {
             alignItems: 'center',
             position: 'relative',
             overflow: 'hidden',
-            padding: '24px',
+            padding: isMobile ? '16px' : '24px',
         }}>
             {/* Ambient Background Glows */}
             <div 
@@ -78,7 +80,7 @@ export default function LandingPage() {
                 top: 0,
                 left: 0,
                 right: 0,
-                padding: '24px 40px',
+                padding: isMobile ? '16px 20px' : '24px 40px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',

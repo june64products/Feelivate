@@ -735,7 +735,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             {/* Body — scrollable */}
                             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
                                 {/* Stats row */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                                <div className="grid-col-1-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '20px' }}>
                                     <div style={{
                                         padding: '14px', borderRadius: '14px',
                                         background: '#f2f2f2',
@@ -1183,7 +1183,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         {/* ── Performance stats row ── */}
                                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                                                             <ConsistencyRing score={consistencyScore} doneCount={daysDone} totalCount={reportData.past_days_count ?? 7} />
-                                                            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                                            <div className="grid-col-1-mobile" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                                                 <StatCard
                                                                     label="Avg Mood"
                                                                     value={`${avgScore}/10`}
@@ -1430,7 +1430,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                         doneCount={arDaysDone}
                                                                         totalCount={arPastDays}
                                                                     />
-                                                                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                                                    <div className="grid-col-1-mobile" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                                                         <StatCard
                                                                             label="Avg Mood"
                                                                             value={`${aw.report?.avg_score ?? 0}/10`}

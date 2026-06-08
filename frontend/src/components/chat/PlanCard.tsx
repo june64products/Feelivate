@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Calendar, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { useWindowSize } from '../../hooks/useWindowSize';
 
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -28,6 +29,7 @@ interface PlanCardProps {
 export default function PlanCard({ plan, onApprove, onRequestChange, isApproved }: PlanCardProps) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [approveAnimation, setApproveAnimation] = useState(false);
+    const { isMobile } = useWindowSize();
 
     const handleApprove = () => {
         setApproveAnimation(true);
@@ -132,8 +134,9 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                         key={idx}
                         style={{
                             display: 'flex',
-                            gap: '0',
-                            padding: '14px 24px',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            gap: isMobile ? '6px' : '0',
+                            padding: isMobile ? '16px 20px' : '14px 24px',
                             borderBottom: idx < plan.days.length - 1
                                 ? '1px solid rgba(30,30,30,0.04)'
                                 : 'none',
@@ -176,6 +179,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                 padding: '16px 24px 20px',
                 borderTop: '1px solid rgba(30,30,30,0.06)',
                 display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
                 gap: '10px',
             }}>
                 <button

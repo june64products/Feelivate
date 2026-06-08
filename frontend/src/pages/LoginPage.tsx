@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { login, signup } from '../api';
 import PillNav from '../components/PillNav';
+import { useWindowSize } from '../hooks/useWindowSize';
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
 const GoogleIcon = () => (
@@ -101,6 +102,7 @@ const EchoStack = ({ text, fontSize = '11vw' }: { text: string; fontSize?: strin
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { isMobile } = useWindowSize();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -158,7 +160,7 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 48px',
+        padding: isMobile ? '0 24px' : '0 48px',
         height: '80px',
         background: 'rgba(242, 242, 242, 0.9)',
         backdropFilter: 'blur(12px)',
@@ -188,38 +190,41 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {/* Animated Pill Nav — GSAP rising circle animation */}
-        <div className="nav-links-swiss">
-          <PillNav
-            items={[
-              { label: 'Platform' },
-              { label: 'Solutions' },
-              { label: 'About' },
-              { label: 'Pricing' },
-              { label: 'Contact' },
-            ]}
-            baseColor="#111111"
-            pillColor="#f2f2f2"
-            pillTextColor="#111111"
-            hoveredTextColor="#f2f2f2"
-            fontFamily={satoshi}
-            ease="power3.out"
-          />
-        </div>
+        {/* Animated Pill Nav — Hidden on mobile to save space */}
+        {!isMobile && (
+          <div className="nav-links-swiss">
+            <PillNav
+              items={[
+                { label: 'Platform' },
+                { label: 'Solutions' },
+                { label: 'About' },
+                { label: 'Pricing' },
+                { label: 'Contact' },
+              ]}
+              baseColor="#111111"
+              pillColor="#f2f2f2"
+              pillTextColor="#111111"
+              hoveredTextColor="#f2f2f2"
+              fontFamily={satoshi}
+              ease="power3.out"
+            />
+          </div>
+        )}
       </nav>
 
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN SPLIT — Login left, Marketing right
           ══════════════════════════════════════════════════════════════════════ */}
-      <div style={{ flex: '1 0 auto', display: 'flex' }}>
+      <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
 
         {/* ── LEFT: Sign-In Form ──────────────────────────────────────────── */}
         <div style={{
-          flex: '0 0 48%',
+          flex: isMobile ? '1 1 auto' : '0 0 48%',
+          width: isMobile ? '100%' : 'auto',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '60px 48px',
+          padding: isMobile ? '40px 24px' : '60px 48px',
           background: '#f2f2f2',
         }}>
           <div ref={formRef} style={{ width: '100%', maxWidth: '380px' }}>
@@ -416,18 +421,19 @@ export default function LoginPage() {
         </div>
 
         {/* ── RIGHT: Marketing / Brand Panel ──────────────────────────────── */}
-        <div className="brand-panel-swiss" style={{
-          flex: '0 0 52%',
-          background: '#ebebeb',
-          borderLeft: '1px solid rgba(30,30,30,0.08)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '60px 64px',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
+        {!isMobile && (
+          <div className="brand-panel-swiss" style={{
+            flex: '0 0 52%',
+            background: '#ebebeb',
+            borderLeft: '1px solid rgba(30,30,30,0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '60px 64px',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
 
           {/* Vertical hairline accent */}
           <div style={{
@@ -561,10 +567,10 @@ export default function LoginPage() {
               letterSpacing: '0.15em', fontFamily: satoshi,
               textTransform: 'uppercase',
             }}>
-              — Feelivate Philosophy
             </p>
           </motion.div>
         </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
