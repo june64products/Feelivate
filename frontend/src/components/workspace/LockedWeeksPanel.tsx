@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, X, Lock, Sparkles, FileText, ChevronUp, Mic, Menu } from 'lucide-react';
+import { ChevronRight, ChevronDown, X, Lock, Sparkles, FileText, ChevronUp, Mic } from 'lucide-react';
 import { getSessionReports, type ArchivedWeekReport } from '../../api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
