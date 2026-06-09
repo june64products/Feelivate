@@ -82,7 +82,7 @@ export default function SessionSidebar({
         return (
             <div style={{
                 width: '52px',
-                height: '100vh',
+                height: '100dvh',
                 background: '#111111',
                 borderRight: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
@@ -91,6 +91,7 @@ export default function SessionSidebar({
                 padding: '14px 0',
                 gap: '4px',
                 flexShrink: 0,
+                overflow: 'hidden',
             }}>
                 {/* Logo — click to expand */}
                 <button
@@ -144,8 +145,8 @@ export default function SessionSidebar({
     return (
         <div style={{
             width: '260px',
-            height: '100vh',
-            maxHeight: '100vh',
+            height: '100dvh',
+            maxHeight: '100dvh',
             background: '#111111',
             borderRight: '1px solid rgba(255,255,255,0.05)',
             display: 'flex',
@@ -211,9 +212,11 @@ export default function SessionSidebar({
                 )}
             </div>
 
-            {/* Session list */}
+            {/* Session list — flex:1 scrolls, StreakBar stays pinned at bottom */}
             <div style={{
-                flex: 1, overflowY: 'auto',
+                flex: 1,
+                overflowY: 'auto',
+                minHeight: 0,
                 padding: '12px 10px 8px',
                 marginTop: '8px',
                 borderTop: '1px solid rgba(255,255,255,0.05)',

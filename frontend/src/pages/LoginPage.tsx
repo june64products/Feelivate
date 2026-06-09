@@ -143,8 +143,7 @@ export default function LoginPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
-      height: '100vh',
+      minHeight: '100dvh',
       display: 'flex',
       flexDirection: 'column',
       background: 'var(--bg-primary)',
@@ -161,8 +160,8 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: isMobile ? '0 24px' : '0 48px',
-        height: '80px',
+        padding: isMobile ? '0 20px' : '0 48px',
+        height: isMobile ? '56px' : '72px',
         background: 'var(--nav-bg)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
@@ -218,14 +217,14 @@ export default function LoginPage() {
           ══════════════════════════════════════════════════════════════════════ */}
       <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
 
-        {/* ── LEFT: Sign-In Form ──────────────────────────────────────────── */}
+        {/* ── LEFT: Sign-In Form ────────────────────────────────────────────── */}
         <div style={{
           flex: isMobile ? '1 1 auto' : '0 0 48%',
           width: isMobile ? '100%' : 'auto',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: isMobile ? 'flex-start' : 'center',
           justifyContent: 'center',
-          padding: isMobile ? '40px 24px' : '60px 48px',
+          padding: isMobile ? '32px 24px 40px' : '60px 48px',
           background: 'var(--bg-primary)',
         }}>
           <div ref={formRef} style={{ width: '100%', maxWidth: '380px' }}>

@@ -466,12 +466,15 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
 
     return (
         <>
-            {/* ── Floating pill panel on right edge ── */}
+            {/* ── Floating pill panel on right edge (desktop) OR bottom sheet (mobile) ── */}
             <motion.div
                 className="locked-weeks-panel"
-                initial={isMobile ? { y: 80, opacity: 0 } : { x: 60, opacity: 0 }}
-                animate={isMobile ? { y: 0, opacity: 1 } : { x: 0, opacity: 1 }}
-                transition={{ type: 'spring', damping: 22, stiffness: 250, delay: 0.1 }}
+                initial={isMobile ? { y: '100%', opacity: 0 } : { x: 60, opacity: 0 }}
+                animate={isMobile
+                    ? { y: isMobileMenuOpen ? 0 : '100%', opacity: isMobileMenuOpen ? 1 : 0 }
+                    : { x: 0, opacity: 1 }
+                }
+                transition={{ type: 'spring', damping: 28, stiffness: 320 }}
                 style={{
                     position: 'fixed',
                     right: isMobile ? 'auto' : 0,
@@ -479,59 +482,63 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                     top: isMobile ? 'auto' : '80px',
                     bottom: isMobile ? 0 : 'auto',
                     display: 'flex',
-                    flexDirection: isMobile ? (isMobileMenuOpen ? 'column' : 'row') : 'column',
+                    flexDirection: 'column',
                     gap: '4px',
-                    padding: isMobile ? '8px 16px' : '8px 0',
-                    background: 'rgba(10,10,10,0.95)',
+                    padding: isMobile ? '0' : '8px 0',
+                    background: 'rgba(10,10,10,0.97)',
                     borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                    borderTop: '1px solid rgba(255,255,255,0.10)',
+                    borderTop: '1px solid rgba(255,255,255,0.12)',
                     borderBottom: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: isMobile ? '20px 20px 0 0' : '14px 0 0 14px',
-                    boxShadow: isMobile ? '0 -10px 40px rgba(0,0,0,0.5)' : '-4px 0 24px rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(20px)',
-                    zIndex: 400,
-                    minWidth: '52px',
+                    borderRadius: isMobile ? '24px 24px 0 0' : '14px 0 0 14px',
+                    boxShadow: isMobile ? '0 -20px 60px rgba(0,0,0,0.7)' : '-4px 0 24px rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(24px)',
+                    zIndex: 450,
+                    minWidth: isMobile ? '100%' : '52px',
                     width: isMobile ? '100%' : 'auto',
-                    alignItems: isMobile ? 'flex-start' : 'center',
+                    alignItems: isMobile ? 'stretch' : 'center',
                     fontFamily: "'Inter', sans-serif",
-                    maxHeight: isMobile && isMobileMenuOpen ? '55vh' : isMobile ? '48px' : undefined,
-                    overflow: isMobile ? 'hidden' : undefined,
-                    transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    maxHeight: isMobile ? '70vh' : undefined,
+                    pointerEvents: isMobile && !isMobileMenuOpen ? 'none' : 'auto',
                 }}
             >
-                {/* Hamburger toggle on mobile — shows collapsed WEEKS bar */}
+                {/* Mobile header row: title + close button */}
                 {isMobile && (
-                    <button
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            background: 'transparent', border: 'none',
-                            color: '#f2f2f2', cursor: 'pointer',
-                            padding: '8px 4px', width: '100%',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <Menu size={16} />
-                        <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>
-                            {isMobileMenuOpen ? 'CLOSE' : 'WEEKS'}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '16px 20px 12px',
+                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        flexShrink: 0,
+                    }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                            Your Weeks
                         </span>
-                    </button>
+                        <button
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: '28px', height: '28px', borderRadius: '50%',
+                                background: 'rgba(255,255,255,0.08)', border: 'none',
+                                color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                            }}
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
                 )}
 
                 <AnimatePresence>
-                    {(!isMobile || isMobileMenuOpen) && (
+                    {(true) && (
                         <motion.div
-                            initial={isMobile ? { height: 0, opacity: 0 } : undefined}
-                            animate={isMobile ? { height: 'auto', opacity: 1 } : undefined}
-                            exit={isMobile ? { height: 0, opacity: 0 } : undefined}
                             style={{ 
                                 display: 'flex', 
                                 flexDirection: isMobile ? 'row' : 'column',
                                 flexWrap: isMobile ? 'wrap' : 'nowrap',
-                                gap: '8px',
+                                gap: isMobile ? '10px' : '8px',
                                 width: '100%',
                                 justifyContent: isMobile ? 'center' : 'center',
-                                padding: isMobile ? '10px 0' : '0'
+                                padding: isMobile ? '16px 20px 24px' : '0',
+                                overflowY: isMobile ? 'auto' : undefined,
+                                maxHeight: isMobile ? '55vh' : undefined,
                             }}
                         >
                             {groups.map((group, gi) => {
@@ -614,6 +621,19 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                     )}
                 </AnimatePresence>
             </motion.div>
+
+            {/* Mobile backdrop — tap outside to close */}
+            {isMobile && isMobileMenuOpen && (
+                <div
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    style={{
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(0,0,0,0.55)',
+                        backdropFilter: 'blur(4px)',
+                        zIndex: 445,
+                    }}
+                />
+            )}
 
             {/* ── Slide-out week drawer ── */}
             <AnimatePresence>

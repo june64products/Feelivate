@@ -652,18 +652,13 @@ body {
     margin: 0 4px !important;
   }
 
-  /* Chat area needs bottom padding so content isn't hidden behind the 48px WEEKS bar */
+  /* Chat and journey areas — no extra padding needed (WEEKS bar is hidden by default) */
   .chat-messages-area {
-    padding-bottom: 60px !important;
-  }
-
-  /* Journey page body should account for WEEKS bar at bottom */
-  .journey-body-scroll {
-    padding-bottom: 60px !important;
+    padding-bottom: 20px;
   }
 
   .emotion-orb-wrapper {
-    bottom: 80px !important;
+    bottom: 30px !important;
   }
 
   .week-drawer-mobile {
@@ -683,8 +678,8 @@ body {
   }
 
   .mobile-header {
-    padding-top: max(env(safe-area-inset-top, 24px), 36px) !important;
-    min-height: 70px !important;
+    padding-top: max(env(safe-area-inset-top, 8px), 8px) !important;
+    min-height: 56px !important;
   }
 
   /* Journey Page Responsive Grids */
