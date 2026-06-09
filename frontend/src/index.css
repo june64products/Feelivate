@@ -678,7 +678,7 @@ body {
   }
 
   .mobile-header {
-    padding-top: max(env(safe-area-inset-top, 8px), 8px) !important;
+    padding-top: max(env(safe-area-inset-top, 44px), 44px) !important;
     min-height: 56px !important;
   }
 

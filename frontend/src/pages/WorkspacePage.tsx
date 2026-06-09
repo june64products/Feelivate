@@ -443,7 +443,7 @@ export default function WorkspacePage() {
     return (
         <div style={{
             display: 'flex',
-            height: '100vh',
+            height: '100dvh',
             width: '100vw',
             background: 'var(--bg-primary)',
             color: 'var(--text-primary)',
@@ -798,7 +798,7 @@ export default function WorkspacePage() {
                                 exit={{ opacity: 0, y: 20 }}
                                 transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                                 style={{
-                                    padding: '0 20px 24px',
+                                    padding: '0 20px calc(env(safe-area-inset-bottom, 0px) + 24px)',
                                     background: 'linear-gradient(180deg, transparent, var(--bg-primary) 20%)',
                                     flexShrink: 0,
                                     position: 'relative',
