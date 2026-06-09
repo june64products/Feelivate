@@ -94,6 +94,9 @@
   --nav-bg: rgba(242, 242, 242, 0.9);
   --nav-border: rgba(30, 30, 30, 0.06);
 
+  /* Logo */
+  --logo-filter: invert(1);
+
   /* Wave bar */
   --wave-bar-color: #111111;
 
@@ -203,6 +206,9 @@
 
   /* Wave bar */
   --wave-bar-color: #f2f2f2;
+
+  /* Logo */
+  --logo-filter: invert(0);
 }
 
 /* ============================================ */

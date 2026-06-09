@@ -683,7 +683,7 @@ export default function WorkspacePage() {
                                             <img
                                                 src="/logo_2_backup.png"
                                                 alt="Feelivate"
-                                                style={{ width: '26px', height: '26px', objectFit: 'contain', filter: 'invert(1)' }}
+                                                style={{ width: '26px', height: '26px', objectFit: 'contain', filter: 'var(--logo-filter)' }}
                                             />
                                         </div>
                                         <h1 style={{

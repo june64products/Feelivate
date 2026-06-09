@@ -37,12 +37,12 @@ function MiniStatCard({ label, value, color }: { label: string; value: string; c
     return (
         <div style={{
             flex: 1, padding: '12px 14px', borderRadius: '10px',
-            background: '#ffffff',
-            border: '1px solid rgba(30,30,30,0.06)',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-subtle)',
             display: 'flex', flexDirection: 'column', gap: '3px',
         }}>
-            <span style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi }}>{label}</span>
-            <span style={{ fontSize: '18px', fontWeight: 700, color: color ?? '#111111', letterSpacing: '-0.02em', lineHeight: 1, fontFamily: clashDisplay }}>{value}</span>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi }}>{label}</span>
+            <span style={{ fontSize: '18px', fontWeight: 700, color: color ?? 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1, fontFamily: clashDisplay }}>{value}</span>
         </div>
     );
 }
@@ -51,9 +51,9 @@ function MiniStatCard({ label, value, color }: { label: string; value: string; c
 function MiniAnalysis({ label, content }: { label: string; content: string }) {
     if (!content) return null;
     return (
-        <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#ffffff', border: '1px solid rgba(30,30,30,0.06)' }}>
-            <p style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px', fontFamily: satoshi }}>{label}</p>
-            <p style={{ fontSize: '12px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{content}</p>
+        <div style={{ padding: '12px 14px', borderRadius: '10px', background: 'var(--card-bg)', border: '1px solid var(--border-subtle)' }}>
+            <p style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px', fontFamily: satoshi }}>{label}</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{content}</p>
         </div>
     );
 }
@@ -66,17 +66,17 @@ function WeekPlanDays({ plan }: { plan: any }) {
             {/* Header with theme */}
             <div style={{
                 padding: '14px 16px 10px',
-                borderBottom: '1px solid rgba(30,30,30,0.06)',
+                borderBottom: '1px solid var(--border-subtle)',
             }}>
                 <div style={{
-                    fontSize: '10px', fontWeight: 700, color: '#b6b5b5',
+                    fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
                     letterSpacing: '0.12em', textTransform: 'uppercase',
                     fontFamily: satoshi, marginBottom: '5px',
                 }}>
                     Week {plan.week_number}
                 </div>
                 <div style={{
-                    fontSize: '16px', fontWeight: 700, color: '#111111',
+                    fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)',
                     fontFamily: clashDisplay, letterSpacing: '-0.03em',
                     lineHeight: 1.2, marginBottom: '6px',
                 }}>
@@ -84,7 +84,7 @@ function WeekPlanDays({ plan }: { plan: any }) {
                 </div>
                 {plan.win_condition && (
                     <div style={{
-                        fontSize: '12px', color: '#838282',
+                        fontSize: '12px', color: 'var(--text-secondary)',
                         fontStyle: 'italic',
                         fontFamily: "'Georgia', 'Times New Roman', serif",
                         lineHeight: 1.4,
@@ -95,16 +95,16 @@ function WeekPlanDays({ plan }: { plan: any }) {
             </div>
 
             {/* Days — tabular rows with alternating tint */}
-            <div style={{ background: '#ffffff', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+            <div style={{ background: 'var(--card-bg)', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
                 {plan.days.map((day: any, idx: number) => (
                     <div key={idx} style={{
                         display: 'flex', gap: '0',
                         padding: '11px 16px',
-                        borderBottom: idx < plan.days.length - 1 ? '1px solid rgba(30,30,30,0.04)' : 'none',
-                        background: idx % 2 === 1 ? 'rgba(30,30,30,0.015)' : 'transparent',
+                        borderBottom: idx < plan.days.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                        background: idx % 2 === 1 ? 'var(--glass-surface)' : 'transparent',
                     }}>
                         <div style={{
-                            fontSize: '11px', fontWeight: 700, color: '#111111',
+                            fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)',
                             fontFamily: clashDisplay, letterSpacing: '0.04em',
                             textTransform: 'uppercase',
                             minWidth: '70px', flexShrink: 0, paddingTop: '1px',
@@ -112,7 +112,7 @@ function WeekPlanDays({ plan }: { plan: any }) {
                             {day.day}
                         </div>
                         <div style={{
-                            fontSize: '12px', color: '#838282',
+                            fontSize: '12px', color: 'var(--text-secondary)',
                             lineHeight: '1.55', fontFamily: satoshi, fontWeight: 400,
                         }}>
                             {day.action}
@@ -176,10 +176,10 @@ function WeekDrawer({
                 transform: 'none',
                 width: '320px',
                 maxHeight: '82vh',
-                background: '#ffffff',
-                border: '1px solid rgba(30,30,30,0.08)',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-medium)',
                 borderRadius: '16px',
-                boxShadow: '0 24px 60px rgba(30,30,30,0.12), 0 2px 8px rgba(30,30,30,0.06)',
+                boxShadow: 'var(--shadow-lg)',
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
@@ -190,15 +190,15 @@ function WeekDrawer({
             {/* Header — Swiss minimal */}
             <div style={{
                 padding: '16px 18px',
-                borderBottom: '1px solid rgba(30,30,30,0.06)',
+                borderBottom: '1px solid var(--border-subtle)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 flexShrink: 0,
             }}>
                 <div>
-                    <p style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', margin: 0, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: satoshi }}>
+                    <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', margin: 0, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: satoshi }}>
                         Week {weekNumber} {isLockedPast ? '— Plan' : ''}
                     </p>
-                    <p style={{ fontSize: '11px', color: '#838282', margin: '2px 0 0 0', fontFamily: satoshi }}>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '2px 0 0 0', fontFamily: satoshi }}>
                         {isOngoing ? 'Recorded today' : isActiveCurrent ? 'Active now' : (report ? `${report.week_start} – ${report.week_end}` : 'Completed')}
                     </p>
                 </div>
@@ -206,33 +206,33 @@ function WeekDrawer({
                     onClick={onClose}
                     style={{
                         width: '28px', height: '28px', borderRadius: '8px',
-                        border: '1px solid rgba(30,30,30,0.08)', background: '#f2f2f2',
-                        color: '#838282', cursor: 'pointer',
+                        border: '1px solid var(--border-medium)', background: 'var(--btn-primary-bg)',
+                        color: 'var(--text-secondary)', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#111111'; e.currentTarget.style.color = '#f2f2f2'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#f2f2f2'; e.currentTarget.style.color = '#838282'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--btn-hover-bg)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--btn-primary-bg)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                 >
                     <X size={13} />
                 </button>
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', background: '#fafafa' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-primary)' }}>
 
                 {/* ── CURRENT WEEK: show active state ── */}
                 {isCurrentWeek && !r && (
                     <div style={{
                         padding: '16px', borderRadius: '12px',
-                        background: '#ffffff',
-                        border: '1px solid rgba(30,30,30,0.06)',
+                        background: 'var(--card-bg)',
+                        border: '1px solid var(--border-subtle)',
                         textAlign: 'center',
                     }}>
-                        <p style={{ fontSize: '12px', color: '#838282', margin: 0, lineHeight: 1.5, fontWeight: 500, fontFamily: satoshi }}>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5, fontWeight: 500, fontFamily: satoshi }}>
                             {isOngoing ? 'Voice logged today — great work.' : 'This is your current active week.'}
                         </p>
-                        <p style={{ fontSize: '11px', color: '#b6b5b5', margin: '4px 0 0 0', fontFamily: satoshi }}>
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0 0', fontFamily: satoshi }}>
                             {isOngoing ? 'Keep up the momentum.' : 'Keep journaling — report at week end.'}
                         </p>
                     </div>
@@ -245,11 +245,11 @@ function WeekDrawer({
                     !isCurrentWeek && (
                         <div style={{
                             padding: '16px', borderRadius: '12px',
-                            border: '1px solid rgba(30,30,30,0.06)',
-                            textAlign: 'center', color: '#b6b5b5', fontSize: '12px', lineHeight: 1.6,
-                            background: '#ffffff', fontFamily: satoshi,
+                            border: '1px solid var(--border-subtle)',
+                            textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', lineHeight: 1.6,
+                            background: 'var(--card-bg)', fontFamily: satoshi,
                         }}>
-                            <FileText size={18} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4, color: '#b6b5b5' }} />
+                            <FileText size={18} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4, color: 'var(--text-muted)' }} />
                             Plan data not available for this week.
                         </div>
                     )
@@ -259,20 +259,20 @@ function WeekDrawer({
                 {isLockedPast && lastJournalDay && (
                     <div style={{
                         padding: '12px 14px', borderRadius: '10px',
-                        background: '#ffffff',
-                        border: '1px solid rgba(30,30,30,0.06)',
+                        background: 'var(--card-bg)',
+                        border: '1px solid var(--border-subtle)',
                         display: 'flex', alignItems: 'flex-start', gap: '10px',
                     }}>
-                        <Mic size={13} color="#838282" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <Mic size={13} color="var(--text-secondary)" style={{ flexShrink: 0, marginTop: '2px' }} />
                         <div>
-                            <p style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '3px', fontFamily: satoshi }}>
+                            <p style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '3px', fontFamily: satoshi }}>
                                 Last Voice Entry
                             </p>
-                            <p style={{ fontSize: '12px', color: '#838282', margin: 0, lineHeight: 1.45, fontStyle: 'italic', fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45, fontStyle: 'italic', fontFamily: "'Georgia', 'Times New Roman', serif" }}>
                                 "{lastJournalDay.one_liner}"
                             </p>
                             {lastJournalDay.emotion && (
-                                <p style={{ fontSize: '10px', color: '#b6b5b5', margin: '3px 0 0', fontWeight: 600, fontFamily: satoshi }}>
+                                <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '3px 0 0', fontWeight: 600, fontFamily: satoshi }}>
                                     {lastJournalDay.emotion} · {lastJournalDay.score}/10
                                 </p>
                             )}
@@ -282,14 +282,14 @@ function WeekDrawer({
 
                 {/* ── Collapsible Report Summary ── */}
                 {isLockedPast && r && (
-                    <div style={{ borderRadius: '10px', border: '1px solid rgba(30,30,30,0.06)', overflow: 'hidden', background: '#ffffff' }}>
+                    <div style={{ borderRadius: '10px', border: '1px solid var(--border-subtle)', overflow: 'hidden', background: 'var(--card-bg)' }}>
                         <button
                             onClick={() => setShowReport(p => !p)}
                             style={{
                                 width: '100%', padding: '11px 14px',
                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                 background: 'transparent', border: 'none',
-                                color: '#838282', cursor: 'pointer',
+                                color: 'var(--text-secondary)', cursor: 'pointer',
                                 fontFamily: satoshi, fontSize: '10px', fontWeight: 700,
                                 textTransform: 'uppercase', letterSpacing: '0.08em',
                             }}
@@ -306,17 +306,17 @@ function WeekDrawer({
                                     transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                                     style={{ overflow: 'hidden' }}
                                 >
-                                    <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(30,30,30,0.06)' }}>
+                                    <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-subtle)' }}>
                                         <div style={{ display: 'flex', gap: '8px' }}>
-                                            <MiniStatCard label="Consistency" value={`${r.consistency_score ?? 0}%`} color="#10b981" />
-                                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#111111" />
+                                            <MiniStatCard label="Consistency" value={`${r.consistency_score ?? 0}%`} color="var(--color-success)" />
+                                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="var(--text-primary)" />
                                         </div>
                                         {r.week_theme && (
                                             <div style={{
                                                 padding: '10px 14px', borderRadius: '10px',
-                                                background: '#f2f2f2',
-                                                border: '1px solid rgba(30,30,30,0.04)',
-                                                fontSize: '12px', color: '#111111', fontWeight: 600,
+                                                background: 'var(--glass-surface)',
+                                                border: '1px solid var(--border-subtle)',
+                                                fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600,
                                                 fontFamily: clashDisplay,
                                             }}>
                                                 {r.week_theme}
@@ -327,10 +327,10 @@ function WeekDrawer({
                                         {r.hidden_insight && (
                                             <div style={{
                                                 padding: '12px 14px', borderRadius: '10px',
-                                                background: '#f2f2f2', border: '1px solid rgba(30,30,30,0.04)',
+                                                background: 'var(--glass-surface)', border: '1px solid var(--border-subtle)',
                                             }}>
-                                                <p style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '5px', fontFamily: satoshi }}>Hidden Insight</p>
-                                                <p style={{ fontSize: '12px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{r.hidden_insight}</p>
+                                                <p style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '5px', fontFamily: satoshi }}>Hidden Insight</p>
+                                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{r.hidden_insight}</p>
                                             </div>
                                         )}
                                     </div>
@@ -344,8 +344,8 @@ function WeekDrawer({
                 {isCurrentWeek && r && (
                     <>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                            <MiniStatCard label="Consistency" value={`${r.consistency_score ?? 0}%`} color="#10b981" />
-                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="#111111" />
+                            <MiniStatCard label="Consistency" value={`${r.consistency_score ?? 0}%`} color="var(--color-success)" />
+                            <MiniStatCard label="Avg Mood" value={`${r.avg_score ?? 0}/10`} color="var(--text-primary)" />
                         </div>
                         <MiniAnalysis label="Emotional Arc" content={r.emotional_arc ?? ''} />
                         <MiniAnalysis label="What Went Well" content={r.what_went_well ?? ''} />
@@ -353,10 +353,10 @@ function WeekDrawer({
                         {r.hidden_insight && (
                             <div style={{
                                 padding: '12px 14px', borderRadius: '10px',
-                                background: '#f2f2f2', border: '1px solid rgba(30,30,30,0.04)',
+                                background: 'var(--glass-surface)', border: '1px solid var(--border-subtle)',
                             }}>
-                                <p style={{ fontSize: '9px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '5px', fontFamily: satoshi }}>Hidden Insight</p>
-                                <p style={{ fontSize: '12px', color: '#838282', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{r.hidden_insight}</p>
+                                <p style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '5px', fontFamily: satoshi }}>Hidden Insight</p>
+                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{r.hidden_insight}</p>
                             </div>
                         )}
                     </>

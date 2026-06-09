@@ -181,7 +181,7 @@ export default function LoginPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden', flexShrink: 0,
           }}>
-            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '28px', height: '28px', objectFit: 'contain', filter: 'invert(1)' }} />
+            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '28px', height: '28px', objectFit: 'contain', filter: 'var(--logo-filter)' }} />
           </div>
           <span style={{
             fontWeight: 700, fontSize: '18px', letterSpacing: '-0.03em',
