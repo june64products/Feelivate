@@ -244,7 +244,7 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                             padding: '14px 16px',
                             borderRadius: '12px',
                             background: 'var(--card-bg)',
-                            border: '1px solid rgba(30,30,30,0.06)',
+                            border: '1px solid var(--border-subtle)',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '10px',
@@ -314,7 +314,7 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                                     marginTop: '4px',
                                     padding: '10px 12px',
                                     borderRadius: '8px',
-                                    background: 'var(--btn-primary-bg)',
+                                    background: 'var(--bg-surface)',
                                     borderLeft: '2px solid #111111',
                                 }}>
                                     <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '2px', fontFamily: satoshi }}>
@@ -423,7 +423,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
             padding: '14px 16px',
             borderRadius: '12px',
             background: 'var(--card-bg)',
-            border: '1px solid rgba(30,30,30,0.06)',
+            border: '1px solid var(--border-subtle)',
             display: 'flex', flexDirection: 'column', gap: '4px',
         }}>
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi }}>{label}</span>
@@ -441,7 +441,7 @@ function AnalysisBlock({ label, content }: { label: string; content: string }) {
             padding: '14px 16px',
             borderRadius: '12px',
             background: 'var(--card-bg)',
-            border: '1px solid rgba(30,30,30,0.06)',
+            border: '1px solid var(--border-subtle)',
         }}>
             <p style={{
                 fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
@@ -657,7 +657,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     return (
         <div style={{
             flex: 1, display: 'flex', flexDirection: 'column', height: '100%',
-            background: 'var(--btn-primary-bg)', overflow: 'hidden',
+            background: 'var(--bg-primary)', overflow: 'hidden',
             position: 'relative',
             overflowY: 'auto',
             fontFamily: satoshi,
@@ -697,7 +697,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 width: '100%', maxWidth: '500px',
                                 maxHeight: '90vh',
                                 background: 'var(--card-bg)',
-                                border: '1px solid rgba(30,30,30,0.08)',
+                                border: '1px solid var(--border-subtle)',
                                 borderRadius: '24px',
                                 boxShadow: '0 40px 80px rgba(0,0,0,0.15), 0 0 0 1px rgba(30,30,30,0.04)',
                                 overflow: 'hidden',
@@ -707,8 +707,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             {/* Glow header */}
                             <div style={{
                                 padding: '28px 28px 20px',
-                                background: 'var(--btn-primary-bg)',
-                                borderBottom: '1px solid rgba(30,30,30,0.06)',
+                                background: 'var(--bg-surface)',
+                                borderBottom: '1px solid var(--border-subtle)',
                                 textAlign: 'center',
                                 position: 'relative',
                             }}>
@@ -739,8 +739,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 <div className="grid-col-1-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '20px' }}>
                                     <div style={{
                                         padding: '14px', borderRadius: '14px',
-                                        background: 'var(--btn-primary-bg)',
-                                        border: '1px solid rgba(30,30,30,0.04)',
+                                        background: 'var(--bg-surface)',
+                                        border: '1px solid var(--border-subtle)',
                                         textAlign: 'center',
                                     }}>
                                         <div style={{ fontSize: '24px', fontWeight: 700, color: '#10b981', letterSpacing: '-0.03em', fontFamily: clashDisplay }}>
@@ -750,8 +750,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     </div>
                                     <div style={{
                                         padding: '14px', borderRadius: '14px',
-                                        background: 'var(--btn-primary-bg)',
-                                        border: '1px solid rgba(30,30,30,0.04)',
+                                        background: 'var(--bg-surface)',
+                                        border: '1px solid var(--border-subtle)',
                                         textAlign: 'center',
                                     }}>
                                         <div style={{ fontSize: '24px', fontWeight: 700, color: '#6366f1', letterSpacing: '-0.03em', fontFamily: clashDisplay }}>
@@ -761,8 +761,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     </div>
                                     <div style={{
                                         padding: '14px', borderRadius: '14px',
-                                        background: 'var(--btn-primary-bg)',
-                                        border: '1px solid rgba(30,30,30,0.04)',
+                                        background: 'var(--bg-surface)',
+                                        border: '1px solid var(--border-subtle)',
                                         textAlign: 'center',
                                     }}>
                                         <div style={{ fontSize: '24px', fontWeight: 700, color: '#f59e0b', letterSpacing: '-0.03em', fontFamily: clashDisplay }}>
@@ -775,8 +775,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 {/* Emotion Pie Chart */}
                                 <div style={{
                                     padding: '16px', borderRadius: '14px',
-                                    background: 'var(--btn-primary-bg)',
-                                    border: '1px solid rgba(30,30,30,0.04)',
+                                    background: 'var(--bg-surface)',
+                                    border: '1px solid var(--border-subtle)',
                                     marginBottom: '14px',
                                 }}>
                                     <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px', fontFamily: satoshi }}>Emotion Distribution</p>
@@ -787,8 +787,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 {reportData.hidden_insight && (
                                     <div style={{
                                         padding: '14px 16px', borderRadius: '12px',
-                                        background: 'var(--btn-primary-bg)',
-                                        border: '1px solid rgba(30,30,30,0.04)',
+                                        background: 'var(--bg-surface)',
+                                        border: '1px solid var(--border-subtle)',
                                         marginBottom: '14px',
                                     }}>
                                         <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Hidden Insight</p>
@@ -800,8 +800,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 {reportData.next_week_focus && (
                                     <div style={{
                                         padding: '14px 16px', borderRadius: '12px',
-                                        background: 'var(--btn-primary-bg)',
-                                        border: '1px solid rgba(30,30,30,0.04)',
+                                        background: 'var(--bg-surface)',
+                                        border: '1px solid var(--border-subtle)',
                                         marginBottom: '14px',
                                     }}>
                                         <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Key Focus for Next Week</p>
@@ -813,14 +813,14 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             {/* Footer CTA */}
                             <div style={{
                                 padding: '16px 24px',
-                                borderTop: '1px solid rgba(30,30,30,0.06)',
+                                borderTop: '1px solid var(--border-subtle)',
                                 display: 'flex', gap: '10px',
                             }}>
                                 <button
                                     onClick={() => setShowWeekEndCelebration(false)}
                                     style={{
                                         flex: 1, padding: '11px', borderRadius: '100px',
-                                        border: '1px solid rgba(30,30,30,0.1)',
+                                        border: '1px solid var(--border-subtle)',
                                         background: 'transparent', color: 'var(--text-secondary)',
                                         fontSize: '13px', cursor: 'pointer', fontFamily: satoshi,
                                     }}
@@ -855,7 +855,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             <div style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
                 padding: '14px 20px',
-                borderBottom: '1px solid rgba(30,30,30,0.06)',
+                borderBottom: '1px solid var(--border-subtle)',
                 flexShrink: 0,
                 background: 'var(--card-bg)',
             }}>
@@ -864,7 +864,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                         onClick={onClose}
                         style={{
                             width: '32px', height: '32px', borderRadius: '8px',
-                            border: '1px solid rgba(30,30,30,0.08)', background: 'var(--btn-primary-bg)',
+                            border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)',
                             color: 'var(--text-secondary)', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             transition: 'all 0.15s',
@@ -889,7 +889,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 </div>
 
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: '0', background: 'var(--btn-primary-bg)', borderRadius: '10px', padding: '3px', border: '1px solid rgba(30,30,30,0.06)' }}>
+                <div style={{ display: 'flex', gap: '0', background: 'var(--bg-surface)', borderRadius: '10px', padding: '3px', border: '1px solid var(--border-subtle)' }}>
                     {(['overview', 'archive'] as const).map(tab => (
                         <button
                             key={tab}
@@ -927,7 +927,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             <div style={{
                                 borderRadius: '16px', padding: '20px',
                                 background: 'var(--card-bg)',
-                                border: '1px solid rgba(30,30,30,0.06)',
+                                border: '1px solid var(--border-subtle)',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                                     <div>
@@ -974,7 +974,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 <div style={{
                                                     width: '60px', height: '60px', borderRadius: '50%',
                                                     border: '2px solid rgba(30,30,30,0.08)',
-                                                    background: 'var(--btn-primary-bg)',
+                                                    background: 'var(--bg-surface)',
                                                     color: 'var(--text-muted)', cursor: 'not-allowed',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 }}>
@@ -1041,7 +1041,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             <div style={{
                                 borderRadius: '16px', padding: '18px 20px',
                                 background: 'var(--card-bg)',
-                                border: '1px solid rgba(30,30,30,0.06)',
+                                border: '1px solid var(--border-subtle)',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                                     <p style={{
@@ -1112,7 +1112,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             <div style={{
                                                 borderRadius: '16px', padding: '18px 20px',
                                                 background: 'var(--card-bg)',
-                                                border: '1px solid rgba(30,30,30,0.06)',
+                                                border: '1px solid var(--border-subtle)',
                                                 textAlign: 'center', lineHeight: 1.6,
                                             }}>
                                                 <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, fontFamily: satoshi }}>
@@ -1127,7 +1127,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             <div style={{
                                                 borderRadius: '16px', padding: '32px', textAlign: 'center',
                                                 background: 'var(--card-bg)',
-                                                border: '1px solid rgba(30,30,30,0.06)',
+                                                border: '1px solid var(--border-subtle)',
                                                 color: 'var(--text-muted)', fontSize: '13px',
                                                 fontFamily: satoshi,
                                             }}>
@@ -1138,7 +1138,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 <div style={{
                                                     borderRadius: '16px', padding: '28px', textAlign: 'center',
                                                     background: 'var(--card-bg)',
-                                                    border: '1px solid rgba(30,30,30,0.06)',
+                                                    border: '1px solid var(--border-subtle)',
                                                     color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6,
                                                     fontFamily: satoshi,
                                                 }}>
@@ -1148,14 +1148,14 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             ) : reportData ? (
                                                 <div style={{
                                                     borderRadius: '16px',
-                                                    border: '1px solid rgba(30,30,30,0.06)',
+                                                    border: '1px solid var(--border-subtle)',
                                                     background: 'var(--card-bg)',
                                                     overflow: 'hidden',
                                                 }}>
                                                     {/* Report header */}
                                                     <div style={{
                                                         padding: '16px 20px',
-                                                        borderBottom: '1px solid rgba(30,30,30,0.06)',
+                                                        borderBottom: '1px solid var(--border-subtle)',
                                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                                     }}>
                                                         <div>
@@ -1171,7 +1171,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         <span style={{
                                                             fontSize: '10px', fontWeight: 700, padding: '3px 10px',
                                                             borderRadius: '100px',
-                                                            background: 'var(--btn-primary-bg)',
+                                                            background: 'var(--bg-surface)',
                                                             color: 'var(--text-secondary)',
                                                             fontFamily: satoshi,
                                                         }}>
@@ -1234,8 +1234,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         {reportData.hidden_insight && (
                                                             <div style={{
                                                                 padding: '14px 16px', borderRadius: '12px',
-                                                                background: 'var(--btn-primary-bg)',
-                                                                border: '1px solid rgba(30,30,30,0.04)',
+                                                                background: 'var(--bg-surface)',
+                                                                border: '1px solid var(--border-subtle)',
                                                             }}>
                                                                 <p style={{
                                                                     fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
@@ -1255,8 +1255,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         {reportData.next_week_focus && (
                                                             <div style={{
                                                                 padding: '16px', borderRadius: '12px',
-                                                                background: 'var(--btn-primary-bg)',
-                                                                border: '1px solid rgba(30,30,30,0.04)',
+                                                                background: 'var(--bg-surface)',
+                                                                border: '1px solid var(--border-subtle)',
                                                             }}>
                                                                 <p style={{
                                                                     fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
@@ -1272,8 +1272,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         {/* Plan Week N+1 prompt */}
                                                         <div style={{
                                                             padding: '14px 16px', borderRadius: '12px',
-                                                            background: 'var(--btn-primary-bg)',
-                                                            border: '1px solid rgba(30,30,30,0.04)',
+                                                            background: 'var(--bg-surface)',
+                                                            border: '1px solid var(--border-subtle)',
                                                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                                         }}>
                                                             <div>
@@ -1343,7 +1343,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             ) : archivedReports.length === 0 ? (
                                 <div style={{
                                     textAlign: 'center', padding: '40px',
-                                    border: '1px solid rgba(30,30,30,0.06)',
+                                    border: '1px solid var(--border-subtle)',
                                     borderRadius: '12px', color: 'var(--text-secondary)', fontSize: '13px',
                                     background: 'var(--card-bg)', fontFamily: satoshi,
                                 }}>
@@ -1383,7 +1383,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                                                         <div style={{
                                                             width: '38px', height: '38px', borderRadius: '10px',
-                                                            background: 'var(--btn-primary-bg)',
+                                                            background: 'var(--bg-surface)',
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                             transition: 'background 0.2s',
                                                         }}>
@@ -1422,7 +1422,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         >
                                                             <div style={{
                                                                 padding: '4px 18px 20px',
-                                                                borderTop: '1px solid rgba(30,30,30,0.06)',
+                                                                borderTop: '1px solid var(--border-subtle)',
                                                             }}>
                                                                 {/* Stats + ring row */}
                                                                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -1451,8 +1451,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                 {aw.report?.week_theme && (
                                                                     <div style={{
                                                                         marginTop: '14px', padding: '10px 14px', borderRadius: '10px',
-                                                                        background: 'var(--btn-primary-bg)',
-                                                                        border: '1px solid rgba(30,30,30,0.04)',
+                                                                        background: 'var(--bg-surface)',
+                                                                        border: '1px solid var(--border-subtle)',
                                                                         fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600,
                                                                         fontFamily: clashDisplay,
                                                                     }}>
@@ -1490,8 +1490,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                     {aw.report?.hidden_insight && (
                                                                         <div style={{
                                                                             padding: '14px 16px', borderRadius: '12px',
-                                                                            background: 'var(--btn-primary-bg)',
-                                                                            border: '1px solid rgba(30,30,30,0.04)',
+                                                                            background: 'var(--bg-surface)',
+                                                                            border: '1px solid var(--border-subtle)',
                                                                         }}>
                                                                             <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Hidden Insight</p>
                                                                             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{aw.report.hidden_insight}</p>
@@ -1500,8 +1500,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                     {aw.report?.next_week_focus && (
                                                                         <div style={{
                                                                             padding: '14px 16px', borderRadius: '12px',
-                                                                            background: 'var(--btn-primary-bg)',
-                                                                            border: '1px solid rgba(30,30,30,0.04)',
+                                                                            background: 'var(--bg-surface)',
+                                                                            border: '1px solid var(--border-subtle)',
                                                                         }}>
                                                                             <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Next Week Focus</p>
                                                                             <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{aw.report.next_week_focus}</p>

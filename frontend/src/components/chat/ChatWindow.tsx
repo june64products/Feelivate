@@ -185,7 +185,7 @@ export default function ChatWindow({
                                         <img
                                             src="/logo_2_backup.png"
                                             alt="Feelivate"
-                                            style={{ width: '16px', height: '16px', objectFit: 'contain', borderRadius: '4px', filter: 'invert(1)' }}
+                                            style={{ width: '16px', height: '16px', objectFit: 'contain', borderRadius: '4px', filter: 'var(--logo-filter)' }}
                                         />
                                     </div>
                                 )}
@@ -259,7 +259,7 @@ export default function ChatWindow({
                             <img
                                 src="/logo_2_backup.png"
                                 alt="Feelivate"
-                                style={{ width: '16px', height: '16px', objectFit: 'contain', borderRadius: '4px', filter: 'invert(1)' }}
+                                style={{ width: '16px', height: '16px', objectFit: 'contain', borderRadius: '4px', filter: 'var(--logo-filter)' }}
                             />
                         </div>
                         <div style={{

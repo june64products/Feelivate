@@ -64,7 +64,7 @@ export default function SessionSidebar({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden', flexShrink: 0,
         }}>
-            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '18px', height: '18px', objectFit: 'contain', filter: 'invert(0)' }} />
         </div>
     );
 
@@ -155,7 +155,7 @@ export default function SessionSidebar({
             transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
         }}>
             {/* Header: Logo + FEELIVATE + Collapse */}
-            <div style={{
+            <div className="sidebar-header" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '16px 14px 12px',
                 flexShrink: 0,

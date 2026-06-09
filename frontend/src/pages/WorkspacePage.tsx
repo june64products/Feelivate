@@ -563,7 +563,8 @@ export default function WorkspacePage() {
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {/* PillNav strip for header buttons */}
+                            {/* PillNav strip for header buttons — desktop only */}
+                            <div className="hide-on-mobile">
                             {isPlanApproved && (() => {
                                 const items: PillNavItem[] = [
                                     { label: 'Calendar', onClick: () => setShowCalendarModal(true) },
@@ -582,6 +583,26 @@ export default function WorkspacePage() {
                                     />
                                 );
                             })()}
+                            </div>
+
+                            {/* Mobile: show Alerts icon button */}
+                            {isPlanApproved && (
+                                <button
+                                    className="show-on-mobile"
+                                    onClick={handleOpenEmailModal}
+                                    style={{
+                                        width: '32px', height: '32px', borderRadius: '8px',
+                                        border: '1px solid var(--border-medium)',
+                                        background: isNotifEnabled ? 'var(--text-primary)' : 'transparent',
+                                        color: isNotifEnabled ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', flexShrink: 0,
+                                    }}
+                                    title="Daily Alerts"
+                                >
+                                    <span style={{ fontSize: '14px' }}>🔔</span>
+                                </button>
+                            )}
 
                             <button className="upgrade-btn hide-on-mobile">
                                 Upgrade
