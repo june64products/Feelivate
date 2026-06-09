@@ -3,6 +3,7 @@
 
 /* ============================================ */
 /* DESIGN TOKENS — Swiss Luxury-Brutalist       */
+/* Light Theme (default)                        */
 /* ============================================ */
 
 :root {
@@ -16,11 +17,20 @@
   --bg-user-msg: transparent;
   --bg-ai-msg: transparent;
 
+  /* Card / Modal / Sheet */
+  --card-bg: #ffffff;
+  --card-border: rgba(30, 30, 30, 0.06);
+  --modal-bg: #ffffff;
+  --modal-border: rgba(30, 30, 30, 0.08);
+  --modal-overlay: rgba(17, 17, 17, 0.35);
+  --sheet-bg: #ffffff;
+
   /* Text — high-contrast monochromatic */
   --text-primary: #111111;
   --text-secondary: #838282;
   --text-muted: #b6b5b5;
   --text-placeholder: #b6b5b5;
+  --text-inverse: #f2f2f2;
 
   /* Accents — editorial minimal */
   --accent-primary: #111111;
@@ -28,6 +38,22 @@
   --accent-warm: #d97757;
   --accent-green: #111111;
   --accent-glow: rgba(17, 17, 17, 0.04);
+
+  /* Buttons */
+  --btn-primary-bg: #111111;
+  --btn-primary-text: #f2f2f2;
+  --btn-secondary-bg: transparent;
+  --btn-secondary-text: #838282;
+  --btn-secondary-border: rgba(30, 30, 30, 0.1);
+  --btn-disabled-bg: rgba(30, 30, 30, 0.15);
+  --btn-hover-bg: rgba(30, 30, 30, 0.04);
+
+  /* Input */
+  --input-bg: #ffffff;
+  --input-border: rgba(30, 30, 30, 0.08);
+  --input-border-focus: rgba(30, 30, 30, 0.25);
+  --input-text: #111111;
+  --input-shadow-focus: 0 0 0 2px rgba(17, 17, 17, 0.08);
 
   /* Borders — light hairlines */
   --border-subtle: rgba(30, 30, 30, 0.06);
@@ -37,6 +63,39 @@
   /* Glass */
   --glass-surface: rgba(30, 30, 30, 0.02);
   --glass-hover: rgba(30, 30, 30, 0.04);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 4px rgba(30, 30, 30, 0.04);
+  --shadow-md: 0 2px 12px rgba(30, 30, 30, 0.04);
+  --shadow-lg: 0 24px 60px rgba(30, 30, 30, 0.12);
+  --shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.15);
+
+  /* Scrollbar */
+  --scrollbar-thumb: rgba(30, 30, 30, 0.12);
+  --scrollbar-thumb-hover: rgba(30, 30, 30, 0.22);
+
+  /* Code */
+  --code-bg: rgba(30, 30, 30, 0.04);
+  --code-bg-user: rgba(255, 255, 255, 0.12);
+
+  /* Status colors stay the same */
+  --color-success: #10b981;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+
+  /* Coaching insight */
+  --insight-bg: #f2f2f2;
+  --insight-border: #111111;
+
+  /* Chart donut center */
+  --chart-center: #ffffff;
+
+  /* Nav specific */
+  --nav-bg: rgba(242, 242, 242, 0.9);
+  --nav-border: rgba(30, 30, 30, 0.06);
+
+  /* Wave bar */
+  --wave-bar-color: #111111;
 
   /* Typography — Swiss system */
   --font-sans: 'Satoshi', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -52,6 +111,98 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --sidebar-transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================ */
+/* DARK MODE — [data-theme="dark"]             */
+/* Sleek deep-black editorial palette          */
+/* ============================================ */
+
+[data-theme="dark"] {
+  /* Core */
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-sidebar: #0a0a0a;
+  --bg-surface: #1e1e1e;
+  --bg-input: #252525;
+  --bg-chat: #0f0f0f;
+  --bg-user-msg: transparent;
+  --bg-ai-msg: transparent;
+
+  /* Card / Modal / Sheet */
+  --card-bg: #1e1e1e;
+  --card-border: rgba(255, 255, 255, 0.06);
+  --modal-bg: #1e1e1e;
+  --modal-border: rgba(255, 255, 255, 0.08);
+  --modal-overlay: rgba(0, 0, 0, 0.6);
+  --sheet-bg: #1a1a1a;
+
+  /* Text */
+  --text-primary: #f2f2f2;
+  --text-secondary: #9a9a9a;
+  --text-muted: #666666;
+  --text-placeholder: #555555;
+  --text-inverse: #111111;
+
+  /* Accents */
+  --accent-primary: #f2f2f2;
+  --accent-secondary: #9a9a9a;
+  --accent-warm: #e89070;
+  --accent-green: #f2f2f2;
+  --accent-glow: rgba(255, 255, 255, 0.04);
+
+  /* Buttons */
+  --btn-primary-bg: #f2f2f2;
+  --btn-primary-text: #111111;
+  --btn-secondary-bg: transparent;
+  --btn-secondary-text: #9a9a9a;
+  --btn-secondary-border: rgba(255, 255, 255, 0.1);
+  --btn-disabled-bg: rgba(255, 255, 255, 0.1);
+  --btn-hover-bg: rgba(255, 255, 255, 0.06);
+
+  /* Input */
+  --input-bg: #252525;
+  --input-border: rgba(255, 255, 255, 0.08);
+  --input-border-focus: rgba(255, 255, 255, 0.25);
+  --input-text: #f2f2f2;
+  --input-shadow-focus: 0 0 0 2px rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.1);
+  --border-focus: rgba(255, 255, 255, 0.25);
+
+  /* Glass */
+  --glass-surface: rgba(255, 255, 255, 0.03);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+
+  /* Shadows — subtler on dark */
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.5);
+
+  /* Scrollbar */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+
+  /* Code */
+  --code-bg: rgba(255, 255, 255, 0.06);
+  --code-bg-user: rgba(255, 255, 255, 0.12);
+
+  /* Coaching insight */
+  --insight-bg: #1a1a1a;
+  --insight-border: #f2f2f2;
+
+  /* Chart donut center */
+  --chart-center: #1e1e1e;
+
+  /* Nav specific */
+  --nav-bg: rgba(15, 15, 15, 0.9);
+  --nav-border: rgba(255, 255, 255, 0.06);
+
+  /* Wave bar */
+  --wave-bar-color: #f2f2f2;
 }
 
 /* ============================================ */
@@ -81,6 +232,7 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ============================================ */
@@ -96,12 +248,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(30, 30, 30, 0.12);
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(30, 30, 30, 0.22);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* ============================================ */
@@ -186,16 +338,16 @@ body {
 .chat-input-box {
   position: relative;
   background: var(--bg-surface);
-  border: 1px solid rgba(30, 30, 30, 0.08);
+  border: 1px solid var(--input-border);
   border-radius: 16px;
   transition: border-color 0.2s ease;
   width: 100%;
   padding-bottom: env(safe-area-inset-bottom);
-  box-shadow: 0 2px 12px rgba(30, 30, 30, 0.04);
+  box-shadow: var(--shadow-md);
 }
 
 .chat-input-box:focus-within {
-  border-color: rgba(30, 30, 30, 0.2);
+  border-color: var(--input-border-focus);
 }
 
 .chat-input-box textarea {
@@ -203,7 +355,7 @@ body {
   background: transparent;
   border: none;
   outline: none;
-  color: #111111;
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 14.5px;
   font-weight: 400;
@@ -216,7 +368,7 @@ body {
 }
 
 .chat-input-box textarea::placeholder {
-  color: #b6b5b5;
+  color: var(--text-placeholder);
 }
 
 /* ============================================ */
@@ -437,6 +589,10 @@ body {
     --chat-max-width: 100%;
   }
 
+  [data-theme="dark"] {
+    --sidebar-expanded-width: 280px;
+  }
+
   /* Force overlay styles for sidebar */
   .sidebar-root {
     position: fixed !important;
@@ -490,7 +646,7 @@ body {
     border-radius: 0 !important;
     border-left: none !important;
     border-top: none !important;
-    border-bottom: 1px solid rgba(30, 30, 30, 0.06) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     overflow-x: auto !important;
     padding: 8px 16px !important;
     background: transparent !important;
@@ -618,6 +774,36 @@ body {
   .stack-mobile > *:last-child {
     margin-bottom: 0 !important;
   }
+
+  /* Mobile modal constraints */
+  .modal-mobile {
+    max-width: calc(100vw - 40px) !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Mobile stat grids */
+  .stat-grid-mobile {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Mobile voice button — larger touch target */
+  .voice-btn-mobile {
+    min-width: 56px !important;
+    min-height: 56px !important;
+  }
+}
+
+/* Extra small screens (iPhone SE, etc.) */
+@media (max-width: 480px) {
+  .stat-grid-mobile {
+    grid-template-columns: 1fr !important;
+  }
+
+  .footer-grid-mobile {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
 }
 
 @media (min-width: 769px) {
@@ -665,7 +851,7 @@ body {
   width: 2.5px;
   height: 3px;
   border-radius: 2px;
-  background: #111111;
+  background: var(--wave-bar-color);
   animation: waveBar 0.7s ease-in-out infinite;
 }
 
@@ -702,9 +888,9 @@ body {
 .upgrade-btn {
   padding: 7px 16px;
   border-radius: 100px;
-  background: #111111;
+  background: var(--btn-primary-bg);
   border: none;
-  color: #f2f2f2;
+  color: var(--btn-primary-text);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -727,7 +913,7 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #d97757;
+  background: var(--accent-warm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -739,4 +925,13 @@ body {
   flex-shrink: 0;
   letter-spacing: 0.03em;
   user-select: none;
+}
+
+/* ============================================ */
+/* THEME TRANSITION — smooth color changes     */
+/* ============================================ */
+
+[data-theme] * {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0s;
 }

@@ -542,7 +542,7 @@ export default function WorkspacePage() {
                         zIndex: 15,
                         position: 'relative',
                         fontFamily: "'Satoshi', 'Inter', sans-serif",
-                        borderBottom: '1px solid rgba(30,30,30,0.04)',
+                        borderBottom: '1px solid var(--border-subtle)',
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <button
@@ -555,8 +555,8 @@ export default function WorkspacePage() {
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     transition: 'color 0.15s',
                                 }}
-                                onMouseEnter={e => { e.currentTarget.style.color = '#111111'; }}
-                                onMouseLeave={e => { e.currentTarget.style.color = '#838282'; }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
                             >
                                 <PanelLeft size={18} />
                             </button>
@@ -573,10 +573,10 @@ export default function WorkspacePage() {
                                     <PillNav
                                         items={items}
                                         activeLabel={isNotifEnabled ? 'Alerts' : undefined}
-                                        baseColor="#111111"
-                                        pillColor="#f2f2f2"
-                                        pillTextColor="#111111"
-                                        hoveredTextColor="#f2f2f2"
+                                        baseColor="var(--text-primary)"
+                                        pillColor="var(--bg-primary)"
+                                        pillTextColor="var(--text-primary)"
+                                        hoveredTextColor="var(--text-inverse)"
                                         fontFamily="'Satoshi', 'Inter', sans-serif"
                                         ease="power3.out"
                                     />
@@ -676,7 +676,7 @@ export default function WorkspacePage() {
                                     }}>
                                         <div style={{
                                             width: '38px', height: '38px',
-                                            background: '#111111', borderRadius: '8px',
+                                            background: 'var(--accent-primary)', borderRadius: '8px',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             overflow: 'hidden', flexShrink: 0,
                                         }}>
@@ -688,7 +688,7 @@ export default function WorkspacePage() {
                                         </div>
                                         <h1 style={{
                                             fontSize: '28px', fontWeight: 700,
-                                            letterSpacing: '0.08em', color: '#111111', margin: 0,
+                                            letterSpacing: '0.08em', color: 'var(--text-primary)', margin: 0,
                                             fontFamily: "'Clash Display', 'Inter', sans-serif",
                                             textTransform: 'uppercase',
                                         }}>
@@ -698,7 +698,7 @@ export default function WorkspacePage() {
 
                                     <h2 style={{
                                         fontSize: '26px', fontWeight: 500,
-                                        color: '#838282',
+                                        color: 'var(--text-secondary)',
                                         letterSpacing: '-0.01em',
                                         margin: 0,
                                         lineHeight: 1.3,
@@ -780,7 +780,7 @@ export default function WorkspacePage() {
                         exit={{ opacity: 0 }}
                         style={{
                             position: 'fixed', inset: 0,
-                            background: 'rgba(17,17,17,0.35)',
+                            background: 'var(--modal-overlay)',
                             backdropFilter: 'blur(12px)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             zIndex: 300, padding: '20px',
@@ -794,10 +794,10 @@ export default function WorkspacePage() {
                             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
                             style={{
                                 width: '100%', maxWidth: '400px',
-                                background: '#ffffff',
-                                border: '1px solid rgba(30,30,30,0.08)',
+                                background: 'var(--modal-bg)',
+                                border: '1px solid var(--modal-border)',
                                 borderRadius: '20px', padding: '28px',
-                                boxShadow: '0 24px 60px rgba(30,30,30,0.12)',
+                                boxShadow: 'var(--shadow-lg)',
                                 position: 'relative',
                                 fontFamily: "'Satoshi', 'Inter', sans-serif",
                             }}
@@ -808,13 +808,13 @@ export default function WorkspacePage() {
                                 style={{
                                     position: 'absolute', top: '16px', right: '16px',
                                     width: '28px', height: '28px', borderRadius: '8px',
-                                    border: 'none', background: 'rgba(30,30,30,0.04)',
-                                    color: '#b6b5b5', cursor: 'pointer',
+                                    border: 'none', background: 'var(--glass-hover)',
+                                    color: 'var(--text-muted)', cursor: 'pointer',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     transition: 'background 0.15s',
                                 }}
-                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,30,0.08)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(30,30,30,0.04)'; }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--btn-hover-bg)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-hover)'; }}
                             ><X size={14} /></button>
 
                             {/* Step: Email Input */}
@@ -823,17 +823,17 @@ export default function WorkspacePage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                                         <div style={{
                                             width: '38px', height: '38px', borderRadius: '10px',
-                                            background: '#111111',
+                                            background: 'var(--btn-primary-bg)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}><Bell size={18} color="#f2f2f2" /></div>
+                                        }}><Bell size={18} color="var(--btn-primary-text)" /></div>
                                         <div>
-                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111111', margin: 0, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Daily Task Alerts</h3>
-                                            <p style={{ fontSize: '12px', color: '#b6b5b5', margin: 0 }}>Get your daily tasks straight to your inbox</p>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Daily Task Alerts</h3>
+                                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Get your daily tasks straight to your inbox</p>
                                         </div>
                                     </div>
 
-                                    <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, marginBottom: '20px' }}>
-                                        Enter your email to receive a <strong style={{ color: '#111111' }}>personalized daily task</strong> from
+                                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '20px' }}>
+                                        Enter your email to receive a <strong style={{ color: 'var(--text-primary)' }}>personalized daily task</strong> from
                                         Monday to Sunday, along with an AI-written motivation message made just for you.
                                     </p>
 
@@ -852,14 +852,14 @@ export default function WorkspacePage() {
                                                 style={{
                                                     width: '100%', padding: '11px 12px 11px 36px',
                                                     borderRadius: '10px', boxSizing: 'border-box',
-                                                    border: '1px solid rgba(30,30,30,0.1)',
-                                                    background: '#ffffff',
-                                                    color: '#111111', fontSize: '14px', outline: 'none',
+                                                    border: '1px solid var(--border-medium)',
+                                                    background: 'var(--input-bg)',
+                                                    color: 'var(--text-primary)', fontSize: '14px', outline: 'none',
                                                     transition: 'border-color 0.2s',
                                                     fontFamily: "'Satoshi', 'Inter', sans-serif",
                                                 }}
-                                                onFocus={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.25)'; }}
-                                                onBlur={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.1)'; }}
+                                                onFocus={(e) => { e.target.style.borderColor = 'var(--border-focus)'; }}
+                                                onBlur={(e) => { e.target.style.borderColor = 'var(--border-medium)'; }}
                                             />
                                         </div>
                                     </div>
@@ -877,9 +877,9 @@ export default function WorkspacePage() {
                                             width: '100%', padding: '12px',
                                             borderRadius: '100px', border: 'none',
                                             background: notifLoading || !notifEmail.trim()
-                                                ? 'rgba(30,30,30,0.15)'
-                                                : '#111111',
-                                            color: '#f2f2f2', fontSize: '12px', fontWeight: 700,
+                                                ? 'var(--btn-disabled-bg)'
+                                                : 'var(--btn-primary-bg)',
+                                            color: 'var(--btn-primary-text)', fontSize: '12px', fontWeight: 700,
                                             cursor: notifLoading || !notifEmail.trim() ? 'not-allowed' : 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                                             transition: 'all 0.15s',
@@ -899,23 +899,23 @@ export default function WorkspacePage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                                         <div style={{
                                             width: '38px', height: '38px', borderRadius: '10px',
-                                            background: '#111111',
+                                            background: 'var(--btn-primary-bg)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}><Mail size={18} color="#f2f2f2" /></div>
+                                        }}><Mail size={18} color="var(--btn-primary-text)" /></div>
                                         <div>
-                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111111', margin: 0, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Verify Your Code</h3>
-                                            <p style={{ fontSize: '12px', color: '#b6b5b5', margin: 0 }}>{notifEmail}</p>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Verify Your Code</h3>
+                                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>{notifEmail}</p>
                                         </div>
                                     </div>
 
                                     {notifMessage && (
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(30,30,30,0.04)', color: '#111111', fontSize: '12px', marginBottom: '14px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'var(--glass-hover)', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '14px' }}>
                                             <Sparkles size={13} /><span>{notifMessage}</span>
                                         </div>
                                     )}
 
-                                    <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, marginBottom: '16px' }}>
-                                        We've sent a 6-digit code to <strong style={{ color: '#111111' }}>{notifEmail}</strong>.
+                                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '16px' }}>
+                                        We've sent a 6-digit code to <strong style={{ color: 'var(--text-primary)' }}>{notifEmail}</strong>.
                                         Enter it below to activate your daily alerts.
                                     </p>
 
@@ -930,15 +930,15 @@ export default function WorkspacePage() {
                                             style={{
                                                 width: '100%', padding: '14px 16px', boxSizing: 'border-box',
                                                 borderRadius: '12px',
-                                                border: '1px solid rgba(30,30,30,0.1)',
-                                                background: '#ffffff',
-                                                color: '#111111', fontSize: '28px', fontWeight: 700,
+                                                border: '1px solid var(--border-medium)',
+                                                background: 'var(--input-bg)',
+                                                color: 'var(--text-primary)', fontSize: '28px', fontWeight: 700,
                                                 outline: 'none', textAlign: 'center',
                                                 letterSpacing: '12px',
                                                 fontFamily: "'Courier New', monospace",
                                             }}
-                                            onFocus={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.25)'; }}
-                                            onBlur={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.1)'; }}
+                                            onFocus={(e) => { e.target.style.borderColor = 'var(--border-focus)'; }}
+                                            onBlur={(e) => { e.target.style.borderColor = 'var(--border-medium)'; }}
                                         />
                                     </div>
 
@@ -953,8 +953,8 @@ export default function WorkspacePage() {
                                             onClick={() => { setEmailModalStep('email'); setNotifError(''); setNotifMessage(''); }}
                                             style={{
                                                 flex: 1, padding: '11px', borderRadius: '100px',
-                                                border: '1px solid rgba(30,30,30,0.1)', background: 'transparent',
-                                                color: '#838282', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                                                border: '1px solid var(--border-medium)', background: 'transparent',
+                                                color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
                                                 fontFamily: "'Satoshi', 'Inter', sans-serif",
                                                 letterSpacing: '0.04em', textTransform: 'uppercase',
                                             }}
@@ -965,9 +965,9 @@ export default function WorkspacePage() {
                                             style={{
                                                 flex: 2, padding: '11px', borderRadius: '100px', border: 'none',
                                                 background: notifLoading || notifOtp.length < 6
-                                                    ? 'rgba(30,30,30,0.15)'
-                                                    : '#111111',
-                                                color: '#f2f2f2', fontSize: '12px', fontWeight: 700,
+                                                    ? 'var(--btn-disabled-bg)'
+                                                    : 'var(--btn-primary-bg)',
+                                                color: 'var(--btn-primary-text)', fontSize: '12px', fontWeight: 700,
                                                 cursor: notifLoading || notifOtp.length < 6 ? 'not-allowed' : 'pointer',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                                                 fontFamily: "'Satoshi', 'Inter', sans-serif",
@@ -987,29 +987,29 @@ export default function WorkspacePage() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                                         <div style={{
                                             width: '38px', height: '38px', borderRadius: '10px',
-                                            background: '#111111',
+                                            background: 'var(--btn-primary-bg)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}><Clock size={18} color="#f2f2f2" /></div>
+                                        }}><Clock size={18} color="var(--btn-primary-text)" /></div>
                                         <div>
-                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111111', margin: 0, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Choose Your Alert Time</h3>
-                                            <p style={{ fontSize: '12px', color: '#b6b5b5', margin: 0 }}>When should we send your daily task? (IST)</p>
+                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Choose Your Alert Time</h3>
+                                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>When should we send your daily task? (IST)</p>
                                         </div>
                                     </div>
 
-                                    <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.6, marginBottom: '20px' }}>
-                                        Every day at this time, you'll receive your <strong style={{ color: '#111111' }}>personalized task</strong> for the day —
+                                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '20px' }}>
+                                        Every day at this time, you'll receive your <strong style={{ color: 'var(--text-primary)' }}>personalized task</strong> for the day —
                                         with an AI-written guide and a motivational thought made just for you.
                                     </p>
 
                                     {/* Popular times quick select */}
-                                    <p style={{ fontSize: '10px', color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px', fontWeight: 700, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Quick select</p>
+                                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px', fontWeight: 700, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Quick select</p>
                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
                                         {['06:00', '07:00', '08:00', '09:00', '20:00', '21:00'].map(t => (
                                             <button key={t} onClick={() => setNotifPreferredTime(t)} style={{
                                                 padding: '6px 14px', borderRadius: '100px', fontSize: '12px', fontWeight: 600,
-                                                border: notifPreferredTime === t ? '1px solid #111111' : '1px solid rgba(30,30,30,0.1)',
-                                                background: notifPreferredTime === t ? '#111111' : 'transparent',
-                                                color: notifPreferredTime === t ? '#f2f2f2' : '#838282',
+                                                border: notifPreferredTime === t ? '1px solid var(--accent-primary)' : '1px solid var(--border-medium)',
+                                                background: notifPreferredTime === t ? 'var(--btn-primary-bg)' : 'transparent',
+                                                color: notifPreferredTime === t ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
                                                 cursor: 'pointer', transition: 'all 0.15s',
                                                 fontFamily: "'Satoshi', 'Inter', sans-serif",
                                             }}>{t}</button>
@@ -1018,7 +1018,7 @@ export default function WorkspacePage() {
 
                                     {/* Custom time input */}
                                     <div style={{ marginBottom: '20px' }}>
-                                        <label style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
+                                        <label style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
                                             Or set a custom time
                                         </label>
                                         <input
@@ -1027,16 +1027,16 @@ export default function WorkspacePage() {
                                             onChange={(e) => setNotifPreferredTime(e.target.value)}
                                             style={{
                                                 width: '100%', padding: '11px 14px', boxSizing: 'border-box',
-                                                borderRadius: '10px', border: '1px solid rgba(30,30,30,0.1)',
-                                                background: '#ffffff', color: '#111111',
+                                                borderRadius: '10px', border: '1px solid var(--border-medium)',
+                                                background: 'var(--input-bg)', color: 'var(--text-primary)',
                                                 fontSize: '20px', fontWeight: 700, outline: 'none',
                                                 fontFamily: "'Satoshi', 'Inter', sans-serif", textAlign: 'center',
                                                 cursor: 'pointer',
                                             }}
-                                            onFocus={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.25)'; }}
-                                            onBlur={(e) => { e.target.style.borderColor = 'rgba(30,30,30,0.1)'; }}
+                                            onFocus={(e) => { e.target.style.borderColor = 'var(--border-focus)'; }}
+                                            onBlur={(e) => { e.target.style.borderColor = 'var(--border-medium)'; }}
                                         />
-                                        <p style={{ fontSize: '11px', color: '#b6b5b5', margin: '6px 0 0', textAlign: 'center' }}>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '6px 0 0', textAlign: 'center' }}>
                                             {userTimezone} &nbsp;·&nbsp; {tzOffset}
                                         </p>
                                     </div>
@@ -1052,8 +1052,8 @@ export default function WorkspacePage() {
                                         disabled={notifLoading}
                                         style={{
                                             width: '100%', padding: '13px', borderRadius: '100px', border: 'none',
-                                            background: notifLoading ? 'rgba(30,30,30,0.15)' : '#111111',
-                                            color: '#f2f2f2', fontSize: '12px', fontWeight: 700,
+                                            background: notifLoading ? 'var(--btn-disabled-bg)' : 'var(--btn-primary-bg)',
+                                            color: 'var(--btn-primary-text)', fontSize: '12px', fontWeight: 700,
                                             cursor: notifLoading ? 'not-allowed' : 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                                             fontFamily: "'Satoshi', 'Inter', sans-serif",
@@ -1076,35 +1076,35 @@ export default function WorkspacePage() {
                                             transition={{ type: 'spring', damping: 12, stiffness: 200 }}
                                             style={{
                                                 width: '56px', height: '56px', borderRadius: '14px',
-                                                background: '#111111',
+                                                background: 'var(--btn-primary-bg)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 margin: '0 auto 14px',
                                             }}
                                         >
-                                            <Bell size={24} color="#f2f2f2" />
+                                            <Bell size={24} color="var(--btn-primary-text)" />
                                         </motion.div>
-                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111111', margin: '0 0 4px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Daily Alerts Active!</h3>
-                                        <p style={{ fontSize: '12px', color: '#b6b5b5', margin: 0 }}>Your daily emails are now scheduled</p>
+                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Daily Alerts Active!</h3>
+                                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Your daily emails are now scheduled</p>
                                     </div>
 
                                     {/* Email + time info */}
                                     <div style={{
-                                        background: 'rgba(30,30,30,0.03)', border: '1px solid rgba(30,30,30,0.06)',
+                                        background: 'var(--glass-surface)', border: '1px solid var(--border-subtle)',
                                         borderRadius: '12px', padding: '14px 16px', marginBottom: '14px',
                                     }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                            <span style={{ fontSize: '10px', color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Subscribed Email</span>
+                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Subscribed Email</span>
                                         </div>
-                                        <p style={{ fontSize: '14px', color: '#111111', fontWeight: 600, margin: '0 0 10px' }}>{subscribedEmail}</p>
+                                        <p style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600, margin: '0 0 10px' }}>{subscribedEmail}</p>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div>
-                                                <span style={{ fontSize: '10px', color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, display: 'block', marginBottom: '2px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Daily at</span>
-                                                <span style={{ fontSize: '18px', color: '#111111', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>{subscribedTime} IST</span>
+                                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, display: 'block', marginBottom: '2px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>Daily at</span>
+                                                <span style={{ fontSize: '18px', color: 'var(--text-primary)', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>{subscribedTime} IST</span>
                                             </div>
                                             <button onClick={() => { setEmailModalStep('time'); setNotifError(''); }} style={{
                                                 padding: '6px 14px', borderRadius: '100px', fontSize: '11px', fontWeight: 700,
-                                                border: '1px solid rgba(30,30,30,0.1)', background: 'transparent',
-                                                color: '#838282', cursor: 'pointer', fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                                border: '1px solid var(--border-medium)', background: 'transparent',
+                                                color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: "'Satoshi', 'Inter', sans-serif",
                                                 letterSpacing: '0.04em', textTransform: 'uppercase',
                                             }}>Change time</button>
                                         </div>
@@ -1112,21 +1112,21 @@ export default function WorkspacePage() {
 
                                     {/* What you get */}
                                     <div style={{
-                                        background: 'rgba(30,30,30,0.02)', borderRadius: '10px',
+                                        background: 'var(--glass-surface)', borderRadius: '10px',
                                         padding: '12px 14px', marginBottom: '16px',
                                     }}>
-                                        <p style={{ fontSize: '10px', color: '#b6b5b5', margin: '0 0 8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>What you'll receive each day</p>
+                                        <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '0 0 8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>What you'll receive each day</p>
                                         {[
                                             'Your specific task for the day',
                                             'AI-written personalized guidance',
                                             'A motivational thought crafted just for you',
                                         ].map(t => (
-                                            <p key={t} style={{ fontSize: '12px', color: '#838282', margin: '4px 0' }}>• {t}</p>
+                                            <p key={t} style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0' }}>• {t}</p>
                                         ))}
                                     </div>
 
                                     {notifMessage && (
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'rgba(30,30,30,0.04)', color: '#111111', fontSize: '12px', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'var(--glass-hover)', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '12px' }}>
                                             <Sparkles size={13} /><span>{notifMessage}</span>
                                         </div>
                                     )}
@@ -1167,7 +1167,7 @@ export default function WorkspacePage() {
                 {showCalendarModal && (
                     <div style={{
                         position: 'absolute', inset: 0,
-                        background: 'rgba(17,17,17,0.35)',
+                        background: 'var(--modal-overlay)',
                         backdropFilter: 'blur(12px)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         zIndex: 200,
@@ -1178,22 +1178,22 @@ export default function WorkspacePage() {
                             exit={{ scale: 0.95, opacity: 0 }}
                             style={{
                                 width: '100%', maxWidth: '380px',
-                                background: '#ffffff',
-                                border: '1px solid rgba(30,30,30,0.08)',
+                                background: 'var(--modal-bg)',
+                                border: '1px solid var(--modal-border)',
                                 borderRadius: '20px', padding: '24px',
-                                boxShadow: '0 24px 60px rgba(30,30,30,0.12)',
+                                boxShadow: 'var(--shadow-lg)',
                                 fontFamily: "'Satoshi', 'Inter', sans-serif",
                             }}
                         >
-                            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111111', marginBottom: '8px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
+                            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
                                 Sync Weekly Roadmap
                             </h3>
-                            <p style={{ fontSize: '13px', color: '#838282', lineHeight: 1.5, marginBottom: '20px' }}>
+                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
                                 Connect Feelivate to your Google Calendar. We will automatically sync your week's schedule to notify you each day.
                             </p>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
-                                <label style={{ fontSize: '10px', fontWeight: 700, color: '#b6b5b5', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
+                                <label style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
                                     Notification Time
                                 </label>
                                 <input
@@ -1202,8 +1202,8 @@ export default function WorkspacePage() {
                                     onChange={(e) => setPreferredTime(e.target.value)}
                                     style={{
                                         width: '100%', padding: '10px 12px', borderRadius: '10px',
-                                        border: '1px solid rgba(30,30,30,0.1)', background: '#ffffff',
-                                        color: '#111111', fontSize: '14px', outline: 'none',
+                                        border: '1px solid var(--border-medium)', background: 'var(--input-bg)',
+                                        color: 'var(--text-primary)', fontSize: '14px', outline: 'none',
                                         fontFamily: "'Satoshi', 'Inter', sans-serif",
                                     }}
                                 />
@@ -1212,7 +1212,7 @@ export default function WorkspacePage() {
                             {syncMessage && (
                                 <div style={{
                                     padding: '10px 12px', borderRadius: '8px',
-                                    background: 'rgba(30,30,30,0.04)', color: '#111111',
+                                    background: 'var(--glass-hover)', color: 'var(--text-primary)',
                                     fontSize: '12px', marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center'
                                 }}>
                                     <Sparkles size={14} />
@@ -1251,8 +1251,8 @@ export default function WorkspacePage() {
                                     disabled={syncLoading}
                                     style={{
                                         padding: '8px 16px', borderRadius: '100px',
-                                        border: '1px solid rgba(30,30,30,0.1)', background: 'transparent',
-                                        color: '#838282', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                                        border: '1px solid var(--border-medium)', background: 'transparent',
+                                        color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
                                         fontFamily: "'Satoshi', 'Inter', sans-serif",
                                         letterSpacing: '0.04em', textTransform: 'uppercase',
                                     }}
@@ -1264,8 +1264,8 @@ export default function WorkspacePage() {
                                     disabled={syncLoading}
                                     style={{
                                         padding: '8px 16px', borderRadius: '100px',
-                                        border: 'none', background: '#111111',
-                                        color: '#f2f2f2', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                                        border: 'none', background: 'var(--btn-primary-bg)',
+                                        color: 'var(--btn-primary-text)', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
                                         display: 'flex', alignItems: 'center', gap: '6px',
                                         fontFamily: "'Satoshi', 'Inter', sans-serif",
                                         letterSpacing: '0.04em', textTransform: 'uppercase',

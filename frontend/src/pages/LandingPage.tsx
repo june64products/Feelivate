@@ -156,7 +156,7 @@ export default function LandingPage() {
                         fontWeight: 700,
                         lineHeight: 1.15,
                         letterSpacing: '-0.03em',
-                        color: '#f5f0e8', // Elegant off-white cream color
+                        color: 'var(--text-primary)',
                     }}>
                         Your AI mentor.<br />
                         <span style={{
@@ -195,8 +195,8 @@ export default function LandingPage() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '8px',
-                            background: '#f5f0e8',
-                            color: 'var(--bg-primary)',
+                            background: 'var(--btn-primary-bg)',
+                            color: 'var(--btn-primary-text)',
                             border: 'none',
                             padding: '14px 28px',
                             borderRadius: '16px',
@@ -204,15 +204,15 @@ export default function LandingPage() {
                             fontWeight: 600,
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
-                            boxShadow: '0 4px 24px rgba(245, 240, 232, 0.15)',
+                            boxShadow: 'var(--shadow-md)',
                         }}
                         onMouseEnter={(e) => {
                             e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 6px 30px rgba(245, 240, 232, 0.25)';
+                            e.currentTarget.style.opacity = '0.9';
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 24px rgba(245, 240, 232, 0.15)';
+                            e.currentTarget.style.opacity = '1';
                         }}
                     >
                         Start for free

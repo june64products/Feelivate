@@ -72,7 +72,7 @@ export default function ChatWindow({
                     style={{
                         fontSize: '28px',
                         fontWeight: 700,
-                        color: '#111111',
+                        color: 'var(--text-primary)',
                         textAlign: 'center',
                         fontFamily: clashDisplay,
                         letterSpacing: '-0.03em',
@@ -86,7 +86,7 @@ export default function ChatWindow({
                     transition={{ delay: 0.2, duration: 0.4 }}
                     style={{
                         fontSize: '14px',
-                        color: '#838282',
+                        color: 'var(--text-secondary)',
                         textAlign: 'center',
                         maxWidth: '420px',
                         fontFamily: satoshi,
@@ -120,9 +120,9 @@ export default function ChatWindow({
                             style={{
                                 padding: '8px 16px',
                                 borderRadius: '100px',
-                                border: '1px solid rgba(30,30,30,0.1)',
-                                background: '#ffffff',
-                                color: '#838282',
+                                border: `1px solid var(--border-medium)`,
+                                background: 'var(--card-bg)',
+                                color: 'var(--text-secondary)',
                                 fontSize: '12px',
                                 fontWeight: 500,
                                 fontFamily: satoshi,
@@ -175,7 +175,7 @@ export default function ChatWindow({
                                             width: '28px',
                                             height: '28px',
                                             borderRadius: '8px',
-                                            background: '#111111',
+                                            background: 'var(--btn-primary-bg)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -199,20 +199,20 @@ export default function ChatWindow({
                                             ? '18px 18px 4px 18px'
                                             : '18px 18px 18px 4px',
                                         background: isUser
-                                            ? '#111111'
-                                            : '#ffffff',
+                                            ? 'var(--btn-primary-bg)'
+                                            : 'var(--card-bg)',
                                         border: isUser
                                             ? 'none'
-                                            : '1px solid rgba(30,30,30,0.06)',
+                                            : '1px solid var(--border-subtle)',
                                         boxShadow: isUser
                                             ? 'none'
-                                            : '0 1px 4px rgba(30,30,30,0.04)',
+                                            : 'var(--shadow-sm)',
                                     }}
                                 >
                                     <div
                                         style={{
                                             fontSize: '14px',
-                                            color: isUser ? '#f2f2f2' : '#111111',
+                                            color: isUser ? 'var(--btn-primary-text)' : 'var(--text-primary)',
                                             lineHeight: '1.7',
                                             whiteSpace: 'pre-wrap',
                                             wordBreak: 'break-word',
@@ -252,7 +252,7 @@ export default function ChatWindow({
                     >
                         <div style={{
                             width: '28px', height: '28px', borderRadius: '8px',
-                            background: '#111111',
+                            background: 'var(--btn-primary-bg)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0,
                         }}>
@@ -265,8 +265,8 @@ export default function ChatWindow({
                         <div style={{
                             padding: '14px 18px',
                             borderRadius: '18px 18px 18px 4px',
-                            background: '#ffffff',
-                            border: '1px solid rgba(30,30,30,0.06)',
+                            background: 'var(--card-bg)',
+                            border: '1px solid var(--border-subtle)',
                         }}>
                             <div style={{ display: 'flex', gap: '4px' }}>
                                 <div className="loading-dot" />
@@ -286,8 +286,8 @@ export default function ChatWindow({
 // Simple markdown formatter
 function formatMarkdown(text: string, isUser = false): string {
     if (!text) return '';
-    const codeBg = isUser ? 'rgba(255,255,255,0.12)' : 'rgba(30,30,30,0.04)';
-    const codeColor = isUser ? '#f2f2f2' : '#111111';
+    const codeBg = isUser ? 'var(--code-bg-user)' : 'var(--code-bg)';
+    const codeColor = isUser ? 'var(--btn-primary-text)' : 'var(--text-primary)';
     let html = text
         // Bold
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')

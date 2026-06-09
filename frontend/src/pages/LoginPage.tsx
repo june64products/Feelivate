@@ -28,9 +28,9 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '15px 14px 15px 46px',
   borderRadius: '4px',
-  border: '1px solid rgba(17,17,17,0.15)',
-  background: '#ffffff',
-  color: '#111111',
+  border: '1px solid var(--border-medium)',
+  background: 'var(--input-bg)',
+  color: 'var(--text-primary)',
   fontSize: '14px',
   fontWeight: 500,
   outline: 'none',
@@ -43,7 +43,7 @@ const inputStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   fontSize: '11px',
   fontWeight: 700,
-  color: '#838282',
+  color: 'var(--text-secondary)',
   letterSpacing: '0.12em',
   textTransform: 'uppercase',
   fontFamily: "'Satoshi', 'Inter', system-ui, sans-serif",
@@ -52,10 +52,10 @@ const labelStyle: React.CSSProperties = {
 // ─── Echo Stack Component ────────────────────────────────────────────────────
 const EchoStack = ({ text, fontSize = '11vw' }: { text: string; fontSize?: string }) => {
   const layers = [
-    { color: '#d9d9d9', offset: -0.16 },
-    { color: '#d1d1d1', offset: -0.12 },
-    { color: '#c9c9c9', offset: -0.08 },
-    { color: '#bfbfbf', offset: -0.04 },
+    { opacity: 0.15, offset: -0.16 },
+    { opacity: 0.25, offset: -0.12 },
+    { opacity: 0.35, offset: -0.08 },
+    { opacity: 0.45, offset: -0.04 },
   ];
 
   return (
@@ -68,7 +68,8 @@ const EchoStack = ({ text, fontSize = '11vw' }: { text: string; fontSize?: strin
             position: 'absolute',
             top: 0,
             left: `${layer.offset}em`,
-            color: layer.color,
+            color: 'var(--text-primary)',
+            opacity: layer.opacity,
             fontSize,
             fontFamily: "'Clash Display', 'Inter', sans-serif",
             fontWeight: 700,
@@ -85,7 +86,7 @@ const EchoStack = ({ text, fontSize = '11vw' }: { text: string; fontSize?: strin
       <span
         style={{
           position: 'relative',
-          color: '#111111',
+          color: 'var(--text-primary)',
           fontSize,
           fontFamily: "'Clash Display', 'Inter', sans-serif",
           fontWeight: 700,
@@ -146,9 +147,9 @@ export default function LoginPage() {
       height: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      background: '#f2f2f2',
+      background: 'var(--bg-primary)',
       fontFamily: satoshi,
-      color: '#111111',
+      color: 'var(--text-primary)',
       overflowY: 'auto',
       overflowX: 'hidden',
     }}>
@@ -162,20 +163,20 @@ export default function LoginPage() {
         justifyContent: 'space-between',
         padding: isMobile ? '0 24px' : '0 48px',
         height: '80px',
-        background: 'rgba(242, 242, 242, 0.9)',
+        background: 'var(--nav-bg)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         position: 'sticky',
         top: 0,
         zIndex: 100,
         flexShrink: 0,
-        borderBottom: '1px solid rgba(30,30,30,0.06)',
+        borderBottom: '1px solid var(--border-subtle)',
       }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             width: '38px', height: '38px',
-            background: '#111111',
+            background: 'var(--accent-primary)',
             borderRadius: '8px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden', flexShrink: 0,
@@ -184,7 +185,7 @@ export default function LoginPage() {
           </div>
           <span style={{
             fontWeight: 700, fontSize: '18px', letterSpacing: '-0.03em',
-            color: '#111111', fontFamily: clashDisplay,
+            color: 'var(--text-primary)', fontFamily: clashDisplay,
           }}>
             Feelivate
           </span>
@@ -201,10 +202,10 @@ export default function LoginPage() {
                 { label: 'Pricing' },
                 { label: 'Contact' },
               ]}
-              baseColor="#111111"
-              pillColor="#f2f2f2"
-              pillTextColor="#111111"
-              hoveredTextColor="#f2f2f2"
+              baseColor="var(--text-primary)"
+              pillColor="var(--bg-primary)"
+              pillTextColor="var(--text-primary)"
+              hoveredTextColor="var(--text-inverse)"
               fontFamily={satoshi}
               ease="power3.out"
             />
@@ -225,7 +226,7 @@ export default function LoginPage() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: isMobile ? '40px 24px' : '60px 48px',
-          background: '#f2f2f2',
+          background: 'var(--bg-primary)',
         }}>
           <div ref={formRef} style={{ width: '100%', maxWidth: '380px' }}>
 
@@ -240,7 +241,7 @@ export default function LoginPage() {
                   transition={{ duration: 0.22, ease: 'easeOut' }}
                   style={{
                     fontSize: '36px', fontWeight: 700,
-                    letterSpacing: '-0.05em', color: '#111111',
+                    letterSpacing: '-0.05em', color: 'var(--text-primary)',
                     marginBottom: '12px', lineHeight: 0.95,
                     fontFamily: clashDisplay,
                   }}
@@ -256,7 +257,7 @@ export default function LoginPage() {
                   exit={{ opacity: 0, y: 6 }}
                   transition={{ duration: 0.2, ease: 'easeOut', delay: 0.04 }}
                   style={{
-                    fontSize: '14px', color: '#838282', lineHeight: 1.6,
+                    fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6,
                     fontFamily: satoshi, fontWeight: 500,
                   }}
                 >
@@ -301,15 +302,15 @@ export default function LoginPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingBottom: '2px' }}>
                       <label style={labelStyle}>Full Name</label>
                       <div style={{ position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#b6b5b5', display: 'flex' }}>
+                        <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
                           <UserIcon size={16} />
                         </span>
                         <input
                           type="text" name="name" required placeholder="John Doe"
                           value={formData.name} onChange={handleInputChange}
                           style={inputStyle}
-                          onFocus={e => { e.currentTarget.style.borderColor = '#111111'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(17,17,17,0.08)'; }}
-                          onBlur={e => { e.currentTarget.style.borderColor = 'rgba(17,17,17,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                          onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = 'var(--input-shadow-focus)'; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-medium)'; e.currentTarget.style.boxShadow = 'none'; }}
                         />
                       </div>
                     </div>
@@ -321,15 +322,15 @@ export default function LoginPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={labelStyle}>Email</label>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#b6b5b5', display: 'flex' }}>
+                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
                     <Mail size={16} />
                   </span>
                   <input
                     type="email" name="email" required placeholder="you@example.com"
                     value={formData.email} onChange={handleInputChange}
                     style={inputStyle}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#111111'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(17,17,17,0.08)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(17,17,17,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = 'var(--input-shadow-focus)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-medium)'; e.currentTarget.style.boxShadow = 'none'; }}
                   />
                 </div>
               </div>
@@ -338,15 +339,15 @@ export default function LoginPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={labelStyle}>Password</label>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#b6b5b5', display: 'flex' }}>
+                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex' }}>
                     <Lock size={16} />
                   </span>
                   <input
                     type="password" name="password" required placeholder="Enter password"
                     value={formData.password} onChange={handleInputChange}
                     style={inputStyle}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#111111'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(17,17,17,0.08)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(17,17,17,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = 'var(--input-shadow-focus)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-medium)'; e.currentTarget.style.boxShadow = 'none'; }}
                   />
                 </div>
               </div>
@@ -356,7 +357,7 @@ export default function LoginPage() {
                 type="submit" disabled={loading}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  background: '#111111', color: '#f2f2f2', border: 'none',
+                  background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', border: 'none',
                   padding: '15px', borderRadius: '4px',
                   fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
                   transition: 'opacity 180ms ease, transform 150ms ease',
@@ -375,9 +376,9 @@ export default function LoginPage() {
 
               {/* Divider */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '4px 0' }}>
-                <div style={{ flex: 1, height: '1px', background: 'rgba(17,17,17,0.1)' }} />
-                <span style={{ fontSize: '11px', color: '#b6b5b5', fontWeight: 700, fontFamily: satoshi, letterSpacing: '0.1em' }}>OR</span>
-                <div style={{ flex: 1, height: '1px', background: 'rgba(17,17,17,0.1)' }} />
+                <div style={{ flex: 1, height: '1px', background: 'var(--border-medium)' }} />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, fontFamily: satoshi, letterSpacing: '0.1em' }}>OR</span>
+                <div style={{ flex: 1, height: '1px', background: 'var(--border-medium)' }} />
               </div>
 
               {/* Google */}
@@ -385,15 +386,15 @@ export default function LoginPage() {
                 type="button" onClick={() => setShowGooglePopup(true)}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                  background: '#ffffff', color: '#111111',
-                  border: '1px solid rgba(17,17,17,0.15)',
+                  background: 'var(--card-bg)', color: 'var(--text-primary)',
+                  border: '1px solid var(--border-medium)',
                   padding: '14px', borderRadius: '4px',
                   fontSize: '14px', fontWeight: 600, cursor: 'pointer',
                   transition: 'background 180ms ease, border-color 180ms ease',
                   fontFamily: satoshi,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f9f9f9'; e.currentTarget.style.borderColor = 'rgba(17,17,17,0.3)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = 'rgba(17,17,17,0.15)'; }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-hover)'; e.currentTarget.style.borderColor = 'var(--border-focus)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.borderColor = 'var(--border-medium)'; }}
               >
                 <GoogleIcon />
                 Continue with Google
@@ -401,12 +402,12 @@ export default function LoginPage() {
             </form>
 
             {/* Toggle Login / Signup */}
-            <p style={{ marginTop: '28px', textAlign: 'center', fontSize: '13.5px', color: '#838282', fontFamily: satoshi }}>
+            <p style={{ marginTop: '28px', textAlign: 'center', fontSize: '13.5px', color: 'var(--text-secondary)', fontFamily: satoshi }}>
               {isLogin ? 'New to Feelivate? ' : 'Already have an account? '}
               <button
                 onClick={() => { setIsLogin(!isLogin); setError(''); }}
                 style={{
-                  background: 'transparent', border: 'none', color: '#111111',
+                  background: 'transparent', border: 'none', color: 'var(--text-primary)',
                   fontWeight: 700, cursor: 'pointer', padding: 0,
                   fontSize: '13.5px', transition: 'opacity 180ms ease', fontFamily: satoshi,
                   textDecoration: 'underline', textUnderlineOffset: '3px',
@@ -424,8 +425,8 @@ export default function LoginPage() {
         {!isMobile && (
           <div className="brand-panel-swiss" style={{
             flex: '0 0 52%',
-            background: '#ebebeb',
-            borderLeft: '1px solid rgba(30,30,30,0.08)',
+            background: 'var(--bg-secondary)',
+            borderLeft: '1px solid var(--border-subtle)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -439,7 +440,7 @@ export default function LoginPage() {
           <div style={{
             position: 'absolute', top: '0', left: '50%',
             width: '1px', height: '80px',
-            background: 'rgba(30,30,30,0.1)',
+            background: 'var(--border-medium)',
           }} />
 
           {/* Echo Hero Text */}
@@ -462,7 +463,7 @@ export default function LoginPage() {
             <h2 style={{
               fontSize: 'clamp(22px, 2.8vw, 36px)', fontWeight: 700,
               lineHeight: 1.1, letterSpacing: '-0.05em',
-              color: '#111111', marginBottom: '16px',
+              color: 'var(--text-primary)', marginBottom: '16px',
               fontFamily: clashDisplay,
             }}>
               Stop lying to yourself
@@ -471,14 +472,14 @@ export default function LoginPage() {
                 fontStyle: 'italic',
                 fontFamily: "'Georgia', 'Times New Roman', serif",
                 fontWeight: 400,
-                color: '#838282',
+                color: 'var(--text-secondary)',
               }}>
                 about
               </span>
               {' '}tomorrow.
             </h2>
             <p style={{
-              fontSize: '15px', color: '#838282', lineHeight: 1.7,
+              fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.7,
               fontFamily: satoshi, fontWeight: 500,
             }}>
               Feelivate is a ruthless AI mentor that breaks your biggest goals into non-negotiable 7-day sprints. No fluff. No escape. Just execution.
@@ -502,40 +503,40 @@ export default function LoginPage() {
                 transition={{ delay: i * 0.1 + 0.3, duration: 0.5, ease: 'easeOut' }}
                 style={{
                   padding: '24px 18px',
-                  border: '1px solid rgba(30,30,30,0.1)',
+                  border: '1px solid var(--border-medium)',
                   borderRadius: '2px',
                   background: 'transparent',
                   transition: 'background 250ms ease, border-color 250ms ease',
                   cursor: 'default',
                 }}
                 onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
-                  e.currentTarget.style.background = '#ffffff';
-                  e.currentTarget.style.borderColor = 'rgba(30,30,30,0.2)';
+                  e.currentTarget.style.background = 'var(--card-bg)';
+                  e.currentTarget.style.borderColor = 'var(--border-focus)';
                 }}
                 onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
                   e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.borderColor = 'rgba(30,30,30,0.1)';
+                  e.currentTarget.style.borderColor = 'var(--border-medium)';
                 }}
               >
                 {/* Geometric icon container */}
                 <div style={{
                   width: '40px', height: '40px',
-                  border: '1px solid rgba(30,30,30,0.15)',
+                  border: '1px solid var(--border-medium)',
                   borderRadius: '2px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   marginBottom: '16px',
                   transition: 'transform 300ms ease',
                 }}>
-                  <ArrowUpRight size={16} color="#111111" />
+                  <ArrowUpRight size={16} style={{ color: 'var(--text-primary)' }} />
                 </div>
                 <h3 style={{
                   fontSize: '14px', fontWeight: 700,
-                  color: '#111111', marginBottom: '8px',
+                  color: 'var(--text-primary)', marginBottom: '8px',
                   letterSpacing: '-0.02em',
                   fontFamily: clashDisplay,
                 }}>{f.title}</h3>
                 <p style={{
-                  fontSize: '12px', color: '#838282',
+                  fontSize: '12px', color: 'var(--text-secondary)',
                   lineHeight: 1.55, fontFamily: satoshi,
                   fontWeight: 500,
                 }}>{f.desc}</p>
@@ -552,18 +553,18 @@ export default function LoginPage() {
               textAlign: 'center',
               maxWidth: '400px',
               padding: '20px 0',
-              borderTop: '1px solid rgba(30,30,30,0.08)',
+              borderTop: '1px solid var(--border-subtle)',
             }}
           >
             <p style={{
-              fontSize: '16px', color: '#b6b5b5', lineHeight: 1.6,
+              fontSize: '16px', color: 'var(--text-muted)', lineHeight: 1.6,
               fontStyle: 'italic', fontFamily: "'Georgia', 'Times New Roman', serif",
               marginBottom: '8px',
             }}>
               "Your future self is watching. Don't disappoint them."
             </p>
             <p style={{
-              fontSize: '10px', color: '#111111', fontWeight: 700,
+              fontSize: '10px', color: 'var(--text-primary)', fontWeight: 700,
               letterSpacing: '0.15em', fontFamily: satoshi,
               textTransform: 'uppercase',
             }}>
@@ -579,14 +580,14 @@ export default function LoginPage() {
       <div style={{
         width: '100%',
         overflow: 'hidden',
-        background: '#111111',
+        background: 'var(--accent-primary)',
         padding: '16px 0',
         flexShrink: 0,
       }}>
         <div className="marquee-content" style={{
           display: 'inline-block',
           whiteSpace: 'nowrap',
-          color: '#f2f2f2',
+          color: 'var(--text-inverse)',
           fontSize: '12px',
           fontWeight: 600,
           fontFamily: clashDisplay,
@@ -597,17 +598,17 @@ export default function LoginPage() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          FOOTER — Deep dark theme
+          FOOTER — Deep dark theme (stays dark in both modes)
           ══════════════════════════════════════════════════════════════════════ */}
       <footer style={{
         background: '#1e1e1e',
-        padding: '48px 48px 32px',
+        padding: isMobile ? '32px 24px 24px' : '48px 48px 32px',
         borderTop: '1px solid rgba(255,255,255,0.05)',
         flexShrink: 0,
       }}>
-        <div style={{
+        <div className="footer-grid-mobile" style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
           gap: '32px',
           maxWidth: '1200px',
           margin: '0 auto',
@@ -721,6 +722,8 @@ export default function LoginPage() {
           alignItems: 'center',
           maxWidth: '1200px',
           margin: '0 auto',
+          flexWrap: 'wrap',
+          gap: '8px',
         }}>
           <p style={{
             fontSize: '12px', color: 'rgba(246,246,246,0.35)',
@@ -746,7 +749,7 @@ export default function LoginPage() {
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowGooglePopup(false)}
-              style={{ position: 'fixed', inset: 0, background: 'rgba(17,17,17,0.5)', backdropFilter: 'blur(6px)', zIndex: 200 }}
+              style={{ position: 'fixed', inset: 0, background: 'var(--modal-overlay)', backdropFilter: 'blur(6px)', zIndex: 200 }}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 24 }}
@@ -756,11 +759,11 @@ export default function LoginPage() {
               style={{
                 position: 'fixed', top: '50%', left: '50%',
                 transform: 'translate(-50%, -50%)',
-                background: '#f2f2f2', border: '1px solid rgba(30,30,30,0.12)',
+                background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
                 borderRadius: '4px', padding: '40px 32px',
                 zIndex: 201, textAlign: 'center',
                 width: '100%', maxWidth: '380px',
-                boxShadow: '0 32px 80px rgba(0,0,0,0.15)',
+                boxShadow: 'var(--shadow-xl)',
                 fontFamily: satoshi,
               }}
             >
@@ -768,18 +771,18 @@ export default function LoginPage() {
                 onClick={() => setShowGooglePopup(false)}
                 style={{
                   position: 'absolute', top: '14px', right: '14px',
-                  background: 'rgba(17,17,17,0.05)', border: 'none', borderRadius: '4px',
-                  color: '#838282', cursor: 'pointer', padding: '6px',
+                  background: 'var(--glass-hover)', border: 'none', borderRadius: '4px',
+                  color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'background 180ms ease',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(17,17,17,0.1)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(17,17,17,0.05)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--btn-hover-bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-hover)'}
               ><X size={15} /></button>
 
               <div style={{
-                width: '56px', height: '56px', background: '#ffffff',
-                borderRadius: '4px', border: '1px solid rgba(17,17,17,0.1)',
+                width: '56px', height: '56px', background: 'var(--card-bg)',
+                borderRadius: '4px', border: '1px solid var(--border-medium)',
                 display: 'flex', alignItems: 'center',
                 justifyContent: 'center', margin: '0 auto 20px',
               }}>
@@ -787,14 +790,14 @@ export default function LoginPage() {
               </div>
 
               <h3 style={{
-                fontSize: '22px', fontWeight: 700, color: '#111111',
+                fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)',
                 marginBottom: '10px', letterSpacing: '-0.04em',
                 fontFamily: clashDisplay,
               }}>
                 Coming Soon
               </h3>
               <p style={{
-                fontSize: '14px', color: '#838282', lineHeight: 1.65,
+                fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65,
                 marginBottom: '24px', fontFamily: satoshi, fontWeight: 500,
               }}>
                 Google authentication is on its way. For now, sign in with email and password — it takes 30 seconds.
@@ -803,7 +806,7 @@ export default function LoginPage() {
               <button
                 onClick={() => setShowGooglePopup(false)}
                 style={{
-                  width: '100%', background: '#111111', color: '#f2f2f2', border: 'none',
+                  width: '100%', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', border: 'none',
                   padding: '14px', borderRadius: '4px', fontSize: '14px',
                   fontWeight: 700, cursor: 'pointer', transition: 'opacity 180ms ease',
                   fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase',
@@ -828,7 +831,7 @@ export default function LoginPage() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Satoshi', 'Inter', system-ui, sans-serif; }
 
-        input::placeholder { color: #b6b5b5 !important; }
+        input::placeholder { color: var(--text-placeholder) !important; }
         input { box-sizing: border-box; }
 
         /* Responsive */

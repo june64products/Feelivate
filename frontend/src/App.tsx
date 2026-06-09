@@ -3,8 +3,12 @@ import LandingPage from './pages/LandingPage';
 import WorkspacePage from './pages/WorkspacePage';
 import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
+import { useTheme } from './hooks/useTheme';
 
 function App() {
+  // Initialize theme system — auto-detects system preference
+  useTheme();
+
   return (
     <Router>
       <Routes>
@@ -19,4 +23,3 @@ function App() {
 }
 
 export default App;
-
