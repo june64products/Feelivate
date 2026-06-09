@@ -656,10 +656,10 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
 
     return (
         <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column', height: '100%',
+            flex: 1, display: 'flex', flexDirection: 'column',
+            height: '100%', minHeight: 0,
             background: 'var(--bg-primary)', overflow: 'hidden',
             position: 'relative',
-            overflowY: 'auto',
             fontFamily: satoshi,
         }}>
             {/* Floating locked weeks panel — right edge */}
@@ -912,7 +912,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             </div>
 
             {/* ── Body ── */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+            <div className="journey-body-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
                 <AnimatePresence mode="wait">
                     {activeTab === 'overview' ? (
                         <motion.div

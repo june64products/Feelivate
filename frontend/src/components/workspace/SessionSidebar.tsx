@@ -145,6 +145,7 @@ export default function SessionSidebar({
         <div style={{
             width: '260px',
             height: '100vh',
+            maxHeight: '100vh',
             background: '#111111',
             borderRight: '1px solid rgba(255,255,255,0.05)',
             display: 'flex',
@@ -153,6 +154,7 @@ export default function SessionSidebar({
             overflow: 'hidden',
             fontFamily: satoshi,
             transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+            minHeight: 0,
         }}>
             {/* Header: Logo + FEELIVATE + Collapse */}
             <div className="sidebar-header" style={{

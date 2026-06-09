@@ -142,6 +142,7 @@ export default function ChatWindow({
     return (
         <div
             ref={containerRef}
+            className="chat-messages-area"
             style={{
                 flex: 1,
                 overflowY: 'auto',

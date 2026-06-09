@@ -446,7 +446,18 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
+
+        // Listen for the header WEEKS button toggle
+        const handleToggle = () => {
+            if (window.innerWidth < 768) {
+                setIsMobileMenuOpen(prev => !prev);
+            }
+        };
+        window.addEventListener('toggle-mobile-weeks', handleToggle);
+        return () => {
+            window.removeEventListener('resize', checkMobile);
+            window.removeEventListener('toggle-mobile-weeks', handleToggle);
+        };
     }, []);
 
     const selectedReport = selectedWeek !== null ? getReportForWeek(selectedWeek) : null;
@@ -458,7 +469,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
             {/* ── Floating pill panel on right edge ── */}
             <motion.div
                 className="locked-weeks-panel"
-                initial={isMobile ? { y: 60, opacity: 0 } : { x: 60, opacity: 0 }}
+                initial={isMobile ? { y: 80, opacity: 0 } : { x: 60, opacity: 0 }}
                 animate={isMobile ? { y: 0, opacity: 1 } : { x: 0, opacity: 1 }}
                 transition={{ type: 'spring', damping: 22, stiffness: 250, delay: 0.1 }}
                 style={{
@@ -471,21 +482,24 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                     flexDirection: isMobile ? (isMobileMenuOpen ? 'column' : 'row') : 'column',
                     gap: '4px',
                     padding: isMobile ? '8px 16px' : '8px 0',
-                    background: 'rgba(10,10,10,0.92)',
+                    background: 'rgba(10,10,10,0.95)',
                     borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    borderTop: '1px solid rgba(255,255,255,0.10)',
                     borderBottom: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
                     borderRadius: isMobile ? '20px 20px 0 0' : '14px 0 0 14px',
-                    boxShadow: isMobile ? '0 -10px 40px rgba(0,0,0,0.4)' : '-4px 0 24px rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(12px)',
+                    boxShadow: isMobile ? '0 -10px 40px rgba(0,0,0,0.5)' : '-4px 0 24px rgba(0,0,0,0.4)',
+                    backdropFilter: 'blur(20px)',
                     zIndex: 400,
                     minWidth: '52px',
                     width: isMobile ? '100%' : 'auto',
                     alignItems: isMobile ? 'flex-start' : 'center',
                     fontFamily: "'Inter', sans-serif",
+                    maxHeight: isMobile && isMobileMenuOpen ? '55vh' : isMobile ? '48px' : undefined,
+                    overflow: isMobile ? 'hidden' : undefined,
+                    transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                 }}
             >
-                {/* Hamburger toggle on mobile */}
+                {/* Hamburger toggle on mobile — shows collapsed WEEKS bar */}
                 {isMobile && (
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -497,9 +511,10 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                             justifyContent: 'center',
                         }}
                     >
-                        <Menu size={20} />
-                        {!isMobileMenuOpen && <span style={{ fontSize: '12px', fontWeight: 600 }}>WEEKS</span>}
-                        {isMobileMenuOpen && <span style={{ fontSize: '12px', fontWeight: 600 }}>CLOSE</span>}
+                        <Menu size={16} />
+                        <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>
+                            {isMobileMenuOpen ? 'CLOSE' : 'WEEKS'}
+                        </span>
                     </button>
                 )}
 

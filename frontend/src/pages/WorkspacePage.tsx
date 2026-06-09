@@ -544,14 +544,14 @@ export default function WorkspacePage() {
                         fontFamily: "'Satoshi', 'Inter', sans-serif",
                         borderBottom: '1px solid var(--border-subtle)',
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <button
                                 className={isSidebarCollapsed ? '' : 'hide-on-mobile'}
                                 onClick={() => setIsSidebarCollapsed(false)}
                                 style={{
                                     width: '32px', height: '32px', borderRadius: '8px',
                                     border: 'none', background: 'transparent',
-                                    color: '#838282', cursor: 'pointer',
+                                    color: 'var(--text-secondary)', cursor: 'pointer',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     transition: 'color 0.15s',
                                 }}
@@ -560,6 +560,29 @@ export default function WorkspacePage() {
                             >
                                 <PanelLeft size={18} />
                             </button>
+                            {/* Mobile: Weeks button */}
+                            {isPlanApproved && activeSessionId && (
+                                <button
+                                    id="mobile-weeks-btn"
+                                    className="show-on-mobile"
+                                    onClick={() => window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'))}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        padding: '6px 12px', borderRadius: '20px',
+                                        border: '1px solid var(--border-medium)',
+                                        background: 'var(--bg-surface)',
+                                        color: 'var(--text-secondary)',
+                                        cursor: 'pointer', flexShrink: 0,
+                                        fontSize: '11px', fontWeight: 700,
+                                        letterSpacing: '0.05em',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                    }}
+                                    title="View Weeks"
+                                >
+                                    <Clock size={13} />
+                                    WEEKS
+                                </button>
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -585,7 +608,7 @@ export default function WorkspacePage() {
                             })()}
                             </div>
 
-                            {/* Mobile: show Alerts icon button */}
+                            {/* Mobile: Alerts bell button */}
                             {isPlanApproved && (
                                 <button
                                     className="show-on-mobile"
@@ -593,14 +616,15 @@ export default function WorkspacePage() {
                                     style={{
                                         width: '32px', height: '32px', borderRadius: '8px',
                                         border: '1px solid var(--border-medium)',
-                                        background: isNotifEnabled ? 'var(--text-primary)' : 'transparent',
-                                        color: isNotifEnabled ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
+                                        background: isNotifEnabled ? 'var(--accent-primary)' : 'transparent',
+                                        color: isNotifEnabled ? '#fff' : 'var(--text-secondary)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         cursor: 'pointer', flexShrink: 0,
+                                        transition: 'all 0.15s',
                                     }}
                                     title="Daily Alerts"
                                 >
-                                    <span style={{ fontSize: '14px' }}>🔔</span>
+                                    <Bell size={15} />
                                 </button>
                             )}
 
