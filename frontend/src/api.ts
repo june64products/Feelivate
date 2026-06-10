@@ -466,7 +466,7 @@ export interface TriggerPattern {
 }
 
 export interface WeeklyReport {
-    status: 'generated' | 'cached' | 'no_data';
+    status: 'generated' | 'cached' | 'no_data' | 'waiting_for_sunday_entry';
     week_start: string;
     week_end: string;
     message?: string;
@@ -547,6 +547,8 @@ export interface WeekInfo {
     day_count?: number;
     is_week_complete?: boolean;
     is_completed?: boolean;
+    has_report?: boolean;
+    has_next_plan?: boolean;
 }
 
 export const getWeekInfo = async (sessionId: string): Promise<WeekInfo> => {

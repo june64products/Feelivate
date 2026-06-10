@@ -1415,6 +1415,24 @@ async def get_week_info(
     # the following day.
     is_week_complete = today >= we
 
+    # Check if a weekly report exists for this week
+    has_report = db.query(WeeklyReport).filter(
+        WeeklyReport.user_id == current_user.id,
+        WeeklyReport.session_id == session_id,
+        WeeklyReport.week_start == ws,
+    ).first() is not None
+
+    # Check if next week's plan already exists
+    # When user generates "Plan Week N+1", session.current_week increments to N+1
+    # So if there's a week_start AFTER this week, next plan exists
+    from datetime import timedelta as _td2
+    next_ws = (date.fromisoformat(we) + _td2(days=1)).isoformat()
+    has_next_plan = db.query(WeeklyReport).filter(
+        WeeklyReport.user_id == current_user.id,
+        WeeklyReport.session_id == session_id,
+        WeeklyReport.week_start >= next_ws,
+    ).first() is not None
+
     return {
         "has_plan": True,
         "current_week": current_week,
@@ -1424,6 +1442,8 @@ async def get_week_info(
         "day_count": day_count,
         "is_week_complete": is_week_complete,
         "is_completed": bool(session_rec.is_completed),
+        "has_report": has_report,
+        "has_next_plan": has_next_plan,
     }
 
 
@@ -1905,6 +1925,20 @@ async def get_weekly_report(
 
     if not journals:
         return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we, "week_number": wk_num}
+
+    # ── 1b. Sunday gate: on the last day of the week, require that day's voice entry ──
+    # On Sunday (today == week_end): only generate if Sunday journal exists
+    # On Monday+ (today > week_end): auto-generate regardless (user skipped Sunday)
+    today_str = today.isoformat()
+    if today_str == we:
+        # It's the last day of the week — check if today's voice entry exists
+        has_sunday_entry = any(j.date == we for j in journals)
+        if not has_sunday_entry:
+            return {
+                "status": "waiting_for_sunday_entry",
+                "message": "Record your voice journal for today to unlock your weekly review.",
+                "week_start": ws, "week_end": we, "week_number": wk_num,
+            }
 
     # ── 2. Check cache (session + week keyed) ──────────────────────────────────
     cache_q = db.query(WeeklyReport).filter(

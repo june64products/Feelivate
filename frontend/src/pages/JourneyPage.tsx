@@ -1222,25 +1222,27 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 >
                                     View Full Report
                                 </button>
-                                <button
-                                    onClick={() => {
-                                        setShowWeekEndCelebration(false);
-                                        const event = new CustomEvent('request-next-week-plan', {
-                                            detail: { week: (reportData.week_number ?? 1) + 1 }
-                                        });
-                                        window.dispatchEvent(event);
-                                        setTimeout(() => window.dispatchEvent(new CustomEvent('close-journey')), 100);
-                                    }}
-                                    style={{
-                                        flex: 1, padding: '11px', borderRadius: '100px',
-                                        border: 'none',
-                                        background: 'var(--text-primary)',
-                                        color: 'var(--btn-primary-bg)', fontSize: '13px', fontWeight: 700,
-                                        cursor: 'pointer', fontFamily: satoshi,
-                                    }}
-                                >
-                                    Plan Week {(reportData.week_number ?? 1) + 1} →
-                                </button>
+                                {!weekInfo?.has_next_plan && (
+                                    <button
+                                        onClick={() => {
+                                            setShowWeekEndCelebration(false);
+                                            const event = new CustomEvent('request-next-week-plan', {
+                                                detail: { week: (reportData.week_number ?? 1) + 1 }
+                                            });
+                                            window.dispatchEvent(event);
+                                            setTimeout(() => window.dispatchEvent(new CustomEvent('close-journey')), 100);
+                                        }}
+                                        style={{
+                                            flex: 1, padding: '11px', borderRadius: '100px',
+                                            border: 'none',
+                                            background: 'var(--text-primary)',
+                                            color: 'var(--btn-primary-bg)', fontSize: '13px', fontWeight: 700,
+                                            cursor: 'pointer', fontFamily: satoshi,
+                                        }}
+                                    >
+                                        Plan Week {(reportData.week_number ?? 1) + 1} →
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     </motion.div>
@@ -1468,8 +1470,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid #b6b5b5' }} />
                                         <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontFamily: satoshi }}>Upcoming</span>
                                     </div>
-                                    {/* Plan Week N+1 gating */}
-                                    {weekInfo?.has_plan && weekInfo.is_week_complete && (
+                                    {/* Plan Week N+1 gating — only show when report exists AND next plan doesn't */}
+                                    {weekInfo?.has_plan && weekInfo.is_week_complete && weekInfo.has_report && !weekInfo.has_next_plan && (
                                         <button
                                             onClick={() => {
                                                 const nextWeek = (weekInfo.current_week ?? 1) + 1;
@@ -1539,6 +1541,22 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 }}>
                                                     Record voice journals across the week.<br />
                                                     At the end of the week, your AI performance review will appear here.
+                                                </div>
+                                            ) : report?.status === 'waiting_for_sunday_entry' ? (
+                                                <div style={{
+                                                    borderRadius: '16px', padding: '28px', textAlign: 'center',
+                                                    background: 'var(--card-bg)',
+                                                    border: '1px solid var(--border-subtle)',
+                                                    lineHeight: 1.6,
+                                                    fontFamily: satoshi,
+                                                }}>
+                                                    <p style={{ fontSize: '20px', margin: '0 0 8px' }}>🎯</p>
+                                                    <p style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, margin: '0 0 4px' }}>
+                                                        Week complete! One last step.
+                                                    </p>
+                                                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
+                                                        Record today's voice journal to unlock your weekly review.
+                                                    </p>
                                                 </div>
                                             ) : reportData ? (
                                                 <div style={{
@@ -1716,48 +1734,48 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                             />
                                                         )}
 
-                                                        {/* Plan Week N+1 prompt */}
-                                                        <div style={{
-                                                            padding: '14px 16px', borderRadius: '12px',
-                                                            background: 'var(--bg-surface)',
-                                                            border: '1px solid var(--border-subtle)',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                        }}>
-                                                            <div>
-                                                                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: clashDisplay }}>
-                                                                    Ready for Week {(reportData.week_number ?? 1) + 1}?
-                                                                </p>
-                                                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '2px 0 0', fontFamily: satoshi }}>
-                                                                    AI will build it using this week's performance data.
-                                                                </p>
+                                                        {/* Plan Week N+1 prompt — only when next plan doesn't exist */}
+                                                        {!weekInfo?.has_next_plan && (
+                                                            <div style={{
+                                                                padding: '14px 16px', borderRadius: '12px',
+                                                                background: 'var(--bg-surface)',
+                                                                border: '1px solid var(--border-subtle)',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                            }}>
+                                                                <div>
+                                                                    <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: clashDisplay }}>
+                                                                        Ready for Week {(reportData.week_number ?? 1) + 1}?
+                                                                    </p>
+                                                                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '2px 0 0', fontFamily: satoshi }}>
+                                                                        AI will build it using this week's performance data.
+                                                                    </p>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const event = new CustomEvent('request-next-week-plan', {
+                                                                            detail: { week: (reportData.week_number ?? 1) + 1 }
+                                                                        });
+                                                                        window.dispatchEvent(event);
+                                                                        setTimeout(() => {
+                                                                            const closeEvent = new CustomEvent('close-journey');
+                                                                            window.dispatchEvent(closeEvent);
+                                                                        }, 100);
+                                                                    }}
+                                                                    style={{
+                                                                        padding: '8px 16px', borderRadius: '100px',
+                                                                        border: 'none',
+                                                                        background: 'var(--text-primary)',
+                                                                        color: 'var(--btn-primary-bg)', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                                                                        flexShrink: 0, fontFamily: satoshi,
+                                                                        transition: 'opacity 0.2s',
+                                                                    }}
+                                                                    onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                                                                    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                                                                >
+                                                                    Plan Week {(reportData.week_number ?? 1) + 1}
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                onClick={() => {
-                                                                    // Communicate back to WorkspacePage to open chat and send a specific prompt
-                                                                    const event = new CustomEvent('request-next-week-plan', {
-                                                                        detail: { week: (reportData.week_number ?? 1) + 1 }
-                                                                    });
-                                                                    window.dispatchEvent(event);
-                                                                    // Close journey
-                                                                    setTimeout(() => {
-                                                                        const closeEvent = new CustomEvent('close-journey');
-                                                                        window.dispatchEvent(closeEvent);
-                                                                    }, 100);
-                                                                }}
-                                                                style={{
-                                                                    padding: '8px 16px', borderRadius: '100px',
-                                                                    border: 'none',
-                                                                    background: 'var(--text-primary)',
-                                                                    color: 'var(--btn-primary-bg)', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                                                                    flexShrink: 0, fontFamily: satoshi,
-                                                                    transition: 'opacity 0.2s',
-                                                                }}
-                                                                onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
-                                                                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-                                                            >
-                                                                Plan Week {(reportData.week_number ?? 1) + 1}
-                                                            </button>
-                                                        </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ) : null}
