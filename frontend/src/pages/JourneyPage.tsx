@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, Loader2, ArrowLeft, Lock, ChevronDown, FileText, Sparkles, Trophy } from 'lucide-react';
+import { Mic, Square, Loader2, ArrowLeft, Lock, ChevronDown, FileText, Sparkles, Trophy, Award, TrendingUp, Quote, Target, Zap, BarChart3, AlertTriangle } from 'lucide-react';
 import {
     getJournalsForSession,
     getWeeklyReport,
@@ -13,6 +13,9 @@ import {
     type WeeklyReportDay,
     type WeekInfo,
     type ArchivedWeekReport,
+    type WeekBadge,
+    type WeekSummary,
+    type TriggerPattern,
     getLocalISODate
 } from '../api';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
@@ -318,21 +321,28 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                                 </div>
                             </div>
 
-                            {/* Coaching Insight if available */}
-                            {d.coaching_insight && (
+                            {/* V2 Coaching: observation + micro_action, or legacy insight */}
+                            {(d.coaching_insight || d.coaching_micro_action) && (
                                 <div style={{
                                     marginTop: '4px',
                                     padding: '10px 12px',
                                     borderRadius: '8px',
                                     background: 'var(--bg-surface)',
-                                    borderLeft: '2px solid #111111',
+                                    borderLeft: '2px solid #6366f1',
                                 }}>
-                                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '2px', fontFamily: satoshi }}>
-                                        AI coaching insight
+                                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px', fontFamily: satoshi }}>
+                                        AI Coaching
                                     </span>
-                                    <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45, fontFamily: satoshi }}>
-                                        {d.coaching_insight}
-                                    </p>
+                                    {d.coaching_insight && (
+                                        <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45, fontFamily: satoshi, fontWeight: 600 }}>
+                                            {d.coaching_insight}
+                                        </p>
+                                    )}
+                                    {d.coaching_micro_action && (
+                                        <p style={{ fontSize: '11px', color: '#6366f1', margin: '4px 0 0', lineHeight: 1.4, fontFamily: satoshi }}>
+                                            → {d.coaching_micro_action}
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -459,6 +469,494 @@ function AnalysisBlock({ label, content }: { label: string; content: string }) {
                 fontFamily: satoshi,
             }}>{label}</p>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{content}</p>
+        </div>
+    );
+}
+
+// ─── V2: Momentum Score Card ──────────────────────────────────────────────────
+function MomentumScoreCard({ score, label }: { score: number; label: string }) {
+    const r = 52;
+    const circ = 2 * Math.PI * r;
+    const scoreVal = isNaN(score) ? 0 : Math.min(100, Math.max(0, score));
+    const filled = circ * (scoreVal / 100);
+    const ringColor = scoreVal >= 85 ? '#10b981' : scoreVal >= 70 ? '#6366f1' : scoreVal >= 50 ? '#f59e0b' : '#ef4444';
+    const labelColor = scoreVal >= 70 ? '#10b981' : scoreVal >= 50 ? '#f59e0b' : '#ef4444';
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+                padding: '20px',
+                borderRadius: '16px',
+                background: 'var(--card-bg)',
+                border: '1px solid var(--border-subtle)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+            }}
+        >
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi }}>
+                Momentum
+            </span>
+            <svg width="130" height="130" viewBox="0 0 130 130">
+                <circle cx="65" cy="65" r={r} fill="none" stroke="var(--border-subtle)" strokeWidth="10" />
+                <motion.circle
+                    cx="65" cy="65" r={r}
+                    fill="none"
+                    stroke={ringColor}
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeDasharray={circ}
+                    initial={{ strokeDashoffset: circ }}
+                    animate={{ strokeDashoffset: circ - filled }}
+                    transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+                    style={{ transformOrigin: '65px 65px', transform: 'rotate(-90deg)', filter: `drop-shadow(0 0 8px ${ringColor}40)` }}
+                />
+                <text x="65" y="60" textAnchor="middle" fill="var(--text-primary)" fontSize="28" fontWeight="700" fontFamily={clashDisplay}>
+                    {scoreVal}
+                </text>
+                <text x="65" y="78" textAnchor="middle" fill="var(--text-muted)" fontSize="10" fontFamily={satoshi}>
+                    / 100
+                </text>
+            </svg>
+            <span style={{
+                fontSize: '12px', fontWeight: 700, color: labelColor,
+                padding: '3px 12px', borderRadius: '100px',
+                background: `${labelColor}12`,
+                fontFamily: satoshi, textTransform: 'uppercase', letterSpacing: '0.04em',
+            }}>
+                {label}
+            </span>
+        </motion.div>
+    );
+}
+
+// ─── V2: Week Badge Card ──────────────────────────────────────────────────────
+function WeekBadgeCard({ badge }: { badge: WeekBadge }) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            style={{
+                padding: '18px 20px',
+                borderRadius: '16px',
+                background: 'var(--card-bg)',
+                border: '1px solid var(--border-subtle)',
+                display: 'flex', alignItems: 'center', gap: '14px',
+            }}
+        >
+            <motion.div
+                animate={{ rotate: [0, 5, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+                style={{
+                    width: '48px', height: '48px', borderRadius: '14px',
+                    background: 'linear-gradient(135deg, #f59e0b22, #f59e0b08)',
+                    border: '1px solid #f59e0b30',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                }}
+            >
+                <Award size={22} color="#f59e0b" style={{ filter: 'drop-shadow(0 0 6px #f59e0b55)' }} />
+            </motion.div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: clashDisplay }}>
+                    {badge.name}
+                </p>
+                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '3px 0 0', fontFamily: satoshi, lineHeight: 1.4 }}>
+                    {badge.reason}
+                </p>
+            </div>
+        </motion.div>
+    );
+}
+
+// ─── V2: Best Quote Card ──────────────────────────────────────────────────────
+function BestQuoteCard({ quote }: { quote: string }) {
+    if (!quote) return null;
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            style={{
+                padding: '20px 22px',
+                borderRadius: '16px',
+                background: 'var(--card-bg)',
+                border: '1px solid var(--border-subtle)',
+                position: 'relative',
+                overflow: 'hidden',
+            }}
+        >
+            <Quote size={40} color="var(--border-medium)" style={{ position: 'absolute', top: '10px', left: '14px', opacity: 0.3 }} />
+            <div style={{ position: 'relative', paddingLeft: '8px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi, display: 'block', marginBottom: '10px' }}>
+                    Your words this week
+                </span>
+                <p style={{
+                    fontSize: '15px', fontWeight: 500, color: 'var(--text-primary)',
+                    lineHeight: 1.6, margin: 0,
+                    fontFamily: "'Georgia', 'Times New Roman', serif",
+                    fontStyle: 'italic',
+                }}>
+                    "{quote}"
+                </p>
+            </div>
+        </motion.div>
+    );
+}
+
+// ─── V2: Emotion Timeline Line Chart (replaces bar chart) ─────────────────────
+function EmotionTimelineChart({ days, avgScore }: { days: WeeklyReportDay[]; avgScore: number }) {
+    const chartW = 280;
+    const chartH = 100;
+    const padX = 28;
+    const padY = 14;
+    const plotW = chartW - padX * 2;
+    const plotH = chartH - padY * 2;
+
+    const parseLocalDate = (dateStr: string) => {
+        const [y, mo, dd] = dateStr.split('-').map(Number);
+        return new Date(y, mo - 1, dd);
+    };
+
+    // Build points
+    const points: { x: number; y: number; score: number; color: string; dayName: string; hasJournal: boolean }[] = [];
+    days.forEach((d, i) => {
+        const x = padX + (i / Math.max(days.length - 1, 1)) * plotW;
+        const score = d.score ?? 0;
+        const y = d.has_journal ? padY + plotH - ((score - 1) / 9) * plotH : padY + plotH;
+        const dayDate = parseLocalDate(d.date);
+        const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
+        points.push({
+            x, y, score,
+            color: d.has_journal ? emotionColor(d.emotion) : 'var(--border-medium)',
+            dayName,
+            hasJournal: d.has_journal,
+        });
+    });
+
+    // Build smooth path using cubic bezier curves
+    let pathD = '';
+    const journalPoints = points.filter(p => p.hasJournal);
+    if (journalPoints.length >= 2) {
+        pathD = `M ${journalPoints[0].x} ${journalPoints[0].y}`;
+        for (let i = 1; i < journalPoints.length; i++) {
+            const prev = journalPoints[i - 1];
+            const curr = journalPoints[i];
+            const cpx = (prev.x + curr.x) / 2;
+            pathD += ` C ${cpx} ${prev.y}, ${cpx} ${curr.y}, ${curr.x} ${curr.y}`;
+        }
+    }
+
+    // Avg mood line y position
+    const avgY = padY + plotH - ((avgScore - 1) / 9) * plotH;
+
+    return (
+        <div>
+            <p style={{
+                fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px',
+                fontFamily: satoshi,
+            }}>Emotion Timeline</p>
+            <svg width="100%" viewBox={`0 0 ${chartW} ${chartH + 20}`} style={{ overflow: 'visible' }}>
+                {/* Grid lines */}
+                {[1, 4, 7, 10].map(v => {
+                    const gy = padY + plotH - ((v - 1) / 9) * plotH;
+                    return (
+                        <g key={v}>
+                            <line x1={padX} y1={gy} x2={chartW - padX} y2={gy} stroke="var(--border-subtle)" strokeWidth="0.5" />
+                            <text x={padX - 6} y={gy + 3} textAnchor="end" fill="var(--text-muted)" fontSize="7" fontFamily={satoshi}>{v}</text>
+                        </g>
+                    );
+                })}
+
+                {/* Avg mood dashed line */}
+                <line x1={padX} y1={avgY} x2={chartW - padX} y2={avgY}
+                    stroke="var(--text-muted)" strokeWidth="1" strokeDasharray="4 3" opacity="0.5" />
+                <text x={chartW - padX + 4} y={avgY + 3} fill="var(--text-muted)" fontSize="7" fontFamily={satoshi}>avg</text>
+
+                {/* Connection line */}
+                {pathD && (
+                    <motion.path
+                        d={pathD}
+                        fill="none"
+                        stroke="var(--text-secondary)"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                )}
+
+                {/* Dots + labels */}
+                {points.map((p, i) => (
+                    <g key={i}>
+                        {/* Day label */}
+                        <text x={p.x} y={chartH + 12} textAnchor="middle" fill="var(--text-secondary)" fontSize="8" fontFamily={satoshi}>
+                            {p.dayName}
+                        </text>
+
+                        {/* Dot */}
+                        <motion.circle
+                            cx={p.x} cy={p.y}
+                            r={p.hasJournal ? 5 : 3}
+                            fill={p.hasJournal ? p.color : 'transparent'}
+                            stroke={p.color}
+                            strokeWidth={p.hasJournal ? 0 : 1.5}
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: i * 0.06 + 0.4, duration: 0.3 }}
+                            style={{ transformOrigin: `${p.x}px ${p.y}px`, filter: p.hasJournal ? `drop-shadow(0 0 4px ${p.color}55)` : 'none' }}
+                        />
+
+                        {/* Score label */}
+                        {p.hasJournal && p.score > 0 && (
+                            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.06 + 0.7 }}>
+                                <text x={p.x} y={p.y - 10} textAnchor="middle" fill={p.color} fontSize="8" fontWeight="700" fontFamily={satoshi}>
+                                    {p.score}
+                                </text>
+                            </motion.g>
+                        )}
+                    </g>
+                ))}
+            </svg>
+        </div>
+    );
+}
+
+// ─── V2: Task Completion Bar (replaces ConsistencyRing) ───────────────────────
+function TaskCompletionBar({ daysDone, daysTotal, days, prevWeekStats }: {
+    daysDone: number; daysTotal: number; days: WeeklyReportDay[];
+    prevWeekStats?: { consistency_score: number; avg_score: number; momentum_score: number; days_done: number } | null;
+}) {
+    const pct = Math.round((daysDone / Math.max(daysTotal, 1)) * 100);
+    const prevPct = prevWeekStats ? Math.round((prevWeekStats.days_done / Math.max(daysTotal, 1)) * 100) : null;
+    const delta = prevPct !== null ? pct - prevPct : null;
+    const barColor = pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+
+    const parseLocalDate = (dateStr: string) => {
+        const [y, mo, dd] = dateStr.split('-').map(Number);
+        return new Date(y, mo - 1, dd);
+    };
+
+    return (
+        <div style={{
+            padding: '16px 18px',
+            borderRadius: '14px',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-subtle)',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi }}>
+                    Task Completion
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: barColor, fontFamily: clashDisplay }}>
+                        {daysDone} of {daysTotal} done
+                    </span>
+                    {delta !== null && delta !== 0 && (
+                        <span style={{
+                            fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '100px',
+                            background: delta > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                            color: delta > 0 ? '#10b981' : '#ef4444',
+                            fontFamily: satoshi,
+                        }}>
+                            {delta > 0 ? '+' : ''}{delta}% vs last week
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{
+                height: '8px', borderRadius: '4px',
+                background: 'var(--glass-surface)',
+                marginBottom: '12px', overflow: 'hidden',
+            }}>
+                <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                    style={{ height: '100%', borderRadius: '4px', background: barColor }}
+                />
+            </div>
+
+            {/* Day dots */}
+            <div style={{ display: 'flex', gap: '6px', justifyContent: 'space-between' }}>
+                {days.map((d, i) => {
+                    const dayDate = parseLocalDate(d.date);
+                    const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'narrow' });
+                    const done = d.has_journal;
+                    const missed = d.checkin === 'missed';
+                    const dotColor = done ? emotionColor(d.emotion) : missed ? '#ef4444' : 'var(--border-medium)';
+                    return (
+                        <div key={d.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: i * 0.05, duration: 0.3 }}
+                                style={{
+                                    width: '14px', height: '14px', borderRadius: '50%',
+                                    background: done ? dotColor : 'transparent',
+                                    border: `2px solid ${dotColor}`,
+                                }}
+                            />
+                            <span style={{ fontSize: '7px', color: 'var(--text-muted)', fontFamily: satoshi }}>{dayName}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ─── V2: Week Summary Card (replaces 3 analysis blocks) ──────────────────────
+function WeekSummaryCard({ summary }: { summary: WeekSummary }) {
+    const items = [
+        { icon: <Zap size={14} color="#10b981" />, label: 'Wins', text: summary.wins, color: '#10b981' },
+        { icon: <AlertTriangle size={14} color="#f59e0b" />, label: 'Dips', text: summary.dips, color: '#f59e0b' },
+        { icon: <Target size={14} color="#6366f1" />, label: 'Pattern', text: summary.pattern, color: '#6366f1' },
+    ];
+
+    return (
+        <div style={{
+            padding: '16px 18px',
+            borderRadius: '14px',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-subtle)',
+        }}>
+            <p style={{
+                fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px',
+                fontFamily: satoshi,
+            }}>Week Summary</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {items.map(item => (
+                    item.text ? (
+                        <div key={item.label} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                            <div style={{
+                                width: '26px', height: '26px', borderRadius: '8px',
+                                background: `${item.color}10`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0, marginTop: '1px',
+                            }}>
+                                {item.icon}
+                            </div>
+                            <div>
+                                <span style={{ fontSize: '9px', fontWeight: 700, color: item.color, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: satoshi }}>
+                                    {item.label}
+                                </span>
+                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '2px 0 0', lineHeight: 1.5, fontFamily: satoshi }}>
+                                    {item.text}
+                                </p>
+                            </div>
+                        </div>
+                    ) : null
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ─── V2: Trigger Pattern Table (Week 3+) ──────────────────────────────────────
+function TriggerPatternTable({ patterns }: { patterns: TriggerPattern[] }) {
+    if (!patterns || patterns.length === 0) return null;
+    return (
+        <div style={{
+            padding: '16px 18px',
+            borderRadius: '14px',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-subtle)',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <BarChart3 size={14} color="var(--text-muted)" />
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi }}>
+                    Detected Patterns
+                </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {patterns.map((p, i) => (
+                    <div key={i} style={{
+                        padding: '10px 12px', borderRadius: '10px',
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                    }}>
+                        <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', margin: 0, fontFamily: satoshi }}>
+                            {p.pattern}
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: satoshi }}>
+                                {p.frequency}
+                            </span>
+                            {p.weeks_detected && p.weeks_detected.length > 0 && (
+                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: satoshi }}>
+                                    Weeks: {p.weeks_detected.join(', ')}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ─── V2: Week-over-Week Comparison Strip (Week 2+) ───────────────────────────
+function WeekComparisonStrip({ currentWeek, currentStats, prevStats }: {
+    currentWeek: number;
+    currentStats: { consistency: number; avgMood: number; momentum: number };
+    prevStats: { consistency_score: number; avg_score: number; momentum_score: number };
+}) {
+    const metrics = [
+        { label: 'Consistency', prev: `${prevStats.consistency_score}%`, curr: `${currentStats.consistency}%`, delta: currentStats.consistency - prevStats.consistency_score },
+        { label: 'Avg Mood', prev: `${prevStats.avg_score}`, curr: `${currentStats.avgMood}`, delta: currentStats.avgMood - prevStats.avg_score },
+        { label: 'Momentum', prev: `${prevStats.momentum_score}`, curr: `${currentStats.momentum}`, delta: currentStats.momentum - prevStats.momentum_score },
+    ];
+
+    return (
+        <div style={{
+            padding: '16px 18px',
+            borderRadius: '14px',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-subtle)',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <TrendingUp size={14} color="var(--text-muted)" />
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: satoshi }}>
+                    Week {currentWeek - 1} → Week {currentWeek}
+                </span>
+            </div>
+            <div className="grid-col-1-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                {metrics.map(m => (
+                    <div key={m.label} style={{
+                        padding: '10px', borderRadius: '10px',
+                        background: 'var(--bg-surface)',
+                        textAlign: 'center',
+                    }}>
+                        <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: satoshi, display: 'block', marginBottom: '4px' }}>
+                            {m.label}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: satoshi, textDecoration: 'line-through' }}>
+                                {m.prev}
+                            </span>
+                            <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: clashDisplay }}>
+                                {m.curr}
+                            </span>
+                        </div>
+                        {m.delta !== 0 && (
+                            <span style={{
+                                fontSize: '9px', fontWeight: 700,
+                                color: m.delta > 0 ? '#10b981' : '#ef4444',
+                                fontFamily: satoshi,
+                            }}>
+                                {m.delta > 0 ? '↑' : '↓'} {Math.abs(Math.round(m.delta * 10) / 10)}
+                            </span>
+                        )}
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
@@ -1191,28 +1689,62 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
 
                                                     <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-                                                        {/* ── Performance stats row ── */}
-                                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                                            <ConsistencyRing score={consistencyScore} doneCount={daysDone} totalCount={reportData.past_days_count ?? 7} />
-                                                            <div className="grid-col-1-mobile" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                                                <StatCard
-                                                                    label="Avg Mood"
-                                                                    value={`${avgScore}/10`}
-                                                                    sub={reportData.dominant_emotion}
-                                                                    color={emotionColor(reportData.dominant_emotion)}
-                                                                />
-                                                                <StatCard
-                                                                    label="Days Done"
-                                                                    value={daysDone}
-                                                                    sub={`${daysMissed} missed`}
-                                                                    color={daysDone > daysMissed ? '#10b981' : '#ef4444'}
-                                                                />
+                                                        {/* ── V2: Momentum Score + Week Badge row ── */}
+                                                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px', alignItems: 'stretch' }}>
+                                                            <MomentumScoreCard
+                                                                score={reportData.momentum_score ?? Math.round((consistencyScore * 0.4) + ((avgScore / 10) * 100 * 0.3) + (consistencyScore * 0.3))}
+                                                                label={reportData.momentum_label ?? (consistencyScore >= 85 ? 'Peak' : consistencyScore >= 70 ? 'Strong Week' : 'Building')}
+                                                            />
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                                {reportData.week_badge && (
+                                                                    <WeekBadgeCard badge={reportData.week_badge} />
+                                                                )}
+                                                                <div className="grid-col-1-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', flex: 1 }}>
+                                                                    <StatCard
+                                                                        label="Avg Mood"
+                                                                        value={`${avgScore}/10`}
+                                                                        sub={reportData.dominant_emotion}
+                                                                        color={emotionColor(reportData.dominant_emotion)}
+                                                                    />
+                                                                    <StatCard
+                                                                        label="Days Done"
+                                                                        value={daysDone}
+                                                                        sub={`${daysMissed} missed`}
+                                                                        color={daysDone > daysMissed ? '#10b981' : '#ef4444'}
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         </div>
 
-                                                        {/* ── Emotion Distribution Pie Chart ── */}
+                                                        {/* ── V2: Best Quote ── */}
+                                                        {reportData.best_quote && (
+                                                            <BestQuoteCard quote={reportData.best_quote} />
+                                                        )}
+
+                                                        {/* ── V2: Emotion Timeline (line chart) ── */}
+                                                        <div style={{
+                                                            padding: '16px 18px', borderRadius: '14px',
+                                                            background: 'var(--card-bg)',
+                                                            border: '1px solid var(--border-subtle)',
+                                                        }}>
+                                                            <EmotionTimelineChart days={weekDays} avgScore={avgScore} />
+                                                        </div>
+
+                                                        {/* ── V2: Task Completion Bar ── */}
+                                                        <TaskCompletionBar
+                                                            daysDone={daysDone}
+                                                            daysTotal={reportData.past_days_count ?? 7}
+                                                            days={weekDays}
+                                                            prevWeekStats={reportData.prev_week_stats}
+                                                        />
+
+                                                        {/* ── Emotion Distribution Pie Chart (KEPT) ── */}
                                                         {weekDays.some(d => d.has_journal) && (
-                                                            <div>
+                                                            <div style={{
+                                                                padding: '16px 18px', borderRadius: '14px',
+                                                                background: 'var(--card-bg)',
+                                                                border: '1px solid var(--border-subtle)',
+                                                            }}>
                                                                 <p style={{
                                                                     fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
                                                                     textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px',
@@ -1222,61 +1754,79 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                             </div>
                                                         )}
 
-                                                        {/* ── Emotional arc chart ── */}
-                                                        <div>
-                                                            <p style={{
-                                                                fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
-                                                                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px',
-                                                                fontFamily: satoshi,
-                                                            }}>Daily Emotional Arc</p>
-                                                            <EmotionChart days={weekDays} />
-                                                            {reportData.emotional_arc && (
-                                                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: '10px', fontFamily: satoshi }}>
-                                                                    {reportData.emotional_arc}
-                                                                </p>
-                                                            )}
-                                                        </div>
+                                                        {/* ── V2: Week Summary (replaces 3 old analysis blocks) ── */}
+                                                        {reportData.week_summary ? (
+                                                            <WeekSummaryCard summary={reportData.week_summary} />
+                                                        ) : (
+                                                            /* Backward compat: show old analysis blocks if week_summary missing */
+                                                            <>
+                                                                <AnalysisBlock label="What Went Well" content={reportData.what_went_well || ''} />
+                                                                <AnalysisBlock label="Where You Slipped" content={reportData.where_you_slipped || ''} />
+                                                                <AnalysisBlock label="Consistency Analysis" content={reportData.consistency_analysis || ''} />
+                                                            </>
+                                                        )}
 
-                                                        {/* ── AI analysis blocks ── */}
-                                                        <AnalysisBlock label="What Went Well" content={reportData.what_went_well} />
-                                                        <AnalysisBlock label="Where You Slipped" content={reportData.where_you_slipped} />
-                                                        <AnalysisBlock label="Consistency Analysis" content={reportData.consistency_analysis} />
+                                                        {/* ── Hidden Insight (KEPT) ── */}
                                                         {reportData.hidden_insight && (
                                                             <div style={{
                                                                 padding: '14px 16px', borderRadius: '12px',
                                                                 background: 'var(--bg-surface)',
                                                                 border: '1px solid var(--border-subtle)',
                                                             }}>
-                                                                <p style={{
-                                                                    fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
-                                                                    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
-                                                                    fontFamily: satoshi,
-                                                                }}>Hidden Insight</p>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                                                    <Sparkles size={14} color="#a78bfa" />
+                                                                    <p style={{
+                                                                        fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+                                                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0,
+                                                                        fontFamily: satoshi,
+                                                                    }}>Hidden Insight</p>
+                                                                </div>
                                                                 <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>
                                                                     {reportData.hidden_insight}
                                                                 </p>
                                                             </div>
                                                         )}
 
-                                                        {/* ── Daily Breakdown ── */}
+                                                        {/* ── Daily Breakdown (KEPT, with upgraded coaching) ── */}
                                                         <DailyBreakdown days={weekDays} />
 
-                                                        {/* ── Next week focus ── */}
+                                                        {/* ── V2: Trigger Pattern Table (Week 3+) ── */}
+                                                        {reportData.trigger_patterns && reportData.trigger_patterns.length > 0 && (reportData.week_number ?? 1) >= 3 && (
+                                                            <TriggerPatternTable patterns={reportData.trigger_patterns} />
+                                                        )}
+
+                                                        {/* ── Next week focus (KEPT) ── */}
                                                         {reportData.next_week_focus && (
                                                             <div style={{
                                                                 padding: '16px', borderRadius: '12px',
                                                                 background: 'var(--bg-surface)',
                                                                 border: '1px solid var(--border-subtle)',
                                                             }}>
-                                                                <p style={{
-                                                                    fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
-                                                                    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
-                                                                    fontFamily: satoshi,
-                                                                }}>Next Week: Key Focus</p>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                                                    <Target size={14} color="#10b981" />
+                                                                    <p style={{
+                                                                        fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+                                                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0,
+                                                                        fontFamily: satoshi,
+                                                                    }}>Next Week: Key Focus</p>
+                                                                </div>
                                                                 <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>
                                                                     {reportData.next_week_focus}
                                                                 </p>
                                                             </div>
+                                                        )}
+
+                                                        {/* ── V2: Week-over-Week Comparison (Week 2+) ── */}
+                                                        {reportData.prev_week_stats && (reportData.week_number ?? 1) >= 2 && (
+                                                            <WeekComparisonStrip
+                                                                currentWeek={reportData.week_number ?? 1}
+                                                                currentStats={{
+                                                                    consistency: consistencyScore,
+                                                                    avgMood: avgScore,
+                                                                    momentum: reportData.momentum_score ?? 0,
+                                                                }}
+                                                                prevStats={reportData.prev_week_stats}
+                                                            />
                                                         )}
 
                                                         {/* Plan Week N+1 prompt */}

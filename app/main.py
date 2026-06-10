@@ -1973,6 +1973,95 @@ async def get_weekly_report(
     days_missed = past_days_count - days_done
     consistency_score = round((days_done / max(past_days_count, 1)) * 100) if past_days_count > 0 else 0
 
+    # ── 5b. Fetch previous week reports for cross-week patterns ─────────
+    prev_week_reports: list = []
+    prev_week_stats = None
+    if session_id and wk_num > 1:
+        prev_reports_q = (
+            db.query(WeeklyReport)
+            .filter(
+                WeeklyReport.session_id == session_id,
+                WeeklyReport.week_number < wk_num,
+            )
+            .order_by(WeeklyReport.week_number.desc())
+            .limit(4)
+            .all()
+        )
+        for pr in prev_reports_q:
+            try:
+                pr_data = json.loads(pr.report_json)
+                prev_week_reports.append(pr_data)
+                # Capture immediate previous week stats for delta comparison
+                if pr.week_number == wk_num - 1:
+                    prev_week_stats = {
+                        "consistency_score": pr_data.get("consistency_score", 0),
+                        "avg_score": pr_data.get("avg_score", 0),
+                        "momentum_score": pr_data.get("momentum_score", 0),
+                        "days_done": pr_data.get("days_done", 0),
+                    }
+            except Exception:
+                pass
+
+    # ── 5c. Compute momentum score server-side (deterministic) ────────
+    # Formula: (consistency * 0.4) + (mood_normalized * 0.3) + (task_quality * 0.3)
+    mood_normalized = min(100, max(0, round((avg_score / 10) * 100)))
+    # Task quality: ratio of days with journals that indicate positive execution
+    task_quality = round((days_done / max(past_days_count, 1)) * 100)
+    momentum_score = round(
+        (consistency_score * 0.4) + (mood_normalized * 0.3) + (task_quality * 0.3)
+    )
+    momentum_label = (
+        "Peak" if momentum_score >= 85 else
+        "Strong Week" if momentum_score >= 70 else
+        "Building" if momentum_score >= 50 else
+        "Struggling" if momentum_score >= 30 else
+        "Reset Needed"
+    )
+
+    # ── 5d. Extract best quote from transcripts ──────────────────────
+    best_quote = ""
+    if journals:
+        # Pick the one-liner from the highest-scored journal entry
+        best_j = max(journals, key=lambda j: (j.emotion_score or 0))
+        best_quote = best_j.one_liner or ""
+
+    # ── 5e. Detect peak performance time from journal timestamps ─────
+    peak_performance_days: list = []
+    if journals:
+        from collections import Counter
+        day_scores: dict = {}
+        for j in journals:
+            if j.emotion_score and j.emotion_score >= 7:
+                # Parse local date to get day name
+                try:
+                    jd = _date_cls.fromisoformat(j.date)
+                    day_name = jd.strftime("%a")
+                    day_scores[day_name] = day_scores.get(day_name, 0) + j.emotion_score
+                except Exception:
+                    pass
+        if day_scores:
+            sorted_days = sorted(day_scores.items(), key=lambda x: x[1], reverse=True)
+            peak_performance_days = [d[0] for d in sorted_days[:3]]
+
+    # ── 5f. Build cross-week pattern context for AI ──────────────────
+    cross_week_context = ""
+    if prev_week_reports and wk_num >= 3:
+        pattern_lines = []
+        for pw in prev_week_reports:
+            pw_num = pw.get("week_number", "?")
+            pw_dom = pw.get("dominant_emotion", "")
+            pw_cs = pw.get("consistency_score", 0)
+            pw_avg = pw.get("avg_score", 0)
+            pw_days = pw.get("days", [])
+            # Extract days with low scores
+            low_days = [d.get("date", "") for d in pw_days if d.get("score") and d.get("score") <= 4]
+            missed_days = [d.get("date", "") for d in pw_days if not d.get("has_journal")]
+            pattern_lines.append(
+                f"  Week {pw_num}: consistency={pw_cs}%, avg_mood={pw_avg}/10, "
+                f"dominant={pw_dom}, low_score_dates={low_days}, missed_dates={missed_days}"
+            )
+        cross_week_context = "\n\nCROSS-WEEK HISTORY (for pattern detection):\n" + "\n".join(pattern_lines)
+
     # ── 6. Build rich AI prompt ─────────────────────────────────────────
     # Full transcripts block
     transcripts_block = "\n\n".join(
@@ -2015,40 +2104,87 @@ Theme: {week_plan_theme or 'Personal growth'}
 Days with checkin done: {days_done}/{past_days_count}
 Days missed: {days_missed}
 Avg emotional score: {avg_score}/10
+Momentum score: {momentum_score}/100 ({momentum_label})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 VOICE JOURNAL ENTRIES (what the user actually recorded):
 {transcripts_block}
 {plan_vs_actual}
+{cross_week_context}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
 {{
   "dominant_emotion": "the single most common emotional state this week",
-  "emotional_arc": "2 sentences describing how their emotional state evolved across the week",
-  "what_went_well": "2-3 specific things they did right — cite actual days or actions from their journals",
-  "where_you_slipped": "2-3 specific breakdowns in consistency or mindset — be direct, not harsh. Cite evidence from journals.",
-  "consistency_analysis": "Detailed 3-4 sentence analysis of their consistency pattern. When did they slip? Why? Was it emotional or external?",
-  "hidden_insight": "One non-obvious insight you noticed about their emotional patterns that they probably haven't noticed themselves.",
-  "next_week_focus": "The single most important thing they must do differently next week based on this data. Make it very specific and actionable.",
-  "next_week_plan_context": "2-3 bullet points of what the next week plan should account for, based on this week's performance. Format: bullet per line with \\n separator.",
-  "daily_analysis": [
-    "coaching_insight for Day 1: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 1 based on their plan vs actual log.",
-    "coaching_insight for Day 2: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 2 based on their plan vs actual log.",
-    "coaching_insight for Day 3: 1-2 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 3 based on their plan vs actual log.",
-    "coaching_insight for Day 4: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 4 based on their plan vs actual log.",
-    "coaching_insight for Day 5: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 5 based on their plan vs actual log.",
-    "coaching_insight for Day 6: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 6 based on their plan vs actual log.",
-    "coaching_insight for Day 7: 1-2 sentence supportive yet direct coaching insight specifically about their execution, mood, or behavior on Day 7 based on their plan vs actual log."
-  ]
-}}"""
+  "week_summary": {{
+    "wins": "2-3 specific wins — cite actual days or actions. Keep to 2 sentences max.",
+    "dips": "2-3 specific dips or consistency breaks. Be direct, cite evidence. 2 sentences max.",
+    "pattern": "One key behavioral pattern you noticed this week. 1-2 sentences."
+  }},
+  "hidden_insight": "One non-obvious insight about their emotional patterns that they probably haven't noticed themselves.",
+  "next_week_focus": "The single most important thing they must do differently next week. Very specific and actionable.",
+  "next_week_plan_context": "2-3 bullet points of what the next week plan should account for. Format: bullet per line with \\n separator.",
+  "week_badge": {{
+    "name": "A short badge name for this week based on their pattern. Examples: 'Iron Week' (100% consistency), 'Comeback King' (started low finished high), 'Steady Climber' (mood improved each day), 'Grit Mode' (pushed through despite low mood), 'Fresh Start' (first week). Pick the most fitting one.",
+    "reason": "One sentence explaining why they earned this badge."
+  }},
+  "best_quote": "The single most emotionally resonant or powerful sentence from the user's voice journal transcripts this week. Copy it exactly as they said it — this gets displayed as a pull-quote.",
+  "actionable_coaching": [
+    {{
+      "observation": "Day 1: One-line observation about what happened — e.g. 'Strong start, executed setup task with high energy'",
+      "micro_action": "One specific micro-action for improvement — e.g. 'Keep this momentum by setting a 9am start ritual'"
+    }},
+    {{
+      "observation": "Day 2: One-line observation",
+      "micro_action": "One specific micro-action"
+    }},
+    {{
+      "observation": "Day 3: One-line observation",
+      "micro_action": "One specific micro-action"
+    }},
+    {{
+      "observation": "Day 4: One-line observation",
+      "micro_action": "One specific micro-action"
+    }},
+    {{
+      "observation": "Day 5: One-line observation",
+      "micro_action": "One specific micro-action"
+    }},
+    {{
+      "observation": "Day 6: One-line observation",
+      "micro_action": "One specific micro-action"
+    }},
+    {{
+      "observation": "Day 7: One-line observation",
+      "micro_action": "One specific micro-action"
+    }}
+  ],
+  "trigger_patterns": [
+    {{
+      "pattern": "A recurring friction or trigger detected — e.g. 'Friday mood dip', 'Cravings correlate with low scores'",
+      "frequency": "How often it occurred — e.g. 'Every Friday', '3 out of 4 weeks'",
+      "weeks_detected": [1, 2, 3]
+    }}
+  ],
+  "recurring_friction": ["list", "of", "recurring", "friction", "points"],
+  "best_days": ["Tue", "Sun"],
+  "worst_days": ["Thu", "Fri"],
+  "mood_trend": "Description of overall mood trajectory — e.g. 'high-start, mid-dip, strong-finish'"
+}}
+
+IMPORTANT NOTES:
+- For "best_quote": Pick the MOST powerful, emotionally resonant line from the user's actual voice transcripts. NOT your own words.
+- For "actionable_coaching": Each day MUST have both "observation" AND "micro_action". Make micro_actions specific — e.g. "Try 5-min breathing before coding" not "take a break".
+- For "trigger_patterns": Only include if you detect recurring patterns. If this is Week 1 or patterns are unclear, return an empty array [].
+- For "week_badge": Always generate one — even for Week 1.
+- Keep "week_summary" concise — 3 short bullets, not paragraphs."""
 
     try:
         messages = [
-            {"role": "system", "content": "You are a world-class performance coach and behavioral analyst. You must output raw JSON only matching the schema exactly."},
+            {"role": "system", "content": "You are a world-class performance coach and behavioral analyst. You must output raw JSON only matching the schema exactly. No markdown, no code fences."},
             {"role": "user", "content": prompt}
         ]
-        raw = await asyncio.to_thread(call_with_fallback_chain, messages, temperature=0.4, max_tokens=2500)
+        raw = await asyncio.to_thread(call_with_fallback_chain, messages, temperature=0.4, max_tokens=4000)
         # Strip thinking blocks if generated
         raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL)
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
@@ -2059,25 +2195,70 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
             end_idx = raw.rfind("}")
             json_str = raw[start_idx:end_idx + 1] if start_idx != -1 else "{}"
         ai_data = json.loads(json_str)
-        
-        daily_list = ai_data.get("daily_analysis", [])
-        if not isinstance(daily_list, list):
-            daily_list = []
-        while len(daily_list) < 7:
-            daily_list.append("")
+
+        # Normalize actionable_coaching
+        coaching_list = ai_data.get("actionable_coaching", [])
+        if not isinstance(coaching_list, list):
+            coaching_list = []
+        while len(coaching_list) < 7:
+            coaching_list.append({"observation": "", "micro_action": ""})
+        # Ensure each item has both fields
+        for item in coaching_list:
+            if not isinstance(item, dict):
+                item = {"observation": "", "micro_action": ""}
+            item.setdefault("observation", "")
+            item.setdefault("micro_action", "")
+        ai_data["actionable_coaching"] = coaching_list
+
+        # Normalize week_summary
+        ws_data = ai_data.get("week_summary", {})
+        if not isinstance(ws_data, dict):
+            ws_data = {}
+        ws_data.setdefault("wins", "")
+        ws_data.setdefault("dips", "")
+        ws_data.setdefault("pattern", "")
+        ai_data["week_summary"] = ws_data
+
+        # Normalize week_badge
+        badge = ai_data.get("week_badge", {})
+        if not isinstance(badge, dict):
+            badge = {"name": "Week Warrior", "reason": "Completed this week's journey."}
+        badge.setdefault("name", "Week Warrior")
+        badge.setdefault("reason", "Completed this week's journey.")
+        ai_data["week_badge"] = badge
+
+        # Normalize trigger_patterns
+        triggers = ai_data.get("trigger_patterns", [])
+        if not isinstance(triggers, list):
+            triggers = []
+        ai_data["trigger_patterns"] = triggers
+
+        # Use AI best_quote if provided, otherwise fall back to server-side extraction
+        if not ai_data.get("best_quote"):
+            ai_data["best_quote"] = best_quote
+
     except Exception as e:
         logger.error(f"Weekly report AI generation failed: {e}")
         ai_data = {
             "dominant_emotion": journals[0].emotion_label if journals else "neutral",
-            "emotional_arc": "Could not generate analysis.",
-            "what_went_well": "You showed up and recorded your journey.",
-            "where_you_slipped": "Analysis unavailable.",
-            "consistency_analysis": f"You completed {days_done} out of {past_days_count} days.",
+            "week_summary": {
+                "wins": "You showed up and recorded your journey.",
+                "dips": "Analysis unavailable.",
+                "pattern": f"You completed {days_done} out of {past_days_count} days.",
+            },
             "hidden_insight": "",
             "next_week_focus": "Keep showing up every day.",
             "next_week_plan_context": "",
+            "week_badge": {"name": "Week Warrior", "reason": "Completed this week's journey."},
+            "best_quote": best_quote,
+            "actionable_coaching": [{"observation": "", "micro_action": ""} for _ in range(7)],
+            "trigger_patterns": [],
+            "recurring_friction": [],
+            "best_days": [],
+            "worst_days": [],
+            "mood_trend": "",
         }
-        daily_list = ["", "", "", "", "", "", ""]
+        coaching_list = ai_data["actionable_coaching"]
 
     # ── 7. Build the final report dict ──────────────────────────────────────
     report_data = {
@@ -2093,6 +2274,12 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
         "week_end": we,
         "week_number": wk_num,
         "week_theme": week_plan_theme,
+        # V2 metrics
+        "momentum_score": momentum_score,
+        "momentum_label": momentum_label,
+        "peak_performance_days": peak_performance_days,
+        # Previous week stats for delta comparison
+        "prev_week_stats": prev_week_stats,
         # Per-day data for charts and detailed breakdown
         "days": [
             {
@@ -2106,10 +2293,46 @@ Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
                 # (DailyCheckin can be inflated by backfill; journal IS the record)
                 "checkin": "done" if d in journal_by_date else ("missed" if d <= today.isoformat() else "pending"),
                 "has_journal": d in journal_by_date,
-                "coaching_insight": daily_list[i] if i < len(daily_list) else "",
+                "coaching_insight": coaching_list[i].get("observation", "") if i < len(coaching_list) else "",
+                "coaching_micro_action": coaching_list[i].get("micro_action", "") if i < len(coaching_list) else "",
             }
             for i, d in enumerate(all_week_days)
         ],
+    }
+
+    # ── 7b. Build model_context (Layer 2 — structured JSON for AI consumption) ──
+    report_data["model_context"] = {
+        "week_number": wk_num,
+        "date_range": f"{ws} to {we}",
+        "goal": session_rec.focus if session_rec else "",
+        "stats": {
+            "consistency_pct": consistency_score,
+            "days_done": days_done,
+            "days_missed": days_missed,
+            "avg_mood_score": avg_score,
+            "dominant_emotion": ai_data.get("dominant_emotion", "neutral"),
+            "momentum_score": momentum_score,
+        },
+        "daily_log": [
+            {
+                "day": week_plan_days[i].get("day", f"Day {i+1}") if i < len(week_plan_days) else f"Day {i+1}",
+                "task_planned": week_plan_days[i].get("action", "") if i < len(week_plan_days) else "",
+                "task_done": d in journal_by_date,
+                "mood_score": journal_by_date[d].emotion_score if d in journal_by_date else None,
+                "emotion": journal_by_date[d].emotion_label if d in journal_by_date else None,
+                "journal_summary": journal_by_date[d].one_liner if d in journal_by_date else None,
+                "friction_noted": None,
+            }
+            for i, d in enumerate(all_week_days)
+        ],
+        "patterns": {
+            "recurring_friction": ai_data.get("recurring_friction", []),
+            "best_days": ai_data.get("best_days", peak_performance_days),
+            "worst_days": ai_data.get("worst_days", []),
+            "mood_trend": ai_data.get("mood_trend", ""),
+        },
+        "ai_insight": ai_data.get("hidden_insight", ""),
+        "next_week_carry_forward": ai_data.get("next_week_focus", ""),
     }
 
     # ── 8. Cache the report ───────────────────────────────────────────────────

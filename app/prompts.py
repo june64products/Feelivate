@@ -399,35 +399,48 @@ def build_chat_prompt(
     # ── Inject AI-generated week performance report ──────────────────────────
     if week_report_data and isinstance(week_report_data, dict):
         wn = week_report_data.get("week_number", current_week)
-        cs = week_report_data.get("consistency_score", 0)
-        avg = week_report_data.get("avg_score", 0)
-        done = week_report_data.get("days_done", 0)
-        missed = week_report_data.get("days_missed", 0)
-        went_well = week_report_data.get("what_went_well", "")
-        slipped = week_report_data.get("where_you_slipped", "")
-        next_ctx = week_report_data.get("next_week_plan_context", "")
-        arc = week_report_data.get("emotional_arc", "")
-        focus = week_report_data.get("next_week_focus", "")
 
-        system_content += f"\n\n{'═'*39}"
-        system_content += f"\nWEEK {wn} PERFORMANCE REPORT (AI-Generated from voice journals + checkins)"
-        system_content += f"\n{'═'*39}"
-        system_content += (
-            f"\nConsistency Score: {cs}% ({done} days done, {missed} missed)"
-            f"\nAvg Emotional Score: {avg}/10"
-            f"\nEmotional Arc: {arc}"
-            f"\nWhat went well: {went_well}"
-            f"\nWhere they slipped: {slipped}"
-            f"\nKey focus for next week: {focus}"
-        )
-        if next_ctx:
-            system_content += f"\nNext week plan must account for:\n{next_ctx}"
+        # V2: Use model_context if available (structured JSON layer)
+        model_ctx = week_report_data.get("model_context")
+        if model_ctx and isinstance(model_ctx, dict):
+            system_content += f"\n\n{'═'*39}"
+            system_content += f"\nWEEK {wn} PERFORMANCE REPORT (Structured Data)"
+            system_content += f"\n{'═'*39}"
+            system_content += f"\n{json.dumps(model_ctx, indent=2)}"
+        else:
+            # Fallback: legacy flat field extraction
+            cs = week_report_data.get("consistency_score", 0)
+            avg = week_report_data.get("avg_score", 0)
+            done = week_report_data.get("days_done", 0)
+            missed = week_report_data.get("days_missed", 0)
+            went_well = week_report_data.get("what_went_well", "")
+            slipped = week_report_data.get("where_you_slipped", "")
+            next_ctx = week_report_data.get("next_week_plan_context", "")
+            arc = week_report_data.get("emotional_arc", "")
+            focus = week_report_data.get("next_week_focus", "")
+
+            system_content += f"\n\n{'═'*39}"
+            system_content += f"\nWEEK {wn} PERFORMANCE REPORT (AI-Generated from voice journals + checkins)"
+            system_content += f"\n{'═'*39}"
+            system_content += (
+                f"\nConsistency Score: {cs}% ({done} days done, {missed} missed)"
+                f"\nAvg Emotional Score: {avg}/10"
+                f"\nEmotional Arc: {arc}"
+                f"\nWhat went well: {went_well}"
+                f"\nWhere they slipped: {slipped}"
+                f"\nKey focus for next week: {focus}"
+            )
+            if next_ctx:
+                system_content += f"\nNext week plan must account for:\n{next_ctx}"
+
         system_content += (
             f"\n\n⚠️ CRITICAL: Use the performance report above to build Week {wn + 1}."
+            f"\n- Address friction points from the report's patterns/recurring_friction"
+            f"\n- Build on strong days (best_days) and restructure around weak days (worst_days)"
             f"\n- If consistency was below 70% → reduce daily task count, make days shorter"
             f"\n- If emotional scores were low mid-week → add a dedicated recovery/rest day mid-week"
             f"\n- If consistency was above 85% → increase challenge level significantly"
-            f"\n- Directly address the 'where they slipped' areas with structural fixes in the plan"
+            f"\n- Apply carry_forward/next_week_focus as the primary directive"
         )
 
     # ── Inject current plan (if pending) ────────────────────────────────────

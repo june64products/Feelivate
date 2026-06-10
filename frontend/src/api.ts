@@ -440,6 +440,29 @@ export interface WeeklyReportDay {
     checkin: 'done' | 'skipped' | 'missed' | 'pending';
     has_journal: boolean;
     coaching_insight: string;
+    coaching_micro_action?: string;
+}
+
+export interface WeekBadge {
+    name: string;
+    reason: string;
+}
+
+export interface WeekSummary {
+    wins: string;
+    dips: string;
+    pattern: string;
+}
+
+export interface ActionableCoaching {
+    observation: string;
+    micro_action: string;
+}
+
+export interface TriggerPattern {
+    pattern: string;
+    frequency: string;
+    weeks_detected: number[];
 }
 
 export interface WeeklyReport {
@@ -457,15 +480,31 @@ export interface WeeklyReport {
         entry_count: number;
         week_number: number;
         week_theme: string;
-        // AI analysis
+        // V2 metrics
+        momentum_score?: number;
+        momentum_label?: string;
+        peak_performance_days?: string[];
+        prev_week_stats?: {
+            consistency_score: number;
+            avg_score: number;
+            momentum_score: number;
+            days_done: number;
+        } | null;
+        // AI analysis — V2 (new)
         dominant_emotion: string;
-        emotional_arc: string;
-        what_went_well: string;
-        where_you_slipped: string;
-        consistency_analysis: string;
+        week_summary?: WeekSummary;
+        week_badge?: WeekBadge;
+        best_quote?: string;
+        actionable_coaching?: ActionableCoaching[];
+        trigger_patterns?: TriggerPattern[];
         hidden_insight: string;
         next_week_focus: string;
         next_week_plan_context: string;
+        // Legacy fields (backward compat with old cached reports)
+        emotional_arc?: string;
+        what_went_well?: string;
+        where_you_slipped?: string;
+        consistency_analysis?: string;
         daily_analysis?: string[];
         // Per-day data
         days: WeeklyReportDay[];
