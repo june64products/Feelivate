@@ -120,119 +120,6 @@ function EmotionPieChart({ days }: { days: WeeklyReportDay[] }) {
     );
 }
 
-// ─── Consistency ring (SVG, no library) ──────────────────────────────────────
-function ConsistencyRing({ score, doneCount, totalCount }: { score: number; doneCount: number; totalCount: number }) {
-    const r = 46;
-    const circ = 2 * Math.PI * r;
-    const scoreVal = isNaN(score) ? 0 : score;
-    const filled = circ * (Math.min(100, Math.max(0, scoreVal)) / 100);
-    const ringColor = scoreVal >= 80 ? '#10b981' : scoreVal >= 50 ? '#f59e0b' : '#ef4444';
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <svg width="120" height="120" viewBox="0 0 120 120">
-                {/* Background ring */}
-                <circle cx="60" cy="60" r={r} fill="none" stroke="var(--border-subtle)" strokeWidth="10" />
-                {/* Progress ring */}
-                <motion.circle
-                    cx="60" cy="60" r={r}
-                    fill="none"
-                    stroke={ringColor}
-                    strokeWidth="10"
-                    strokeLinecap="round"
-                    strokeDasharray={circ}
-                    initial={{ strokeDashoffset: circ }}
-                    animate={{ strokeDashoffset: circ - filled }}
-                    transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ transformOrigin: '60px 60px', transform: 'rotate(-90deg)' }}
-                />
-                {/* Score text */}
-                <text x="60" y="56" textAnchor="middle" fill="var(--text-primary)" fontSize="22" fontWeight="700" fontFamily={clashDisplay}>
-                    {scoreVal}%
-                </text>
-                <text x="60" y="73" textAnchor="middle" fill="var(--text-muted)" fontSize="10" fontFamily={satoshi}>
-                    consistency
-                </text>
-            </svg>
-            <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, fontFamily: satoshi }}>
-                    {doneCount} of {totalCount} days completed
-                </p>
-            </div>
-        </div>
-    );
-}
-
-// ─── Emotional arc bar chart (SVG, no library) ────────────────────────────────
-function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
-    const chartH = 80;
-    const barW = 28;
-    const gap = 8;
-    const totalW = days.length * (barW + gap) - gap;
-
-    // Helper: parse date string in LOCAL timezone (avoids UTC-midnight shift)
-    const parseLocalDate = (dateStr: string) => {
-        const [y, mo, dd] = dateStr.split('-').map(Number);
-        return new Date(y, mo - 1, dd);
-    };
-
-    return (
-        <svg width="100%" viewBox={`0 0 ${totalW + 4} ${chartH + 32}`} style={{ overflow: 'visible' }}>
-            {days.map((d, i) => {
-                const score = d.score ?? 0;
-                const hasJournal = d.has_journal;
-                const barH = hasJournal ? Math.max(6, Math.round((score / 10) * chartH)) : 0;
-                const x = i * (barW + gap);
-                const y = chartH - barH;
-                const color = hasJournal ? emotionColor(d.emotion) : 'var(--border-medium)';
-                const dayDate = parseLocalDate(d.date);
-                const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
-
-                return (
-                    <g key={d.date}>
-                        {/* Background slot */}
-                        <rect x={x} y={0} width={barW} height={chartH} rx={4} fill="var(--glass-surface)" />
-                        
-                        {/* Score bar */}
-                        {hasJournal && barH > 0 && (
-                            <motion.g
-                                initial={{ scaleY: 0 }}
-                                animate={{ scaleY: 1 }}
-                                transition={{ duration: 0.7, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                                style={{ transformOrigin: `${x + barW / 2}px ${chartH}px` }}
-                            >
-                                <rect x={x} y={y} width={barW} height={barH} rx={4} fill={color} />
-                            </motion.g>
-                        )}
-                        
-                        {/* Day label — aligned to column centre */}
-                        <text x={x + barW / 2} y={chartH + 16} textAnchor="middle"
-                            fill="var(--text-secondary)" fontSize="9" fontFamily={satoshi}>
-                            {dayName}
-                        </text>
-                        
-                        {/* Score label on top of bar */}
-                        {hasJournal && score > 0 && (
-                            <motion.g
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: i * 0.06 + 0.5 }}
-                            >
-                                <text
-                                    x={x + barW / 2} y={y - 4} textAnchor="middle"
-                                    fill={color} fontSize="9" fontWeight="700" fontFamily={satoshi}
-                                >
-                                    {score}
-                                </text>
-                            </motion.g>
-                        )}
-                    </g>
-                );
-            })}
-        </svg>
-    );
-}
-
 // ─── Day-by-Day Rich Plan vs Actual execution breakdown ────────────────────────
 function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
     return (
@@ -1984,26 +1871,30 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                 padding: '4px 18px 20px',
                                                                 borderTop: '1px solid var(--border-subtle)',
                                                             }}>
-                                                                {/* Stats + ring row */}
-                                                                <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                                                                    <ConsistencyRing
-                                                                        score={arConsistency}
-                                                                        doneCount={arDaysDone}
-                                                                        totalCount={arPastDays}
+                                                                {/* V2 Hero: Momentum + Badge + Stats row */}
+                                                                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px', alignItems: 'stretch', marginTop: '16px' }}>
+                                                                    <MomentumScoreCard
+                                                                        score={aw.report?.momentum_score ?? Math.round((arConsistency * 0.4) + (((aw.report?.avg_score ?? 0) / 10) * 100 * 0.3) + (arConsistency * 0.3))}
+                                                                        label={aw.report?.momentum_label ?? (arConsistency >= 85 ? 'Peak' : arConsistency >= 70 ? 'Strong Week' : 'Building')}
                                                                     />
-                                                                    <div className="grid-col-1-mobile" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                                                        <StatCard
-                                                                            label="Avg Mood"
-                                                                            value={`${aw.report?.avg_score ?? 0}/10`}
-                                                                            sub={aw.report?.dominant_emotion}
-                                                                            color={emotionColor(aw.report?.dominant_emotion)}
-                                                                        />
-                                                                        <StatCard
-                                                                            label="Days Done"
-                                                                            value={`${arDaysDone}/${arPastDays}`}
-                                                                            sub={`${aw.report?.days_missed ?? 0} missed`}
-                                                                            color={arDaysDone > (aw.report?.days_missed ?? 0) ? '#10b981' : '#ef4444'}
-                                                                        />
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                                        {aw.report?.week_badge && (
+                                                                            <WeekBadgeCard badge={aw.report.week_badge} />
+                                                                        )}
+                                                                        <div className="grid-col-1-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', flex: 1 }}>
+                                                                            <StatCard
+                                                                                label="Avg Mood"
+                                                                                value={`${aw.report?.avg_score ?? 0}/10`}
+                                                                                sub={aw.report?.dominant_emotion}
+                                                                                color={emotionColor(aw.report?.dominant_emotion)}
+                                                                            />
+                                                                            <StatCard
+                                                                                label="Days Done"
+                                                                                value={`${arDaysDone}/${arPastDays}`}
+                                                                                sub={`${aw.report?.days_missed ?? 0} missed`}
+                                                                                color={arDaysDone > (aw.report?.days_missed ?? 0) ? '#10b981' : '#ef4444'}
+                                                                            />
+                                                                        </div>
                                                                     </div>
                                                                 </div>
 
@@ -2020,54 +1911,100 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                     </div>
                                                                 )}
 
+                                                                {/* Best Quote */}
+                                                                {aw.report?.best_quote && (
+                                                                    <div style={{ marginTop: '14px' }}>
+                                                                        <BestQuoteCard quote={aw.report.best_quote} />
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Emotion Timeline line chart */}
+                                                                {arDays.length > 0 && arDays.some(d => d.has_journal) && (
+                                                                    <div style={{
+                                                                        marginTop: '16px', padding: '16px 18px', borderRadius: '14px',
+                                                                        background: 'var(--card-bg)',
+                                                                        border: '1px solid var(--border-subtle)',
+                                                                    }}>
+                                                                        <EmotionTimelineChart days={arDays} avgScore={aw.report?.avg_score ?? 0} />
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Task Completion Bar */}
+                                                                <div style={{ marginTop: '14px' }}>
+                                                                    <TaskCompletionBar
+                                                                        daysDone={arDaysDone}
+                                                                        daysTotal={arPastDays}
+                                                                        days={arDays}
+                                                                        prevWeekStats={aw.report?.prev_week_stats}
+                                                                    />
+                                                                </div>
+
                                                                 {/* Emotion distribution pie */}
                                                                 {arDays.length > 0 && arDays.some(d => d.has_journal) && (
-                                                                    <div style={{ marginTop: '16px' }}>
+                                                                    <div style={{
+                                                                        marginTop: '16px', padding: '16px 18px', borderRadius: '14px',
+                                                                        background: 'var(--card-bg)',
+                                                                        border: '1px solid var(--border-subtle)',
+                                                                    }}>
                                                                         <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', fontFamily: satoshi }}>Emotion Distribution</p>
                                                                         <EmotionPieChart days={arDays} />
                                                                     </div>
                                                                 )}
 
-                                                                {/* Emotional arc bar chart */}
-                                                                {arDays.length > 0 && (
-                                                                    <div style={{ marginTop: '16px' }}>
-                                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', fontFamily: satoshi }}>Daily Arc</p>
-                                                                        <EmotionChart days={arDays} />
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Daily Breakdown */}
-                                                                {arDays.length > 0 && (
-                                                                    <DailyBreakdown days={arDays} />
-                                                                )}
-
-                                                                {/* AI narrative blocks */}
+                                                                {/* Week Summary (V2) or old analysis blocks (legacy) */}
                                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
-                                                                    {aw.report?.emotional_arc && <AnalysisBlock label="Emotional Arc" content={aw.report.emotional_arc} />}
-                                                                    {aw.report?.what_went_well && <AnalysisBlock label="What Went Well" content={aw.report.what_went_well} />}
-                                                                    {aw.report?.where_you_slipped && <AnalysisBlock label="Where You Slipped" content={aw.report.where_you_slipped} />}
-                                                                    {aw.report?.consistency_analysis && <AnalysisBlock label="Consistency Analysis" content={aw.report.consistency_analysis} />}
+                                                                    {aw.report?.week_summary ? (
+                                                                        <WeekSummaryCard summary={aw.report.week_summary} />
+                                                                    ) : (
+                                                                        <>
+                                                                            {aw.report?.emotional_arc && <AnalysisBlock label="Emotional Arc" content={aw.report.emotional_arc} />}
+                                                                            {aw.report?.what_went_well && <AnalysisBlock label="What Went Well" content={aw.report.what_went_well} />}
+                                                                            {aw.report?.where_you_slipped && <AnalysisBlock label="Where You Slipped" content={aw.report.where_you_slipped} />}
+                                                                            {aw.report?.consistency_analysis && <AnalysisBlock label="Consistency Analysis" content={aw.report.consistency_analysis} />}
+                                                                        </>
+                                                                    )}
                                                                     {aw.report?.hidden_insight && (
                                                                         <div style={{
                                                                             padding: '14px 16px', borderRadius: '12px',
                                                                             background: 'var(--bg-surface)',
                                                                             border: '1px solid var(--border-subtle)',
                                                                         }}>
-                                                                            <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Hidden Insight</p>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>
+                                                                                <Sparkles size={14} color="#a78bfa" />
+                                                                                <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, fontFamily: satoshi }}>Hidden Insight</p>
+                                                                            </div>
                                                                             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{aw.report.hidden_insight}</p>
                                                                         </div>
                                                                     )}
-                                                                    {aw.report?.next_week_focus && (
-                                                                        <div style={{
-                                                                            padding: '14px 16px', borderRadius: '12px',
-                                                                            background: 'var(--bg-surface)',
-                                                                            border: '1px solid var(--border-subtle)',
-                                                                        }}>
-                                                                            <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '7px', fontFamily: satoshi }}>Next Week Focus</p>
-                                                                            <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{aw.report.next_week_focus}</p>
-                                                                        </div>
-                                                                    )}
                                                                 </div>
+
+                                                                {/* Daily Breakdown */}
+                                                                {arDays.length > 0 && (
+                                                                    <DailyBreakdown days={arDays} />
+                                                                )}
+
+                                                                {/* Trigger Patterns (Week 3+) */}
+                                                                {aw.report?.trigger_patterns && aw.report.trigger_patterns.length > 0 && (aw.week_number ?? 1) >= 3 && (
+                                                                    <div style={{ marginTop: '14px' }}>
+                                                                        <TriggerPatternTable patterns={aw.report.trigger_patterns} />
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Next Week Focus */}
+                                                                {aw.report?.next_week_focus && (
+                                                                    <div style={{
+                                                                        padding: '14px 16px', borderRadius: '12px',
+                                                                        background: 'var(--bg-surface)',
+                                                                        border: '1px solid var(--border-subtle)',
+                                                                        marginTop: '10px',
+                                                                    }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>
+                                                                            <Target size={14} color="#10b981" />
+                                                                            <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, fontFamily: satoshi }}>Next Week Focus</p>
+                                                                        </div>
+                                                                        <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{aw.report.next_week_focus}</p>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </motion.div>
                                                     )}
