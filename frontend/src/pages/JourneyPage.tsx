@@ -189,29 +189,39 @@ function EmotionChart({ days }: { days: WeeklyReportDay[] }) {
                     <g key={d.date}>
                         {/* Background slot */}
                         <rect x={x} y={0} width={barW} height={chartH} rx={4} fill="var(--glass-surface)" />
+                        
                         {/* Score bar */}
-                        <motion.rect
-                            x={x} y={chartH} width={barW} height={0} rx={4} fill={color}
-                            initial={{ y: chartH, height: 0 }}
-                            animate={{ y, height: barH }}
-                            transition={{ duration: 0.7, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                        />
+                        {hasJournal && barH > 0 && (
+                            <motion.g
+                                initial={{ scaleY: 0 }}
+                                animate={{ scaleY: 1 }}
+                                transition={{ duration: 0.7, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ transformOrigin: `${x + barW / 2}px ${chartH}px` }}
+                            >
+                                <rect x={x} y={y} width={barW} height={barH} rx={4} fill={color} />
+                            </motion.g>
+                        )}
+                        
                         {/* Day label — aligned to column centre */}
                         <text x={x + barW / 2} y={chartH + 16} textAnchor="middle"
                             fill="var(--text-secondary)" fontSize="9" fontFamily={satoshi}>
                             {dayName}
                         </text>
+                        
                         {/* Score label on top of bar */}
                         {hasJournal && score > 0 && (
-                            <motion.text
-                                x={x + barW / 2} y={y - 4} textAnchor="middle"
-                                fill={color} fontSize="9" fontWeight="700" fontFamily={satoshi}
+                            <motion.g
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: i * 0.06 + 0.5 }}
                             >
-                                {score}
-                            </motion.text>
+                                <text
+                                    x={x + barW / 2} y={y - 4} textAnchor="middle"
+                                    fill={color} fontSize="9" fontWeight="700" fontFamily={satoshi}
+                                >
+                                    {score}
+                                </text>
+                            </motion.g>
                         )}
                     </g>
                 );
