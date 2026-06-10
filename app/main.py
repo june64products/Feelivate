@@ -1926,6 +1926,7 @@ async def get_weekly_report(
             cache_valid = (
                 cached_entry_count == len(journals)
                 and cached_days_done == journals_in_week  # voice journal = source of truth
+                and "momentum_score" in cached_data        # V2 schema check — force regen if old format
             )
             if cache_valid:
                 return {"status": "cached", "week_start": ws, "week_end": we, "week_number": wk_num, "report": cached_data}
