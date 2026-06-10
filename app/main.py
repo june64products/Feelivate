@@ -1856,6 +1856,7 @@ async def get_weekly_report(
     user_id: str,
     session_id: Optional[str] = None,
     week_number: Optional[int] = None,
+    force_refresh: bool = False,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1913,7 +1914,7 @@ async def get_weekly_report(
     if session_id:
         cache_q = cache_q.filter(WeeklyReport.session_id == session_id)
     cached = cache_q.first()
-    if cached:
+    if cached and not force_refresh:
         try:
             cached_data = json.loads(cached.report_json)
             # Validate cache: entry_count must match AND days_done must match actual

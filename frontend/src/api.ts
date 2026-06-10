@@ -518,7 +518,20 @@ export const getWeeklyReport = async (userId: string, sessionId?: string, weekNu
     const qs = params.toString() ? `?${params.toString()}` : '';
     const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/weekly-report${qs}`);
     if (!response.ok) throw new Error('Failed to fetch weekly report');
-    return response.json();
+    const data: WeeklyReport = await response.json();
+
+    // V2 auto-upgrade: if cached report is old format (missing momentum_score), force regenerate
+    if (data.status === 'cached' && data.report && !('momentum_score' in data.report)) {
+        const forceParams = new URLSearchParams(params);
+        forceParams.set('force_refresh', 'true');
+        const forceQs = `?${forceParams.toString()}`;
+        const forceResponse = await secureFetch(`${API_BASE_URL}/journal/${userId}/weekly-report${forceQs}`);
+        if (forceResponse.ok) {
+            return forceResponse.json();
+        }
+    }
+
+    return data;
 };
 
 // ============================================================
