@@ -520,15 +520,13 @@ export default function WorkspacePage() {
 
                     {/* Clean Swiss background — no gradient orbs */}
 
-                    {/* Emotion Orb — floats on right edge of chat after today's journal */}
-                    <AnimatePresence>
-                        {todayEmotion && (
-                            <EmotionOrb
-                                emotion={todayEmotion}
-                                onClick={() => setView('journey')}
-                            />
-                        )}
-                    </AnimatePresence>
+                    {/* Emotion Orb — draggable anywhere on screen after today's journal */}
+                    {todayEmotion && (
+                        <EmotionOrb
+                            emotion={todayEmotion}
+                            onClick={() => setView('journey')}
+                        />
+                    )}
 
                     {/* Header — Swiss minimal */}
                     <div className="mobile-header" style={{

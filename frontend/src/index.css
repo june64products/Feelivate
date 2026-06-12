@@ -332,10 +332,6 @@ body {
   width: auto;
 }
 
-/* Emotion Orb Default Position */
-.emotion-orb-wrapper {
-  bottom: 80px;
-}
 
 /* ============================================ */
 /* CHAT INPUT — Swiss pill style               */
@@ -657,9 +653,7 @@ body {
     padding-bottom: 20px;
   }
 
-  .emotion-orb-wrapper {
-    bottom: 30px !important;
-  }
+
 
   .week-drawer-mobile {
     top: 0 !important;
