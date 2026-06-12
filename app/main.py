@@ -473,11 +473,44 @@ async def chat(
             client_timezone=payload.timezone,
         )
 
+        # 5b. Anti-repetition guardrail — detect if last assistant messages are very similar
+        # and inject a system hint to vary the response
+        recent_assistant_msgs = [m["content"] for m in history if m["role"] == "assistant"][-3:]
+        if len(recent_assistant_msgs) >= 2:
+            def _word_overlap(a: str, b: str) -> float:
+                wa = set(a.lower().split())
+                wb = set(b.lower().split())
+                if not wa or not wb:
+                    return 0.0
+                return len(wa & wb) / max(len(wa), len(wb))
+            
+            last_two_overlap = _word_overlap(recent_assistant_msgs[-1], recent_assistant_msgs[-2])
+            if last_two_overlap > 0.6:
+                prompt_messages.append({
+                    "role": "system",
+                    "content": (
+                        "⚠️ ANTI-REPETITION WARNING: Your last 2 responses were very similar. "
+                        "You MUST say something COMPLETELY DIFFERENT this time. "
+                        "If the user sent a casual message like 'ok', just give a brief 1-sentence friendly reply. "
+                        "Do NOT repeat any previous explanation about plans, locking, or disruptions."
+                    )
+                })
+        
+        # 5c. Adjust temperature for casual messages — higher = more variety
+        chat_temperature = 0.7
+        _casual_check = message.lower().strip().rstrip("!.?,")
+        _casual_set = {"ok", "okay", "k", "sure", "yes", "no", "hmm", "haan", "nahi",
+                        "theek hai", "acha", "accha", "nice", "cool", "great", "good",
+                        "fine", "thanks", "ty", "thankyou", "thank you", "got it",
+                        "alright", "right", "yep", "yup", "nope", "hm", "ohh", "oh",
+                        "wow", "lol", "haha", "interesting", "understood"}
+        if _casual_check in _casual_set:
+            chat_temperature = 0.9  # More creative for casual replies
         
         raw_response = await asyncio.to_thread(
             call_with_fallback_chain,
             prompt_messages,
-            temperature=0.7,
+            temperature=chat_temperature,
             max_tokens=4000,
             presence_penalty=0.4,
             frequency_penalty=0.35
