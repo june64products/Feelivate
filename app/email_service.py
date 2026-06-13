@@ -31,12 +31,12 @@ def generate_otp(length: int = 6) -> str:
 
 
 # ── Feelivate Logo Block (inline, white rounded square) ──────────────────────
-LOGO_BLOCK = """
+LOGO_BLOCK = f"""
 <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
   <tr>
     <td style="background:#ffffff;border-radius:14px;padding:10px 18px;box-shadow:0 1px 6px rgba(0,0,0,0.3);">
       <span style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-        &#10022; Feelivate
+        <img src="{APP_URL}/logo_2_backup.png" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;margin-top:-2px;" />Feelivate
       </span>
     </td>
   </tr>
