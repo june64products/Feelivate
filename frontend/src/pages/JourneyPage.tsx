@@ -1595,7 +1595,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                     <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
                                                         {/* ── V2: Momentum Score + Week Badge row ── */}
-                                                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px', alignItems: 'stretch' }}>
+                                                        <div className="grid-col-1-mobile" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px', alignItems: 'stretch' }}>
                                                             <MomentumScoreCard
                                                                 score={reportData.momentum_score ?? Math.round((consistencyScore * 0.4) + ((avgScore / 10) * 100 * 0.3) + (consistencyScore * 0.3))}
                                                                 label={reportData.momentum_label ?? (consistencyScore >= 85 ? 'Peak' : consistencyScore >= 70 ? 'Strong Week' : 'Building')}
@@ -1890,7 +1890,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                 borderTop: '1px solid var(--border-subtle)',
                                                             }}>
                                                                 {/* V2 Hero: Momentum + Badge + Stats row */}
-                                                                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px', alignItems: 'stretch', marginTop: '16px' }}>
+                                                                <div className="grid-col-1-mobile" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px', alignItems: 'stretch', marginTop: '16px' }}>
                                                                     <MomentumScoreCard
                                                                         score={aw.report?.momentum_score ?? Math.round((arConsistency * 0.4) + (((aw.report?.avg_score ?? 0) / 10) * 100 * 0.3) + (arConsistency * 0.3))}
                                                                         label={aw.report?.momentum_label ?? (arConsistency >= 85 ? 'Peak' : arConsistency >= 70 ? 'Strong Week' : 'Building')}
