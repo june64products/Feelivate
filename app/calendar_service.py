@@ -75,7 +75,7 @@ class GoogleCalendarService:
         """
         try:
             # We use the fast Llama model for this as it's a repetitive task
-            message = await asyncio.to_thread(call_llm, prompt, model_override="llama-3.3-70b-versatile")
+            message = await asyncio.to_thread(call_llm, prompt)
             return message.strip()
         except Exception as e:
             logger.error(f"Failed to generate motivation: {e}")

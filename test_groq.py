@@ -30,20 +30,28 @@ client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
 
 # ── LLM Fallback Chain Test ──────────────────────────────────────────────────
 CHAIN = [
-    ("openai/gpt-oss-120b",    "1st — Groq OSS 120B (primary)"),
-    ("openai/gpt-oss-20b",     "2nd — Groq OSS 20B"),
-    ("llama-3.3-70b-versatile","3rd — Llama 70B"),
-    ("llama-3.1-8b-instant",   "4th — Llama 8B fast"),
+    ("openai/gpt-oss-120b",    "groq",   "1st — Groq OSS 120B (primary)"),
+    ("openai/gpt-oss-20b",     "groq",   "2nd — Groq OSS 20B"),
+    ("llama-3.3-70b-versatile","groq",   "3rd — Llama 70B"),
+    ("gpt-4o",                 "openai", "4th — OpenAI GPT-4o (last resort)"),
 ]
 
 print("── LLM Fallback Chain ───────────────────────────────────")
 results = {}
-for model, label in CHAIN:
+for model, provider, label in CHAIN:
     print(f"\n🔍 {label}")
-    print(f"   Model: {model}")
+    print(f"   Model: {model} (via {provider})")
     start = time.time()
     try:
-        resp = client.chat.completions.create(
+        if provider == "groq":
+            test_client = client
+        else:
+            if not openai_key:
+                print(f"   ⚠️  OPENAI_API_KEY not set — skipping")
+                results[model] = "skip"
+                continue
+            test_client = OpenAI(api_key=openai_key)
+        resp = test_client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": "Reply with exactly: OK"}],
             temperature=0.1, max_tokens=10,
@@ -60,17 +68,8 @@ for model, label in CHAIN:
         if "429" in err or "rate_limit" in err.lower():
             print("   ⚡ RATE LIMIT — app will auto-jump to next model")
         elif "decommissioned" in err.lower():
-            print("   🗑️  DECOMMISSIONED — Groq ne model hata diya")
+            print("   🗑️  DECOMMISSIONED — model hata diya gaya")
         results[model] = "fail"
-
-# OpenAI gpt-4o check (last resort)
-openai_key = os.getenv("OPENAI_API_KEY")
-print(f"\n🔍 5th — OpenAI gpt-4o (last resort)")
-if openai_key:
-    oai_masked = openai_key[:8] + "..." + openai_key[-4:]
-    print(f"   ✅ OPENAI_API_KEY set ({oai_masked}) — gpt-4o fallback ready")
-else:
-    print(f"   ⚠️  OPENAI_API_KEY set nahi — last fallback unavailable")
 
 # ── Groq Whisper Test ────────────────────────────────────────────────────────
 print("\n── Groq Whisper Large v3 Turbo ──────────────────────────")
@@ -108,14 +107,14 @@ except Exception as e:
 print("\n" + "="*60)
 print("  FINAL SUMMARY")
 print("="*60)
-ok_models  = [f"  ✅ {label} ({m})" for m, label in CHAIN if results.get(m) == "ok"]
-fail_models = [f"  ❌ {label} ({m})" for m, label in CHAIN if results.get(m) == "fail"]
+ok_models  = [f"  ✅ {label} ({m})" for m, provider, label in CHAIN if results.get(m) == "ok"]
+fail_models = [f"  ❌ {label} ({m})" for m, provider, label in CHAIN if results.get(m) == "fail"]
+skip_models = [f"  ⚠️  {label} ({m}) — skipped" for m, provider, label in CHAIN if results.get(m) == "skip"]
 
 print("\n[LLM Fallback Chain]")
 for x in ok_models:   print(x)
 for x in fail_models: print(x)
-if openai_key: print("  ✅ gpt-4o (OpenAI last resort)")
-else:          print("  ⚠️  gpt-4o (OPENAI_API_KEY missing)")
+for x in skip_models: print(x)
 
 print("\n[Whisper]")
 print(f"  {'✅' if whisper_ok else '❌'} Groq whisper-large-v3-turbo")

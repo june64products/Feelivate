@@ -120,6 +120,8 @@ export const login = async (data: { email: string; password: string }) => {
     }
     const result = await response.json();
     if (result.access_token) {
+        // Clear stale session data from previous user before setting new credentials
+        localStorage.removeItem('active_session_id');
         localStorage.setItem('access_token', result.access_token);
     }
     return result;
@@ -137,6 +139,8 @@ export const signup = async (data: { email: string; password: string; name?: str
     }
     const result = await response.json();
     if (result.access_token) {
+        // Clear stale session data from previous user before setting new credentials
+        localStorage.removeItem('active_session_id');
         localStorage.setItem('access_token', result.access_token);
     }
     return result;

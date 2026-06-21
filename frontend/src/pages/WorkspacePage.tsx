@@ -53,6 +53,27 @@ export default function WorkspacePage() {
             setIsSidebarCollapsed(true);
         }
     }, []);
+
+    // Cross-tab isolation: detect when another tab changes user_id (different user logged in)
+    useEffect(() => {
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === 'user_id') {
+                // Another tab changed the user — force this tab to re-validate
+                const newUserId = e.newValue;
+                if (newUserId !== userId) {
+                    // Different user logged in from another tab — force logout in this tab
+                    localStorage.removeItem('active_session_id');
+                    navigate('/login');
+                }
+            }
+            if (e.key === 'access_token' && !e.newValue) {
+                // Token was cleared in another tab (logout) — redirect this tab too
+                navigate('/login');
+            }
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, [userId, navigate]);
     const [view, setView] = useState<'chat' | 'journey'>('chat');
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showCompleteModal, setShowCompleteModal] = useState(false);

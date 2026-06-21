@@ -121,7 +121,11 @@ function EmotionPieChart({ days }: { days: WeeklyReportDay[] }) {
 }
 
 // ─── Day-by-Day Rich Plan vs Actual execution breakdown ────────────────────────
-function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
+function DailyBreakdown({ days, planStartDate }: { days: WeeklyReportDay[]; planStartDate?: string }) {
+    // Filter out days before the plan started — don't show them at all
+    const visibleDays = planStartDate
+        ? days.filter(d => d.date >= planStartDate)
+        : days;
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
             <p style={{
@@ -132,7 +136,7 @@ function DailyBreakdown({ days }: { days: WeeklyReportDay[] }) {
                 Daily Execution Breakdown
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {days.map((d, i) => {
+                {visibleDays.map((d, i) => {
                     const hasDone = d.checkin === 'done' || d.has_journal;
                     const isMissed = d.checkin === 'missed';
                     const statusColor = hasDone ? '#10b981' : isMissed ? '#ef4444' : 'var(--text-muted)';
@@ -247,20 +251,26 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
         const [y, mo, dd] = dateStr.split('-').map(Number);
         return new Date(y, mo - 1, dd);
     };
+
+    // Filter out days before the plan started — don't show them at all
+    const visibleDays = planStartDate
+        ? days.filter(d => d.date >= planStartDate)
+        : days;
+    const colCount = visibleDays.length || 7;
+
     return (
             <div className="mobile-horizontal-scroll" style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
+                gridTemplateColumns: `repeat(${colCount}, 1fr)`,
                 gap: '6px',
             }}>
-            {days.map((d, i) => {
+            {visibleDays.map((d, i) => {
                 const dayDate = parseLocalDate(d.date);
                 const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
-                const isBeforePlan = planStartDate ? d.date < planStartDate : false;
                 const isPast = d.date < today;
                 const isToday = d.date === today;
                 const hasDone = d.has_journal;
-                const isMissed = !isBeforePlan && isPast && !hasDone && !isToday;
+                const isMissed = isPast && !hasDone && !isToday;
                 const color = hasDone ? emotionColor(d.emotion) : isMissed ? '#ef4444' : 'var(--text-muted)';
 
                 return (
@@ -293,13 +303,7 @@ function WeekCalendar({ days, today, planStartDate }: { days: WeeklyReportDay[];
                                     background: 'rgba(239,68,68,0.3)',
                                 }} />
                             )}
-                            {isBeforePlan && !hasDone && (
-                                <div style={{
-                                    width: '12px', height: '2px', borderRadius: '2px',
-                                    background: 'rgba(30,30,30,0.1)',
-                                }} />
-                            )}
-                            {isToday && !hasDone && !isBeforePlan && (
+                            {isToday && !hasDone && (
                                 <div style={{
                                     width: '5px', height: '5px', borderRadius: '50%',
                                     background: 'var(--text-muted)',
@@ -1008,7 +1012,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
 
     const reportData = report?.report;
 
-    // Build weekDays — the 7-day calendar for the current week
+    // Build weekDays — the calendar for the current week (respects plan start date)
     const weekDays: WeeklyReportDay[] = (() => {
         // Prefer server-generated per-day data from report (most accurate)
         if (reportData?.days && reportData.days.length > 0) return reportData.days;
@@ -1017,13 +1021,34 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
         const jMap: Record<string, JournalEntry> = {};
         journals.forEach(j => { jMap[j.date] = j; });
 
-        // Anchor to the Monday of today's physical week
+        // Determine the start date for the calendar
+        // If plan_start_date exists, use it as the anchor (don't show days before plan)
+        // Otherwise, anchor to the Monday of today's physical week
         const todayLocal = new Date();
-        const dow = todayLocal.getDay() || 7;
-        const startDate = new Date(todayLocal);
-        startDate.setDate(todayLocal.getDate() - dow + 1);
+        let startDate: Date;
+        let endDate: Date;
 
-        return Array.from({ length: 7 }, (_, i) => {
+        if (weekInfo?.plan_start_date) {
+            // Use plan start date as anchor
+            const [py, pm, pd] = weekInfo.plan_start_date.split('-').map(Number);
+            startDate = new Date(py, pm - 1, pd);
+            // End date = that Sunday
+            const startDow = startDate.getDay() || 7; // 1=Mon..7=Sun
+            const daysToSunday = 7 - startDow;
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + daysToSunday);
+        } else {
+            // Standard Monday anchor
+            const dow = todayLocal.getDay() || 7;
+            startDate = new Date(todayLocal);
+            startDate.setDate(todayLocal.getDate() - dow + 1);
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6);
+        }
+
+        const dayCount = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+        return Array.from({ length: dayCount }, (_, i) => {
             const day = new Date(startDate);
             day.setDate(startDate.getDate() + i);
             const tzOffset = day.getTimezoneOffset() * 60000;
@@ -1457,7 +1482,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 <div style={{ flex: 1 }}>
                                     <WeekCalendar days={weekDays} today={today} planStartDate={weekInfo?.plan_start_date} />
                                 </div>
-                                <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
+                                {/* Legend row — separate from Plan button for clean layout */}
+                                <div style={{ display: 'flex', gap: '16px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
                                         <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontFamily: satoshi }}>Logged</span>
@@ -1470,32 +1496,38 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid #b6b5b5' }} />
                                         <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontFamily: satoshi }}>Upcoming</span>
                                     </div>
-                                    {/* Plan Week N+1 gating — only show when report exists AND next plan doesn't */}
-                                    {weekInfo?.has_plan && weekInfo.is_week_complete && weekInfo.has_report && !weekInfo.has_next_plan && (
-                                        <button
-                                            onClick={() => {
-                                                const nextWeek = (weekInfo.current_week ?? 1) + 1;
-                                                window.dispatchEvent(new CustomEvent('request-next-week-plan', { detail: { week: nextWeek } }));
-                                            }}
-                                            style={{
-                                                marginLeft: 'auto', padding: '4px 10px',
-                                                borderRadius: '100px',
-                                                border: 'none',
-                                                background: 'var(--text-primary)',
-                                                color: 'var(--btn-primary-bg)', fontSize: '11px', fontWeight: 600,
-                                                cursor: 'pointer', transition: 'all 0.15s',
-                                                fontFamily: satoshi,
-                                            }}
-                                        >
-                                            Plan Week {(weekInfo.current_week ?? 1) + 1}
-                                        </button>
-                                    )}
                                     {weekInfo?.has_plan && !weekInfo.is_week_complete && weekInfo.week_end && (
                                         <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500, fontFamily: satoshi }}>
                                             Week ends {weekInfo.week_end}
                                         </span>
                                     )}
                                 </div>
+                                {/* Plan Week N+1 button — own row for breathing room */}
+                                {weekInfo?.has_plan && weekInfo.is_week_complete && weekInfo.has_report && !weekInfo.has_next_plan && (
+                                    <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
+                                        <button
+                                            onClick={() => {
+                                                const nextWeek = (weekInfo.current_week ?? 1) + 1;
+                                                window.dispatchEvent(new CustomEvent('request-next-week-plan', { detail: { week: nextWeek } }));
+                                            }}
+                                            style={{
+                                                padding: '8px 20px',
+                                                borderRadius: '100px',
+                                                border: 'none',
+                                                background: 'var(--text-primary)',
+                                                color: 'var(--bg-primary)', fontSize: '12px', fontWeight: 700,
+                                                cursor: 'pointer', transition: 'all 0.15s',
+                                                fontFamily: satoshi,
+                                                letterSpacing: '0.04em',
+                                                textTransform: 'uppercase',
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                                        >
+                                            Plan Week {(weekInfo.current_week ?? 1) + 1}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* ── Weekly Report — only shown when week is complete ── */}
@@ -1693,7 +1725,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         )}
 
                                                         {/* ── Daily Breakdown (KEPT, with upgraded coaching) ── */}
-                                                        <DailyBreakdown days={weekDays} />
+                                                        <DailyBreakdown days={weekDays} planStartDate={weekInfo?.plan_start_date} />
 
                                                         {/* ── V2: Trigger Pattern Table (Week 3+) ── */}
                                                         {reportData.trigger_patterns && reportData.trigger_patterns.length > 0 && (reportData.week_number ?? 1) >= 3 && (

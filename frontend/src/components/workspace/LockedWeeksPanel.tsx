@@ -375,11 +375,23 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
     const [loadedReports, setLoadedReports] = useState(false);
     const [drawerTop, setDrawerTop] = useState<number>(80);
 
+    // Today's date for filtering — only show completed weeks in archive
+    const today = (() => {
+        const d = new Date();
+        const tzOffset = d.getTimezoneOffset() * 60000;
+        return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+    })();
+
     // Load archived reports once
     useEffect(() => {
         if (!sessionId || loadedReports) return;
         getSessionReports(sessionId)
-            .then(r => { setReports(r); setLoadedReports(true); })
+            .then(r => {
+                // Filter: only show reports for weeks that have ended (week_end < today)
+                const completedReports = r.filter(report => report.week_end < today);
+                setReports(completedReports);
+                setLoadedReports(true);
+            })
             .catch(() => { setLoadedReports(true); });
     }, [sessionId]);
 

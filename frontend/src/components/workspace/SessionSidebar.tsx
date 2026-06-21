@@ -206,9 +206,9 @@ export default function SessionSidebar({
 
             {/* Nav items with GSAP hover */}
             <div ref={navItemsRef} style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: '1px', flexShrink: 0 }}>
-                <SidebarNavItem icon={<Clock size={15} />} label="History" />
+                <SidebarNavItem icon={<Clock size={15} />} label="History" isCollapsed={isCollapsed} />
                 {isPlanActive && (
-                    <SidebarNavItem icon={<BookOpen size={15} />} label="My Journey" onClick={onJourney} />
+                    <SidebarNavItem icon={<BookOpen size={15} />} label="My Journey" onClick={onJourney} isCollapsed={isCollapsed} />
                 )}
             </div>
 
@@ -286,8 +286,8 @@ export default function SessionSidebar({
 
 /* ── Sidebar Nav Item with GSAP vertical rising-circle animation ──────── */
 function SidebarNavItem({
-    icon, label, onClick,
-}: { icon: React.ReactNode; label: string; onClick?: () => void }) {
+    icon, label, onClick, isCollapsed,
+}: { icon: React.ReactNode; label: string; onClick?: () => void; isCollapsed?: boolean }) {
     const itemRef = useRef<HTMLButtonElement>(null);
     const circleRef = useRef<HTMLSpanElement>(null);
     const labelRef = useRef<HTMLSpanElement>(null);
@@ -302,6 +302,18 @@ function SidebarNavItem({
         const lbl = labelRef.current;
         const hover = hoverLabelRef.current;
         if (!pill || !circle || !lbl || !hover) return;
+
+        // When collapsed, kill all animations and reset state
+        if (isCollapsed) {
+            tweenRef.current?.kill();
+            tlRef.current?.kill();
+            tlRef.current = null;
+            layoutDoneRef.current = false;
+            gsap.set(circle, { scale: 0 });
+            gsap.set(lbl, { x: 0 });
+            gsap.set(hover, { opacity: 0 });
+            return;
+        }
 
         const setup = () => {
             const { width: w, height: h } = pill.getBoundingClientRect();
@@ -337,11 +349,17 @@ function SidebarNavItem({
             layoutDoneRef.current = true;
         };
 
-        setup();
+        // When expanding, wait for DOM to settle before measuring
+        const rafId = requestAnimationFrame(() => {
+            setup();
+        });
         window.addEventListener('resize', setup);
         document.fonts?.ready.then(setup).catch(() => {});
-        return () => window.removeEventListener('resize', setup);
-    }, []);
+        return () => {
+            cancelAnimationFrame(rafId);
+            window.removeEventListener('resize', setup);
+        };
+    }, [isCollapsed]);
 
     const handleEnter = () => {
         const tl = tlRef.current;
