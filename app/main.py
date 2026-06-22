@@ -1662,7 +1662,13 @@ async def _analyze_emotion(transcript: str) -> dict:
         f"\"one_liner\": \"1 sentence capturing the essence\"}}"
     )
     try:
-        raw = await asyncio.to_thread(call_llm, prompt, temperature=0.2, max_tokens=120)
+        raw = await asyncio.to_thread(
+            call_llm, prompt,
+            temperature=0.2,
+            max_tokens=150,
+            model_override="llama-3.3-70b-versatile",  # fast, reliable, consistent JSON
+        )
+        logger.info(f"[Emotion] Raw LLM response: {repr(raw[:300])}")
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
         json_str = _extract_json_by_braces(raw)
         if not json_str:
@@ -1671,13 +1677,24 @@ async def _analyze_emotion(transcript: str) -> dict:
             json_str = raw[start:end + 1] if start != -1 else None
         if json_str:
             data = json.loads(json_str)
-            return {
-                "label": data.get("label", "neutral"),
-                "score": max(1, min(10, int(data.get("score", 5)))),
-                "one_liner": data.get("one_liner", ""),
-            }
+            # Normalize label
+            label = str(data.get("label", "neutral")).lower().strip()
+            if label not in _EMOTION_LABELS:
+                logger.warning(f"[Emotion] Unexpected label '{label}', keeping as-is")
+            # Score can come back as string or float — handle both
+            raw_score = data.get("score", 5)
+            try:
+                score = max(1, min(10, int(float(str(raw_score)))))
+            except (ValueError, TypeError):
+                score = 5
+                logger.warning(f"[Emotion] Could not parse score '{raw_score}', defaulting to 5")
+            one_liner = str(data.get("one_liner", "")).strip()
+            logger.info(f"[Emotion] ✅ label={label}, score={score}, one_liner={one_liner[:60]}")
+            return {"label": label, "score": score, "one_liner": one_liner}
+        else:
+            logger.error(f"[Emotion] No JSON found in response: {repr(raw[:300])}")
     except Exception as e:
-        logger.warning(f"Emotion analysis failed (non-fatal): {e}")
+        logger.error(f"[Emotion] Analysis failed: {type(e).__name__}: {e}")
     return {"label": "neutral", "score": 5, "one_liner": ""}
 
 
