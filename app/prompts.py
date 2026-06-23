@@ -94,6 +94,15 @@ GOOD plan: "Day 1: HTML — build a webpage with heading + paragraph (30 min)"
 ── RULE 4: PLAN LOCKING ── ⚠️ MOST CRITICAL RULE — NEVER BREAK THIS ⚠️
 The system context will tell you the PLAN STATUS.
 
+⚠️ PRECEDENCE: The LAST system message ("CURRENT DIRECTIVE") is the source of truth and
+OVERRIDES every example in this rule. It tells you whether the locked week is ONGOING or FINISHED:
+  • If it says the week is FINISHED (report available) → you ARE allowed and EXPECTED to BUILD the
+    NEXT week NOW when asked (output the plan JSON for week N+1). Do NOT refuse with "it's locked".
+  • If it says the week is ONGOING → do NOT build any next/future week; instead help the user
+    WITHIN the current week and note their feedback for later.
+The "locked, I can't change it" templates below apply ONLY to attempts to edit the CURRENT
+(still-locked) week — never let them stop you from BUILDING the next week once it's finished.
+
 When PLAN STATUS = LOCKED:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 THE CURRENT WEEK IS PERMANENTLY LOCKED. YOU **CANNOT** AND **WILL NOT** MODIFY IT.
@@ -300,6 +309,7 @@ def build_chat_prompt(
     week_reviews: Optional[List[dict]] = None,
     week_report_data: Optional[dict] = None,
     client_timezone: str = "UTC",
+    current_week_complete: bool = False,
 ) -> List[Dict[str, str]]:
     """
     Build the messages array for the LLM call.
@@ -338,12 +348,41 @@ def build_chat_prompt(
             f"\nIMPORTANT: This lock info is ONLY relevant when user asks to CHANGE/MODIFY the plan (TYPE B intent)."
             f"\nFor ALL other messages (general chat, life updates, casual talk) → IGNORE this lock status and just chat normally."
             f"\n"
-            f"\nIF AND ONLY IF user explicitly requests a plan change for Week {current_week}:"
-            f"\n  - Acknowledge warmly, explain it's locked, ask what they'd want differently for Week {current_week + 1}"
-            f"\n  - plan must be null"
-            f"\n"
-            f"\nNEVER output a plan JSON for Week {current_week}. Only for Week {current_week + 1} or later."
+            f"\nNEVER output a plan JSON for Week {current_week} (it is locked)."
         )
+        if not current_week_complete:
+            # The current week is still in progress — the next week must NOT be built yet.
+            system_content += (
+                f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                f"\n⚠️ WEEK {current_week} IS STILL ONGOING — DO NOT BUILD THE NEXT WEEK YET"
+                f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                f"\nWeek {current_week} has NOT finished and its performance report does NOT exist yet."
+                f"\nYou can only build Week {current_week + 1} AFTER Week {current_week} is complete and its"
+                f" report is available — so you can analyze that report first."
+                f"\n"
+                f"\n🚫 ABSOLUTELY FORBIDDEN right now (even if the user says 'make it now', 'build next week',"
+                f" 'banao', 'right now', or insists repeatedly):"
+                f"\n  ✗ Output a plan JSON for Week {current_week + 1} or ANY future week"
+                f"\n  ✗ Say 'here's your Week {current_week + 1} plan'"
+                f"\n  ✗ Promise the next week is ready"
+                f"\n"
+                f"\n✅ INSTEAD, when the user reports a problem or asks to change things:"
+                f"\n  1. Warmly acknowledge their struggle."
+                f"\n  2. Analyze their CURRENT Week {current_week} plan + what they said, and give SPECIFIC,"
+                f" actionable solutions/tips they can use WITHIN this week (e.g. how to restructure their"
+                f" day, handle a hard task, recover a missed day) — WITHOUT changing the locked plan."
+                f"\n  3. Tell them you're noting this feedback and will bake it into Week {current_week + 1}"
+                f" once this week wraps up and you can review the full week's report."
+                f"\n  4. plan MUST be null."
+            )
+        else:
+            # Current week is complete (report available) — next week can now be built.
+            system_content += (
+                f"\n\n✅ WEEK {current_week} IS COMPLETE — its report is available."
+                f"\nYou MAY now build Week {current_week + 1}. When you do, FIRST analyze Week {current_week}'s"
+                f" performance report (consistency, emotional arc, what slipped) and shape the new plan around it."
+                f"\nOutput the plan JSON with \"week_number\": {current_week + 1} (never {current_week})."
+            )
     elif phase == "planning":
         system_content += (
             f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -507,5 +546,40 @@ def build_chat_prompt(
             "role": msg["role"],
             "content": msg["content"]
         })
+
+    # ── Final high-priority directive ───────────────────────────────────────
+    # Placed LAST (strongest recency) so it overrides the verbose RULE 4 locked
+    # templates, which otherwise dominate and make the model give the wrong response
+    # for the "ongoing vs finished week" edge cases.
+    if phase == "active":
+        nw = current_week + 1
+        if not current_week_complete:
+            prompt_messages.append({
+                "role": "system",
+                "content": (
+                    f"🔒 CURRENT DIRECTIVE — overrides EVERY example/template above:\n"
+                    f"Week {current_week} is LOCKED and still ONGOING (not finished, no report yet).\n"
+                    f"- ALWAYS set plan = null. Do NOT build, output, offer, or promise Week {nw} or any future week, "
+                    f"even if the user says 'make it now', 'right now', 'banao', or insists.\n"
+                    f"- Do NOT just brush the user off with 'it's locked'. When they report a problem (e.g. can't stay "
+                    f"consistent) or ask to change it, ANALYZE their current Week {current_week} plan and give concrete, "
+                    f"specific solutions they can apply WITHIN this week — e.g. how to restructure a day, simplify or "
+                    f"reschedule a tough task, recover after a missed day, build a small daily habit/trigger.\n"
+                    f"- Briefly add that you'll fold this feedback into Week {nw} once this week finishes and its report is ready.\n"
+                    f"- Be genuinely helpful and specific. The goal is that the user does NOT stay stuck."
+                )
+            })
+        else:
+            prompt_messages.append({
+                "role": "system",
+                "content": (
+                    f"✅ CURRENT DIRECTIVE — overrides EVERY example/template above:\n"
+                    f"Week {current_week} is FINISHED and its performance report is available.\n"
+                    f"- If the user asks for the next week, to revise, or says 'make it now' → BUILD Week {nw} NOW.\n"
+                    f"- Output the FULL plan JSON with \"week_number\": {nw}, shaped by Week {current_week}'s report "
+                    f"(consistency, emotional arc, what slipped).\n"
+                    f"- Do NOT say 'I can't change it / it's locked' — you are creating a NEW week, not editing the locked one."
+                )
+            })
 
     return prompt_messages

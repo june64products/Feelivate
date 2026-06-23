@@ -463,6 +463,32 @@ async def chat(
                     if week_report_data:
                         break  # Use the most recent valid report found
 
+        # 4e. Is the CURRENT (locked) week finished? Next-week plans are only allowed
+        #     once the current week is complete — its end date has passed OR its weekly
+        #     report exists — so the model can analyze that week before building the next.
+        #     While the week is still ongoing, the model must NOT build the next week;
+        #     it should help the user with their CURRENT plan instead.
+        current_week_complete = False
+        if session_rec.phase == "active" and session_rec.plan_start_date:
+            try:
+                ws_cur, we_cur, _ = _week_bounds_for(session_rec, session_rec.current_week or 1)
+                import datetime as _dt
+                try:
+                    import zoneinfo
+                    _tz = zoneinfo.ZoneInfo(payload.timezone or "UTC")
+                    _today_cur = _dt.datetime.now(_tz).date().isoformat()
+                except Exception:
+                    _today_cur = _dt.date.today().isoformat()
+                week_ended = _today_cur >= we_cur
+                report_exists = db.query(WeeklyReport).filter(
+                    WeeklyReport.user_id == user_id,
+                    WeeklyReport.session_id == session_id,
+                    WeeklyReport.week_start == ws_cur,
+                ).first() is not None
+                current_week_complete = week_ended or report_exists
+            except Exception as e:
+                logger.warning(f"current_week_complete calc failed: {e}")
+
         # 5. Build prompt messages
         prompt_messages = build_chat_prompt(
             messages=history,
@@ -473,6 +499,7 @@ async def chat(
             week_reviews=week_reviews,
             week_report_data=week_report_data,
             client_timezone=payload.timezone,
+            current_week_complete=current_week_complete,
         )
 
         # 5b. Anti-repetition guardrail — detect if last assistant messages are very similar
@@ -552,21 +579,41 @@ async def chat(
         db.add(user_msg)
         db.add(assistant_msg)
         
-        # 8. If plan was generated, update session — with lock guard
+        # 8. If plan was generated, update session — with lock guards
         if plan_data and isinstance(plan_data, dict):
             new_week_num = plan_data.get("week_number", 1)
-            
-            # LOCK GUARD: if current week is locked, only accept plans for a NEWER week
-            if session_rec.phase == "active" and new_week_num <= (session_rec.current_week or 0):
+            cur_wk = session_rec.current_week or 0
+
+            # GUARD 1 — modifying a locked week: only accept plans for a NEWER week.
+            if session_rec.phase == "active" and new_week_num <= cur_wk:
                 logger.warning(
-                    f"Model attempted to modify locked Week {session_rec.current_week} — discarding plan."
+                    f"Model attempted to modify locked Week {cur_wk} — discarding plan."
                 )
                 plan_data = None  # Discard — never let the model silently overwrite a locked week
+
+            # GUARD 2 — building the NEXT week before the current week is finished.
+            # The next week can only be built once the current week is complete (its end
+            # date passed / its report exists), so it can be based on that week's report.
+            elif session_rec.phase == "active" and new_week_num > cur_wk and not current_week_complete:
+                logger.warning(
+                    f"Model attempted to build Week {new_week_num} before Week {cur_wk} finished "
+                    f"(current_week_complete=False) — discarding plan."
+                )
+                plan_data = None
+                reply_text = (
+                    f"Week {cur_wk} is still in progress 💪 — let's finish this one first. "
+                    f"I'll build the next week only once this week wraps up and its report is ready, "
+                    f"so I can study your full week and make the next plan actually fit you. "
+                    f"In the meantime, tell me exactly where you're getting stuck and I'll give you "
+                    f"specific fixes and tips within this week's plan (without changing the locked plan)."
+                )
+                assistant_msg.content = reply_text  # keep the saved message consistent
+
             else:
                 session_rec.week_plan_json = json.dumps(plan_data)
                 session_rec.current_week = new_week_num
                 session_rec.phase = "planning"  # Back to pending approval for new week
-            
+
             # Store the focus from the first message if not set
             if not session_rec.focus and len(db_messages) == 0:
                 session_rec.focus = message[:200]
