@@ -572,7 +572,29 @@ async def chat(
             if not isinstance(plan_days, list) or len(plan_days) == 0:
                 logger.warning(f"Plan missing valid 'days' array — discarding: {plan_data.keys()}")
                 plan_data = None
-        
+
+        # 6c. A week's plan MUST end on Sunday — never spill into the next Monday.
+        #     The model sometimes pads to 7 days (adding Monday); trim anything past the
+        #     upcoming Sunday so the plan only covers (today → this Sunday).
+        if plan_data and isinstance(plan_data, dict) and isinstance(plan_data.get("days"), list):
+            try:
+                import datetime as _dt2
+                try:
+                    import zoneinfo as _zi2
+                    _gen_today = _dt2.datetime.now(_zi2.ZoneInfo(payload.timezone or "UTC")).date()
+                except Exception:
+                    _gen_today = _dt2.date.today()
+                _max_days = 7 - _gen_today.weekday()  # today → upcoming Sunday (inclusive); Mon=7 … Sun=1
+                _days = plan_data["days"]
+                if len(_days) > _max_days:
+                    logger.info(
+                        f"Trimming plan from {len(_days)} to {_max_days} days "
+                        f"(must end Sunday; gen day = {_gen_today.strftime('%a')})"
+                    )
+                    plan_data["days"] = _days[:_max_days]
+            except Exception as e:
+                logger.warning(f"Plan Sunday-trim failed (non-fatal): {e}")
+
         # 7. Save messages to DB
         user_msg = ChatMessage(session_id=session_id, role="user", content=message)
         assistant_msg = ChatMessage(session_id=session_id, role="assistant", content=reply_text)

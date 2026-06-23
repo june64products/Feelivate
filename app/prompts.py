@@ -57,15 +57,22 @@ OR when generating a plan:
   "reply": "Here's your Week 1! Let me know if you want to change anything.",
   "plan": {
     "week_number": 1,
-    "week_label": "May 28 – Jun 3",
+    "week_label": "May 28 – Jun 1",
     "theme": "Building the Foundation",
-    "win_condition": "Complete 5 out of 7 days",
+    "win_condition": "Complete most of your scheduled days",
     "days": [
       {"day": "May 28 (Wed)", "action": "Specific, executable action with exact details"},
-      ... 7 days total ...
+      ... one entry PER DAY from today through this SUNDAY (the last entry MUST be Sunday) ...
     ]
   }
 }
+
+⚠️ WEEK BOUNDARY — NON-NEGOTIABLE:
+- A week ALWAYS ends on SUNDAY. The `days` array runs from TODAY through this upcoming SUNDAY.
+- The LAST day entry MUST be that Sunday. NEVER add Monday or any day after Sunday.
+- The number of days is NOT always 7 — if the week started mid-week (e.g. today is Tuesday),
+  the plan has FEWER days (Tue, Wed, Thu, Fri, Sat, Sun = 6). Do NOT pad to 7 by adding Monday.
+- Set `win_condition` relative to the actual number of days (e.g. "Complete 4 of 6 days"), never "of 7" when there aren't 7.
 
 Plan quality rules:
 - Each day's action = SPECIFIC and COMPLETE. User should be able to follow it without googling.
