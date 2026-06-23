@@ -346,9 +346,26 @@ def build_chat_prompt(
         )
     elif phase == "planning":
         system_content += (
-            f"\n\nPLAN STATUS: PENDING APPROVAL"
-            f"\nWeek {current_week} plan has been shown to the user but not yet approved."
-            f"\nUser CAN still request changes — generate a revised plan with the same week_number if asked."
+            f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            f"\nPLAN STATUS: PENDING APPROVAL — Week {current_week} is NOT locked."
+            f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            f"\nThe user has NOT approved or locked anything yet. This Week {current_week} plan is a DRAFT "
+            f"awaiting their approval. It is fully editable right now."
+            f"\n"
+            f"\n🚫 ABSOLUTELY FORBIDDEN in this PENDING state (RULE 4 LOCKED behavior does NOT apply here):"
+            f"\n  ✗ Saying \"Week {current_week} is locked\" or \"it's locked\""
+            f"\n  ✗ Saying \"you approved it\" / \"the commitment you made\" / \"I have to respect that\""
+            f"\n  ✗ Saying \"I can't change it\" / \"I can't touch it now\""
+            f"\n  ✗ Offering to build Week {current_week + 1} instead of editing Week {current_week}"
+            f"\n  ✗ Any locked-plan language whatsoever — the user has locked NOTHING."
+            f"\n"
+            f"\n✅ REQUIRED behavior when the user wants to change THIS plan (TYPE B intent):"
+            f"\n  - If they say WHAT to change (e.g. 'make it easier', 'add X', 'remove day 3', 'more coding') →"
+            f"\n    immediately output the FULL revised plan JSON with the SAME \"week_number\": {current_week}."
+            f"\n  - If they are vague (e.g. 'I want to change something in this plan', 'tweak this') →"
+            f"\n    reply warmly asking what specifically they'd like to change, with plan = null. "
+            f"Do NOT mention locking. Example: {{\"reply\": \"Sure! What would you like to change about it?\", \"plan\": null}}"
+            f"\n  - NEVER ask 'are you sure?'. NEVER refuse. NEVER move them to the next week. Edit Week {current_week} in place."
         )
     else:
         system_content += "\n\nPLAN STATUS: NO PLAN YET — still in the conversation/discovery phase."
