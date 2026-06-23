@@ -1654,47 +1654,76 @@ async def _analyze_emotion(transcript: str) -> dict:
     Returns {label, score, one_liner}.
     """
     from .llm import call_llm
+
+    text = (transcript or "").strip()
+    if not text:
+        logger.warning("[Emotion] Empty transcript — returning neutral/5")
+        return {"label": "neutral", "score": 5, "one_liner": ""}
+
     prompt = (
-        f"Analyze the emotional tone of this journal entry and respond with ONLY valid JSON.\n"
-        f"Entry: \"{transcript[:800]}\"\n\n"
-        f"Respond exactly: {{\"label\": \"one of: {', '.join(_EMOTION_LABELS)}\", "
-        f"\"score\": <integer 1-10 where 10=very positive>, "
-        f"\"one_liner\": \"1 sentence capturing the essence\"}}"
+        "You are an expert emotion analyst. Read the journal entry below — it may be in "
+        "English, Hindi, or Hinglish — and detect how the writer actually feels.\n\n"
+        f"Entry: \"{text[:800]}\"\n\n"
+        "Rules:\n"
+        f"- Pick the single best label from: {', '.join(_EMOTION_LABELS)}\n"
+        "- Give an honest score from 1 to 10 using the FULL range:\n"
+        "    1-3  = clearly negative (drained, anxious, frustrated, stressed)\n"
+        "    4-6  = mixed, mild, or genuinely neutral\n"
+        "    7-10 = clearly positive (motivated, excited, confident, hopeful)\n"
+        "- Use 'neutral' with score 5 ONLY when the entry has NO emotional signal at all. "
+        "If there is ANY emotional cue, choose the matching label with an honest score — "
+        "do NOT default to neutral/5.\n"
+        "- Judge how the writer feels, not the topic they talk about.\n\n"
+        "Respond with ONLY valid JSON, nothing else:\n"
+        "{\"label\": \"<label>\", \"score\": <integer 1-10>, \"one_liner\": \"<1 short sentence>\"}"
     )
-    try:
-        raw = await asyncio.to_thread(
-            call_llm, prompt,
-            temperature=0.2,
-            max_tokens=150,
-            model_override="llama-3.3-70b-versatile",  # fast, reliable, consistent JSON
-        )
-        logger.info(f"[Emotion] Raw LLM response: {repr(raw[:300])}")
-        raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
-        json_str = _extract_json_by_braces(raw)
-        if not json_str:
-            start = raw.find("{")
-            end = raw.rfind("}")
-            json_str = raw[start:end + 1] if start != -1 else None
-        if json_str:
+
+    # Try several models in order. Using a single model_override bypasses the
+    # fallback chain, so any hiccup with that one model (rate-limit, outage,
+    # decommission) would silently collapse every entry to neutral/5. Trying
+    # multiple models means we only fall back to neutral if ALL of them fail.
+    models_to_try = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "gpt-4o-mini"]
+    last_err = None
+    for model in models_to_try:
+        try:
+            raw = await asyncio.to_thread(
+                call_llm, prompt,
+                temperature=0.2,
+                max_tokens=150,
+                model_override=model,
+            )
+            logger.info(f"[Emotion] ({model}) raw response: {repr(raw[:300])}")
+            raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
+            json_str = _extract_json_by_braces(raw)
+            if not json_str:
+                start = raw.find("{")
+                end = raw.rfind("}")
+                json_str = raw[start:end + 1] if start != -1 and end != -1 else None
+            if not json_str:
+                logger.warning(f"[Emotion] No JSON from {model}: {repr(raw[:200])}")
+                continue
+
             data = json.loads(json_str)
             # Normalize label
             label = str(data.get("label", "neutral")).lower().strip()
             if label not in _EMOTION_LABELS:
                 logger.warning(f"[Emotion] Unexpected label '{label}', keeping as-is")
-            # Score can come back as string or float — handle both
+            # Score can come back as string or float — round, don't truncate (7.6 → 8)
             raw_score = data.get("score", 5)
             try:
-                score = max(1, min(10, int(float(str(raw_score)))))
+                score = max(1, min(10, int(round(float(str(raw_score))))))
             except (ValueError, TypeError):
                 score = 5
                 logger.warning(f"[Emotion] Could not parse score '{raw_score}', defaulting to 5")
             one_liner = str(data.get("one_liner", "")).strip()
-            logger.info(f"[Emotion] ✅ label={label}, score={score}, one_liner={one_liner[:60]}")
+            logger.info(f"[Emotion] ✅ ({model}) label={label}, score={score}, one_liner={one_liner[:60]}")
             return {"label": label, "score": score, "one_liner": one_liner}
-        else:
-            logger.error(f"[Emotion] No JSON found in response: {repr(raw[:300])}")
-    except Exception as e:
-        logger.error(f"[Emotion] Analysis failed: {type(e).__name__}: {e}")
+        except Exception as e:
+            last_err = e
+            logger.warning(f"[Emotion] {model} failed: {type(e).__name__}: {e}")
+            continue
+
+    logger.error(f"[Emotion] All models failed — defaulting to neutral/5. Last error: {last_err}")
     return {"label": "neutral", "score": 5, "one_liner": ""}
 
 
