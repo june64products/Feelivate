@@ -472,7 +472,7 @@ export interface TriggerPattern {
 }
 
 export interface WeeklyReport {
-    status: 'generated' | 'cached' | 'no_data' | 'waiting_for_sunday_entry';
+    status: 'generated' | 'cached' | 'no_data' | 'waiting_for_sunday_entry' | 'in_progress';
     week_start: string;
     week_end: string;
     message?: string;
@@ -521,6 +521,7 @@ export const getWeeklyReport = async (userId: string, sessionId?: string, weekNu
     const params = new URLSearchParams();
     if (sessionId) params.set('session_id', sessionId);
     if (weekNumber !== undefined) params.set('week_number', String(weekNumber));
+    params.set('client_date', getLocalISODate());
     const qs = params.toString() ? `?${params.toString()}` : '';
     const response = await secureFetch(`${API_BASE_URL}/journal/${userId}/weekly-report${qs}`);
     if (!response.ok) throw new Error('Failed to fetch weekly report');
@@ -603,7 +604,8 @@ export interface ArchivedWeekReport {
 }
 
 export const getSessionReports = async (sessionId: string): Promise<ArchivedWeekReport[]> => {
-    const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/reports`);
+    const clientDate = getLocalISODate();
+    const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/reports?client_date=${clientDate}`);
     if (!response.ok) throw new Error('Failed to fetch session reports');
     return response.json();
 };

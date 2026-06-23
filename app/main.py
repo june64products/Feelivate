@@ -1774,13 +1774,25 @@ async def complete_session(
 @app.get("/sessions/{session_id}/reports", tags=["sessions"])
 async def get_session_reports(
     session_id: str,
+    client_date: Optional[str] = None,  # YYYY-MM-DD from user's local timezone
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return all weekly reports for a session, ordered by week number."""
+    """Return weekly reports for a session — only for weeks that have actually FINISHED.
+    The current/ongoing week is never shown in the Archive (its report belongs to the
+    live Overview until the week ends)."""
+    from datetime import date as _date_cls
     session_rec = db.query(Session).filter(Session.id == session_id).first()
     if not session_rec or session_rec.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    if client_date:
+        try:
+            today_str = _date_cls.fromisoformat(client_date).isoformat()
+        except ValueError:
+            today_str = _date_cls.today().isoformat()
+    else:
+        today_str = _date_cls.today().isoformat()
 
     reports = (
         db.query(WeeklyReport)
@@ -1791,6 +1803,9 @@ async def get_session_reports(
 
     result = []
     for r in reports:
+        # Only include weeks that have already ended — never the ongoing/current week.
+        if r.week_end and r.week_end >= today_str:
+            continue
         try:
             report_data = json.loads(r.report_json)
         except Exception:
@@ -2125,6 +2140,7 @@ async def get_weekly_report(
     session_id: Optional[str] = None,
     week_number: Optional[int] = None,
     force_refresh: bool = False,
+    client_date: Optional[str] = None,  # YYYY-MM-DD from user's local timezone
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -2132,6 +2148,8 @@ async def get_weekly_report(
     Return (or generate) the weekly emotion report.
     Session-scoped: uses plan_start_date to compute correct week bounds.
     week_number defaults to the session's current_week.
+    A report is only generated/persisted once the week is COMPLETE (Sunday entry
+    recorded OR Sunday passed) — never mid-week, so it never appears early in Archive.
     """
     from .llm import call_llm, call_with_fallback_chain
     from datetime import date, timedelta
@@ -2139,7 +2157,14 @@ async def get_weekly_report(
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    today = date.today()
+    # Use the user's local date (avoids UTC vs IST Sunday-boundary bugs)
+    if client_date:
+        try:
+            today = date.fromisoformat(client_date)
+        except ValueError:
+            today = date.today()
+    else:
+        today = date.today()
 
     # Determine week bounds
     session_rec = None
@@ -2172,19 +2197,21 @@ async def get_weekly_report(
     if not journals:
         return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we, "week_number": wk_num}
 
-    # ── 1b. Sunday gate: on the last day of the week, require that day's voice entry ──
-    # On Sunday (today == week_end): only generate if Sunday journal exists
-    # On Monday+ (today > week_end): auto-generate regardless (user skipped Sunday)
+    # ── 1b. Completion gate ─────────────────────────────────────────────────────
+    # A weekly report is generated (and persisted) ONLY once the week is COMPLETE:
+    #   • Sunday's voice entry has been recorded, OR
+    #   • Sunday has already passed (today is after week_end).
+    # While the week is still in progress we never generate or cache a report, so it
+    # never shows up in the Archive before the week is actually over.
     today_str = today.isoformat()
-    if today_str == we:
-        # It's the last day of the week — check if today's voice entry exists
-        has_sunday_entry = any(j.date == we for j in journals)
-        if not has_sunday_entry:
-            return {
-                "status": "waiting_for_sunday_entry",
-                "message": "Record your voice journal for today to unlock your weekly review.",
-                "week_start": ws, "week_end": we, "week_number": wk_num,
-            }
+    sunday_entry_exists = any(j.date == we for j in journals)
+    week_complete = (today_str > we) or sunday_entry_exists
+    if not week_complete:
+        return {
+            "status": "in_progress",
+            "message": "Your weekly review unlocks when this week wraps up — record Sunday's entry, or once Sunday passes.",
+            "week_start": ws, "week_end": we, "week_number": wk_num,
+        }
 
     # ── 2. Check cache (session + week keyed) ──────────────────────────────────
     cache_q = db.query(WeeklyReport).filter(

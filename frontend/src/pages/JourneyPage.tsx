@@ -991,8 +991,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 const wi = sessionId ? await getWeekInfo(sessionId).catch(() => null) : null;
                 if (wi) setWeekInfo(wi);
                 // Celebration fires ONLY on the very last day of the week (today === week_end)
+                // and only once a real report exists (not for no_data / in_progress states).
                 const isLastDay = wi?.week_end ? today === wi.week_end : false;
-                if (isLastDay && r.status !== 'no_data') {
+                if (isLastDay && r.report && r.status !== 'no_data' && r.status !== 'in_progress') {
                     setTimeout(() => setShowWeekEndCelebration(true), 800);
                 }
             }
@@ -1588,7 +1589,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                     Record voice journals across the week.<br />
                                                     At the end of the week, your AI performance review will appear here.
                                                 </div>
-                                            ) : report?.status === 'waiting_for_sunday_entry' ? (
+                                            ) : (report?.status === 'in_progress' || report?.status === 'waiting_for_sunday_entry') ? (
                                                 <div style={{
                                                     borderRadius: '16px', padding: '28px', textAlign: 'center',
                                                     background: 'var(--card-bg)',
