@@ -1862,12 +1862,15 @@ async def create_voice_journal(
     # 2. Analyze emotion
     emotion = await _analyze_emotion(transcript)
 
-    # 3. Upsert journal entry for today (one per user per day)
-    existing = (
-        db.query(VoiceJournal)
-        .filter(VoiceJournal.user_id == user_id, VoiceJournal.date == today)
-        .first()
+    # 3. Upsert journal entry for today (one per user per day PER SESSION).
+    #    Scoping by session keeps each journey independent — recording in a new
+    #    session creates its own entry instead of overwriting another session's.
+    upsert_q = db.query(VoiceJournal).filter(
+        VoiceJournal.user_id == user_id, VoiceJournal.date == today
     )
+    if session_id:
+        upsert_q = upsert_q.filter(VoiceJournal.session_id == session_id)
+    existing = upsert_q.first()
     if existing:
         existing.transcript = transcript
         existing.emotion_label = emotion["label"]
@@ -2025,13 +2028,14 @@ async def get_today_emotion(
     else:
         today = date.today().isoformat()
 
-    # Look for any journal entry from this user for today, regardless of session
-    entry = (
-        db.query(VoiceJournal)
-        .filter(VoiceJournal.user_id == user_id, VoiceJournal.date == today)
-        .order_by(VoiceJournal.created_at.desc())
-        .first()
+    # Today's entry for THIS session (each journey is independent — a fresh session
+    # must not show an entry recorded under a different session on the same day).
+    entry_q = db.query(VoiceJournal).filter(
+        VoiceJournal.user_id == user_id, VoiceJournal.date == today
     )
+    if session_id:
+        entry_q = entry_q.filter(VoiceJournal.session_id == session_id)
+    entry = entry_q.order_by(VoiceJournal.created_at.desc()).first()
     if not entry:
         return {"has_entry": False, "entry": None}
     return {
@@ -2084,19 +2088,17 @@ async def get_weekly_report(
         ws = week_start_d.isoformat()
         we = (week_start_d + timedelta(days=6)).isoformat()
 
-    # ── 1. Fetch this week's voice journals (ALL user journals in date range) ────
-    # Journals are one-per-user-per-day, not session-scoped. A journal recorded
-    # under any session should count for the weekly report of any session.
-    journals = (
-        db.query(VoiceJournal)
-        .filter(
-            VoiceJournal.user_id == user_id,
-            VoiceJournal.date >= ws,
-            VoiceJournal.date <= we,
-        )
-        .order_by(VoiceJournal.date.asc())
-        .all()
+    # ── 1. Fetch this week's voice journals (SESSION-SCOPED) ────────────────────
+    # Each journey/session is independent: a new session starts fresh and must NOT
+    # inherit voice entries recorded under a different session (even on the same day).
+    journals_q = db.query(VoiceJournal).filter(
+        VoiceJournal.user_id == user_id,
+        VoiceJournal.date >= ws,
+        VoiceJournal.date <= we,
     )
+    if session_id:
+        journals_q = journals_q.filter(VoiceJournal.session_id == session_id)
+    journals = journals_q.order_by(VoiceJournal.date.asc()).all()
 
     if not journals:
         return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we, "week_number": wk_num}

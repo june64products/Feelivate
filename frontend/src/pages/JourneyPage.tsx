@@ -872,9 +872,11 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const [activeTab, setActiveTab] = useState<'overview' | 'archive'>('overview');
     const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
 
+    // Mic-lock is tracked PER SESSION so a recording in one session doesn't lock
+    // the mic in a different (fresh) session on the same day.
     const [micLocked, setMicLocked] = useState<boolean>(() => {
         const uid = localStorage.getItem('user_id');
-        const key = `last_journal_date_${uid}`;
+        const key = `last_journal_date_${uid}_${sessionId ?? 'none'}`;
         const stored = localStorage.getItem(key);
         return stored === getLocalISODate();
     });
@@ -905,7 +907,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             // 2. Fetch journals (ALL user journals, not session-filtered),
             //    weekly report (session-scoped), and archived reports in parallel
             const [j, r, ar] = await Promise.all([
-                getJournalsForSession(userId, undefined),
+                // Session-scoped: only THIS session's voice entries (fresh session = empty)
+                getJournalsForSession(userId, sessionId),
                 sessionId ? getWeeklyReport(userId, sessionId, weekNum).catch(() => null) : null,
                 sessionId ? getSessionReports(sessionId).catch(() => []) : [],
             ]);
@@ -922,13 +925,18 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 }
             }
 
-            // 5. If we have a journal for today, also set micLocked
+            // 5. Lock the mic only if THIS session already has today's entry; otherwise
+            //    keep it unlocked (a fresh session must be recordable even if another
+            //    session was journaled today).
             const todayJ = j.find(jj => jj.date === getLocalISODate());
+            const uid = localStorage.getItem('user_id');
+            const key = `last_journal_date_${uid}_${sessionId ?? 'none'}`;
             if (todayJ) {
                 setMicLocked(true);
-                const uid = localStorage.getItem('user_id');
-                const key = `last_journal_date_${uid}`;
                 localStorage.setItem(key, getLocalISODate());
+            } else {
+                setMicLocked(false);
+                localStorage.removeItem(key);
             }
         } finally {
             setLoadingReport(false);
@@ -969,7 +977,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                 return [entry, ...filtered];
             });
             const uid = localStorage.getItem('user_id');
-            const key = `last_journal_date_${uid}`;
+            const key = `last_journal_date_${uid}_${sessionId ?? 'none'}`;
             localStorage.setItem(key, getLocalISODate());
             setMicLocked(true);
 

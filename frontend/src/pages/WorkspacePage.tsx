@@ -84,19 +84,20 @@ export default function WorkspacePage() {
     // Derived: whether we're in the cinematic empty state
     const isEmptyState = messages.length === 0 && !isLoading;
 
-    // Mic locked state — check localStorage for today's recording
+    // Mic locked state — check localStorage for today's recording (PER SESSION, so a
+    // recording in one session doesn't lock the mic in another fresh session).
     // Use getLocalISODate (YYYY-MM-DD in local TZ) to match the client_date sent to backend
     const [micLocked, setMicLocked] = useState<boolean>(() => {
         const uid = localStorage.getItem('user_id');
-        const key = `last_journal_date_${uid}`;
+        const key = `last_journal_date_${uid}_${activeSessionId ?? 'none'}`;
         return localStorage.getItem(key) === getLocalISODate();
     });
 
-    // Refresh micLocked on mount
+    // Refresh micLocked on mount / session switch
     useEffect(() => {
         const uid = localStorage.getItem('user_id');
         if (uid) {
-            const key = `last_journal_date_${uid}`;
+            const key = `last_journal_date_${uid}_${activeSessionId ?? 'none'}`;
             setMicLocked(localStorage.getItem(key) === getLocalISODate());
         }
     }, [activeSessionId, userId]);
@@ -516,7 +517,7 @@ export default function WorkspacePage() {
                             // Persist to localStorage so mic stays locked after page refresh
                             const uid = localStorage.getItem('user_id');
                             if (uid) {
-                                localStorage.setItem(`last_journal_date_${uid}`, getLocalISODate());
+                                localStorage.setItem(`last_journal_date_${uid}_${activeSessionId ?? 'none'}`, getLocalISODate());
                             }
                         }}
                         onClose={() => setView('chat')}
