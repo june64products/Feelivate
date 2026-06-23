@@ -431,7 +431,9 @@ async def chat(
             # from a completed prior week).
             for wk_to_check in [current_wk, max(1, current_wk - 1)]:
                 try:
-                    ws_check, _, _ = _get_week_bounds(session_rec.plan_start_date, wk_to_check)
+                    # Use lock-date-aware bounds so we find reports stored under the
+                    # week's actual start (matches get_weekly_report's keying).
+                    ws_check, _, _ = _week_bounds_for(session_rec, wk_to_check)
                 except Exception:
                     continue
                 latest_report = (
@@ -613,10 +615,13 @@ async def chat(
 @app.post("/chat/{session_id}/approve_plan", tags=["chat"])
 async def approve_plan(
     session_id: str,
+    client_date: Optional[str] = None,  # YYYY-MM-DD from user's local timezone
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Approve the current week plan — marks it active and enables calendar sync."""
+    """Approve the current week plan — marks it active and enables calendar sync.
+    Stamps the lock date onto the plan so this week starts exactly when the user
+    locked it (a plan locked on Wednesday shows Wed→Sun, not Mon→Sun)."""
     session_rec = db.query(Session).filter(Session.id == session_id).first()
     if not session_rec:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -637,21 +642,41 @@ async def approve_plan(
         except Exception:
             plan_history = []
     
+    from datetime import date as _date
+    # Lock date in the user's local timezone (falls back to server date)
+    if client_date:
+        try:
+            today_iso = _date.fromisoformat(client_date).isoformat()
+        except ValueError:
+            today_iso = _date.today().isoformat()
+    else:
+        today_iso = _date.today().isoformat()
+
     try:
         approved_plan = json.loads(session_rec.week_plan_json)
-        # Avoid duplicating the same week in history
-        existing_weeks = {p.get("week_number") for p in plan_history if isinstance(p, dict)}
-        if approved_plan.get("week_number") not in existing_weeks:
+        # Stamp the lock date so this week starts exactly when the user locked it
+        approved_plan["start_date"] = today_iso
+        # Save to history (replace if this week already exists, else append)
+        existing_idx = next(
+            (i for i, p in enumerate(plan_history)
+             if isinstance(p, dict) and p.get("week_number") == approved_plan.get("week_number")),
+            None,
+        )
+        if existing_idx is not None:
+            plan_history[existing_idx] = approved_plan
+        else:
             plan_history.append(approved_plan)
         session_rec.result_json = json.dumps(plan_history)
+        # Persist the stamped start_date onto the active plan too
+        session_rec.week_plan_json = json.dumps(approved_plan)
     except Exception as e:
         logger.warning(f"Could not save plan to history: {e}")
-    
+
     session_rec.phase = "active"
-    # Store when plan was first approved (only for week 1 — don't overwrite for subsequent weeks)
-    from datetime import date as _date
+    # Store when the FIRST plan was approved (don't overwrite for later weeks — each
+    # week's own start now lives in the plan's stamped start_date)
     if not session_rec.plan_start_date:
-        session_rec.plan_start_date = _date.today().isoformat()
+        session_rec.plan_start_date = today_iso
     db.commit()
     
     # Add a system message to the chat
@@ -1410,6 +1435,74 @@ def _get_week_bounds(plan_start_date_str: str, week_number: int):
     return ws.isoformat(), we.isoformat(), day_count
 
 
+def _bounds_from_start(start_date_str: str):
+    """Week bounds anchored to an explicit lock date (the day the plan was approved).
+    The week runs from that day through the SAME calendar week's Sunday — so a plan
+    locked on Wednesday yields Wed→Sun and Mon/Tue are excluded entirely."""
+    from datetime import date, timedelta
+    start = date.fromisoformat(start_date_str)
+    dow = start.weekday()  # 0=Mon .. 6=Sun
+    end = start + timedelta(days=(6 - dow))
+    return start.isoformat(), end.isoformat(), (end - start).days + 1
+
+
+def _stamped_week_start(session_rec, week_number: int):
+    """Return the lock date stamped into the approved plan for this week, if present."""
+    # Active plan (current week_plan_json)
+    if session_rec.week_plan_json:
+        try:
+            plan = json.loads(session_rec.week_plan_json)
+            if plan.get("week_number") == week_number and plan.get("start_date"):
+                return plan["start_date"]
+        except Exception:
+            pass
+    # Approved-plan history (result_json holds a list of approved plan dicts)
+    if session_rec.result_json:
+        try:
+            hist = json.loads(session_rec.result_json)
+            if isinstance(hist, list):
+                for p in hist:
+                    if isinstance(p, dict) and p.get("week_number") == week_number and p.get("start_date"):
+                        return p["start_date"]
+        except Exception:
+            pass
+    return None
+
+
+def _week_bounds_for(session_rec, week_number: int):
+    """Week bounds for a session+week, preferring the stamped lock date so each week
+    starts exactly when its plan was locked (not a forced Mon–Sun block). Falls back to
+    the legacy plan_start_date computation for weeks locked before this was introduced."""
+    sd = _stamped_week_start(session_rec, week_number)
+    if sd:
+        return _bounds_from_start(sd)
+    return _get_week_bounds(session_rec.plan_start_date, week_number)
+
+
+def _latest_approved_week(session_rec) -> int:
+    """The highest week number among APPROVED plans — the week the Journey page should
+    display. While a next-week plan is generated but not yet locked (phase 'planning'),
+    this stays on the previous approved week, so the Journey keeps showing the old week
+    until the user locks the new one."""
+    weeks = []
+    if session_rec.result_json:
+        try:
+            hist = json.loads(session_rec.result_json)
+            if isinstance(hist, list):
+                for p in hist:
+                    if isinstance(p, dict) and isinstance(p.get("week_number"), int):
+                        weeks.append(p["week_number"])
+        except Exception:
+            pass
+    if weeks:
+        return max(weeks)
+    # No approved history — only treat the session's current_week as displayed if it's
+    # already active (legacy sessions); otherwise nothing is approved yet.
+    if session_rec.phase == "active" and session_rec.current_week is not None:
+        return session_rec.current_week
+    return 0
+
+
 @app.get("/sessions/{session_id}/week-info", tags=["sessions"])
 async def get_week_info(
     session_id: str,
@@ -1430,8 +1523,11 @@ async def get_week_info(
     if not session_rec.plan_start_date:
         return {"has_plan": False, "current_week": 0}
 
-    current_week = session_rec.current_week if session_rec.current_week is not None else 1
-    ws, we, day_count = _get_week_bounds(session_rec.plan_start_date, current_week)
+    # Display the latest APPROVED week. During 'planning' (next week generated but not
+    # yet locked) this stays on the previous approved week, so the Journey keeps showing
+    # the old week until the user locks the new one — then it switches immediately.
+    current_week = _latest_approved_week(session_rec)
+    ws, we, day_count = _week_bounds_for(session_rec, current_week)
 
     # Use client's local date if provided — avoids UTC vs IST midnight-shift bugs
     if client_date:
@@ -1978,9 +2074,9 @@ async def get_weekly_report(
         session_rec = db.query(Session).filter(Session.id == session_id).first()
 
     if session_rec and session_rec.plan_start_date:
-        # Use session-scoped week bounds
-        wk_num = week_number if week_number is not None else (session_rec.current_week if session_rec.current_week is not None else 1)
-        ws, we, _ = _get_week_bounds(session_rec.plan_start_date, wk_num)
+        # Use session-scoped week bounds (anchored to each week's lock date)
+        wk_num = week_number if week_number is not None else _latest_approved_week(session_rec)
+        ws, we, _ = _week_bounds_for(session_rec, wk_num)
     else:
         # Fallback: standard Mon–Sun of current calendar week
         wk_num = week_number if week_number is not None else 1
@@ -2072,6 +2168,19 @@ async def get_weekly_report(
             week_plan_theme = plan.get("theme", "")
         except Exception:
             pass
+
+    # Align plan days to calendar days by anchoring to the SHARED Sunday endpoint
+    # (both the plan and the displayed week end on Sunday). This way, if the user
+    # locks late — e.g. plan built Wed→Sun but locked Friday so the week is Fri→Sun —
+    # Friday correctly shows Friday's task, not Wednesday's. The leading plan days
+    # (Wed/Thu) are simply dropped along with those calendar days.
+    _plan_offset = len(week_plan_days) - len(all_week_days)
+
+    def _plan_day_for(i: int) -> dict:
+        idx = i + _plan_offset
+        if 0 <= idx < len(week_plan_days) and isinstance(week_plan_days[idx], dict):
+            return week_plan_days[idx]
+        return {}
 
     # ── 5. Build the per-day data merge ────────────────────────────────────
     journal_by_date = {j.date: j for j in journals}
@@ -2186,22 +2295,19 @@ async def get_weekly_report(
         for j in journals
     )
 
-    # Plan vs actual comparison block
+    # Plan vs actual comparison block (iterate calendar days, end-anchored tasks)
     plan_vs_actual = ""
     if week_plan_days:
         lines = []
-        for idx, pd in enumerate(week_plan_days[:7]):
+        for i, d in enumerate(all_week_days):
+            pd = _plan_day_for(i)
             day_label = pd.get("day", "")
             task = pd.get("action", "")
-            if idx < len(all_week_days):
-                d = all_week_days[idx]
-                s = checkin_map.get(d, "pending")
-                j_info = ""
-                if d in journal_by_date:
-                    j_info = f" | Voice Journal: {journal_by_date[d].emotion_label} ({journal_by_date[d].emotion_score}/10) - '{journal_by_date[d].one_liner}'"
-                lines.append(f"  Day {idx+1} ({day_label}): Planned: '{task}' | Checkin: {s}{j_info}")
-            else:
-                lines.append(f"  Day {idx+1} ({day_label}): Planned: '{task}' | Checkin: pending")
+            s = checkin_map.get(d, "pending")
+            j_info = ""
+            if d in journal_by_date:
+                j_info = f" | Voice Journal: {journal_by_date[d].emotion_label} ({journal_by_date[d].emotion_score}/10) - '{journal_by_date[d].one_liner}'"
+            lines.append(f"  Day {i+1} ({day_label or d}): Planned: '{task}' | Checkin: {s}{j_info}")
         plan_vs_actual = "\nWEEK PLAN vs ACTUAL CHECK-INS & JOURNALS:\n" + "\n".join(lines)
 
     prompt = f"""You are a world-class performance coach and behavioral analyst. Your job is to write a deep, honest, insightful WEEK REVIEW for this user.
@@ -2399,8 +2505,8 @@ IMPORTANT NOTES:
         "days": [
             {
                 "date": d,
-                "day_label": week_plan_days[i].get("day", f"Day {i+1}") if i < len(week_plan_days) else f"Day {i+1}",
-                "planned_task": week_plan_days[i].get("action", "") if i < len(week_plan_days) else "",
+                "day_label": _plan_day_for(i).get("day") or f"Day {i+1}",
+                "planned_task": _plan_day_for(i).get("action", ""),
                 "emotion": journal_by_date[d].emotion_label if d in journal_by_date else None,
                 "score": journal_by_date[d].emotion_score if d in journal_by_date else None,
                 "one_liner": journal_by_date[d].one_liner if d in journal_by_date else None,
@@ -2430,8 +2536,8 @@ IMPORTANT NOTES:
         },
         "daily_log": [
             {
-                "day": week_plan_days[i].get("day", f"Day {i+1}") if i < len(week_plan_days) else f"Day {i+1}",
-                "task_planned": week_plan_days[i].get("action", "") if i < len(week_plan_days) else "",
+                "day": _plan_day_for(i).get("day") or f"Day {i+1}",
+                "task_planned": _plan_day_for(i).get("action", ""),
                 "task_done": d in journal_by_date,
                 "mood_score": journal_by_date[d].emotion_score if d in journal_by_date else None,
                 "emotion": journal_by_date[d].emotion_label if d in journal_by_date else None,

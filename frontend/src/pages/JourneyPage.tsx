@@ -1022,13 +1022,19 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
         journals.forEach(j => { jMap[j.date] = j; });
 
         // Determine the start date for the calendar
-        // If plan_start_date exists, use it as the anchor (don't show days before plan)
-        // Otherwise, anchor to the Monday of today's physical week
+        // Prefer the displayed week's bounds from the backend (week_start..week_end) —
+        // these already start at the day the plan was locked, so a Wed-locked week shows
+        // Wed→Sun (Mon/Tue excluded). Fall back to plan_start_date, then today's Monday.
         const todayLocal = new Date();
         let startDate: Date;
         let endDate: Date;
 
-        if (weekInfo?.plan_start_date) {
+        if (weekInfo?.week_start && weekInfo?.week_end) {
+            const [sy, sm, sd] = weekInfo.week_start.split('-').map(Number);
+            startDate = new Date(sy, sm - 1, sd);
+            const [ey, em, ed] = weekInfo.week_end.split('-').map(Number);
+            endDate = new Date(ey, em - 1, ed);
+        } else if (weekInfo?.plan_start_date) {
             // Use plan start date as anchor
             const [py, pm, pd] = weekInfo.plan_start_date.split('-').map(Number);
             startDate = new Date(py, pm - 1, pd);
@@ -1480,7 +1486,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     )}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <WeekCalendar days={weekDays} today={today} planStartDate={weekInfo?.plan_start_date} />
+                                    <WeekCalendar days={weekDays} today={today} planStartDate={weekInfo?.week_start ?? weekInfo?.plan_start_date} />
                                 </div>
                                 {/* Legend row — separate from Plan button for clean layout */}
                                 <div style={{ display: 'flex', gap: '16px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1725,7 +1731,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         )}
 
                                                         {/* ── Daily Breakdown (KEPT, with upgraded coaching) ── */}
-                                                        <DailyBreakdown days={weekDays} planStartDate={weekInfo?.plan_start_date} />
+                                                        <DailyBreakdown days={weekDays} planStartDate={weekInfo?.week_start ?? weekInfo?.plan_start_date} />
 
                                                         {/* ── V2: Trigger Pattern Table (Week 3+) ── */}
                                                         {reportData.trigger_patterns && reportData.trigger_patterns.length > 0 && (reportData.week_number ?? 1) >= 3 && (

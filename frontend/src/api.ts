@@ -93,7 +93,9 @@ export const chatWithMentor = async (
 };
 
 export const approvePlan = async (sessionId: string): Promise<any> => {
-    const response = await secureFetch(`${API_BASE_URL}/chat/${sessionId}/approve_plan`, {
+    // Send the user's local date so the week starts exactly when they locked it
+    const clientDate = getLocalISODate();
+    const response = await secureFetch(`${API_BASE_URL}/chat/${sessionId}/approve_plan?client_date=${clientDate}`, {
         method: 'POST',
     });
 
