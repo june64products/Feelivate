@@ -567,21 +567,26 @@ export default function WorkspacePage() {
                         borderBottom: '1px solid var(--border-subtle)',
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button
-                                className={isSidebarCollapsed ? '' : 'hide-on-mobile'}
-                                onClick={() => setIsSidebarCollapsed(false)}
-                                style={{
-                                    width: '32px', height: '32px', borderRadius: '8px',
-                                    border: 'none', background: 'transparent',
-                                    color: 'var(--text-secondary)', cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    transition: 'color 0.15s',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                            >
-                                <PanelLeft size={18} />
-                            </button>
+                            {/* Mobile only: open the off-screen sidebar drawer (desktop
+                                uses the morphing logo toggle inside the sidebar itself). */}
+                            {isSidebarCollapsed && (
+                                <button
+                                    className="show-on-mobile"
+                                    onClick={() => setIsSidebarCollapsed(false)}
+                                    title="Open sidebar"
+                                    style={{
+                                        width: '32px', height: '32px', borderRadius: '8px',
+                                        border: 'none', background: 'transparent',
+                                        color: 'var(--text-secondary)', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        transition: 'color 0.15s',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                >
+                                    <PanelLeft size={18} />
+                                </button>
+                            )}
                             {/* Mobile: Weeks button */}
                             {isPlanApproved && activeSessionId && (
                                 <button

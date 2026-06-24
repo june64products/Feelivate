@@ -34,6 +34,9 @@ export default function SessionSidebar({
 }: SessionSidebarProps) {
     const [sessions, setSessions] = useState<SessionPreview[]>([]);
     const [loading, setLoading] = useState(true);
+    // Hovering anywhere over the sidebar morphs the Feelivate logo into the
+    // collapse/expand toggle (the only toggle — no separate button).
+    const [hovered, setHovered] = useState(false);
     const navItemsRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -77,32 +80,71 @@ export default function SessionSidebar({
         flexShrink: 0,
     };
 
+    // Feelivate logo that dynamically morphs into the sidebar toggle button when
+    // the cursor is over the sidebar; reverts to the logo when the cursor leaves.
+    // Clicking it opens/closes the sidebar. This is the ONLY collapse control.
+    const LogoToggle = () => (
+        <button
+            onClick={onToggleCollapse}
+            title={isCollapsed ? 'Open sidebar' : 'Close sidebar'}
+            aria-label={isCollapsed ? 'Open sidebar' : 'Close sidebar'}
+            style={{
+                position: 'relative',
+                width: '36px', height: '36px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: '9px', border: 'none', background: 'transparent',
+                cursor: 'pointer', flexShrink: 0, padding: 0,
+            }}
+        >
+            {/* Logo — visible by default, fades out on sidebar hover */}
+            <span style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: hovered ? 0 : 1,
+                transform: hovered ? 'scale(0.8)' : 'scale(1)',
+                transition: 'opacity 0.18s ease, transform 0.18s ease',
+                pointerEvents: 'none',
+            }}>
+                <Logo />
+            </span>
+            {/* Toggle icon — fades in on sidebar hover */}
+            <span style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'rgba(255,255,255,0.7)',
+                opacity: hovered ? 1 : 0,
+                transform: hovered ? 'scale(1)' : 'scale(0.8)',
+                transition: 'opacity 0.18s ease, transform 0.18s ease',
+                pointerEvents: 'none',
+            }}>
+                <PanelLeft size={18} />
+            </span>
+        </button>
+    );
+
     // Collapsed sidebar
     if (isCollapsed) {
         return (
-            <div style={{
-                width: '52px',
-                height: '100dvh',
-                background: '#111111',
-                borderRight: '1px solid rgba(255,255,255,0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                padding: '14px 0',
-                gap: '4px',
-                flexShrink: 0,
-                overflow: 'hidden',
-            }}>
-                {/* Logo — click to expand */}
-                <button
-                    onClick={onToggleCollapse}
-                    title="Expand sidebar"
-                    style={{ ...iconBtnBase, marginBottom: '10px' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                    <Logo />
-                </button>
+            <div
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+                style={{
+                    width: '52px',
+                    height: '100dvh',
+                    background: '#111111',
+                    borderRight: '1px solid rgba(255,255,255,0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: '14px 0',
+                    gap: '4px',
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                }}>
+                {/* Logo — morphs into the toggle on hover, click to expand */}
+                <div style={{ marginBottom: '10px' }}>
+                    <LogoToggle />
+                </div>
 
                 {/* New Chat */}
                 <button
@@ -143,45 +185,38 @@ export default function SessionSidebar({
 
     // Expanded sidebar
     return (
-        <div style={{
-            width: '260px',
-            height: '100dvh',
-            maxHeight: '100dvh',
-            background: '#111111',
-            borderRight: '1px solid rgba(255,255,255,0.05)',
-            display: 'flex',
-            flexDirection: 'column',
-            flexShrink: 0,
-            overflow: 'hidden',
-            fontFamily: satoshi,
-            transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
-            minHeight: 0,
-        }}>
-            {/* Header: Logo + FEELIVATE + Collapse */}
+        <div
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{
+                width: '260px',
+                height: '100dvh',
+                maxHeight: '100dvh',
+                background: '#111111',
+                borderRight: '1px solid rgba(255,255,255,0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                flexShrink: 0,
+                overflow: 'hidden',
+                fontFamily: satoshi,
+                transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+                minHeight: 0,
+            }}>
+            {/* Header: Logo (morphs into toggle on hover) + FEELIVATE */}
             <div className="sidebar-header" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                display: 'flex', alignItems: 'center',
+                gap: '8px',
                 padding: '16px 14px 12px',
                 flexShrink: 0,
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Logo />
-                    <span style={{
-                        fontWeight: 700, fontSize: '14px', color: '#f2f2f2',
-                        letterSpacing: '0.08em', fontFamily: clashDisplay,
-                        textTransform: 'uppercase',
-                    }}>
-                        Feelivate
-                    </span>
-                </div>
-                <button
-                    onClick={onToggleCollapse}
-                    title="Collapse sidebar"
-                    style={iconBtnBase}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#f2f2f2'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
-                >
-                    <PanelLeft size={16} />
-                </button>
+                <LogoToggle />
+                <span style={{
+                    fontWeight: 700, fontSize: '14px', color: '#f2f2f2',
+                    letterSpacing: '0.08em', fontFamily: clashDisplay,
+                    textTransform: 'uppercase',
+                }}>
+                    Feelivate
+                </span>
             </div>
 
             {/* New Chat pill button */}
