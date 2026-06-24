@@ -179,6 +179,10 @@ export default function SessionSidebar({
                         <BookOpen size={18} />
                     </button>
                 )}
+
+                {/* Push the streak indicator to the bottom of the rail */}
+                <div style={{ flex: 1 }} />
+                <StreakBar userId={userId} isPlanActive={isPlanActive} collapsed />
             </div>
         );
     }
