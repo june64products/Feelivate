@@ -573,9 +573,11 @@ async def chat(
                 logger.warning(f"Plan missing valid 'days' array — discarding: {plan_data.keys()}")
                 plan_data = None
 
-        # 6c. A week's plan MUST end on Sunday — never spill into the next Monday.
-        #     The model sometimes pads to 7 days (adding Monday); trim anything past the
-        #     upcoming Sunday so the plan only covers (today → this Sunday).
+        # 6c. A week's plan MUST end on Sunday, and its day labels MUST match the
+        #     real calendar. The model is unreliable at weekday math — it will label a
+        #     Wednesday start as "(MON)" and build a Mon–Fri plan. So we (1) figure out
+        #     this plan's true start date + length, (2) trim anything past the end, and
+        #     (3) overwrite every `day` string with the correct consecutive date.
         if plan_data and isinstance(plan_data, dict) and isinstance(plan_data.get("days"), list):
             try:
                 import datetime as _dt2
@@ -584,16 +586,48 @@ async def chat(
                     _gen_today = _dt2.datetime.now(_zi2.ZoneInfo(payload.timezone or "UTC")).date()
                 except Exception:
                     _gen_today = _dt2.date.today()
-                _max_days = 7 - _gen_today.weekday()  # today → upcoming Sunday (inclusive); Mon=7 … Sun=1
+
+                # Determine the plan's true start date + day-count.
+                #   • First plan (no stamped start yet) → starts TODAY (the lock day),
+                #     running today → this Sunday.
+                #   • Later weeks → start on their computed Monday block (week 2+) or
+                #     stamped start, via the session's week-bounds helper.
+                _plan_week = plan_data.get("week_number", 0)
+                _start_date = _gen_today
+                _max_days = 7 - _gen_today.weekday()  # today → upcoming Sunday (inclusive)
+                if session_rec.plan_start_date:
+                    try:
+                        _ws, _we, _dc = _week_bounds_for(session_rec, _plan_week)
+                        _start_date = _dt2.date.fromisoformat(_ws)
+                        _max_days = _dc
+                    except Exception as _be:
+                        logger.warning(f"week-bounds lookup failed, using today: {_be}")
+
                 _days = plan_data["days"]
                 if len(_days) > _max_days:
                     logger.info(
                         f"Trimming plan from {len(_days)} to {_max_days} days "
-                        f"(must end Sunday; gen day = {_gen_today.strftime('%a')})"
+                        f"(start {_start_date.strftime('%a %b %d')}, must end Sunday)"
                     )
-                    plan_data["days"] = _days[:_max_days]
+                    _days = _days[:_max_days]
+                    plan_data["days"] = _days
+
+                # Re-stamp each day's label with the correct CONSECUTIVE calendar date.
+                _bad_labels = []
+                for _i, _day in enumerate(_days):
+                    if isinstance(_day, dict):
+                        _correct = (_start_date + _dt2.timedelta(days=_i)).strftime("%b %d (%a)")
+                        _model_label = str(_day.get("day", "")).strip()
+                        if _model_label and _model_label.lower() != _correct.lower():
+                            _bad_labels.append(f"{_model_label!r}→{_correct!r}")
+                        _day["day"] = _correct
+                if _bad_labels:
+                    logger.info(
+                        f"Corrected {len(_bad_labels)} mislabeled plan day(s) "
+                        f"(start = {_start_date.strftime('%a')}): {', '.join(_bad_labels)}"
+                    )
             except Exception as e:
-                logger.warning(f"Plan Sunday-trim failed (non-fatal): {e}")
+                logger.warning(f"Plan day-label normalization failed (non-fatal): {e}")
 
         # 7. Save messages to DB
         user_msg = ChatMessage(session_id=session_id, role="user", content=message)
@@ -711,7 +745,7 @@ async def approve_plan(
         except Exception:
             plan_history = []
     
-    from datetime import date as _date
+    from datetime import date as _date, timedelta as _timedelta
     # Lock date in the user's local timezone (falls back to server date)
     if client_date:
         try:
@@ -725,6 +759,25 @@ async def approve_plan(
         approved_plan = json.loads(session_rec.week_plan_json)
         # Stamp the lock date so this week starts exactly when the user locked it
         approved_plan["start_date"] = today_iso
+
+        # Authoritative day-label fix: the lock date is the definitive start, so
+        # re-stamp every day with the correct consecutive calendar date (a plan
+        # locked on Wednesday must read Wed→Sun, not the model's mislabeled
+        # Mon→Fri). This guarantees the locked plan's weekdays are always correct,
+        # even if it was generated on a different day than it was locked.
+        try:
+            _ws, _we, _dc = _bounds_from_start(today_iso)
+            _lock_start = _date.fromisoformat(_ws)
+            _ap_days = approved_plan.get("days")
+            if isinstance(_ap_days, list):
+                if len(_ap_days) > _dc:
+                    _ap_days = _ap_days[:_dc]
+                    approved_plan["days"] = _ap_days
+                for _i, _d in enumerate(_ap_days):
+                    if isinstance(_d, dict):
+                        _d["day"] = (_lock_start + _timedelta(days=_i)).strftime("%b %d (%a)")
+        except Exception as _re:
+            logger.warning(f"Plan day-label re-stamp on approve failed (non-fatal): {_re}")
         # Save to history (replace if this week already exists, else append)
         existing_idx = next(
             (i for i, p in enumerate(plan_history)

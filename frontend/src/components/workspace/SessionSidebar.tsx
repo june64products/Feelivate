@@ -294,7 +294,8 @@ function SidebarNavItem({
     const hoverLabelRef = useRef<HTMLSpanElement>(null);
     const tlRef = useRef<gsap.core.Timeline | null>(null);
     const tweenRef = useRef<gsap.core.Tween | null>(null);
-    const layoutDoneRef = useRef(false);
+    const isHoveredRef = useRef(false);
+    const lastWidthRef = useRef(0);
 
     useEffect(() => {
         const pill = itemRef.current;
@@ -308,16 +309,20 @@ function SidebarNavItem({
             tweenRef.current?.kill();
             tlRef.current?.kill();
             tlRef.current = null;
-            layoutDoneRef.current = false;
+            isHoveredRef.current = false;
+            lastWidthRef.current = 0;
             gsap.set(circle, { scale: 0 });
             gsap.set(lbl, { x: 0 });
-            gsap.set(hover, { opacity: 0 });
+            gsap.set(hover, { x: 0, opacity: 0 });
             return;
         }
 
         const setup = () => {
             const { width: w, height: h } = pill.getBoundingClientRect();
             if (w === 0 || h === 0) return;
+            // Skip rebuilds that don't change the width (avoids hover flicker)
+            if (Math.abs(w - lastWidthRef.current) < 0.5 && tlRef.current) return;
+            lastWidthRef.current = w;
 
             // Compute circle radius large enough to cover the whole pill
             const R = ((h * h) / 4 + w * w) / (2 * w);
@@ -340,28 +345,34 @@ function SidebarNavItem({
             gsap.set(lbl, { x: 0 });
             gsap.set(hover, { x: -(w + 20), opacity: 0 });
 
+            tweenRef.current?.kill();
             tlRef.current?.kill();
             const tl = gsap.timeline({ paused: true });
             tl.to(circle, { scale: 1.2, duration: 0.7, ease: 'power3.out', overwrite: 'auto' }, 0);
             tl.to(lbl, { x: w + 20, duration: 0.5, ease: 'power3.out', overwrite: 'auto' }, 0);
             tl.to(hover, { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out', overwrite: 'auto' }, 0);
             tlRef.current = tl;
-            layoutDoneRef.current = true;
+
+            // If the pointer is already over the item while we re-measure
+            // (e.g. mid expand), snap to the hovered end-state so the freshly
+            // built timeline matches reality instead of resetting to rest.
+            if (isHoveredRef.current) tl.progress(1);
         };
 
-        // When expanding, wait for DOM to settle before measuring
-        const rafId = requestAnimationFrame(() => {
-            setup();
-        });
-        window.addEventListener('resize', setup);
+        // ResizeObserver re-measures as the sidebar's width transition plays
+        // AND once it settles at full width — so the slide distance is always
+        // correct, even after a collapse → re-expand.
+        const ro = new ResizeObserver(() => setup());
+        ro.observe(pill);
+        setup();
         document.fonts?.ready.then(setup).catch(() => {});
         return () => {
-            cancelAnimationFrame(rafId);
-            window.removeEventListener('resize', setup);
+            ro.disconnect();
         };
     }, [isCollapsed]);
 
     const handleEnter = () => {
+        isHoveredRef.current = true;
         const tl = tlRef.current;
         if (!tl) return;
         tweenRef.current?.kill();
@@ -369,6 +380,7 @@ function SidebarNavItem({
     };
 
     const handleLeave = () => {
+        isHoveredRef.current = false;
         const tl = tlRef.current;
         if (!tl) return;
         tweenRef.current?.kill();

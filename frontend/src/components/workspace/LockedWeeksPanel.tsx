@@ -58,6 +58,40 @@ function MiniAnalysis({ label, content }: { label: string; content: string }) {
     );
 }
 
+// Re-derive the weekday from the date so a plan saved with the model's bad
+// weekday math (e.g. "Jun 24 (Mon)" when Jun 24 is a Wednesday) still displays
+// the correct day. New plans are already corrected server-side; this just
+// repairs older locked plans at display time. No-op when the label is correct.
+const _MONTHS: Record<string, number> = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+function correctDayLabel(raw: string): string {
+    if (!raw) return raw;
+    const m = raw.match(/^\s*([A-Za-z]{3,9})\s+(\d{1,2})(?:,\s*(\d{4}))?/);
+    if (!m) return raw;
+    const mo = _MONTHS[m[1].slice(0, 3).toLowerCase()];
+    if (mo === undefined) return raw;
+    const dayNum = parseInt(m[2], 10);
+    let year = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
+    if (!m[3]) {
+        // No year in the string — pick the year that lands the date closest to
+        // today, so a Dec date viewed in Jan (or vice-versa) still resolves right.
+        const now = new Date().getTime();
+        let best = year, bestDiff = Infinity;
+        for (const y of [year - 1, year, year + 1]) {
+            const diff = Math.abs(new Date(y, mo, dayNum).getTime() - now);
+            if (diff < bestDiff) { bestDiff = diff; best = y; }
+        }
+        year = best;
+    }
+    const d = new Date(year, mo, dayNum);
+    if (isNaN(d.getTime())) return raw;
+    const wd = d.toLocaleDateString('en-US', { weekday: 'short' }); // "Wed"
+    const datePart = m[3] ? `${m[1]} ${m[2]}, ${m[3]}` : `${m[1]} ${m[2]}`;
+    return `${datePart} (${wd})`;
+}
+
 // ─── Week Plan day list — Swiss tabular matching PlanCard ─────────────────────
 function WeekPlanDays({ plan }: { plan: any }) {
     if (!plan?.days?.length) return null;
@@ -98,7 +132,7 @@ function WeekPlanDays({ plan }: { plan: any }) {
             <div style={{ background: 'var(--card-bg)', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
                 {plan.days.map((day: any, idx: number) => (
                     <div key={idx} style={{
-                        display: 'flex', gap: '0',
+                        display: 'flex', gap: '14px',
                         padding: '11px 16px',
                         borderBottom: idx < plan.days.length - 1 ? '1px solid var(--border-subtle)' : 'none',
                         background: idx % 2 === 1 ? 'var(--glass-surface)' : 'transparent',
@@ -107,13 +141,16 @@ function WeekPlanDays({ plan }: { plan: any }) {
                             fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)',
                             fontFamily: clashDisplay, letterSpacing: '0.04em',
                             textTransform: 'uppercase',
-                            minWidth: '70px', flexShrink: 0, paddingTop: '1px',
+                            minWidth: '80px', flexShrink: 0, paddingTop: '1px',
+                            whiteSpace: 'nowrap',
                         }}>
-                            {day.day}
+                            {correctDayLabel(day.day)}
                         </div>
                         <div style={{
+                            flex: 1, minWidth: 0,
                             fontSize: '12px', color: 'var(--text-secondary)',
                             lineHeight: '1.55', fontFamily: satoshi, fontWeight: 400,
+                            wordBreak: 'break-word',
                         }}>
                             {day.action}
                         </div>
