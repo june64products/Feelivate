@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
@@ -109,6 +109,14 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [showGooglePopup, setShowGooglePopup] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+
+  // Already logged in (token persists in localStorage across tabs/restarts)?
+  // Skip the login page and go straight to the workspace.
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    const uid = localStorage.getItem('user_id');
+    if (token && uid) navigate('/app', { replace: true });
+  }, [navigate]);
 
   const [formData, setFormData] = useState({ email: '', password: '', name: '' });
 

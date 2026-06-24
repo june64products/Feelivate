@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Paperclip, Mic, MicOff, ArrowUp, Loader2 } from 'lucide-react';
+import { Mic, MicOff, ArrowUp, Loader2 } from 'lucide-react';
 import { transcribeAudio } from '../../api';
 
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -150,31 +150,13 @@ export default function RadiantPromptInput({
                     boxShadow: 'var(--shadow-md)',
                 }}
             >
-                {/* Top row: Paperclip + Textarea */}
+                {/* Top row: Textarea */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'flex-start',
-                    padding: '12px 12px 4px 14px',
+                    padding: '12px 14px 4px 14px',
                     gap: '8px',
                 }}>
-                    {/* Paperclip */}
-                    <button
-                        type="button"
-                        disabled={disabled}
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: '28px', height: '28px', borderRadius: '7px',
-                            background: 'transparent', border: 'none',
-                            color: 'var(--text-muted)', cursor: disabled ? 'not-allowed' : 'pointer',
-                            transition: 'color 0.15s', flexShrink: 0, marginTop: '2px',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
-                        aria-label="Add attachment"
-                    >
-                        <Paperclip size={17} />
-                    </button>
-
                     {/* Textarea — Swiss style */}
                     <textarea
                         ref={textareaRef}
