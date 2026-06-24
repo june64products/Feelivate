@@ -997,11 +997,22 @@ async def login(req: LoginRequest, db: DBSession = Depends(get_db)):
         
     access_token = create_access_token(data={"sub": user.id})
     return {
-        "message": "Login successful", 
-        "user_id": user.id, 
+        "message": "Login successful",
+        "user_id": user.id,
         "name": user.name,
         "access_token": access_token,
         "token_type": "bearer"
+    }
+
+
+@app.get("/me", tags=["auth"])
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Return the authenticated user's profile — name, email, and join date."""
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
     }
 
 

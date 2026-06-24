@@ -184,8 +184,10 @@ const Navbar = () => {
     }, []);
 
     const handleLogout = () => {
+        localStorage.removeItem('access_token');
         localStorage.removeItem('user_id');
         localStorage.removeItem('user_name');
+        localStorage.removeItem('active_session_id');
         setUserId(null);
         navigate('/');
         setIsMobileMenuOpen(false);

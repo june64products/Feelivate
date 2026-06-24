@@ -129,6 +129,22 @@ export const login = async (data: { email: string; password: string }) => {
     return result;
 };
 
+export interface UserProfile {
+    id: string;
+    name: string | null;
+    email: string;
+    created_at: string;
+}
+
+/** Fetch the authenticated user's profile (name, email, join date). */
+export const getMe = async (): Promise<UserProfile> => {
+    const response = await secureFetch(`${API_BASE_URL}/me`, { method: 'GET' });
+    if (!response.ok) {
+        throw new Error(`Failed to load profile: ${response.statusText}`);
+    }
+    return response.json();
+};
+
 export const signup = async (data: { email: string; password: string; name?: string }) => {
     const response = await fetch(`${API_BASE_URL}/signup`, {
         method: 'POST',

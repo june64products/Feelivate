@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Paperclip, Mic, MicOff, ArrowUp, Loader2, SlidersHorizontal, X } from 'lucide-react';
+import { Paperclip, Mic, MicOff, ArrowUp, Loader2 } from 'lucide-react';
 import { transcribeAudio } from '../../api';
 
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -29,8 +29,6 @@ export default function RadiantPromptInput({
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [micError, setMicError] = useState<string | null>(null);
-    const [showModels, setShowModels] = useState(false);
-    const [selectedModel, setSelectedModel] = useState('Groq Llama 3.3');
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -219,96 +217,8 @@ export default function RadiantPromptInput({
                     padding: '6px 10px 10px 12px',
                     position: 'relative',
                 }}>
-                    {/* Left: Model settings popup trigger */}
-                    <div style={{ position: 'relative' }}>
-                        <button
-                            type="button"
-                            disabled={disabled}
-                            onClick={() => setShowModels(prev => !prev)}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: '6px',
-                                padding: '4px 10px', borderRadius: '8px',
-                                background: showModels ? 'var(--btn-hover-bg)' : 'transparent',
-                                border: '1px solid transparent',
-                                color: 'var(--text-muted)', cursor: disabled ? 'not-allowed' : 'pointer',
-                                fontSize: '12.5px', fontWeight: 500,
-                                transition: 'all 0.15s', userSelect: 'none',
-                                fontFamily: satoshi,
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!showModels) e.currentTarget.style.background = 'var(--glass-hover)';
-                                e.currentTarget.style.color = 'var(--text-secondary)';
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!showModels) e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.color = showModels ? 'var(--text-secondary)' : 'var(--text-muted)';
-                            }}
-                            aria-label="Select model"
-                        >
-                            <SlidersHorizontal size={14} />
-                            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{selectedModel}</span>
-                        </button>
-
-                        {/* Model popup — Swiss */}
-                        {showModels && (
-                            <div style={{
-                                position: 'absolute', bottom: 'calc(100% + 10px)', left: 0,
-                                background: 'var(--card-bg)',
-                                border: '1px solid var(--border-medium)',
-                                borderRadius: '14px', padding: '8px',
-                                width: '220px', boxShadow: 'var(--shadow-lg)',
-                                zIndex: 100,
-                            }}>
-                                <div style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '6px 8px 10px', borderBottom: '1px solid var(--border-subtle)',
-                                    marginBottom: '4px',
-                                }}>
-                                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                                        Model
-                                    </span>
-                                    <button
-                                        onClick={() => setShowModels(false)}
-                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
-                                    >
-                                        <X size={13} />
-                                    </button>
-                                </div>
-                                {[
-                                    { name: 'Groq Llama 3.3', tag: 'Fast', color: 'var(--text-primary)' },
-                                    { name: 'GPT-4o Mini', tag: 'Balanced', color: 'var(--text-secondary)' },
-                                    { name: 'OSS 120B', tag: 'Deep', color: 'var(--accent-warm)' },
-                                ].map((m) => (
-                                    <button
-                                        key={m.name}
-                                        onClick={() => { setSelectedModel(m.name); setShowModels(false); }}
-                                        style={{
-                                            width: '100%', display: 'flex', alignItems: 'center',
-                                            justifyContent: 'space-between', padding: '9px 10px',
-                                            borderRadius: '9px', border: 'none',
-                                            background: selectedModel === m.name ? 'var(--btn-hover-bg)' : 'transparent',
-                                            color: selectedModel === m.name ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                            cursor: 'pointer', fontSize: '13px', fontWeight: 500,
-                                            fontFamily: satoshi,
-                                            transition: 'all 0.12s',
-                                        }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-hover)'; }}
-                                        onMouseLeave={e => { if (selectedModel !== m.name) e.currentTarget.style.background = 'transparent'; }}
-                                    >
-                                        {m.name}
-                                        <span style={{
-                                            fontSize: '10px', fontWeight: 700, color: m.color,
-                                            background: 'var(--glass-surface)', padding: '2px 7px',
-                                            borderRadius: '6px', letterSpacing: '0.04em',
-                                            textTransform: 'uppercase',
-                                        }}>
-                                            {m.tag}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    {/* Left spacer — keeps Mic/Send right-aligned */}
+                    <div />
 
                     {/* Right: Mic error + Mic + Send */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

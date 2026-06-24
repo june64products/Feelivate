@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Calendar, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import { useWindowSize } from '../../hooks/useWindowSize';
+import ConfirmDialog from '../workspace/ConfirmDialog';
 
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -29,6 +30,7 @@ interface PlanCardProps {
 export default function PlanCard({ plan, onApprove, onRequestChange, isApproved }: PlanCardProps) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [approveAnimation, setApproveAnimation] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
     const { isMobile } = useWindowSize();
 
     const handleApprove = () => {
@@ -86,6 +88,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
 
     // Full plan card — Swiss Tabular Layout
     return (
+        <>
         <motion.div
             className={approveAnimation ? 'plan-float-up' : 'plan-slide-in'}
             style={{
@@ -183,7 +186,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                 gap: '10px',
             }}>
                 <button
-                    onClick={handleApprove}
+                    onClick={() => setShowConfirm(true)}
                     style={{
                         flex: 1,
                         display: 'flex',
@@ -261,5 +264,17 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                 )}
             </AnimatePresence>
         </motion.div>
+
+        {showConfirm && (
+            <ConfirmDialog
+                title="Lock this week's plan?"
+                message="Once you lock it, this week's plan can't be changed until the week ends. Ready to commit?"
+                confirmLabel="Yes, lock it"
+                cancelLabel="Not yet"
+                onConfirm={() => { setShowConfirm(false); handleApprove(); }}
+                onCancel={() => setShowConfirm(false)}
+            />
+        )}
+        </>
     );
 }

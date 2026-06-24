@@ -26,6 +26,7 @@ import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
 import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
+import ProfileMenu from '../components/workspace/ProfileMenu';
 import PillNav from '../components/PillNav';
 import type { PillNavItem } from '../components/PillNav';
 
@@ -104,6 +105,7 @@ export default function WorkspacePage() {
 
     // Calendar sync states
     const [showCalendarModal, setShowCalendarModal] = useState(false);
+    const [showCalendarMaintenance, setShowCalendarMaintenance] = useState(false);
     const [preferredTime, setPreferredTime] = useState("08:00");
     const [syncLoading, setSyncLoading] = useState(false);
     const [syncMessage, setSyncMessage] = useState("");
@@ -610,7 +612,7 @@ export default function WorkspacePage() {
                             <div className="hide-on-mobile">
                             {isPlanApproved && (() => {
                                 const items: PillNavItem[] = [
-                                    { label: 'Calendar', onClick: () => setShowCalendarModal(true) },
+                                    { label: 'Calendar', onClick: () => setShowCalendarMaintenance(true) },
                                     { label: 'Alerts', onClick: handleOpenEmailModal },
                                 ];
                                 return (
@@ -679,19 +681,7 @@ export default function WorkspacePage() {
                                 </button>
                             )}
 
-                            <div
-                                className="user-avatar"
-                                onClick={handleLogout}
-                                title="Logout"
-                            >
-                                {(() => {
-                                    const name = localStorage.getItem('user_name') || '';
-                                    const parts = name.trim().split(' ');
-                                    const first = parts[0]?.[0]?.toUpperCase() || '';
-                                    const last = parts.length > 1 ? parts[parts.length - 1][0]?.toUpperCase() : '';
-                                    return first + last || 'U';
-                                })()}
-                            </div>
+                            <ProfileMenu onLogout={handleLogout} />
                         </div>
                     </div>
 
@@ -1337,6 +1327,76 @@ export default function WorkspacePage() {
                                     }}
                                 >
                                     {syncLoading ? "Syncing..." : "Sync Now"}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Calendar — under maintenance popup */}
+            <AnimatePresence>
+                {showCalendarMaintenance && (
+                    <div style={{
+                        position: 'fixed', inset: 0,
+                        background: 'var(--modal-overlay)',
+                        backdropFilter: 'blur(12px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 1000, padding: '20px',
+                    }}>
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+                            style={{
+                                width: '100%', maxWidth: '380px',
+                                background: 'var(--modal-bg)',
+                                border: '1px solid var(--modal-border)',
+                                borderRadius: '20px', padding: '24px',
+                                boxShadow: 'var(--shadow-lg)',
+                                fontFamily: "'Satoshi', 'Inter', sans-serif",
+                            }}
+                        >
+                            <div style={{
+                                width: '40px', height: '40px', borderRadius: '12px',
+                                background: 'var(--glass-surface)', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', marginBottom: '14px',
+                            }}>
+                                <Clock size={18} style={{ color: 'var(--text-secondary)' }} />
+                            </div>
+                            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
+                                Calendar is under maintenance
+                            </h3>
+                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '20px' }}>
+                                Calendar sync is temporarily unavailable. Use the app's daily alerts instead to get reminded each day — tap the Alerts button to set them up.
+                            </p>
+                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                <button
+                                    onClick={() => setShowCalendarMaintenance(false)}
+                                    style={{
+                                        padding: '8px 16px', borderRadius: '100px',
+                                        border: '1px solid var(--border-medium)', background: 'transparent',
+                                        color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
+                                    }}
+                                >
+                                    Got it
+                                </button>
+                                <button
+                                    onClick={() => { setShowCalendarMaintenance(false); handleOpenEmailModal(); }}
+                                    style={{
+                                        padding: '8px 16px', borderRadius: '100px',
+                                        border: 'none', background: 'var(--btn-primary-bg)',
+                                        color: 'var(--btn-primary-text)', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
+                                    }}
+                                >
+                                    <Bell size={13} />
+                                    Open Alerts
                                 </button>
                             </div>
                         </motion.div>
