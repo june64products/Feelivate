@@ -2,7 +2,7 @@
 email_service.py — Feelivate Email Service
 - OTP verification emails
 - AI-generated personalized daily task emails (startup quality design)
-- Daily scheduler (APScheduler, every minute, sends at user's preferred IST time)
+- Daily scheduler (APScheduler, every minute, sends at each user's preferred time in THEIR timezone)
 """
 
 import os
@@ -20,7 +20,6 @@ from loguru import logger
 resend.api_key = os.getenv("RESEND_API_KEY", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "onboarding@resend.dev")
 APP_URL = os.getenv("APP_URL", "https://emotion-time-travel-brlz.vercel.app")
-IST = pytz.timezone("Asia/Kolkata")
 
 # Monday=0 ... Sunday=6
 DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -183,12 +182,18 @@ def send_daily_task_email(
     session_focus: str,
     week_theme: str = "",
     week_label: str = "",    # e.g. "Jun 5 – Jun 11"
+    user_timezone: str = "UTC",
 ) -> bool:
     if not resend.api_key:
         logger.error("RESEND_API_KEY not set.")
         return False
 
-    today_str = datetime.now(IST).strftime("%A, %B %d, %Y")
+    # Date shown in the email = the recipient's local date (not hardcoded IST).
+    try:
+        _disp_tz = pytz.timezone(user_timezone)
+    except Exception:
+        _disp_tz = pytz.utc
+    today_str = datetime.now(_disp_tz).strftime("%A, %B %d, %Y")
     ai = _generate_ai_daily_content(user_name, day_label, task_title, task_description, session_focus)
 
     how_to_html = _bullets_to_html(ai["how_to"], "#d4d4d8", "&#8594;", "#a855f7", "14px")
@@ -381,11 +386,18 @@ def get_today_task_for_user(user, db):
         if not days:
             return None
 
-        now_ist       = datetime.now(IST)
-        today         = now_ist.date()
-        today_idx     = now_ist.weekday()
-        today_name    = now_ist.strftime("%A").lower()   # "thursday"
-        today_short   = now_ist.strftime("%a").lower()   # "thu"
+        # Use the user's OWN timezone so the correct day's task is picked
+        # worldwide (was hardcoded to IST). Falls back to UTC, not India.
+        _tz_str = getattr(user, "preferred_notification_timezone", None) or "UTC"
+        try:
+            _user_tz = pytz.timezone(_tz_str)
+        except Exception:
+            _user_tz = pytz.utc
+        now_local     = datetime.now(_user_tz)
+        today         = now_local.date()
+        today_idx     = now_local.weekday()
+        today_name    = now_local.strftime("%A").lower()   # "thursday"
+        today_short   = now_local.strftime("%a").lower()   # "thu"
         ref_year      = today.year
 
         # ── PAUSE logic: check if today is within plan date range ────────────
@@ -477,13 +489,13 @@ def run_daily_email_scheduler():
         sent_count = 0
         for user in users:
             try:
-                # Resolve user's timezone (fallback: IST)
-                tz_str = user.preferred_notification_timezone or "Asia/Kolkata"
+                # Resolve user's timezone (neutral fallback: UTC, not India)
+                tz_str = user.preferred_notification_timezone or "UTC"
                 try:
                     user_tz = pytz.timezone(tz_str)
                 except Exception:
-                    user_tz = IST
-                    tz_str = "Asia/Kolkata"
+                    user_tz = pytz.utc
+                    tz_str = "UTC"
 
                 # Current HH:MM in user's local timezone
                 now_local      = now_utc.astimezone(user_tz)
@@ -518,6 +530,7 @@ def run_daily_email_scheduler():
                     week_label=task_info.get("week_label", ""),
                     session_focus=task_info["session_focus"],
                     week_theme=task_info["week_theme"],
+                    user_timezone=tz_str,
                 )
 
                 if success:

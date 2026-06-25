@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getStreak, submitCheckin, backfillStreak, type StreakData } from '../../api';
+import { getStreak, submitCheckin, backfillStreak, getLocalISODate, type StreakData } from '../../api';
 import { Flame, Check, TrendingUp } from 'lucide-react';
 
 interface StreakBarProps {
@@ -43,7 +43,9 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false }: S
     const [todayStatus, setTodayStatus] = useState<'pending' | 'done' | 'skipped'>('pending');
     const [showCelebration, setShowCelebration] = useState(false);
 
-    const today = new Date().toISOString().split('T')[0];
+    // Local date (matches the client_date the backend uses for streak boundaries) —
+    // not toISOString() which is UTC and can be a day off near midnight.
+    const today = getLocalISODate();
 
     useEffect(() => {
         if (!userId || !isPlanActive) return;

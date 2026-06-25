@@ -38,7 +38,7 @@ from contextlib import asynccontextmanager
 # ── APScheduler (optional — server starts even if not installed) ─────────────
 try:
     from apscheduler.schedulers.background import BackgroundScheduler
-    _scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+    _scheduler = BackgroundScheduler(timezone="UTC")
     _SCHEDULER_AVAILABLE = True
 except ImportError:
     _scheduler = None
@@ -1124,7 +1124,7 @@ class VerifyEmailOTPRequest(BaseModel):
     code: str
     session_id: Optional[str] = None
     preferred_time: str = "08:00"          # HH:MM in user's local timezone
-    preferred_timezone: str = "Asia/Kolkata"  # IANA timezone string
+    preferred_timezone: str = "UTC"  # IANA timezone string (overridden by the browser's tz)
 
 class StopEmailNotificationRequest(BaseModel):
     user_id: str
@@ -1132,7 +1132,7 @@ class StopEmailNotificationRequest(BaseModel):
 class UpdateNotificationTimeRequest(BaseModel):
     user_id: str
     preferred_time: str                       # HH:MM in user's local timezone
-    preferred_timezone: str = "Asia/Kolkata"  # IANA timezone string
+    preferred_timezone: str = "UTC"  # IANA timezone string (overridden by the browser's tz)
 
 
 @app.post("/notifications/email/send-otp", tags=["notifications"])
@@ -1212,7 +1212,7 @@ async def verify_email_otp(
         _pytz.timezone(tz)
         user.preferred_notification_timezone = tz
     except Exception:
-        user.preferred_notification_timezone = "Asia/Kolkata"
+        user.preferred_notification_timezone = "UTC"
     db.commit()
 
     return {
@@ -1260,7 +1260,7 @@ async def get_email_notification_status(
         "enabled": bool(user.email_notifications_enabled),
         "notification_email": user.notification_email,
         "preferred_time": user.preferred_notification_time or "08:00",
-        "preferred_timezone": user.preferred_notification_timezone or "Asia/Kolkata",
+        "preferred_timezone": user.preferred_notification_timezone or "UTC",
     }
 
 
@@ -1287,7 +1287,7 @@ async def update_notification_time(
         _pytz.timezone(tz)
         user.preferred_notification_timezone = tz
     except Exception:
-        user.preferred_notification_timezone = "Asia/Kolkata"
+        user.preferred_notification_timezone = "UTC"
     db.commit()
     return {
         "message": f"Notification time updated to {pt} ({user.preferred_notification_timezone}).",

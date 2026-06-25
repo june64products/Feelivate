@@ -25,6 +25,7 @@ export default function ProfileMenu({ onLogout }: { onLogout: () => void }) {
 
     const name = profile?.name || localStorage.getItem('user_name') || 'User';
     const initials = getInitials(name);
+    // Keep the month name in English (user preference), e.g. "June 2026".
     const joined = profile?.created_at
         ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
         : null;

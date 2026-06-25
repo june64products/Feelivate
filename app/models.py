@@ -26,7 +26,7 @@ class User(Base):
     email_otp_code = Column(String, nullable=True)
     email_otp_expiry = Column(DateTime, nullable=True)
     preferred_notification_time = Column(String, default="08:00")        # HH:MM in user's local timezone
-    preferred_notification_timezone = Column(String, default="Asia/Kolkata")  # IANA timezone string
+    preferred_notification_timezone = Column(String, default="UTC")  # IANA timezone string (set from the user's browser on subscribe)
     last_daily_email_date = Column(String, nullable=True)  # ISO date of last sent email
 
 class Session(Base):

@@ -268,7 +268,7 @@ export const verifyEmailOTP = async (userId: string, email: string, code: string
             code,
             session_id: sessionId,
             preferred_time: preferredTime || '08:00',
-            preferred_timezone: preferredTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+            preferred_timezone: preferredTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
         }),
     });
     if (!response.ok) {
@@ -284,7 +284,7 @@ export const updateNotificationTime = async (userId: string, preferredTime: stri
         body: JSON.stringify({
             user_id: userId,
             preferred_time: preferredTime,
-            preferred_timezone: preferredTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+            preferred_timezone: preferredTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
         }),
     });
     if (!response.ok) {
