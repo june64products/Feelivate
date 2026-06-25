@@ -27,6 +27,7 @@ import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 import ProfileMenu from '../components/workspace/ProfileMenu';
+import OnboardingTour from '../components/onboarding/OnboardingTour';
 import PillNav from '../components/PillNav';
 import type { PillNavItem } from '../components/PillNav';
 
@@ -474,6 +475,14 @@ export default function WorkspacePage() {
             fontFamily: 'var(--font-sans)',
             overflow: 'hidden',
         }}>
+            {/* First-time guided walkthrough (renders once for new accounts) */}
+            <OnboardingTour
+                userId={userId}
+                isEmptyState={isEmptyState && view === 'chat'}
+                onOpenSidebar={() => setIsSidebarCollapsed(false)}
+                onNewChat={() => { handleNewChat(); setView('chat'); }}
+            />
+
             {/* Sidebar Overlay Backdrop for Mobile */}
             {!isSidebarCollapsed && (
                 <div
@@ -591,6 +600,7 @@ export default function WorkspacePage() {
                             {isPlanApproved && activeSessionId && (
                                 <button
                                     id="mobile-weeks-btn"
+                                    data-tour="week-panel"
                                     className="show-on-mobile"
                                     onClick={() => window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'))}
                                     style={{
@@ -614,7 +624,7 @@ export default function WorkspacePage() {
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             {/* PillNav strip for header buttons — desktop only */}
-                            <div className="hide-on-mobile">
+                            <div className="hide-on-mobile" data-tour="alerts-button">
                             {isPlanApproved && (() => {
                                 const items: PillNavItem[] = [
                                     { label: 'Calendar', onClick: () => setShowCalendarMaintenance(true) },
@@ -639,6 +649,7 @@ export default function WorkspacePage() {
                             {isPlanApproved && (
                                 <button
                                     className="show-on-mobile"
+                                    data-tour="alerts-button"
                                     onClick={handleOpenEmailModal}
                                     style={{
                                         width: '32px', height: '32px', borderRadius: '8px',

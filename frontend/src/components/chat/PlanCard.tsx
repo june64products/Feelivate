@@ -178,7 +178,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
             </div>
 
             {/* Actions — Swiss pill buttons */}
-            <div style={{
+            <div data-tour="plan-actions" style={{
                 padding: '16px 24px 20px',
                 borderTop: '1px solid var(--border-subtle)',
                 display: 'flex',
@@ -186,6 +186,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                 gap: '10px',
             }}>
                 <button
+                    data-tour="lets-go"
                     onClick={() => setShowConfirm(true)}
                     style={{
                         flex: 1,
@@ -213,6 +214,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
                     Let's go
                 </button>
                 <button
+                    data-tour="tweak"
                     onClick={() => onRequestChange("I want to change something in this plan")}
                     style={{
                         padding: '12px 20px',

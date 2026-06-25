@@ -129,6 +129,7 @@ export default function RadiantPromptInput({
 
     return (
         <div
+            data-tour="chat-input"
             style={{
                 maxWidth: '780px',
                 margin: '0 auto',
@@ -213,6 +214,7 @@ export default function RadiantPromptInput({
                         {/* Mic button */}
                         <button
                             type="button"
+                            data-tour="mic-button"
                             onClick={handleMicClick}
                             disabled={disabled || isTranscribing}
                             title={isRecording ? "Stop recording" : "Voice input"}

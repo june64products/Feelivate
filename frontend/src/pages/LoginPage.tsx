@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { login, signup } from '../api';
+import { startOnboarding } from '../lib/onboarding';
 import PillNav from '../components/PillNav';
 import { useWindowSize } from '../hooks/useWindowSize';
 
@@ -137,6 +138,8 @@ export default function LoginPage() {
         const res = await signup({ email: formData.email, password: formData.password, name: formData.name });
         localStorage.setItem('user_id', res.user_id);
         localStorage.setItem('user_name', formData.name || res.name || formData.email.split('@')[0]);
+        // Brand-new account → queue the first-time walkthrough (runs once on /app).
+        startOnboarding(res.user_id);
         navigate('/app');
       }
     } catch (err: any) {

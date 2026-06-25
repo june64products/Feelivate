@@ -131,6 +131,7 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false }: S
     if (collapsed) {
         return (
             <div
+                data-tour="streak"
                 title={`${currentStreak}-day streak · ${isDoneToday ? 'Done for today' : 'Goal pending today'}`}
                 style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
@@ -182,7 +183,7 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false }: S
     const weekFrac = doneThisWeek / 7;
 
     return (
-        <div style={{
+        <div data-tour="streak" style={{
             padding: '14px 14px 16px',
             borderTop: '1px solid rgba(255,255,255,0.05)',
             flexShrink: 0,

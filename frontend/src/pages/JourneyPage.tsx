@@ -1330,6 +1330,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                     {(['overview', 'archive'] as const).map(tab => (
                         <button
                             key={tab}
+                            data-tour={tab === 'archive' ? 'archive-tab' : undefined}
                             onClick={() => tab === 'archive' ? handleArchiveTab() : setActiveTab('overview')}
                             style={{
                                 padding: '5px 14px', borderRadius: '7px', border: 'none',
@@ -1392,7 +1393,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     )}
                                 </div>
 
-                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: justSaved ? '16px' : '0' }}>
+                                <div data-tour="journey-mic" style={{ display: 'flex', justifyContent: 'center', marginBottom: justSaved ? '16px' : '0' }}>
                                     <AnimatePresence mode="wait">
                                         {isUploading ? (
                                             <motion.div key="uploading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}

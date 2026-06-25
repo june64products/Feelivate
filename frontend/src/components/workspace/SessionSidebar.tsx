@@ -85,6 +85,7 @@ export default function SessionSidebar({
     // Clicking it opens/closes the sidebar. This is the ONLY collapse control.
     const LogoToggle = () => (
         <button
+            data-tour="logo-toggle"
             onClick={onToggleCollapse}
             title={isCollapsed ? 'Open sidebar' : 'Close sidebar'}
             aria-label={isCollapsed ? 'Open sidebar' : 'Close sidebar'}
@@ -170,6 +171,7 @@ export default function SessionSidebar({
                 {/* My Journey — only when plan is active */}
                 {isPlanActive && (
                     <button
+                        data-tour="journey-nav"
                         onClick={onJourney}
                         title="My Journey"
                         style={iconBtnBase}
@@ -247,7 +249,7 @@ export default function SessionSidebar({
             <div ref={navItemsRef} style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: '1px', flexShrink: 0 }}>
                 <SidebarNavItem icon={<Clock size={15} />} label="History" isCollapsed={isCollapsed} />
                 {isPlanActive && (
-                    <SidebarNavItem icon={<BookOpen size={15} />} label="My Journey" onClick={onJourney} isCollapsed={isCollapsed} />
+                    <SidebarNavItem icon={<BookOpen size={15} />} label="My Journey" onClick={onJourney} isCollapsed={isCollapsed} dataTour="journey-nav" />
                 )}
             </div>
 
@@ -325,8 +327,8 @@ export default function SessionSidebar({
 
 /* ── Sidebar Nav Item with GSAP vertical rising-circle animation ──────── */
 function SidebarNavItem({
-    icon, label, onClick, isCollapsed,
-}: { icon: React.ReactNode; label: string; onClick?: () => void; isCollapsed?: boolean }) {
+    icon, label, onClick, isCollapsed, dataTour,
+}: { icon: React.ReactNode; label: string; onClick?: () => void; isCollapsed?: boolean; dataTour?: string }) {
     const itemRef = useRef<HTMLButtonElement>(null);
     const circleRef = useRef<HTMLSpanElement>(null);
     const labelRef = useRef<HTMLSpanElement>(null);
@@ -429,6 +431,7 @@ function SidebarNavItem({
     return (
         <button
             ref={itemRef}
+            data-tour={dataTour}
             className="sb-nav-item"
             onClick={onClick}
             onMouseEnter={handleEnter}

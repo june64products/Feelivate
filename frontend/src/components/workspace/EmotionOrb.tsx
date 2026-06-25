@@ -163,6 +163,7 @@ export default function EmotionOrb({ emotion, onClick }: EmotionOrbProps) {
                 transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                 title={`Today: ${label} (${score}/10) — ${emotion.one_liner}\n\nDrag me anywhere!`}
                 className="emotion-orb-wrapper"
+                data-tour="emotion-orb"
             >
                 {/* Outer glow ring */}
                 <motion.div

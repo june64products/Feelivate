@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut } from 'lucide-react';
+import { LogOut, HelpCircle } from 'lucide-react';
 import { getMe, type UserProfile } from '../../api';
 
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -97,6 +97,27 @@ export default function ProfileMenu({ onLogout }: { onLogout: () => void }) {
                                     {joined ? `Joined ${joined}` : 'Member'}
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Replay walkthrough */}
+                        <div style={{ padding: '8px 8px 0' }}>
+                            <button
+                                onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('feelivate-replay-tour')); }}
+                                style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                                    padding: '10px 12px', borderRadius: '10px',
+                                    border: '1px solid var(--border-subtle)',
+                                    background: 'transparent', color: 'var(--text-secondary)',
+                                    cursor: 'pointer', fontSize: '12px', fontWeight: 700,
+                                    fontFamily: satoshi, letterSpacing: '0.04em', textTransform: 'uppercase',
+                                    transition: 'background 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--btn-hover-bg)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                                <HelpCircle size={14} />
+                                Replay tutorial
+                            </button>
                         </div>
 
                         {/* Logout */}
