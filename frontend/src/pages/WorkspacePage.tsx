@@ -880,6 +880,7 @@ export default function WorkspacePage() {
                                     onApprovePlan={demoMode ? () => demoHandles.setPlanApproved(true) : handleApprovePlan}
                                     onRequestPlanChange={demoMode ? () => {} : handleRequestPlanChange}
                                     isPlanApproved={uiIsPlanApproved}
+                                    demoMode={demoMode}
                                 />
                             </motion.div>
                         )}

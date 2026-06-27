@@ -83,6 +83,29 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         }
     };
 
+    // Gentle, eased scroll to the bottom of the chat. Used after the demo types a
+    // plan so the user can READ the message before the long plan slowly scrolls in
+    // (instead of the view snapping to the bottom instantly).
+    const slowScrollChat = (duration: number, token: number) => {
+        const el = document.querySelector('.chat-messages-area') as HTMLElement | null;
+        if (!el) return;
+        const start = el.scrollTop;
+        const target = Math.max(0, el.scrollHeight - el.clientHeight);
+        if (target - start < 8) return;
+        const t0 = performance.now();
+        const step = () => {
+            if (cancelledRef.current || navTokenRef.current !== token || fastForwardRef.current) {
+                el.scrollTop = target; // interrupted / fast-forwarded → jump to the end
+                return;
+            }
+            const p = Math.min(1, (performance.now() - t0) / duration);
+            const ease = 1 - Math.pow(1 - p, 3); // ease-out cubic
+            el.scrollTop = start + (target - start) * ease;
+            if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+    };
+
     const goToStep = useCallback(async (idx: number, animate: boolean) => {
         const token = ++navTokenRef.current;
         const step = DEMO_STEPS[idx];
@@ -119,6 +142,9 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
             if (navTokenRef.current !== token) return;
             h.setMessages([...head, { ...last, content: '' }]);
             await typeOut(last.content, token);
+            // Let the user read the typed message, THEN slowly reveal the plan below.
+            await wait(600, token);
+            if (navTokenRef.current === token) slowScrollChat(2400, token);
         } else {
             h.setMessages(built);
         }

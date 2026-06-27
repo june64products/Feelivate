@@ -18,6 +18,8 @@ interface ChatWindowProps {
     onApprovePlan: () => void;
     onRequestPlanChange: (feedback: string) => void;
     isPlanApproved: boolean;
+    /** Guided demo controls its own gentle scrolling — skip the snap auto-scroll. */
+    demoMode?: boolean;
 }
 
 export default function ChatWindow({
@@ -26,6 +28,7 @@ export default function ChatWindow({
     onApprovePlan,
     onRequestPlanChange,
     isPlanApproved,
+    demoMode = false,
 }: ChatWindowProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -35,8 +38,9 @@ export default function ChatWindow({
     // during the guided demo typewriter), not only when a whole message is added.
     const lastLen = messages.length ? (messages[messages.length - 1].content?.length ?? 0) : 0;
     useEffect(() => {
+        if (demoMode) return; // the guided demo drives its own slow, delayed scroll
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages.length, isLoading, lastLen]);
+    }, [messages.length, isLoading, lastLen, demoMode]);
 
     // Empty state
     if (messages.length === 0 && !isLoading) {
