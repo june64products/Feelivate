@@ -83,25 +83,23 @@ interface SpotlightOverlayProps {
     preferredPlacement?: Placement;
     cardRef: React.RefObject<HTMLDivElement | null>;
     cardH: number;
+    /** On phones the card becomes a full-width sheet pinned away from the target. */
+    isMobile?: boolean;
     children: React.ReactNode;
 }
 
 /** Renders the dim overlay, the pulsing ring, a click-blocker, and the card. */
-export function SpotlightOverlay({ rect, preferredPlacement = 'auto', cardRef, cardH, children }: SpotlightOverlayProps) {
+export function SpotlightOverlay({ rect, preferredPlacement = 'auto', cardRef, cardH, isMobile = false, children }: SpotlightOverlayProps) {
     const dim = 'rgba(15,15,18,0.55)';
 
-    let cardStyle: React.CSSProperties;
-    let hole: React.ReactNode = null;
+    let hole: React.ReactNode;
     let ring: React.ReactNode = null;
 
     if (rect) {
-        const placement = resolvePlacement(rect, preferredPlacement, cardH);
-        const pos = cardPosition(rect, placement, cardH);
         const holeTop = rect.top - RING_PAD;
         const holeLeft = rect.left - RING_PAD;
         const holeW = rect.width + RING_PAD * 2;
         const holeH = rect.height + RING_PAD * 2;
-
         hole = (
             <>
                 <div style={{ position: 'fixed', left: 0, top: 0, width: '100%', height: Math.max(0, holeTop), background: dim, pointerEvents: 'none' }} />
@@ -119,9 +117,28 @@ export function SpotlightOverlay({ rect, preferredPlacement = 'auto', cardRef, c
                 transition: 'left 0.18s ease, top 0.18s ease, width 0.18s ease, height 0.18s ease',
             }} />
         );
-        cardStyle = { ...cardBase(), left: pos.left, top: pos.top };
     } else {
         hole = <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', pointerEvents: 'none' }} />;
+    }
+
+    // Card placement.
+    let cardStyle: React.CSSProperties;
+    if (isMobile) {
+        // Full-width sheet pinned to the screen edge AWAY from the target, so it
+        // never covers the highlighted element. No keyboard/Enter needed on phones.
+        const pinTop = rect ? (rect.top + rect.height / 2) > window.innerHeight * 0.5 : false;
+        cardStyle = {
+            ...cardBase(),
+            width: 'auto', maxWidth: 'none', left: 16, right: 16, padding: '20px',
+            ...(pinTop
+                ? { top: 'calc(env(safe-area-inset-top, 0px) + 14px)', bottom: 'auto' }
+                : { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)', top: 'auto' }),
+        };
+    } else if (rect) {
+        const placement = resolvePlacement(rect, preferredPlacement, cardH);
+        const pos = cardPosition(rect, placement, cardH);
+        cardStyle = { ...cardBase(), left: pos.left, top: pos.top };
+    } else {
         cardStyle = { ...cardBase(), left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
     }
 

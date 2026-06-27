@@ -143,7 +143,7 @@ export const DEMO_STEPS: DemoStep[] = [
         placement: 'left',
         title: 'Your week lives here — W1',
         body: "Locked! Your plan is now saved as Week 1 (W1). Tap this button any time to revisit the week you committed to. New weeks stack up here too.",
-        action: { approvePlan: true, openWeekPanel: true },
+        action: { approvePlan: true },
     },
     {
         id: 'alerts',

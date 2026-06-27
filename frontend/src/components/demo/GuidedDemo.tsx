@@ -9,10 +9,18 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEMO_STEPS, DEMO_PLAN } from './demoScript';
+import { useWindowSize } from '../../hooks/useWindowSize';
 import {
     SpotlightOverlay, findVisible,
     cardTitle, cardBody, primaryBtn, skipBtn, enterHint, ACCENT,
 } from './spotlight';
+
+/** On phones the W1 pill lives inside a bottom-sheet; point at the always-visible
+ *  header WEEKS button instead so the spotlight has a stable, uncovered target. */
+function effectiveTarget(target: string, isMobile: boolean): string {
+    if (isMobile && target === 'week-pill') return 'week-panel';
+    return target;
+}
 
 export interface DemoHandles {
     appendMessage: (m: { role: 'user' | 'assistant'; content: string; plan?: any }) => void;
@@ -38,6 +46,7 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
     const [rect, setRect] = useState<DOMRect | null>(null);
     const [cardH, setCardH] = useState(180);
     const [, setAnimating] = useState(false);
+    const { isMobile } = useWindowSize();
 
     const cardRef = useRef<HTMLDivElement>(null);
     const cardHRef = useRef(180);
@@ -151,10 +160,11 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         if (!active) return;
         const step = DEMO_STEPS[stepIndex];
         if (!step) return;
+        const target = effectiveTarget(step.target, isMobile);
         const tick = () => {
-            if (step.target === 'center') setRect(null);
+            if (target === 'center') setRect(null);
             else {
-                const el = findVisible(step.target);
+                const el = findVisible(target);
                 setRect(el ? el.getBoundingClientRect() : null);
             }
             const card = cardRef.current;
@@ -172,7 +182,7 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
             window.removeEventListener('resize', tick);
             window.removeEventListener('scroll', tick, true);
         };
-    }, [active, stepIndex]);
+    }, [active, stepIndex, isMobile]);
 
     // Enter advances, Escape exits — but never while typing in a real field.
     useEffect(() => {
@@ -197,20 +207,29 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
     const isLast = stepIndex === DEMO_STEPS.length - 1;
 
     return (
-        <SpotlightOverlay rect={rect} preferredPlacement={step.placement} cardRef={cardRef} cardH={cardH}>
+        <SpotlightOverlay rect={rect} preferredPlacement={step.placement} cardRef={cardRef} cardH={cardH} isMobile={isMobile}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={{ fontSize: '10px', fontWeight: 700, color: ACCENT, letterSpacing: '0.08em' }}>
                     {stepIndex + 1} / {DEMO_STEPS.length}
                 </span>
-                <button style={skipBtn} onClick={exit}>Skip tour</button>
+                <button style={{ ...skipBtn, ...(isMobile ? { padding: '8px 12px', fontSize: '12px' } : {}) }} onClick={exit}>Skip tour</button>
             </div>
             <div style={cardTitle}>{step.title}</div>
             <div style={cardBody}>{step.body}</div>
             {step.showEnterHint && (
-                <div style={enterHint}>Tip: press <strong style={{ color: 'var(--text-secondary)' }}>Enter</strong> for Next →</div>
+                <div style={enterHint}>
+                    {isMobile
+                        ? 'Tap “Next” to continue →'
+                        : <>Tip: press <strong style={{ color: 'var(--text-secondary)' }}>Enter</strong> for Next →</>}
+                </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-                <button style={primaryBtn} onClick={advance}>{isLast ? 'Finish' : 'Next'}</button>
+            <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', marginTop: '18px' }}>
+                <button
+                    style={{ ...primaryBtn, ...(isMobile ? { flex: 1, padding: '14px 18px', fontSize: '13px' } : {}) }}
+                    onClick={advance}
+                >
+                    {isLast ? 'Finish' : 'Next'}
+                </button>
             </div>
         </SpotlightOverlay>
     );
