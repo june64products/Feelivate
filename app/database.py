@@ -209,20 +209,25 @@ def init_db():
                 "CREATE UNIQUE INDEX uq_daily_checkins_user_date ON daily_checkins (user_id, date);",
             ]
 
-        with engine.begin() as conn:
-            from sqlalchemy import text
-            applied = 0
-            for sql in migrations:
-                try:
+        # Run each migration in its OWN transaction. On PostgreSQL a single failed
+        # statement aborts the entire transaction ("current transaction is aborted,
+        # commands ignored until end of transaction block"), which would silently
+        # skip EVERY migration after it — e.g. a new column like `title`. Isolating
+        # each statement ensures one failure can't block the rest.
+        from sqlalchemy import text
+        applied = 0
+        for sql in migrations:
+            try:
+                with engine.begin() as conn:
                     conn.execute(text(sql))
-                    applied += 1
-                except Exception as col_err:
-                    logger.debug(
-                        f"Migration skipped (already applied or harmless): "
-                        f"{sql.strip()[:80]} — {col_err}"
-                    )
+                applied += 1
+            except Exception as col_err:
+                logger.debug(
+                    f"Migration skipped (already applied or harmless): "
+                    f"{sql.strip()[:80]} — {col_err}"
+                )
 
-            logger.info(f"DB migrations done: {applied}/{len(migrations)} applied.")
+        logger.info(f"DB migrations done: {applied}/{len(migrations)} applied.")
 
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
