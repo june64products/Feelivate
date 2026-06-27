@@ -83,17 +83,17 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         }
     };
 
-    // Gentle, eased scroll to the bottom of the chat. Used after the demo types a
-    // plan so the user can READ the message before the long plan slowly scrolls in
-    // (instead of the view snapping to the bottom instantly).
-    const slowScrollChat = (duration: number, token: number) => {
+    // Gentle, eased scroll of the chat to its top or bottom — so the right content
+    // is visible for each step (the conversation, or the plan + its buttons) instead
+    // of the view snapping around.
+    const gentleScroll = (to: 'top' | 'bottom', token: number, duration: number) => {
         const el = document.querySelector('.chat-messages-area') as HTMLElement | null;
         if (!el) return;
         const start = el.scrollTop;
-        const target = Math.max(0, el.scrollHeight - el.clientHeight);
-        if (target - start < 8) return;
+        const target = to === 'top' ? 0 : Math.max(0, el.scrollHeight - el.clientHeight);
+        if (Math.abs(target - start) < 8) return;
         const t0 = performance.now();
-        const step = () => {
+        const stepFn = () => {
             if (cancelledRef.current || navTokenRef.current !== token || fastForwardRef.current) {
                 el.scrollTop = target; // interrupted / fast-forwarded → jump to the end
                 return;
@@ -101,9 +101,9 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
             const p = Math.min(1, (performance.now() - t0) / duration);
             const ease = 1 - Math.pow(1 - p, 3); // ease-out cubic
             el.scrollTop = start + (target - start) * ease;
-            if (p < 1) requestAnimationFrame(step);
+            if (p < 1) requestAnimationFrame(stepFn);
         };
-        requestAnimationFrame(step);
+        requestAnimationFrame(stepFn);
     };
 
     const goToStep = useCallback(async (idx: number, animate: boolean) => {
@@ -142,11 +142,13 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
             if (navTokenRef.current !== token) return;
             h.setMessages([...head, { ...last, content: '' }]);
             await typeOut(last.content, token);
-            // Let the user read the typed message, THEN slowly reveal the plan below.
-            await wait(600, token);
-            if (navTokenRef.current === token) slowScrollChat(2400, token);
         } else {
             h.setMessages(built);
+        }
+        // Position the chat for this step (after content has rendered).
+        if (step.scrollChat && navTokenRef.current === token) {
+            await wait(step.scrollChat === 'top' ? 150 : 350, token);
+            gentleScroll(step.scrollChat, token, step.scrollChat === 'bottom' ? 1300 : 700);
         }
         if (navTokenRef.current === token) animatingRef.current = false;
     }, []);
@@ -239,7 +241,7 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
     const isFirst = stepIndex === 0;
 
     return (
-        <SpotlightOverlay rect={rect} preferredPlacement={step.placement} cardRef={cardRef} cardH={cardH} isMobile={isMobile}>
+        <SpotlightOverlay rect={rect} preferredPlacement={step.placement} cardRef={cardRef} cardH={cardH} isMobile={isMobile} forcePin={isMobile ? step.mobileCard : undefined}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={{ fontSize: '10px', fontWeight: 700, color: ACCENT, letterSpacing: '0.08em' }}>
                     {stepIndex + 1} / {DEMO_STEPS.length}

@@ -47,6 +47,10 @@ export interface DemoStep {
     scene?: DemoScene;
     /** show the "Press Enter for Next" hint (step 1). */
     showEnterHint?: boolean;
+    /** scroll the chat to top/bottom on entry, so the right content is visible. */
+    scrollChat?: 'top' | 'bottom';
+    /** force the mobile card to the top/bottom edge (override the auto side). */
+    mobileCard?: 'top' | 'bottom';
 }
 
 /* ── Canned data the demo renders (never hits the backend) ─────────────────── */
@@ -140,6 +144,8 @@ export const DEMO_STEPS: DemoStep[] = [
         title: 'Tell Feelivate your goal',
         body: "Watch — I'll send a goal and Feelivate builds a personalized week plan in seconds. No setup, no forms.",
         scene: { messages: CHAT, typeLast: true },
+        scrollChat: 'top',     // keep the conversation (your message + reply) in view
+        mobileCard: 'bottom',  // card at the bottom so it never covers your message
     },
     {
         id: 'week-numbering',
@@ -148,6 +154,7 @@ export const DEMO_STEPS: DemoStep[] = [
         title: 'This is your Week 1 plan',
         body: "Day by day, built around your goal. Heads-up for your FIRST plan only: if you start it on a Thursday–Sunday, that short stretch becomes Week 0 (W0); start it Mon–Wed and it's Week 1 (W1).",
         scene: { messages: CHAT },
+        scrollChat: 'bottom',
     },
     {
         id: 'tweak',
@@ -156,6 +163,7 @@ export const DEMO_STEPS: DemoStep[] = [
         title: 'Want changes? Just ask',
         body: 'Not quite right? Tap “Tweak” and tell Feelivate what to change — more rest, easier start, anything. It rebuilds the plan for you.',
         scene: { messages: CHAT },
+        scrollChat: 'bottom',
     },
     {
         id: 'lock-plan',
@@ -164,6 +172,7 @@ export const DEMO_STEPS: DemoStep[] = [
         title: 'Lock it in',
         body: "When you're happy, tap “Let's go” to commit. Once locked, the week stays fixed so you can focus on doing it.",
         scene: { messages: CHAT },
+        scrollChat: 'bottom',
     },
     {
         id: 'week-button',

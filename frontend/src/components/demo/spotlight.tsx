@@ -85,11 +85,13 @@ interface SpotlightOverlayProps {
     cardH: number;
     /** On phones the card becomes a full-width sheet pinned away from the target. */
     isMobile?: boolean;
+    /** Force the mobile sheet to a specific edge (overrides the auto away-from-target). */
+    forcePin?: 'top' | 'bottom';
     children: React.ReactNode;
 }
 
 /** Renders the dim overlay, the pulsing ring, a click-blocker, and the card. */
-export function SpotlightOverlay({ rect, preferredPlacement = 'auto', cardRef, cardH, isMobile = false, children }: SpotlightOverlayProps) {
+export function SpotlightOverlay({ rect, preferredPlacement = 'auto', cardRef, cardH, isMobile = false, forcePin, children }: SpotlightOverlayProps) {
     const dim = 'rgba(15,15,18,0.55)';
 
     let hole: React.ReactNode;
@@ -126,7 +128,9 @@ export function SpotlightOverlay({ rect, preferredPlacement = 'auto', cardRef, c
     if (isMobile) {
         // Full-width sheet pinned to the screen edge AWAY from the target, so it
         // never covers the highlighted element. No keyboard/Enter needed on phones.
-        const pinTop = rect ? (rect.top + rect.height / 2) > window.innerHeight * 0.5 : false;
+        const pinTop = forcePin
+            ? forcePin === 'top'
+            : (rect ? (rect.top + rect.height / 2) > window.innerHeight * 0.5 : false);
         cardStyle = {
             ...cardBase(),
             width: 'auto', maxWidth: 'none', left: 16, right: 16, padding: '20px',
