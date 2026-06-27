@@ -19,6 +19,7 @@ import {
     getLocalISODate
 } from '../api';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
+import { DEMO_ARCHIVE } from '../components/demo/demoScript';
 
 // ─── Fonts ────────────────────────────────────────────────────────────────────
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
@@ -859,9 +860,10 @@ interface JourneyPageProps {
     onJournalSaved?: (entry: JournalEntry) => void;
     onClose?: () => void;
     demoMode?: boolean;
+    demoTab?: 'overview' | 'archive';
 }
 
-export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose, demoMode = false }: JourneyPageProps) {
+export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose, demoMode = false, demoTab }: JourneyPageProps) {
     const [journals, setJournals] = useState<JournalEntry[]>([]);
     const [report, setReport] = useState<WeeklyReport | null>(null);
     const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
@@ -892,12 +894,22 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
 
     const today = getLocalISODate();
 
-    // In the guided demo we never hit the backend — just show the empty Journey UI
-    // so the mic / archive tab can be spotlighted.
+    // In the guided demo we never hit the backend — show the empty Journey UI plus
+    // canned archive reports so the mic / Overview / Archive can be spotlighted.
     useEffect(() => {
-        if (demoMode) { setLoadingReport(false); return; }
+        if (demoMode) {
+            setLoadingReport(false);
+            setLoadingArchive(false);
+            setArchivedReports(DEMO_ARCHIVE as any);
+            return;
+        }
         loadAll();
     }, [userId, sessionId, demoMode]);
+
+    // Guided demo: switch Overview/Archive tab as the demo asks.
+    useEffect(() => {
+        if (demoMode && demoTab) setActiveTab(demoTab);
+    }, [demoMode, demoTab]);
 
     const loadAll = async () => {
         try {

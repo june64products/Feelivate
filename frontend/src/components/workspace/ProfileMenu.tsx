@@ -51,6 +51,7 @@ export default function ProfileMenu({ onLogout }: { onLogout: () => void }) {
             {/* Trigger — avatar with initials */}
             <div
                 className="user-avatar"
+                data-tour="profile-menu"
                 onClick={() => setOpen(v => !v)}
                 title="Profile"
             >

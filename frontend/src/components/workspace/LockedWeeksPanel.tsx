@@ -27,6 +27,7 @@ interface LockedWeeksPanelProps {
     planHistory?: any[];           // all past approved week plans
     onClose?: () => void;
     demoMode?: boolean;            // guided demo: skip backend fetches, show canned data
+    demoSelectedWeek?: number | null; // guided demo: force-open the drawer for this week
 }
 
 // ─── Fonts ────────────────────────────────────────────────────────────────────
@@ -202,7 +203,7 @@ function WeekDrawer({
     return (
         <motion.div
             key={`drawer-${weekNumber}`}
-            data-tour="week-panel"
+            data-tour="week-drawer"
             initial={{ x: '100%', opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
@@ -407,7 +408,7 @@ function WeekDrawer({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, activePlan, planHistory = [], demoMode = false }: LockedWeeksPanelProps) {
+export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, activePlan, planHistory = [], demoMode = false, demoSelectedWeek }: LockedWeeksPanelProps) {
     const [reports, setReports] = useState<ArchivedWeekReport[]>([]);
     const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -433,6 +434,11 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
             })
             .catch(() => { setLoadedReports(true); });
     }, [sessionId]);
+
+    // Guided demo: open/close the week drawer exactly as the demo asks.
+    useEffect(() => {
+        if (demoMode && demoSelectedWeek !== undefined) setSelectedWeek(demoSelectedWeek);
+    }, [demoMode, demoSelectedWeek]);
 
     // Build list of week items — locked past weeks + current active week
     const weekItems: WeekButtonItem[] = [];

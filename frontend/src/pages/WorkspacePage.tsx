@@ -94,6 +94,8 @@ export default function WorkspacePage() {
     const [demoPlanApproved, setDemoPlanApproved] = useState(false);
     const [demoView, setDemoView] = useState<'chat' | 'journey'>('chat');
     const [demoEmotion, setDemoEmotion] = useState<any | null>(null);
+    const [demoSelectedWeek, setDemoSelectedWeek] = useState<number | null>(null);
+    const [demoJourneyTab, setDemoJourneyTab] = useState<'overview' | 'archive'>('overview');
 
     const uiMessages = demoMode ? demoMessages : messages;
     const uiLoading = demoMode ? demoLoading : isLoading;
@@ -492,6 +494,8 @@ export default function WorkspacePage() {
         setDemoPlanApproved(false);
         setDemoView('chat');
         setDemoEmotion(null);
+        setDemoSelectedWeek(null);
+        setDemoJourneyTab('overview');
     };
 
     // Called when the user Skips/Stops or the demo finishes its last step.
@@ -506,21 +510,16 @@ export default function WorkspacePage() {
 
     // Imperative API the demo controller drives — all of it writes to mirror state only.
     const demoHandles: DemoHandles = useMemo(() => ({
-        appendMessage: (m) => setDemoMessages(prev => [...prev, m]),
+        setMessages: (m) => setDemoMessages(m),
         setLastContent: (content) => setDemoMessages(prev =>
             prev.length ? [...prev.slice(0, -1), { ...prev[prev.length - 1], content }] : prev),
         setLoading: (v) => setDemoLoading(v),
-        resetChat: () => { setDemoMessages([]); setDemoLoading(false); },
-        approvePlan: () => setDemoPlanApproved(true),
+        setPlanApproved: (v) => setDemoPlanApproved(v),
         setView: (v) => setDemoView(v),
-        openSidebar: () => setIsSidebarCollapsed(false),
-        closeSidebar: () => setIsSidebarCollapsed(true),
-        openWeekPanel: () => {
-            if (typeof window !== 'undefined' && window.innerWidth <= 768) {
-                window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'));
-            }
-        },
-        showEmotionOrb: () => setDemoEmotion(DEMO_EMOTION),
+        setEmotion: (v) => setDemoEmotion(v ? DEMO_EMOTION : null),
+        setSidebar: (open) => setIsSidebarCollapsed(!open),
+        setSelectedWeek: (w) => setDemoSelectedWeek(w),
+        setJourneyTab: (t) => setDemoJourneyTab(t),
     }), []);
 
     // Auto-open the demo for newly signed-up users, and on "Replay tutorial".
@@ -588,6 +587,7 @@ export default function WorkspacePage() {
                         userId={userId}
                         sessionId={uiSessionId ?? undefined}
                         demoMode={demoMode}
+                        demoTab={demoJourneyTab}
                         onJournalSaved={(entry) => {
                             // Directly update the orb with the saved entry — no refetch needed
                             setTodayEmotion(entry);
@@ -778,6 +778,7 @@ export default function WorkspacePage() {
                             activePlan={uiActivePlan}
                             planHistory={demoMode ? [] : planHistory}
                             demoMode={demoMode}
+                            demoSelectedWeek={demoMode ? demoSelectedWeek : undefined}
                         />
                     )}
 
@@ -876,7 +877,7 @@ export default function WorkspacePage() {
                                 <ChatWindow
                                     messages={uiMessages}
                                     isLoading={uiLoading}
-                                    onApprovePlan={demoMode ? demoHandles.approvePlan : handleApprovePlan}
+                                    onApprovePlan={demoMode ? () => demoHandles.setPlanApproved(true) : handleApprovePlan}
                                     onRequestPlanChange={demoMode ? () => {} : handleRequestPlanChange}
                                     isPlanApproved={uiIsPlanApproved}
                                 />

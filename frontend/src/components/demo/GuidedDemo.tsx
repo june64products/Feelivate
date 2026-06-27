@@ -1,12 +1,12 @@
 /**
  * GuidedDemo — the self-playing scripted walkthrough controller.
  *
- * Reads DEMO_STEPS and plays them: fires each step's UI side-effects, types out
- * scripted chat lines, and spotlights the target element. The user advances with
- * Next / Enter and exits with Skip / Escape. Everything it shows is driven through
- * the `handles` object into WorkspacePage's demo-mirror state — it never calls the
- * backend and never touches the user's real chat/session data.
+ * Each step is a SCENE (full state snapshot). Navigating — forward or backward —
+ * just applies that step's scene through the `handles` object into WorkspacePage's
+ * demo-mirror state. Forward entry into a "type a message" step animates the
+ * typewriter; back/jump applies instantly. It never calls the backend.
  */
+import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEMO_STEPS, DEMO_PLAN } from './demoScript';
 import { useWindowSize } from '../../hooks/useWindowSize';
@@ -15,24 +15,16 @@ import {
     cardTitle, cardBody, primaryBtn, skipBtn, enterHint, ACCENT,
 } from './spotlight';
 
-/** On phones the W1 pill lives inside a bottom-sheet; point at the always-visible
- *  header WEEKS button instead so the spotlight has a stable, uncovered target. */
-function effectiveTarget(target: string, isMobile: boolean): string {
-    if (isMobile && target === 'week-pill') return 'week-panel';
-    return target;
-}
-
 export interface DemoHandles {
-    appendMessage: (m: { role: 'user' | 'assistant'; content: string; plan?: any }) => void;
+    setMessages: (m: any[]) => void;
     setLastContent: (content: string) => void;
     setLoading: (v: boolean) => void;
-    resetChat: () => void;
-    approvePlan: () => void;
+    setPlanApproved: (v: boolean) => void;
     setView: (v: 'chat' | 'journey') => void;
-    openSidebar: () => void;
-    closeSidebar: () => void;
-    openWeekPanel: () => void;
-    showEmotionOrb: () => void;
+    setEmotion: (v: boolean) => void;
+    setSidebar: (open: boolean) => void;
+    setSelectedWeek: (w: number | null) => void;
+    setJourneyTab: (t: 'overview' | 'archive') => void;
 }
 
 interface GuidedDemoProps {
@@ -41,11 +33,17 @@ interface GuidedDemoProps {
     onExit: () => void;
 }
 
+/** On phones the W1 pill lives inside a bottom-sheet; point at the always-visible
+ *  header WEEKS button instead so the spotlight has a stable, uncovered target. */
+function effectiveTarget(target: string, isMobile: boolean): string {
+    if (isMobile && target === 'week-pill') return 'week-panel';
+    return target;
+}
+
 export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps) {
     const [stepIndex, setStepIndex] = useState(0);
     const [rect, setRect] = useState<DOMRect | null>(null);
     const [cardH, setCardH] = useState(180);
-    const [, setAnimating] = useState(false);
     const { isMobile } = useWindowSize();
 
     const cardRef = useRef<HTMLDivElement>(null);
@@ -56,88 +54,96 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
     const fastForwardRef = useRef(false);
     const animatingRef = useRef(false);
     const startedRef = useRef(false);
+    const navTokenRef = useRef(0);
     const onExitRef = useRef(onExit);
 
     useEffect(() => { handlesRef.current = handles; }, [handles]);
     useEffect(() => { onExitRef.current = onExit; }, [onExit]);
     useEffect(() => { stepIndexRef.current = stepIndex; }, [stepIndex]);
 
-    // A cancellable / fast-forwardable wait.
-    const wait = (ms: number) => new Promise<void>(resolve => {
+    // A cancellable / fast-forwardable / navigation-aware wait.
+    const wait = (ms: number, token: number) => new Promise<void>(resolve => {
         const start = performance.now();
         const tick = () => {
-            if (cancelledRef.current || fastForwardRef.current) return resolve();
+            if (cancelledRef.current || navTokenRef.current !== token || fastForwardRef.current) return resolve();
             if (performance.now() - start >= ms) return resolve();
             requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
     });
 
-    const typeOut = async (full: string) => {
+    const typeOut = async (full: string, token: number) => {
         let i = 0;
         while (i < full.length) {
-            if (cancelledRef.current) return;
+            if (cancelledRef.current || navTokenRef.current !== token) return;
             if (fastForwardRef.current) { handlesRef.current.setLastContent(full); return; }
             i = Math.min(full.length, i + 2);
             handlesRef.current.setLastContent(full.slice(0, i));
-            await wait(18);
+            await wait(18, token);
         }
     };
 
-    const runStep = useCallback(async (idx: number) => {
+    const goToStep = useCallback(async (idx: number, animate: boolean) => {
+        const token = ++navTokenRef.current;
         const step = DEMO_STEPS[idx];
         if (!step) return;
+        stepIndexRef.current = idx;
+        setStepIndex(idx);
+        setRect(null);
         fastForwardRef.current = false;
         animatingRef.current = true;
-        setAnimating(true);
-        setRect(null); // recompute spotlight for the new target
 
-        const a = step.action || {};
-        if (a.resetChat) handlesRef.current.resetChat();
-        if (a.setView) handlesRef.current.setView(a.setView);
-        if (a.openSidebar) handlesRef.current.openSidebar();
-        if (a.closeSidebar) handlesRef.current.closeSidebar();
-        if (a.approvePlan) handlesRef.current.approvePlan();
-        if (a.showEmotionOrb) handlesRef.current.showEmotionOrb();
-        if (a.openWeekPanel) handlesRef.current.openWeekPanel();
+        const h = handlesRef.current;
+        const scene = step.scene ?? {};
+        // Static state — applied instantly so the scene is correct even on back-nav.
+        h.setView(scene.view ?? 'chat');
+        if (scene.sidebar !== undefined) h.setSidebar(scene.sidebar); // only when the scene asks
+        h.setPlanApproved(scene.planApproved ?? false);
+        h.setEmotion(scene.emotion ?? false);
+        h.setSelectedWeek(scene.selectedWeek ?? null);
+        h.setJourneyTab(scene.journeyTab ?? 'overview');
 
-        if (step.chat) {
-            for (const line of step.chat) {
-                if (cancelledRef.current) return;
-                if (line.thinkMs && !fastForwardRef.current) {
-                    handlesRef.current.setLoading(true);
-                    await wait(line.thinkMs);
-                    handlesRef.current.setLoading(false);
-                }
-                if (cancelledRef.current) return;
-                handlesRef.current.appendMessage({
-                    role: line.role,
-                    content: line.typewriter ? '' : line.content,
-                    plan: line.withPlan ? DEMO_PLAN : undefined,
-                });
-                if (line.typewriter) await typeOut(line.content);
-                await wait(220);
+        const built = (scene.messages ?? []).map(m => ({
+            role: m.role, content: m.content, plan: m.withPlan ? DEMO_PLAN : undefined,
+        }));
+
+        if (animate && scene.typeLast && built.length) {
+            const head = built.slice(0, -1);
+            const last = built[built.length - 1];
+            h.setMessages(head);
+            if (last.role === 'assistant') {
+                h.setLoading(true);
+                await wait(950, token);
+                h.setLoading(false);
             }
+            if (navTokenRef.current !== token) return;
+            h.setMessages([...head, { ...last, content: '' }]);
+            await typeOut(last.content, token);
+        } else {
+            h.setMessages(built);
         }
-        animatingRef.current = false;
-        setAnimating(false);
+        if (navTokenRef.current === token) animatingRef.current = false;
     }, []);
 
     const exit = useCallback(() => {
         cancelledRef.current = true;
         animatingRef.current = false;
+        navTokenRef.current++;
         onExitRef.current();
     }, []);
 
-    const advance = useCallback(() => {
-        // Mid-animation: fast-forward the current step instead of jumping ahead.
-        if (animatingRef.current) { fastForwardRef.current = true; return; }
-        const next = stepIndexRef.current + 1;
-        if (next >= DEMO_STEPS.length) { exit(); return; }
-        stepIndexRef.current = next;
-        setStepIndex(next);
-        runStep(next);
-    }, [exit, runStep]);
+    const next = useCallback(() => {
+        if (animatingRef.current) { fastForwardRef.current = true; return; } // fast-forward typing
+        const n = stepIndexRef.current + 1;
+        if (n >= DEMO_STEPS.length) { exit(); return; }
+        goToStep(n, true);
+    }, [exit, goToStep]);
+
+    const back = useCallback(() => {
+        const p = stepIndexRef.current - 1;
+        if (p < 0) return;
+        goToStep(p, false); // backward → no typewriter, just snap to the scene
+    }, [goToStep]);
 
     // Start / stop the demo when `active` flips.
     useEffect(() => {
@@ -150,10 +156,8 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         if (startedRef.current) return;
         startedRef.current = true;
         cancelledRef.current = false;
-        stepIndexRef.current = 0;
-        setStepIndex(0);
-        runStep(0);
-    }, [active, runStep]);
+        goToStep(0, true);
+    }, [active, goToStep]);
 
     // Track the spotlight target rect + measure the card height.
     useEffect(() => {
@@ -184,19 +188,20 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         };
     }, [active, stepIndex, isMobile]);
 
-    // Enter advances, Escape exits — but never while typing in a real field.
+    // Keyboard: Enter / → advance, ← back, Esc exit — never while typing in a field.
     useEffect(() => {
         if (!active) return;
         const onKey = (e: KeyboardEvent) => {
             const t = e.target as HTMLElement | null;
             const tag = (t?.tagName || '').toLowerCase();
             if (tag === 'input' || tag === 'textarea' || t?.isContentEditable) return;
-            if (e.key === 'Enter') { e.preventDefault(); advance(); }
+            if (e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); next(); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); back(); }
             else if (e.key === 'Escape') { e.preventDefault(); exit(); }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [active, advance, exit]);
+    }, [active, next, back, exit]);
 
     if (!active) return null;
     const step = DEMO_STEPS[stepIndex];
@@ -205,6 +210,7 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
     if (step.target !== 'center' && !rect) return null;
 
     const isLast = stepIndex === DEMO_STEPS.length - 1;
+    const isFirst = stepIndex === 0;
 
     return (
         <SpotlightOverlay rect={rect} preferredPlacement={step.placement} cardRef={cardRef} cardH={cardH} isMobile={isMobile}>
@@ -219,18 +225,38 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
             {step.showEnterHint && (
                 <div style={enterHint}>
                     {isMobile
-                        ? 'Tap “Next” to continue →'
-                        : <>Tip: press <strong style={{ color: 'var(--text-secondary)' }}>Enter</strong> for Next →</>}
+                        ? 'Tap “Next” to continue, “Back” to revisit →'
+                        : <>Tip: use <strong style={{ color: 'var(--text-secondary)' }}>Enter</strong> / <strong style={{ color: 'var(--text-secondary)' }}>← →</strong> keys too →</>}
                 </div>
             )}
-            <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', marginTop: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '18px' }}>
                 <button
-                    style={{ ...primaryBtn, ...(isMobile ? { flex: 1, padding: '14px 18px', fontSize: '13px' } : {}) }}
-                    onClick={advance}
+                    onClick={back}
+                    disabled={isFirst}
+                    style={{
+                        ...backBtn,
+                        opacity: isFirst ? 0.35 : 1,
+                        cursor: isFirst ? 'default' : 'pointer',
+                        ...(isMobile ? { flex: 1, padding: '13px 16px', fontSize: '13px' } : {}),
+                    }}
                 >
-                    {isLast ? 'Finish' : 'Next'}
+                    ‹ Back
+                </button>
+                <button
+                    onClick={next}
+                    style={{ ...primaryBtn, ...(isMobile ? { flex: 2, padding: '14px 18px', fontSize: '13px' } : {}) }}
+                >
+                    {isLast ? 'Finish' : 'Next ›'}
                 </button>
             </div>
         </SpotlightOverlay>
     );
 }
+
+const backBtn: React.CSSProperties = {
+    padding: '9px 16px', borderRadius: '100px',
+    border: '1px solid var(--border-medium)', background: 'transparent',
+    color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 700,
+    fontFamily: "'Satoshi', 'Inter', system-ui, sans-serif",
+    letterSpacing: '0.04em', textTransform: 'uppercase',
+};
