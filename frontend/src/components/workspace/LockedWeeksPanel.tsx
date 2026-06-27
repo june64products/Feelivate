@@ -26,6 +26,7 @@ interface LockedWeeksPanelProps {
     activePlan?: any;              // current plan data
     planHistory?: any[];           // all past approved week plans
     onClose?: () => void;
+    demoMode?: boolean;            // guided demo: skip backend fetches, show canned data
 }
 
 // ─── Fonts ────────────────────────────────────────────────────────────────────
@@ -406,7 +407,7 @@ function WeekDrawer({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, activePlan, planHistory = [] }: LockedWeeksPanelProps) {
+export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, activePlan, planHistory = [], demoMode = false }: LockedWeeksPanelProps) {
     const [reports, setReports] = useState<ArchivedWeekReport[]>([]);
     const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -420,9 +421,9 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
         return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
     })();
 
-    // Load archived reports once
+    // Load archived reports once (skipped entirely in demo mode — no backend calls)
     useEffect(() => {
-        if (!sessionId || loadedReports) return;
+        if (demoMode || !sessionId || loadedReports) return;
         getSessionReports(sessionId)
             .then(r => {
                 // Filter: only show reports for weeks that have ended (week_end < today)
@@ -745,6 +746,7 @@ function WeekPill({
     return (
         <motion.button
             layout
+            data-tour="week-pill"
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.7, opacity: 0 }}

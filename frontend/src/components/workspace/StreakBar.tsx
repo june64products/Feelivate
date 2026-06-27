@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStreak, submitCheckin, backfillStreak, getLocalISODate, type StreakData } from '../../api';
 import { Flame, Check, TrendingUp } from 'lucide-react';
+import { DEMO_STREAK } from '../demo/demoScript';
 
 interface StreakBarProps {
     userId: string;
     isPlanActive: boolean;
     /** Compact, always-animated indicator for the 52px collapsed rail. */
     collapsed?: boolean;
+    /** Guided demo: skip backend streak calls, show canned numbers. */
+    demoMode?: boolean;
 }
 
 /* ── Warm flame palette — reads well on the dark sidebar in any app theme ── */
@@ -37,8 +40,8 @@ function useCountUp(target: number, duration = 750) {
     return n;
 }
 
-export default function StreakBar({ userId, isPlanActive, collapsed = false }: StreakBarProps) {
-    const [streak, setStreak] = useState<StreakData | null>(null);
+export default function StreakBar({ userId, isPlanActive, collapsed = false, demoMode = false }: StreakBarProps) {
+    const [streak, setStreak] = useState<StreakData | null>(demoMode ? (DEMO_STREAK as StreakData) : null);
     const [checkinLoading, setCheckinLoading] = useState(false);
     const [todayStatus, setTodayStatus] = useState<'pending' | 'done' | 'skipped'>('pending');
     const [showCelebration, setShowCelebration] = useState(false);
@@ -48,7 +51,7 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false }: S
     const today = getLocalISODate();
 
     useEffect(() => {
-        if (!userId || !isPlanActive) return;
+        if (demoMode || !userId || !isPlanActive) return;
         // Idempotent backfill so voice journals recorded before auto-checkin sync in.
         backfillStreak()
             .then((result) => {

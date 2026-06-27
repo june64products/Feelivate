@@ -66,3 +66,17 @@ export function completeOnboarding(userId: string | null | undefined) {
 export function isOnboardingActive(userId: string | null | undefined): boolean {
     return getOnboardingState(userId)?.status === 'active';
 }
+
+/* ── Guided demo aliases ───────────────────────────────────────────────────
+ * The self-playing demo replaced the old step-by-step tour but reuses the exact
+ * same persistence (same localStorage key + status), so existing signup wiring
+ * (`startOnboarding` at signup) and the "Replay tutorial" flow keep working. */
+
+/** Queue/restart the guided demo from the start (used by signup + "Replay"). */
+export const startDemo = startOnboarding;
+
+/** Mark the guided demo finished or skipped — it won't auto-open again. */
+export const completeDemo = completeOnboarding;
+
+/** True when the guided demo should auto-open for this user (e.g. just signed up). */
+export const isDemoQueued = isOnboardingActive;

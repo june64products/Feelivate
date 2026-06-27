@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PanelLeft, AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock } from 'lucide-react';
@@ -27,7 +27,9 @@ import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 import ProfileMenu from '../components/workspace/ProfileMenu';
-import OnboardingTour from '../components/onboarding/OnboardingTour';
+import GuidedDemo, { type DemoHandles } from '../components/demo/GuidedDemo';
+import { DEMO_PLAN, DEMO_EMOTION } from '../components/demo/demoScript';
+import { isDemoQueued, startDemo, completeDemo } from '../lib/onboarding';
 import PillNav from '../components/PillNav';
 import type { PillNavItem } from '../components/PillNav';
 
@@ -83,8 +85,26 @@ export default function WorkspacePage() {
     const [sessionFocus, setSessionFocus] = useState<string>('');
     const [todayEmotion, setTodayEmotion] = useState<TodayEmotionResult['entry'] | null>(null);
 
+    // ── Guided demo: self-playing walkthrough mirror state ──
+    // When demoMode is on, the UI reads these mirrors instead of the real state,
+    // so nothing the demo shows ever touches the backend or the user's real data.
+    const [demoMode, setDemoMode] = useState(false);
+    const [demoMessages, setDemoMessages] = useState<any[]>([]);
+    const [demoLoading, setDemoLoading] = useState(false);
+    const [demoPlanApproved, setDemoPlanApproved] = useState(false);
+    const [demoView, setDemoView] = useState<'chat' | 'journey'>('chat');
+    const [demoEmotion, setDemoEmotion] = useState<any | null>(null);
+
+    const uiMessages = demoMode ? demoMessages : messages;
+    const uiLoading = demoMode ? demoLoading : isLoading;
+    const uiIsPlanApproved = demoMode ? demoPlanApproved : isPlanApproved;
+    const uiView = demoMode ? demoView : view;
+    const uiTodayEmotion = demoMode ? demoEmotion : todayEmotion;
+    const uiActivePlan = demoMode ? DEMO_PLAN : activePlan;
+    const uiSessionId = demoMode ? 'demo-session' : activeSessionId;
+
     // Derived: whether we're in the cinematic empty state
-    const isEmptyState = messages.length === 0 && !isLoading;
+    const isEmptyState = uiMessages.length === 0 && !uiLoading;
 
     // Mic locked state — check localStorage for today's recording (PER SESSION, so a
     // recording in one session doesn't lock the mic in another fresh session).
@@ -465,6 +485,57 @@ export default function WorkspacePage() {
         }
     };
 
+    // ── Guided demo control ──────────────────────────────────────────────────
+    const resetDemoState = () => {
+        setDemoMessages([]);
+        setDemoLoading(false);
+        setDemoPlanApproved(false);
+        setDemoView('chat');
+        setDemoEmotion(null);
+    };
+
+    // Called when the user Skips/Stops or the demo finishes its last step.
+    // Turns demoMode off and clears every mirror, so the demo session vanishes
+    // entirely and the user is back on their real, clean screen.
+    const exitDemo = () => {
+        completeDemo(userId);
+        setDemoMode(false);
+        resetDemoState();
+        setIsSidebarCollapsed(typeof window !== 'undefined' && window.innerWidth <= 768);
+    };
+
+    // Imperative API the demo controller drives — all of it writes to mirror state only.
+    const demoHandles: DemoHandles = useMemo(() => ({
+        appendMessage: (m) => setDemoMessages(prev => [...prev, m]),
+        setLastContent: (content) => setDemoMessages(prev =>
+            prev.length ? [...prev.slice(0, -1), { ...prev[prev.length - 1], content }] : prev),
+        setLoading: (v) => setDemoLoading(v),
+        resetChat: () => { setDemoMessages([]); setDemoLoading(false); },
+        approvePlan: () => setDemoPlanApproved(true),
+        setView: (v) => setDemoView(v),
+        openSidebar: () => setIsSidebarCollapsed(false),
+        closeSidebar: () => setIsSidebarCollapsed(true),
+        openWeekPanel: () => {
+            if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+                window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'));
+            }
+        },
+        showEmotionOrb: () => setDemoEmotion(DEMO_EMOTION),
+    }), []);
+
+    // Auto-open the demo for newly signed-up users, and on "Replay tutorial".
+    useEffect(() => {
+        if (isDemoQueued(userId)) setDemoMode(true);
+        const onReplay = () => {
+            startDemo(userId);
+            resetDemoState();
+            setDemoMode(true);
+        };
+        window.addEventListener('feelivate-replay-tour', onReplay);
+        return () => window.removeEventListener('feelivate-replay-tour', onReplay);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId]);
+
     return (
         <div style={{
             display: 'flex',
@@ -475,13 +546,8 @@ export default function WorkspacePage() {
             fontFamily: 'var(--font-sans)',
             overflow: 'hidden',
         }}>
-            {/* First-time guided walkthrough (renders once for new accounts) */}
-            <OnboardingTour
-                userId={userId}
-                isEmptyState={isEmptyState && view === 'chat'}
-                onOpenSidebar={() => setIsSidebarCollapsed(false)}
-                onNewChat={() => { handleNewChat(); setView('chat'); }}
-            />
+            {/* First-time self-playing guided demo (auto-opens for new accounts, or via Replay) */}
+            <GuidedDemo active={demoMode} handles={demoHandles} onExit={exitDemo} />
 
             {/* Sidebar Overlay Backdrop for Mobile */}
             {!isSidebarCollapsed && (
@@ -502,7 +568,8 @@ export default function WorkspacePage() {
                     isCollapsed={isSidebarCollapsed}
                     onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                     refreshKey={sidebarRefreshKey}
-                    isPlanActive={isPlanApproved}
+                    isPlanActive={uiIsPlanApproved}
+                    demoMode={demoMode}
                 />
             </div>
 
@@ -516,10 +583,11 @@ export default function WorkspacePage() {
                 overflow: 'hidden',
             }}>
                 {/* Journey view — full-panel replacement */}
-                {view === 'journey' && userId && (
+                {uiView === 'journey' && userId && (
                     <JourneyPage
                         userId={userId}
-                        sessionId={activeSessionId ?? undefined}
+                        sessionId={uiSessionId ?? undefined}
+                        demoMode={demoMode}
                         onJournalSaved={(entry) => {
                             // Directly update the orb with the saved entry — no refetch needed
                             setTodayEmotion(entry);
@@ -549,14 +617,14 @@ export default function WorkspacePage() {
                 )}
 
                 {/* Normal chat view */}
-                {view === 'chat' && (<>
+                {uiView === 'chat' && (<>
 
                     {/* Clean Swiss background — no gradient orbs */}
 
                     {/* Emotion Orb — draggable anywhere on screen after today's journal */}
-                    {todayEmotion && (
+                    {uiTodayEmotion && (
                         <EmotionOrb
-                            emotion={todayEmotion}
+                            emotion={uiTodayEmotion}
                             onClick={() => setView('journey')}
                         />
                     )}
@@ -597,7 +665,7 @@ export default function WorkspacePage() {
                                 </button>
                             )}
                             {/* Mobile: Weeks button */}
-                            {isPlanApproved && activeSessionId && (
+                            {uiIsPlanApproved && uiSessionId && (
                                 <button
                                     id="mobile-weeks-btn"
                                     data-tour="week-panel"
@@ -625,7 +693,7 @@ export default function WorkspacePage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             {/* PillNav strip for header buttons — desktop only */}
                             <div className="hide-on-mobile" data-tour="alerts-button">
-                            {isPlanApproved && (() => {
+                            {uiIsPlanApproved && (() => {
                                 const items: PillNavItem[] = [
                                     { label: 'Calendar', onClick: () => setShowCalendarMaintenance(true) },
                                     { label: 'Alerts', onClick: handleOpenEmailModal },
@@ -646,7 +714,7 @@ export default function WorkspacePage() {
                             </div>
 
                             {/* Mobile: Alerts bell button */}
-                            {isPlanApproved && (
+                            {uiIsPlanApproved && (
                                 <button
                                     className="show-on-mobile"
                                     data-tour="alerts-button"
@@ -702,13 +770,14 @@ export default function WorkspacePage() {
                     </div>
 
                     {/* Locked Weeks Panel (Desktop: Fixed Right / Mobile: Relative under Header) */}
-                    {isPlanApproved && activeSessionId && (
+                    {uiIsPlanApproved && uiSessionId && (
                         <LockedWeeksPanel
-                            sessionId={activeSessionId}
-                            currentWeek={activePlan?.week_number ?? 1}
+                            sessionId={uiSessionId}
+                            currentWeek={uiActivePlan?.week_number ?? 1}
                             micLocked={micLocked}
-                            activePlan={activePlan}
-                            planHistory={planHistory}
+                            activePlan={uiActivePlan}
+                            planHistory={demoMode ? [] : planHistory}
+                            demoMode={demoMode}
                         />
                     )}
 
@@ -787,8 +856,8 @@ export default function WorkspacePage() {
                                     style={{ width: '100%', maxWidth: '720px', padding: '0 16px', marginBottom: '48px' }}
                                 >
                                     <RadiantPromptInput
-                                        onSubmit={handleSendMessage}
-                                        disabled={isLoading}
+                                        onSubmit={demoMode ? () => {} : handleSendMessage}
+                                        disabled={isLoading || demoMode}
                                         placeholder="Share what's on your mind..."
                                     />
                                 </motion.div>
@@ -805,11 +874,11 @@ export default function WorkspacePage() {
                                 style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 5 }}
                             >
                                 <ChatWindow
-                                    messages={messages}
-                                    isLoading={isLoading}
-                                    onApprovePlan={handleApprovePlan}
-                                    onRequestPlanChange={handleRequestPlanChange}
-                                    isPlanApproved={isPlanApproved}
+                                    messages={uiMessages}
+                                    isLoading={uiLoading}
+                                    onApprovePlan={demoMode ? demoHandles.approvePlan : handleApprovePlan}
+                                    onRequestPlanChange={demoMode ? () => {} : handleRequestPlanChange}
+                                    isPlanApproved={uiIsPlanApproved}
                                 />
                             </motion.div>
                         )}
@@ -832,8 +901,8 @@ export default function WorkspacePage() {
                                 }}
                             >
                                 <RadiantPromptInput
-                                    onSubmit={handleSendMessage}
-                                    disabled={isLoading}
+                                    onSubmit={demoMode ? () => {} : handleSendMessage}
+                                    disabled={isLoading || demoMode}
                                     placeholder="Continue the conversation..."
                                 />
                             </motion.div>

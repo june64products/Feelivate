@@ -31,9 +31,12 @@ export default function ChatWindow({
     const containerRef = useRef<HTMLDivElement>(null);
     const { isMobile } = useWindowSize();
 
+    // Also scroll as the last message streams in (its content grows char-by-char
+    // during the guided demo typewriter), not only when a whole message is added.
+    const lastLen = messages.length ? (messages[messages.length - 1].content?.length ?? 0) : 0;
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages.length, isLoading]);
+    }, [messages.length, isLoading, lastLen]);
 
     // Empty state
     if (messages.length === 0 && !isLoading) {

@@ -858,9 +858,10 @@ interface JourneyPageProps {
     sessionId?: string;
     onJournalSaved?: (entry: JournalEntry) => void;
     onClose?: () => void;
+    demoMode?: boolean;
 }
 
-export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose }: JourneyPageProps) {
+export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose, demoMode = false }: JourneyPageProps) {
     const [journals, setJournals] = useState<JournalEntry[]>([]);
     const [report, setReport] = useState<WeeklyReport | null>(null);
     const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
@@ -891,7 +892,12 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
 
     const today = getLocalISODate();
 
-    useEffect(() => { loadAll(); }, [userId, sessionId]);
+    // In the guided demo we never hit the backend — just show the empty Journey UI
+    // so the mic / archive tab can be spotlighted.
+    useEffect(() => {
+        if (demoMode) { setLoadingReport(false); return; }
+        loadAll();
+    }, [userId, sessionId, demoMode]);
 
     const loadAll = async () => {
         try {

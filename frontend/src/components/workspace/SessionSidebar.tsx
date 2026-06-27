@@ -15,6 +15,7 @@ interface SessionSidebarProps {
     onToggleCollapse: () => void;
     refreshKey: number;
     isPlanActive: boolean;
+    demoMode?: boolean;
 }
 
 /* ── Fonts ───────────────────────────────────────────────────────────────── */
@@ -31,6 +32,7 @@ export default function SessionSidebar({
     onToggleCollapse,
     refreshKey,
     isPlanActive,
+    demoMode = false,
 }: SessionSidebarProps) {
     const [sessions, setSessions] = useState<SessionPreview[]>([]);
     const [loading, setLoading] = useState(true);
@@ -184,7 +186,7 @@ export default function SessionSidebar({
 
                 {/* Push the streak indicator to the bottom of the rail */}
                 <div style={{ flex: 1 }} />
-                <StreakBar userId={userId} isPlanActive={isPlanActive} collapsed />
+                <StreakBar userId={userId} isPlanActive={isPlanActive} collapsed demoMode={demoMode} />
             </div>
         );
     }
@@ -320,7 +322,7 @@ export default function SessionSidebar({
             </div>
 
             {/* Streak section at bottom */}
-            <StreakBar userId={userId} isPlanActive={isPlanActive} />
+            <StreakBar userId={userId} isPlanActive={isPlanActive} demoMode={demoMode} />
         </div>
     );
 }
