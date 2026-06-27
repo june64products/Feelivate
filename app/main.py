@@ -314,10 +314,34 @@ def _parse_llm_response(raw_text: str) -> Dict[str, Any]:
     return {"reply": clean_text or "I'm here — what can I help you with?", "plan": None}
 
 
+def _generate_and_save_title(session_id: str, user_message: str, assistant_reply: str):
+    """
+    Background task: generate a short sidebar title for a session's first exchange
+    via Groq's cheap model and persist it. Runs in its own DB session because the
+    request's session is already closed by the time background tasks execute.
+    """
+    from .llm import generate_session_title
+    db = SessionLocal()
+    try:
+        title = generate_session_title(user_message, assistant_reply)
+        if not title:
+            return
+        sess = db.query(Session).filter(Session.id == session_id).first()
+        if sess and not sess.title:
+            sess.title = title
+            db.commit()
+            logger.info(f"[Title] session {session_id} → '{title}'")
+    except Exception as e:
+        logger.warning(f"[Title] save failed (non-fatal): {e}")
+    finally:
+        db.close()
+
+
 @app.post("/chat", tags=["chat"])
 async def chat(
-    payload: ChatRequest, 
-    db: DBSession = Depends(get_db), 
+    payload: ChatRequest,
+    background_tasks: BackgroundTasks,
+    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -679,7 +703,14 @@ async def chat(
             session_rec.focus = message[:200]
         
         db.commit()
-        
+
+        # 8b. First exchange → generate a short sidebar title in the background (Groq, cheap).
+        # db_messages was fetched before this message, so len == 0 means this is message #1.
+        if len(db_messages) == 0 and not session_rec.title:
+            background_tasks.add_task(
+                _generate_and_save_title, session_id, message, reply_text
+            )
+
         # 9. Save to Qdrant (non-blocking)
         try:
             if embedding:
@@ -862,15 +893,17 @@ async def list_sessions(user_id: str, db: DBSession = Depends(get_db), current_u
     sessions = db.query(
         Session.id,
         Session.created_at,
+        Session.title,
         Session.focus,
         Session.current_week,
         Session.phase,
     ).filter(Session.user_id == user_id).order_by(Session.created_at.desc()).all()
-    
+
     return [
         {
             "id": s.id,
             "created_at": s.created_at,
+            "title": s.title,
             "focus_preview": s.focus[:60] + "..." if s.focus and len(s.focus) > 60 else (s.focus or "New Chat"),
             "current_week": s.current_week,
             "phase": s.phase,

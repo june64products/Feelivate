@@ -171,6 +171,7 @@ export const signup = async (data: { email: string; password: string; name?: str
 export interface SessionPreview {
     id: string;
     created_at: string;
+    title?: string | null;
     focus_preview: string;
     current_week: number;
     phase: string;

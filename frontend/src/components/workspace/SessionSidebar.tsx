@@ -312,7 +312,7 @@ export default function SessionSidebar({
                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                 flex: 1, fontSize: '13px',
                             }}>
-                                {session.focus_preview}
+                                {session.title || session.focus_preview}
                             </span>
                         </button>
                     ))

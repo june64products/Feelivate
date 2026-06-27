@@ -36,7 +36,10 @@ class Session(Base):
     user_id = Column(String, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
+    # AI-generated short title for the sidebar (set once, after the first exchange)
+    title = Column(String, nullable=True)
+
     # Store the core inputs for this session
     focus = Column(Text, nullable=True)
     history = Column(Text, nullable=True)

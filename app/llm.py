@@ -53,6 +53,61 @@ def _get_groq_client() -> OpenAI:
     return _groq_client
 
 
+# Cheapest + fastest Groq model — used for lightweight side tasks like chat-title generation.
+TITLE_MODEL = "llama-3.1-8b-instant"
+
+
+def generate_session_title(user_message: str, assistant_reply: str = "") -> Optional[str]:
+    """
+    Generate a short 3-5 word sidebar title from a session's first exchange.
+    Uses Groq's cheapest model (see TITLE_MODEL). Returns a cleaned title, or
+    None on any failure so the caller can fall back to existing behaviour.
+    """
+    user_message = (user_message or "").strip()
+    if not user_message:
+        return None
+
+    convo = f"User: {user_message[:500]}"
+    if assistant_reply:
+        convo += f"\nAssistant: {assistant_reply.strip()[:500]}"
+
+    try:
+        client = _get_groq_client()
+        resp = client.chat.completions.create(
+            model=TITLE_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You generate very short titles for a chat conversation. "
+                        "Reply with ONLY a 3-5 word title that captures the topic. "
+                        "No quotes, no surrounding punctuation, no trailing period, "
+                        "no preamble like 'Title:'. Reply in the user's language."
+                    ),
+                },
+                {"role": "user", "content": convo},
+            ],
+            max_tokens=16,
+            temperature=0.3,
+        )
+        title = (resp.choices[0].message.content or "").strip()
+        if not title:
+            return None
+        # Clean up: take first line, strip wrapping quotes / 'Title:' prefix / trailing punctuation
+        title = title.splitlines()[0].strip().strip('"\'')
+        for prefix in ("Title:", "title:", "TITLE:"):
+            if title.startswith(prefix):
+                title = title[len(prefix):].strip()
+        title = title.rstrip(".!,;:").strip()
+        # Hard cap so the sidebar never overflows if the model ignores the word limit
+        if len(title) > 60:
+            title = title[:57].rstrip() + "..."
+        return title or None
+    except Exception as e:
+        logger.warning(f"[Title] generation failed (non-fatal): {e}")
+        return None
+
+
 def _get_openai_client() -> OpenAI:
     global _openai_client
     if _openai_client is None:

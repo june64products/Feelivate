@@ -153,6 +153,7 @@ def init_db():
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_notification_timezone VARCHAR DEFAULT 'UTC';",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_daily_email_date VARCHAR;",
                 # ── sessions ──
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS title VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS history TEXT;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS vision TEXT;",
@@ -187,6 +188,7 @@ def init_db():
                 "ALTER TABLE users ADD COLUMN preferred_notification_time VARCHAR DEFAULT '08:00';",
                 "ALTER TABLE users ADD COLUMN preferred_notification_timezone VARCHAR DEFAULT 'UTC';",
                 "ALTER TABLE users ADD COLUMN last_daily_email_date VARCHAR;",
+                "ALTER TABLE sessions ADD COLUMN title VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN updated_at TIMESTAMP;",
                 "ALTER TABLE sessions ADD COLUMN history TEXT;",
                 "ALTER TABLE sessions ADD COLUMN vision TEXT;",
