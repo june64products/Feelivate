@@ -72,9 +72,16 @@ _raw_origins = os.environ.get(
 )
 _allowed_origins = [o.strip().rstrip("/") for o in _raw_origins.split(",") if o.strip()]
 
+# Allow ANY Vercel deployment (prod + preview) for every frontend — old, the
+# june64 Feelivate one, and future deploys — without having to list each URL.
+# Safe with allow_credentials because the regex echoes the matched origin (not "*"),
+# and the API is JWT-protected regardless of origin.
+_vercel_origin_regex = r"https://([a-zA-Z0-9-]+\.)*vercel\.app"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
+    allow_origin_regex=_vercel_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
