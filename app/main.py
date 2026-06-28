@@ -801,8 +801,21 @@ async def approve_plan(
 
     try:
         approved_plan = json.loads(session_rec.week_plan_json)
-        # Stamp the lock date so this week starts exactly when the user locked it
-        approved_plan["start_date"] = today_iso
+        # The FIRST plan starts on the lock day (lock Wed → Wed–Sun). But every
+        # SUBSEQUENT week must be a FULL Mon–Sun week that begins the day AFTER the
+        # previous week ended — otherwise locking Week N+1 late in the week (e.g. on
+        # a Sunday) would shrink it to a single day and truncate the plan to 1 day.
+        _cur_wk = session_rec.current_week if session_rec.current_week is not None else 1
+        if not session_rec.plan_start_date:
+            start_iso = today_iso  # first plan ever for this session
+        else:
+            try:
+                _, _prev_end, _ = _week_bounds_for(session_rec, _cur_wk - 1)
+                start_iso = (_date.fromisoformat(_prev_end) + _timedelta(days=1)).isoformat()
+            except Exception:
+                start_iso = today_iso
+        # Stamp the computed start so the locked week spans the right calendar dates
+        approved_plan["start_date"] = start_iso
 
         # Authoritative day-label fix: the lock date is the definitive start, so
         # re-stamp every day with the correct consecutive calendar date (a plan
@@ -810,7 +823,7 @@ async def approve_plan(
         # Mon→Fri). This guarantees the locked plan's weekdays are always correct,
         # even if it was generated on a different day than it was locked.
         try:
-            _ws, _we, _dc = _bounds_from_start(today_iso)
+            _ws, _we, _dc = _bounds_from_start(start_iso)
             _lock_start = _date.fromisoformat(_ws)
             _ap_days = approved_plan.get("days")
             if isinstance(_ap_days, list):

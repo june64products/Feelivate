@@ -1419,6 +1419,26 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
                                                 Analyzing your mood...
                                             </motion.div>
+                                        ) : (weekInfo?.week_start && today < weekInfo.week_start) ? (
+                                            // Week hasn't started yet (e.g. next week locked on Sunday, starts Monday).
+                                            // Lock the mic so no entry is logged before the week officially begins.
+                                            <motion.div key="not-started"
+                                                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
+                                            >
+                                                <div style={{
+                                                    width: '60px', height: '60px', borderRadius: '50%',
+                                                    border: '2px solid rgba(30,30,30,0.08)',
+                                                    background: 'var(--bg-surface)',
+                                                    color: 'var(--text-muted)', cursor: 'not-allowed',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                }}>
+                                                    <Lock size={18} />
+                                                </div>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500, fontFamily: satoshi, textAlign: 'center' }}>
+                                                    Starts {weekInfo.week_start}
+                                                </span>
+                                            </motion.div>
                                         ) : micLocked ? (
                                             <motion.div key="locked"
                                                 initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
