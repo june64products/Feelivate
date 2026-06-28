@@ -455,7 +455,9 @@ async def chat(
         week_report_data = None
         if session_rec.phase == "active" and session_rec.plan_start_date:
             from datetime import date as _date_cls
-            current_wk = session_rec.current_week or 1
+            # NOTE: `or 1` would turn a valid Week 0 into Week 1 (0 is falsy), so the
+            # report fetch must use an explicit None-check to keep Week 0 as 0.
+            current_wk = session_rec.current_week if session_rec.current_week is not None else 1
 
             # Check current week first, then previous week (user may be asking for N+1
             # while still technically on the last day of week N, or report may be cached
@@ -502,7 +504,11 @@ async def chat(
         current_week_complete = False
         if session_rec.phase == "active" and session_rec.plan_start_date:
             try:
-                ws_cur, we_cur, _ = _week_bounds_for(session_rec, session_rec.current_week or 1)
+                # `or 1` would treat a valid Week 0 as Week 1 (0 is falsy), making the
+                # completeness check look at the WRONG week — so Week 0 never counts as
+                # complete and the next week never builds. Use an explicit None-check.
+                _cur_wk_for_bounds = session_rec.current_week if session_rec.current_week is not None else 1
+                ws_cur, we_cur, _ = _week_bounds_for(session_rec, _cur_wk_for_bounds)
                 import datetime as _dt
                 try:
                     import zoneinfo
