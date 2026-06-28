@@ -1926,8 +1926,10 @@ async def get_session_reports(
 
     result = []
     for r in reports:
-        # Only include weeks that have already ended — never the ongoing/current week.
-        if r.week_end and r.week_end >= today_str:
+        # Skip ONLY the current ONGOING week (it lives in the live Overview tab). Every
+        # other week belongs in the Archive — including a week that ended TODAY. A
+        # stopped/completed session has no ongoing week, so all its reports show.
+        if session_rec.phase == "active" and r.week_number == session_rec.current_week:
             continue
         try:
             report_data = json.loads(r.report_json)
