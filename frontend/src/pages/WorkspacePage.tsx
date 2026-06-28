@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PanelLeft, AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock } from 'lucide-react';
+import { PanelLeft, AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock, Archive } from 'lucide-react';
 import {
     chatWithMentor,
     approvePlan,
@@ -79,6 +79,8 @@ export default function WorkspacePage() {
         return () => window.removeEventListener('storage', handleStorage);
     }, [userId, navigate]);
     const [view, setView] = useState<'chat' | 'journey'>('chat');
+    // Which Journey tab to open on (the header "Archive" button opens straight to Archive)
+    const [journeyInitialTab, setJourneyInitialTab] = useState<'overview' | 'archive'>('overview');
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showCompleteModal, setShowCompleteModal] = useState(false);
     const [isSessionCompleted, setIsSessionCompleted] = useState(false);
@@ -588,6 +590,7 @@ export default function WorkspacePage() {
                         sessionId={uiSessionId ?? undefined}
                         demoMode={demoMode}
                         demoTab={demoJourneyTab}
+                        initialTab={journeyInitialTab}
                         onJournalSaved={(entry) => {
                             // Directly update the orb with the saved entry — no refetch needed
                             setTodayEmotion(entry);
@@ -599,7 +602,7 @@ export default function WorkspacePage() {
                                 localStorage.setItem(`last_journal_date_${uid}_${activeSessionId ?? 'none'}`, getLocalISODate());
                             }
                         }}
-                        onClose={() => setView('chat')}
+                        onClose={() => { setView('chat'); setJourneyInitialTab('overview'); }}
                     />
                 )}
 
@@ -691,6 +694,28 @@ export default function WorkspacePage() {
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {/* Archive — view past weekly reports anytime, including stopped sessions */}
+                            {!demoMode && activeSessionId && (isPlanApproved || isSessionCompleted) && (
+                                <button
+                                    onClick={() => { setJourneyInitialTab('archive'); setView('journey'); }}
+                                    title="View your weekly reports"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '7px',
+                                        padding: '6px 14px', borderRadius: '100px',
+                                        border: '1px solid var(--border-medium)', background: 'transparent',
+                                        color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700,
+                                        cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0,
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                >
+                                    <Archive size={14} />
+                                    <span className="hide-on-mobile">Archive</span>
+                                </button>
+                            )}
+
                             {/* PillNav strip for header buttons — desktop only */}
                             <div className="hide-on-mobile" data-tour="alerts-button">
                             {uiIsPlanApproved && (() => {

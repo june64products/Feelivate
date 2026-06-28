@@ -440,11 +440,17 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
         if (demoMode && demoSelectedWeek !== undefined) setSelectedWeek(demoSelectedWeek);
     }, [demoMode, demoSelectedWeek]);
 
-    // Build list of week items — locked past weeks + current active week
+    // Build list of week items — ALL past approved weeks + the current active week.
+    // Past weeks come from the plan history (every approved week), NOT just archived
+    // reports — so a week never disappears the moment it ends while waiting to be
+    // archived. (Reports are merged in too, in case history is missing a week.)
     const weekItems: WeekButtonItem[] = [];
-    // Past locked weeks (from archived reports)
-    const lockedWeekNums = reports.map(r => r.week_number).sort((a, b) => a - b);
-    lockedWeekNums.forEach(wn => {
+    const pastWeekNums = new Set<number>();
+    planHistory.forEach((p: any) => {
+        if (p && typeof p.week_number === 'number') pastWeekNums.add(p.week_number);
+    });
+    reports.forEach(r => pastWeekNums.add(r.week_number));
+    Array.from(pastWeekNums).sort((a, b) => a - b).forEach(wn => {
         if (wn !== currentWeek) {
             weekItems.push({ weekNumber: wn, isOngoing: false, isLocked: true });
         }

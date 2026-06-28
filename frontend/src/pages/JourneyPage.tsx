@@ -861,9 +861,10 @@ interface JourneyPageProps {
     onClose?: () => void;
     demoMode?: boolean;
     demoTab?: 'overview' | 'archive';
+    initialTab?: 'overview' | 'archive';
 }
 
-export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose, demoMode = false, demoTab }: JourneyPageProps) {
+export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose, demoMode = false, demoTab, initialTab }: JourneyPageProps) {
     const [journals, setJournals] = useState<JournalEntry[]>([]);
     const [report, setReport] = useState<WeeklyReport | null>(null);
     const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
@@ -872,7 +873,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const [currentPlan, setCurrentPlan] = useState<any | null>(null);
     const [loadingReport, setLoadingReport] = useState(true);
     const [loadingArchive, setLoadingArchive] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'archive'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'archive'>(initialTab ?? 'overview');
     const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
 
     // Mic-lock is tracked PER SESSION so a recording in one session doesn't lock
