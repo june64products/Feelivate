@@ -246,7 +246,6 @@ export default function LoginPage() {
             <PillNav
               items={[
                 { label: 'Features', onClick: () => setShowFeatures(true) },
-                { label: 'Solutions' },
                 { label: 'About', onClick: () => setShowAbout(true) },
                 { label: 'Pricing' },
                 { label: 'Contact', onClick: () => setShowContact(true) },

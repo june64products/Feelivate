@@ -317,7 +317,7 @@ export const getEmailNotificationStatus = async (userId: string) => {
 
 export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
     const formData = new FormData();
-    // Use .webm extension — supported by Whisper
+    // Use .webm extension — widely supported for audio capture
     const ext = audioBlob.type.includes('mp4') ? 'mp4' : 'webm';
     formData.append('audio', audioBlob, `recording.${ext}`);
 

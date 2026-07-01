@@ -126,16 +126,17 @@ def run_migrations_endpoint():
         from .database import init_db as _init_db
         _init_db()
         return {"status": "ok", "message": "Migrations complete."}
-    except Exception as e:
-        import traceback
-        return {"status": "error", "message": str(e), "trace": traceback.format_exc()}
+    except Exception:
+        logger.exception("Migration failed")
+        return {"status": "error", "message": "Migration failed. Check server logs."}
 
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     REQUESTS_TOTAL.labels(route=str(request.url.path), method=request.method, status="500").inc()
     logger.exception("unhandled_exception")
-    return JSONResponse(status_code=500, content={"error": str(exc)})
+    # Never leak internal error text (may contain provider/model/infra details) to the client.
+    return JSONResponse(status_code=500, content={"error": "Something went wrong. Please try again."})
 
 
 @app.get("/", tags=["health"])
@@ -749,11 +750,8 @@ async def chat(
         tb = traceback.format_exc()
         logger.error(f"Chat failed: {str(e)}")
         logger.error(tb)
-        # Return the real error in development so it's debuggable;
-        # in prod the generic message is fine but we expose the type.
-        error_hint = type(e).__name__
         return {
-            "reply": f"Sorry, I hit an error ({error_hint}). Try again in a moment.",
+            "reply": "Sorry, I hit a snag on my end. Please try again in a moment.",
             "plan": None,
             "session_id": session_id
         }
@@ -1006,7 +1004,7 @@ async def transcribe_audio(
         return {"text": text}
     except Exception as e:
         logger.error(f"[Transcribe] failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Transcription error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Transcription failed. Please try again.")
 
 
 
@@ -1107,7 +1105,7 @@ async def google_auth_callback(code: str, user_id: str, db: DBSession = Depends(
         return {"status": "success", "message": "Google Calendar connected!"}
     except Exception as e:
         logger.error(f"OAuth Callback failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Google Calendar connection failed. Please try again.")
 
 @app.post("/calendar/sync/{session_id}", tags=["calendar"])
 async def sync_calendar(session_id: str, user_id: str, background_tasks: BackgroundTasks, preferred_time: str = "08:00", db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -1150,7 +1148,7 @@ async def sync_calendar(session_id: str, user_id: str, background_tasks: Backgro
         return {"message": f"Calendar sync started for Week {session.current_week}."}
     except Exception as e:
         logger.error(f"Sync trigger failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Calendar sync failed. Please try again.")
 
 @app.post("/calendar/stop", tags=["calendar"])
 async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -2063,7 +2061,7 @@ async def create_voice_journal(
         transcript = await asyncio.to_thread(call_groq_transcribe, audio_bytes, filename)
     except Exception as e:
         logger.error(f"Transcription failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Transcription error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Transcription failed. Please try again.")
 
     if not transcript.strip():
         raise HTTPException(status_code=422, detail="Could not transcribe audio — too short or silent.")
@@ -2804,26 +2802,13 @@ IMPORTANT NOTES:
 # ============================================================
 
 @app.get("/metrics", tags=["observability"])
-def metrics():
+def metrics(x_internal_token: Optional[str] = Header(None)):
+    expected_token = os.environ.get("INTERNAL_METRICS_TOKEN")
+    if expected_token and x_internal_token != expected_token:
+        raise HTTPException(status_code=403, detail="Forbidden")
     from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-@app.post("/transcribe", tags=["audio"])
-async def transcribe_audio(file: UploadFile = File(...)):
-    """Accepts audio file and returns transcribed text."""
-    try:
-        from .audio import transcriber
-        content = await file.read()
-        file_obj = io.BytesIO(content)
-        raw_text = transcriber.transcribe(file_obj, filename=file.filename or "audio.webm")
-        
-        if "[Error" in raw_text:
-            return JSONResponse(status_code=500, content={"error": raw_text})
-
-        return {
-            "raw_text": raw_text,
-            "text": raw_text,
-        }
-    except Exception as e:
-        logger.error(f"Audio processing failed: {e}")
-        return JSONResponse(status_code=500, content={"error": str(e)})
+# NOTE: Removed a duplicate, unauthenticated POST /transcribe route here.
+# It was shadowed by the authenticated /transcribe defined earlier and it
+# leaked raw error text (provider/model details) to the client.
