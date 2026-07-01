@@ -24,6 +24,42 @@ const features = [
   { title: 'The Lock-In Protocol', desc: "Once your week is set, it's locked. You can't edit it to make it easier. You do the work, or you don't." },
 ];
 
+// ─── Full Feature List (Features modal) ───────────────────────────────────────
+const platformFeatures = [
+  {
+    title: 'AI Behavioral Mentor',
+    desc: 'Not another chatbot. A relentless mentor that learns your patterns, calls out your excuses, and coaches you toward the person you said you wanted to become.',
+  },
+  {
+    title: '7-Day Action Sprints',
+    desc: 'Every goal is broken down into a hyper-specific weekly plan — exact daily micro-actions, timed and sequenced. No vague resolutions, just a clear path.',
+  },
+  {
+    title: 'The Lock-In Protocol',
+    desc: "Once your week is set, it's locked. You can't quietly soften it to make it easier. You commit, you execute — or the streak breaks.",
+  },
+  {
+    title: 'Daily Task Emails',
+    desc: "Every day a personalized email lands in your inbox with today's exact task and how-to tips — sent at your chosen time, in your timezone. Direct task notifications, so you never wonder what to do next.",
+  },
+  {
+    title: 'Weekly Reports',
+    desc: 'At the end of each week you get an honest report card — what you actually did versus what you committed to — plus streaks that track your real momentum day over day.',
+  },
+  {
+    title: 'Emotion Logs & Voice Intake',
+    desc: 'Talk or type how you feel — Feelivate reads your emotional state, understands the "why" behind the slip, and adapts next week to your reality.',
+  },
+  {
+    title: 'Persistent Memory',
+    desc: 'It remembers your history, your wins, and your patterns. Context compounds week over week, so the guidance gets sharper the longer you stay.',
+  },
+  {
+    title: 'Calendar Integration',
+    desc: 'Your plan drops straight into your calendar with reminders, so there is no "I forgot." The work is scheduled, not left to willpower.',
+  },
+];
+
 // ─── Shared input style — Swiss aesthetic ─────────────────────────────────────
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -109,6 +145,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showGooglePopup, setShowGooglePopup] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   // Already logged in (token persists in localStorage across tabs/restarts)?
@@ -206,9 +244,9 @@ export default function LoginPage() {
           <div className="nav-links-swiss">
             <PillNav
               items={[
-                { label: 'Platform' },
+                { label: 'Features', onClick: () => setShowFeatures(true) },
                 { label: 'Solutions' },
-                { label: 'About' },
+                { label: 'About', onClick: () => setShowAbout(true) },
                 { label: 'Pricing' },
                 { label: 'Contact' },
               ]}
@@ -749,6 +787,285 @@ export default function LoginPage() {
           </p>
         </div>
       </footer>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ABOUT MODAL — What Feelivate is, the why & the how
+          ══════════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showAbout && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowAbout(false)}
+              style={{ position: 'fixed', inset: 0, background: 'var(--modal-overlay)', backdropFilter: 'blur(6px)', zIndex: 200 }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+              style={{
+                position: 'fixed', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
+                borderRadius: '4px',
+                padding: isMobile ? '30px 20px' : '48px 48px 38px',
+                zIndex: 201,
+                width: 'calc(100% - 32px)', maxWidth: '640px',
+                maxHeight: '86vh', overflowY: 'auto',
+                boxShadow: 'var(--shadow-xl)',
+                fontFamily: satoshi,
+              }}
+            >
+              <button
+                onClick={() => setShowAbout(false)}
+                style={{
+                  position: 'absolute', top: '16px', right: '16px',
+                  background: 'var(--glass-hover)', border: 'none', borderRadius: '4px',
+                  color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 180ms ease', zIndex: 2,
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--btn-hover-bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-hover)'}
+              ><X size={15} /></button>
+
+              {/* Kicker + Mission heading */}
+              <span style={{
+                fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em',
+                textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: satoshi,
+              }}>
+                About Feelivate
+              </span>
+              <h2 style={{
+                fontSize: isMobile ? '27px' : '38px', fontWeight: 700,
+                letterSpacing: '-0.05em', lineHeight: 1.04,
+                color: 'var(--text-primary)', margin: '14px 0 20px',
+                fontFamily: clashDisplay,
+              }}>
+                We don't sell motivation.
+                <br />
+                <span style={{
+                  fontStyle: 'italic', fontFamily: "'Georgia', 'Times New Roman', serif",
+                  fontWeight: 400, color: 'var(--text-secondary)',
+                }}>We build</span> execution.
+              </h2>
+
+              <p style={{
+                fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.7,
+                fontFamily: satoshi, fontWeight: 500, marginBottom: '30px',
+              }}>
+                Feelivate is an AI behavioral mentor. You tell it what you actually want to become — fitter, focused, out of a rut — and it turns that fuzzy wish into a locked, hyper-specific 7-day plan, then holds you to it every single day until the person you described becomes the person you are.
+              </p>
+
+              {/* Story blocks */}
+              {[
+                {
+                  label: 'Why we exist',
+                  body: "Almost nobody fails from a lack of goals — they fail at execution. Vague to-do lists, decision fatigue, zero accountability, and no honest feedback. Motivation is loud on Monday and gone by Wednesday. We built Feelivate because willpower is a terrible system, and most people just need one relentless partner who won't let them quietly give up.",
+                },
+                {
+                  label: 'How it works',
+                  body: "You talk to your mentor like a friend. It extracts the real goal, breaks it into exact daily micro-actions, and locks the week so you can't soften it. Then it shows up: a personalized task email every morning at your time, streaks to protect, voice check-ins on hard days, and an honest report card every week. It remembers your patterns and quietly raises the difficulty as you grow.",
+                },
+                {
+                  label: 'What we believe',
+                  body: "You don't rise to your goals; you fall to your systems. Accountability beats inspiration. Small, non-negotiable daily actions compound into a different life. Your future self is watching — Feelivate exists to make sure you don't disappoint them.",
+                },
+              ].map((block, i) => (
+                <div
+                  key={i}
+                  style={{
+                    paddingTop: '20px', marginTop: i === 0 ? 0 : '4px',
+                    borderTop: '1px solid var(--border-subtle)',
+                    marginBottom: '18px',
+                  }}
+                >
+                  <h3 style={{
+                    fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)',
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    marginBottom: '10px', fontFamily: satoshi,
+                  }}>
+                    {block.label}
+                  </h3>
+                  <p style={{
+                    fontSize: '13.5px', color: 'var(--text-secondary)',
+                    lineHeight: 1.7, fontFamily: satoshi, fontWeight: 500,
+                  }}>
+                    {block.body}
+                  </p>
+                </div>
+              ))}
+
+              {/* Pull quote */}
+              <p style={{
+                fontSize: '17px', color: 'var(--text-muted)', lineHeight: 1.6,
+                fontStyle: 'italic', fontFamily: "'Georgia', 'Times New Roman', serif",
+                textAlign: 'center', padding: '14px 0 4px',
+              }}>
+                "Your future self is watching. Don't disappoint them."
+              </p>
+              <p style={{
+                fontSize: '10px', color: 'var(--text-primary)', fontWeight: 700,
+                letterSpacing: '0.15em', fontFamily: satoshi,
+                textTransform: 'uppercase', textAlign: 'center', marginBottom: '26px',
+              }}>
+                Built by JUNE64
+              </p>
+
+              {/* CTA */}
+              <button
+                onClick={() => { setShowAbout(false); setIsLogin(false); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  width: '100%',
+                  background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', border: 'none',
+                  padding: '15px', borderRadius: '4px', fontSize: '14px',
+                  fontWeight: 700, cursor: 'pointer', transition: 'opacity 180ms ease',
+                  fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase',
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >
+                Start Your First Week <ArrowRight size={15} />
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          FEATURES MODAL — Full capability breakdown, Swiss grid
+          ══════════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showFeatures && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowFeatures(false)}
+              style={{ position: 'fixed', inset: 0, background: 'var(--modal-overlay)', backdropFilter: 'blur(6px)', zIndex: 200 }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+              style={{
+                position: 'fixed', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
+                borderRadius: '4px',
+                padding: isMobile ? '28px 20px' : '44px 44px 36px',
+                zIndex: 201,
+                width: 'calc(100% - 32px)', maxWidth: '760px',
+                maxHeight: '86vh', overflowY: 'auto',
+                boxShadow: 'var(--shadow-xl)',
+                fontFamily: satoshi,
+              }}
+            >
+              <button
+                onClick={() => setShowFeatures(false)}
+                style={{
+                  position: 'absolute', top: '16px', right: '16px',
+                  background: 'var(--glass-hover)', border: 'none', borderRadius: '4px',
+                  color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 180ms ease', zIndex: 2,
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--btn-hover-bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-hover)'}
+              ><X size={15} /></button>
+
+              {/* Header */}
+              <div style={{ marginBottom: isMobile ? '24px' : '32px', maxWidth: '480px' }}>
+                <span style={{
+                  fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em',
+                  textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: satoshi,
+                }}>
+                  What you get
+                </span>
+                <h2 style={{
+                  fontSize: isMobile ? '26px' : '34px', fontWeight: 700,
+                  letterSpacing: '-0.05em', lineHeight: 1.05,
+                  color: 'var(--text-primary)', margin: '12px 0 12px',
+                  fontFamily: clashDisplay,
+                }}>
+                  Everything Feelivate does
+                </h2>
+                <p style={{
+                  fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65,
+                  fontFamily: satoshi, fontWeight: 500,
+                }}>
+                  A complete accountability system — from turning a fuzzy goal into a locked weekly plan, to dragging you across the finish line every single day.
+                </p>
+              </div>
+
+              {/* Feature grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+                gap: '1px',
+                background: 'var(--border-subtle)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '2px',
+                overflow: 'hidden',
+              }}>
+                {platformFeatures.map((f, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05, duration: 0.35, ease: 'easeOut' }}
+                    style={{
+                      padding: isMobile ? '20px 18px' : '24px 22px',
+                      background: 'var(--modal-bg)',
+                      transition: 'background 220ms ease',
+                    }}
+                    onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => { e.currentTarget.style.background = 'var(--card-bg)'; }}
+                    onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => { e.currentTarget.style.background = 'var(--modal-bg)'; }}
+                  >
+                    <span style={{
+                      fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)',
+                      letterSpacing: '0.08em', fontFamily: satoshi,
+                    }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <h3 style={{
+                      fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)',
+                      margin: '10px 0 8px', letterSpacing: '-0.02em', fontFamily: clashDisplay,
+                    }}>
+                      {f.title}
+                    </h3>
+                    <p style={{
+                      fontSize: '12.5px', color: 'var(--text-secondary)',
+                      lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500,
+                    }}>
+                      {f.desc}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={() => { setShowFeatures(false); setIsLogin(false); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  width: '100%', marginTop: isMobile ? '24px' : '28px',
+                  background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', border: 'none',
+                  padding: '15px', borderRadius: '4px', fontSize: '14px',
+                  fontWeight: 700, cursor: 'pointer', transition: 'opacity 180ms ease',
+                  fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase',
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >
+                Start Free <ArrowRight size={15} />
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ══════════════════════════════════════════════════════════════════════
           GOOGLE POPUP — Swiss minimal
