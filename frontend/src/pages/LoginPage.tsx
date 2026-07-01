@@ -707,16 +707,22 @@ export default function LoginPage() {
               letterSpacing: '0.12em', textTransform: 'uppercase',
               marginBottom: '16px', fontFamily: satoshi,
             }}>Navigation</h4>
-            {['Platform', 'Solutions', 'Pricing', 'About'].map(item => (
-              <p key={item} style={{
-                fontSize: '13px', color: 'rgba(246,246,246,0.6)',
-                marginBottom: '10px', cursor: 'pointer',
-                transition: 'color 150ms ease', fontFamily: satoshi,
-                fontWeight: 500,
-              }}
+            {([
+              { label: 'Features', onClick: () => setShowFeatures(true) },
+              { label: 'Pricing' },
+              { label: 'About', onClick: () => setShowAbout(true) },
+            ] as { label: string; onClick?: () => void }[]).map(item => (
+              <p key={item.label}
+                onClick={item.onClick}
+                style={{
+                  fontSize: '13px', color: 'rgba(246,246,246,0.6)',
+                  marginBottom: '10px', cursor: item.onClick ? 'pointer' : 'default',
+                  transition: 'color 150ms ease', fontFamily: satoshi,
+                  fontWeight: 500,
+                }}
                 onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'rgba(246,246,246,0.9)'; }}
                 onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'rgba(246,246,246,0.6)'; }}
-              >{item}</p>
+              >{item.label}</p>
             ))}
           </div>
 
@@ -728,7 +734,7 @@ export default function LoginPage() {
               letterSpacing: '0.12em', textTransform: 'uppercase',
               marginBottom: '16px', fontFamily: satoshi,
             }}>Company</h4>
-            {['Careers', 'Blog', 'Press', 'Privacy Policy', 'Terms of Service'].map(item => (
+            {['Blog', 'Privacy Policy', 'Terms of Service'].map(item => (
               <p key={item} style={{
                 fontSize: '13px', color: 'rgba(246,246,246,0.6)',
                 marginBottom: '10px', cursor: 'pointer',
@@ -749,9 +755,12 @@ export default function LoginPage() {
               letterSpacing: '0.12em', textTransform: 'uppercase',
               marginBottom: '16px', fontFamily: satoshi,
             }}>Contact</h4>
-            <p style={{ fontSize: '13px', color: 'rgba(246,246,246,0.6)', marginBottom: '10px', fontFamily: satoshi, fontWeight: 500 }}>
+            <a href="mailto:info@june64.com" style={{ display: 'block', fontSize: '13px', color: 'rgba(246,246,246,0.6)', marginBottom: '10px', fontFamily: satoshi, fontWeight: 500, textDecoration: 'none', cursor: 'pointer', transition: 'color 150ms ease' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'rgba(246,246,246,0.9)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'rgba(246,246,246,0.6)'; }}
+            >
               info@june64.com
-            </p>
+            </a>
             <p style={{ fontSize: '13px', color: 'rgba(246,246,246,0.6)', marginBottom: '10px', fontFamily: satoshi, fontWeight: 500 }}>
               @feelivate
             </p>
