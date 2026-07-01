@@ -147,6 +147,7 @@ export default function LoginPage() {
   const [showGooglePopup, setShowGooglePopup] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   // Already logged in (token persists in localStorage across tabs/restarts)?
@@ -248,7 +249,7 @@ export default function LoginPage() {
                 { label: 'Solutions' },
                 { label: 'About', onClick: () => setShowAbout(true) },
                 { label: 'Pricing' },
-                { label: 'Contact' },
+                { label: 'Contact', onClick: () => setShowContact(true) },
               ]}
               baseColor="var(--text-primary)"
               pillColor="var(--bg-primary)"
@@ -789,6 +790,133 @@ export default function LoginPage() {
       </footer>
 
       {/* ══════════════════════════════════════════════════════════════════════
+          CONTACT MODAL — Reach the team
+          ══════════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showContact && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowContact(false)}
+              style={{ position: 'fixed', inset: 0, background: 'var(--modal-overlay)', backdropFilter: 'blur(6px)', zIndex: 200 }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, x: '-50%', y: '-44%' }}
+              animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+              exit={{ opacity: 0, scale: 0.94, x: '-50%', y: '-47%' }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+              style={{
+                position: 'fixed', top: '50%', left: '50%',
+                background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
+                borderRadius: '4px',
+                padding: isMobile ? '32px 22px' : '42px 38px 34px',
+                zIndex: 201,
+                width: 'calc(100% - 32px)', maxWidth: '440px',
+                maxHeight: '86vh', overflowY: 'auto',
+                boxShadow: 'var(--shadow-xl)', fontFamily: satoshi,
+              }}
+            >
+              <button
+                onClick={() => setShowContact(false)}
+                style={{
+                  position: 'absolute', top: '14px', right: '14px',
+                  background: 'var(--glass-hover)', border: 'none', borderRadius: '4px',
+                  color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 180ms ease', zIndex: 2,
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--btn-hover-bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-hover)'}
+              ><X size={15} /></button>
+
+              <span style={{
+                fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em',
+                textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: satoshi,
+              }}>
+                Contact
+              </span>
+              <h2 style={{
+                fontSize: isMobile ? '26px' : '32px', fontWeight: 700,
+                letterSpacing: '-0.05em', lineHeight: 1.05,
+                color: 'var(--text-primary)', margin: '12px 0 12px',
+                fontFamily: clashDisplay,
+              }}>
+                Let's talk.
+              </h2>
+              <p style={{
+                fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.65,
+                fontFamily: satoshi, fontWeight: 500, marginBottom: '26px',
+              }}>
+                Questions, press, or partnerships — reach out and we usually reply within a day.
+              </p>
+
+              {/* Contact rows */}
+              <div style={{
+                border: '1px solid var(--border-subtle)', borderRadius: '2px',
+                overflow: 'hidden', marginBottom: '24px',
+              }}>
+                {[
+                  { label: 'Email', value: 'info@june64.com', href: 'mailto:info@june64.com' },
+                  { label: 'Social', value: '@feelivate', href: undefined },
+                  { label: 'Location', value: 'London, UK', href: undefined },
+                ].map((row, i) => {
+                  const inner = (
+                    <>
+                      <span style={{
+                        fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
+                        letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: satoshi,
+                      }}>
+                        {row.label}
+                      </span>
+                      <span style={{
+                        fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)',
+                        fontFamily: satoshi,
+                      }}>
+                        {row.value}
+                      </span>
+                    </>
+                  );
+                  const rowStyle: React.CSSProperties = {
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '16px 18px',
+                    borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)',
+                    textDecoration: 'none',
+                    transition: 'background 200ms ease',
+                  };
+                  return row.href ? (
+                    <a
+                      key={i} href={row.href} style={rowStyle}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--card-bg)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >{inner}</a>
+                  ) : (
+                    <div key={i} style={rowStyle}>{inner}</div>
+                  );
+                })}
+              </div>
+
+              {/* CTA — mailto */}
+              <a
+                href="mailto:info@june64.com"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  width: '100%', textDecoration: 'none',
+                  background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', border: 'none',
+                  padding: '15px', borderRadius: '4px', fontSize: '14px',
+                  fontWeight: 700, cursor: 'pointer', transition: 'opacity 180ms ease',
+                  fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+              >
+                <Mail size={15} /> Email Us
+              </a>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ══════════════════════════════════════════════════════════════════════
           ABOUT MODAL — What Feelivate is, the why & the how
           ══════════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
@@ -800,13 +928,12 @@ export default function LoginPage() {
               style={{ position: 'fixed', inset: 0, background: 'var(--modal-overlay)', backdropFilter: 'blur(6px)', zIndex: 200 }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 24 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              initial={{ opacity: 0, scale: 0.94, x: '-50%', y: '-44%' }}
+              animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+              exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-47%' }}
               transition={{ type: 'spring', stiffness: 260, damping: 24 }}
               style={{
                 position: 'fixed', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
                 background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
                 borderRadius: '4px',
                 padding: isMobile ? '30px 20px' : '48px 48px 38px',
@@ -946,13 +1073,12 @@ export default function LoginPage() {
               style={{ position: 'fixed', inset: 0, background: 'var(--modal-overlay)', backdropFilter: 'blur(6px)', zIndex: 200 }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 24 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              initial={{ opacity: 0, scale: 0.94, x: '-50%', y: '-44%' }}
+              animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+              exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-47%' }}
               transition={{ type: 'spring', stiffness: 260, damping: 24 }}
               style={{
                 position: 'fixed', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
                 background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
                 borderRadius: '4px',
                 padding: isMobile ? '28px 20px' : '44px 44px 36px',
@@ -1079,13 +1205,12 @@ export default function LoginPage() {
               style={{ position: 'fixed', inset: 0, background: 'var(--modal-overlay)', backdropFilter: 'blur(6px)', zIndex: 200 }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 24 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              initial={{ opacity: 0, scale: 0.92, x: '-50%', y: '-44%' }}
+              animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+              exit={{ opacity: 0, scale: 0.94, x: '-50%', y: '-47%' }}
               transition={{ type: 'spring', stiffness: 280, damping: 22 }}
               style={{
                 position: 'fixed', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
                 background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
                 borderRadius: '4px', padding: '40px 32px',
                 zIndex: 201, textAlign: 'center',
