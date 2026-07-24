@@ -164,6 +164,33 @@ export const signup = async (data: { email: string; password: string; name?: str
     return result;
 };
 
+// ─── GOOGLE LOGIN ("Continue with Google") ──────────────────
+/** Ask the backend for the Google Sign-In consent URL. */
+export const getGoogleLoginUrl = async (): Promise<{ auth_url: string }> => {
+    const response = await fetch(`${API_BASE_URL}/auth/google/login`);
+    if (!response.ok) throw new Error('Failed to start Google sign-in');
+    return response.json();
+};
+
+/** Exchange the code Google returned for a Feelivate JWT (find-or-create user). */
+export const googleLoginCallback = async (code: string) => {
+    const response = await fetch(`${API_BASE_URL}/auth/google/login/callback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Google sign-in failed');
+    }
+    const result = await response.json();
+    if (result.access_token) {
+        localStorage.removeItem('active_session_id');
+        localStorage.setItem('access_token', result.access_token);
+    }
+    return result; // { access_token, user_id, name, is_new_user }
+};
+
 // ============================================================
 // SESSIONS
 // ============================================================

@@ -3,6 +3,7 @@ import LandingPage from './pages/LandingPage';
 import WorkspacePage from './pages/WorkspacePage';
 import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
+import GoogleCallbackPage from './pages/GoogleCallbackPage';
 import { useTheme } from './hooks/useTheme';
 
 // Root route — send already-logged-in users to the app, others to login.
@@ -27,6 +28,7 @@ function App() {
         <Route path="/app" element={<WorkspacePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth-callback" element={<AuthCallbackPage />} />
+        <Route path="/google-callback" element={<GoogleCallbackPage />} />
       </Routes>
     </Router>
   );

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
-import { login, signup } from '../api';
+import { login, signup, getGoogleLoginUrl } from '../api';
 import { startOnboarding } from '../lib/onboarding';
 import PillNav from '../components/PillNav';
 import { useWindowSize } from '../hooks/useWindowSize';
@@ -185,6 +185,21 @@ export default function LoginPage() {
       setError(err.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // "Continue with Google" — fetch the consent URL, then hand off to Google.
+  const handleGoogleLogin = async () => {
+    setError('');
+    try {
+      const { auth_url } = await getGoogleLoginUrl();
+      if (auth_url) {
+        window.location.href = auth_url; // Google redirects back to /google-callback
+      } else {
+        setError('Could not start Google sign-in. Please try again.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Could not start Google sign-in. Please try again.');
     }
   };
 
@@ -431,7 +446,7 @@ export default function LoginPage() {
 
               {/* Google */}
               <button
-                type="button" onClick={() => setShowGooglePopup(true)}
+                type="button" onClick={handleGoogleLogin}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
                   background: 'var(--card-bg)', color: 'var(--text-primary)',

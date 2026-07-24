@@ -7,6 +7,7 @@ import json
 import os
 import re
 import uuid
+import secrets
 import asyncio
 import io
 from typing import Any, Dict, Optional, List, Union
@@ -27,6 +28,7 @@ from .models import (
     DailyCheckin, UserStreak, VoiceJournal, WeeklyReport,
 )
 from .calendar_service import calendar_service
+from .google_login import google_login_service
 from .email_service import generate_otp, send_verification_email, send_daily_task_email, run_daily_email_scheduler
 from .security import get_password_hash, verify_password, create_access_token, decode_access_token
 from .observability import REQUESTS_TOTAL
@@ -1070,6 +1072,68 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "name": current_user.name,
         "email": current_user.email,
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+    }
+
+
+# ============================================================
+# GOOGLE LOGIN ("Continue with Google")
+# ============================================================
+
+@app.get("/auth/google/login", tags=["auth"])
+async def google_login_init():
+    """Return the Google Sign-In URL (openid/email/profile scopes)."""
+    try:
+        return {"auth_url": google_login_service.get_login_url()}
+    except Exception as e:
+        logger.error(f"Google login init failed: {e}")
+        raise HTTPException(status_code=500, detail="Could not start Google sign-in.")
+
+
+class GoogleLoginCallbackRequest(BaseModel):
+    code: str
+
+
+@app.post("/auth/google/login/callback", tags=["auth"])
+async def google_login_callback(req: GoogleLoginCallbackRequest, db: DBSession = Depends(get_db)):
+    """Exchange the Google code, find-or-create the user, and return a JWT."""
+    try:
+        info = google_login_service.exchange_code_for_userinfo(req.code)
+    except Exception as e:
+        logger.error(f"Google login callback failed: {e}")
+        raise HTTPException(status_code=400, detail="Google sign-in failed. Please try again.")
+
+    email = (info.get("email") or "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Google did not return an email address.")
+
+    user = db.query(User).filter(User.email == email).first()
+    is_new = False
+    if not user:
+        # New Google user — create with an unusable random password. They sign
+        # in via Google; the password field just satisfies the NOT NULL column.
+        user = User(
+            id=str(uuid.uuid4()),
+            email=email,
+            password=get_password_hash(secrets.token_urlsafe(32)),
+            name=info.get("name") or email.split("@")[0],
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        is_new = True
+    elif not user.name and info.get("name"):
+        # Existing account (e.g. signed up by email) that had no name — backfill it.
+        user.name = info.get("name")
+        db.commit()
+
+    access_token = create_access_token(data={"sub": user.id})
+    return {
+        "message": "Login successful",
+        "user_id": user.id,
+        "name": user.name,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "is_new_user": is_new,
     }
 
 
