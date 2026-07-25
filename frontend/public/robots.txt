@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# App internals — not for search indexing
+Disallow: /app
+Disallow: /login
+Disallow: /auth-callback
+Disallow: /google-callback
+
+Sitemap: https://feelivate.com/sitemap.xml
