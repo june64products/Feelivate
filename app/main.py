@@ -1106,7 +1106,8 @@ async def google_login_callback(req: GoogleLoginCallbackRequest, db: DBSession =
             bool(google_login_service.client_secret),
             type(e).__name__, e,
         )
-        raise HTTPException(status_code=400, detail="Google sign-in failed. Please try again.")
+        # TEMP debug hint surfaced to the popup so the exact OAuth cause is visible.
+        raise HTTPException(status_code=400, detail=f"Google sign-in failed. [debug: {type(e).__name__}: {str(e)[:180]}]")
 
     email = (info.get("email") or "").lower().strip()
     if not email:

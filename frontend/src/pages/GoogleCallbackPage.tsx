@@ -46,34 +46,48 @@ const GoogleCallbackPage: React.FC = () => {
     }, [searchParams, navigate]);
 
     return (
-        <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', backdropFilter: 'blur(6px)' }}>
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                style={{ maxWidth: '400px', width: '100%', background: 'var(--card-bg)', border: '1px solid var(--border-medium)', padding: '40px 32px', borderRadius: '4px', textAlign: 'center', boxShadow: 'var(--shadow-xl)' }}
+                initial={{ opacity: 0, scale: 0.94, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+                style={{
+                    width: '100%', maxWidth: '420px',
+                    background: '#161616',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '20px',
+                    padding: '38px 30px',
+                    textAlign: 'center',
+                    boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+                }}
             >
-                {status === 'loading' ? (
-                    <div style={{ width: '52px', height: '52px', borderRadius: '4px', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px' }}>
-                        <Loader2 size={22} style={{ color: 'var(--accent-warm)', animation: 'fv-spin 1s linear infinite' }} />
-                    </div>
-                ) : (
-                    <div style={{ width: '52px', height: '52px', borderRadius: '4px', border: '1px solid var(--border-medium)', background: 'rgba(217,119,87,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px' }}>
-                        <X size={22} style={{ color: 'var(--accent-warm)' }} />
-                    </div>
-                )}
+                <div style={{
+                    width: '56px', height: '56px', borderRadius: '16px',
+                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px',
+                }}>
+                    {status === 'loading'
+                        ? <Loader2 size={24} style={{ color: '#d97757', animation: 'fv-spin 1s linear infinite' }} />
+                        : <X size={24} style={{ color: '#d97757' }} />}
+                </div>
 
-                <h2 style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.04em', color: 'var(--text-primary)', marginBottom: '10px', fontFamily: clash }}>
+                <h2 style={{ fontSize: '23px', fontWeight: 700, letterSpacing: '-0.03em', color: '#f5f5f5', marginBottom: '10px', fontFamily: clash }}>
                     {status === 'error' ? 'Sign-in failed' : 'Signing you in'}
                 </h2>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500 }}>
+                <p style={{ fontSize: '13.5px', color: 'rgba(245,245,245,0.6)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500, wordBreak: 'break-word' }}>
                     {message}
                 </p>
 
                 {status === 'error' && (
                     <button
                         onClick={() => navigate('/login', { replace: true })}
-                        style={{ marginTop: '26px', width: '100%', padding: '14px', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', fontWeight: 700, borderRadius: '4px', cursor: 'pointer', border: 'none', fontSize: '14px', fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase', transition: 'opacity 180ms ease' }}
+                        style={{
+                            marginTop: '26px', width: '100%', padding: '13px',
+                            background: '#f2f2f2', color: '#111', fontWeight: 700,
+                            borderRadius: '12px', cursor: 'pointer', border: 'none',
+                            fontSize: '14px', fontFamily: satoshi, letterSpacing: '0.01em',
+                            transition: 'opacity 180ms ease',
+                        }}
                         onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
                         onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                     >
