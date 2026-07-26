@@ -37,7 +37,7 @@ class GoogleLoginService:
         )
 
     def _flow(self) -> Flow:
-        return Flow.from_client_config(
+        flow = Flow.from_client_config(
             {
                 "web": {
                     "client_id": self.client_id,
@@ -49,6 +49,14 @@ class GoogleLoginService:
             scopes=LOGIN_SCOPES,
             redirect_uri=self.redirect_uri,
         )
+        # This backend is stateless: a fresh Flow is built for BOTH the auth
+        # request and the callback exchange. A PKCE code_verifier generated during
+        # the auth step would be lost by the exchange step, causing
+        # "invalid_grant: Missing code verifier". The confidential client_secret
+        # already secures the exchange, so disable PKCE.
+        flow.autogenerate_code_verifier = False
+        flow.code_verifier = None
+        return flow
 
     def get_login_url(self) -> str:
         """Build the Google consent URL. `select_account` lets the user pick
