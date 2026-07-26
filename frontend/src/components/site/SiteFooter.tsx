@@ -46,7 +46,7 @@ export default function SiteFooter() {
             <span style={{ fontWeight: 700, fontSize: '16px', color: 'rgba(246,246,246,0.9)', fontFamily: clash, letterSpacing: '-0.03em' }}>Feelivate</span>
           </div>
           <p style={{ fontSize: '13px', color: 'rgba(246,246,246,0.5)', lineHeight: 1.65, fontFamily: satoshi, fontWeight: 500, marginBottom: '16px', maxWidth: '260px' }}>
-            AI behavioral mentor. Hyper-specific weekly plans that build who you become.
+            AI accountability mentor. Hyper-specific weekly plans that build who you become.
           </p>
           <p style={{ fontSize: '11px', color: 'rgba(246,246,246,0.35)', fontFamily: satoshi, fontWeight: 500, letterSpacing: '0.05em' }}>
             By <span style={{ fontWeight: 700, color: 'rgba(246,246,246,0.6)', letterSpacing: '0.08em' }}>JUNE64</span>

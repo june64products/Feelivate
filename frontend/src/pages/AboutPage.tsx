@@ -14,7 +14,7 @@ const STORY = [
   {
     label: 'What Feelivate is',
     body: [
-      "Feelivate is an AI behavioral mentor. You tell it what you actually want to become — fitter, focused, out of a rut, finally shipping the thing — and it turns that fuzzy wish into a locked, hyper-specific 7-day plan.",
+      "Feelivate is an AI accountability mentor. You tell it what you actually want to become — fitter, focused, out of a rut, finally shipping the thing — and it turns that fuzzy wish into a locked, hyper-specific 7-day plan.",
       "Then it does the hard part: it holds you to it. A personalized task lands in your inbox every morning. Streaks reward momentum. Voice check-ins let you be honest on the bad days. And every week, an unflinching report shows you exactly where you stand — before the next, slightly harder week begins.",
     ],
   },
@@ -51,7 +51,7 @@ export default function AboutPage() {
       '@type': 'AboutPage',
       name: 'About Feelivate',
       url: SITE_URL + '/about',
-      description: 'Feelivate is an AI behavioral mentor built by JUNE64 to turn goals into locked weekly action plans people actually finish.',
+      description: 'Feelivate is an AI accountability mentor built by JUNE64 to turn goals into locked weekly action plans people actually finish.',
     },
     {
       '@context': 'https://schema.org',
@@ -69,7 +69,7 @@ export default function AboutPage() {
     <PageShell
       seo={{
         title: 'About Feelivate — Built to Turn Goals Into Execution',
-        description: "Feelivate is an AI behavioral mentor by JUNE64. We don't sell motivation — we build execution, turning your goals into locked 7-day action plans you actually finish.",
+        description: "Feelivate is an AI accountability mentor by JUNE64. We don't sell motivation — we build execution, turning your goals into locked 7-day action plans you actually finish.",
         path: '/about',
         jsonLd,
       }}

@@ -1,6 +1,6 @@
 # Feelivate — Project Overview
 
-> AI behavioral mentor that turns your goals into locked 7-day action plans and drags you across the finish line every single day.
+> AI accountability mentor that turns your goals into locked 7-day action plans and drags you across the finish line every single day.
 
 ## Problem Statement
 Most people don't fail because they lack goals — they fail at *execution*. Vague to-do lists, decision fatigue, no accountability, and no honest feedback loop mean motivation fizzles by Wednesday. **Feelivate** solves this by acting as a ruthless-but-warm AI mentor: it converts a fuzzy ambition into a hyper-specific, non-negotiable weekly plan, then keeps you accountable with daily personalized emails, streaks, weekly report cards, and emotion-aware coaching that adapts to how your week actually went.

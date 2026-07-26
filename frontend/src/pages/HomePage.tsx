@@ -18,7 +18,7 @@ const STEPS = [
 ];
 
 const HIGHLIGHTS = [
-  { icon: MessageSquare, title: 'AI Behavioral Mentor', desc: 'A relentless mentor that learns your patterns and calls out your excuses.' },
+  { icon: MessageSquare, title: 'AI Accountability Mentor', desc: 'A relentless mentor that learns your patterns and calls out your excuses.' },
   { icon: Lock, title: 'The Lock-In Protocol', desc: "Once your week is set, it's locked. You commit and execute — or the streak breaks." },
   { icon: Mail, title: 'Daily Task Emails', desc: "Today's exact task + how-to tips, delivered at your time, in your timezone." },
   { icon: LineChart, title: 'Streaks & Weekly Reports', desc: 'Track real momentum and get an honest end-of-week report card.' },
@@ -34,7 +34,7 @@ const USE_CASES = [
 ];
 
 const FAQS = [
-  { q: 'What is Feelivate?', a: 'Feelivate is an AI behavioral mentor that turns your goals into locked 7-day action plans, then keeps you accountable with daily task emails, streaks, weekly reports, and voice check-ins.' },
+  { q: 'What is Feelivate?', a: 'Feelivate is an AI accountability mentor that turns your goals into locked 7-day action plans, then keeps you accountable with daily task emails, streaks, weekly reports, and voice check-ins.' },
   { q: 'How is it different from a to-do app?', a: "To-do apps store tasks; Feelivate builds the plan for you, locks it so you can't quietly make it easier, and actively drives you to execute every day." },
   { q: 'How much does it cost?', a: 'Feelivate is currently free — founding members get full access to the best version at no cost.' },
   { q: 'Do I have to talk to it?', a: 'No. You can type or send a voice memo. Feelivate reads your emotional state either way and adapts the plan.' },
@@ -79,7 +79,7 @@ export default function HomePage() {
       name: 'Feelivate',
       applicationCategory: 'LifestyleApplication',
       operatingSystem: 'Web',
-      description: 'AI behavioral mentor that turns goals into locked 7-day action plans with daily task emails, streaks, weekly reports, and voice check-ins.',
+      description: 'AI accountability mentor that turns goals into locked 7-day action plans with daily task emails, streaks, weekly reports, and voice check-ins.',
       url: SITE_URL + '/',
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', description: 'Free for founding members' },
     },
@@ -93,7 +93,7 @@ export default function HomePage() {
   return (
     <div style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
       <Seo
-        title="Feelivate — AI Behavioral Mentor for Weekly Action Plans"
+        title="Feelivate — AI Accountability Mentor for Weekly Action Plans"
         description="Turn your goals into locked 7-day action plans. Daily task emails, streaks, weekly reports, and voice check-ins keep you accountable — every single day. Free for founding members."
         path="/"
         jsonLd={jsonLd}
@@ -104,7 +104,7 @@ export default function HomePage() {
       <header style={{ padding: isMobile ? '56px 20px 64px' : '96px 48px 88px', textAlign: 'center', borderBottom: '1px solid var(--border-subtle)' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto' }}>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <Kicker>AI Behavioral Mentor</Kicker>
+            <Kicker>AI Accountability Mentor</Kicker>
             <h1 style={{ fontSize: isMobile ? '40px' : '68px', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.02, margin: '18px 0 20px', fontFamily: clash }}>
               Stop lying to yourself
               <br />

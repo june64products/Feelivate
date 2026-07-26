@@ -8,7 +8,7 @@ const SECTIONS: { h: string; p: string[] }[] = [
     'By creating an account or using Feelivate, you agree to these Terms of Service. If you do not agree, please do not use the service.',
   ] },
   { h: 'The service', p: [
-    'Feelivate is an AI behavioral mentor that generates weekly action plans and sends reminders, reports, and related features.',
+    'Feelivate is an AI accountability mentor that generates weekly action plans and sends reminders, reports, and related features.',
     'Feelivate provides guidance and accountability tools. It is not medical, psychological, or professional advice.',
   ] },
   { h: 'Free access', p: [
@@ -38,7 +38,7 @@ export default function TermsPage() {
     <PageShell
       seo={{
         title: 'Terms of Service | Feelivate',
-        description: 'The terms that govern your use of Feelivate, the AI behavioral mentor by JUNE64.',
+        description: 'The terms that govern your use of Feelivate, the AI accountability mentor by JUNE64.',
         path: '/terms',
       }}
     >

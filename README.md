@@ -1,6 +1,6 @@
 # Feelivate
 
-> AI behavioral mentor that turns your goals into locked 7-day action plans, then keeps you accountable with daily personalized emails, streaks, and honest weekly reports.
+> AI accountability mentor that turns your goals into locked 7-day action plans, then keeps you accountable with daily personalized emails, streaks, and honest weekly reports.
 
 **React 19 + Vite** frontend and a **FastAPI** backend, powered by a Groq → OpenAI LLM fallback chain. See [project_overview.md](project_overview.md) for the full architecture.
 

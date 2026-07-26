@@ -104,7 +104,7 @@ export default function FeaturesPage() {
   return (
     <PageShell
       seo={{
-        title: 'Features — Feelivate AI Behavioral Mentor',
+        title: 'Features — Feelivate AI Accountability Mentor',
         description: 'Explore every Feelivate feature across plan, execute, and reflect: goal-based weekly plans, the Lock-In Protocol, daily task emails, voice journaling, emotion tracking, streaks, calendar sync, and weekly reports.',
         path: '/features',
         jsonLd,

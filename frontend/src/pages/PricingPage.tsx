@@ -6,7 +6,7 @@ import { SITE_URL } from '../components/site/Seo';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 const INCLUDED = [
-  'AI behavioral mentor (unlimited chats)',
+  'AI accountability mentor (unlimited chats)',
   'Goal-based weekly plan generation',
   'The Lock-In Protocol',
   'Daily personalized task emails',
@@ -32,7 +32,7 @@ export default function PricingPage() {
       '@context': 'https://schema.org',
       '@type': 'Product',
       name: 'Feelivate',
-      description: 'AI behavioral mentor — currently free for founding members.',
+      description: 'AI accountability mentor — currently free for founding members.',
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock', url: SITE_URL + '/pricing', description: 'Free for founding members' },
     },
     {
@@ -54,7 +54,7 @@ export default function PricingPage() {
     <PageShell
       seo={{
         title: 'Pricing — Free for Founding Members | Feelivate',
-        description: 'Feelivate is currently free. Founding members get the full AI behavioral mentor — weekly plans, daily task emails, streaks, and reports — at no cost. No credit card required.',
+        description: 'Feelivate is currently free. Founding members get the full AI accountability mentor — weekly plans, daily task emails, streaks, and reports — at no cost. No credit card required.',
         path: '/pricing',
         jsonLd,
       }}
