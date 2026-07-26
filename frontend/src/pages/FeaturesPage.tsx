@@ -131,7 +131,7 @@ export default function FeaturesPage() {
               {group.features.map((f) => {
                 n += 1;
                 return (
-                  <div key={f.title} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '64px 1fr', gap: isMobile ? '8px' : '20px', padding: isMobile ? '24px' : '28px 30px', border: '1px solid var(--border-medium)', borderRadius: '2px' }}>
+                  <div key={f.title} className="svc-card" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '64px 1fr', gap: isMobile ? '8px' : '20px', padding: isMobile ? '24px' : '28px 30px', border: '1px solid var(--border-medium)', borderRadius: '2px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-muted)', fontFamily: satoshi, letterSpacing: '0.06em' }}>{String(n).padStart(2, '0')}</div>
                     <div>
                       <h3 style={{ fontSize: isMobile ? '19px' : '22px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.03em', marginBottom: '10px' }}>{f.title}</h3>

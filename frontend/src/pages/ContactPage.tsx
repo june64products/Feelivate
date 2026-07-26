@@ -72,11 +72,11 @@ export default function ContactPage() {
           </form>
 
           {/* Details */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {DETAILS.map((d) => {
               const inner = (
-                <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', padding: '18px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <div style={{ flexShrink: 0, width: '38px', height: '38px', borderRadius: '4px', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="svc-card" style={{ display: 'flex', gap: '14px', alignItems: 'center', padding: '16px 18px', border: '1px solid var(--border-medium)', borderRadius: '2px' }}>
+                  <div className="svc-icon" style={{ flexShrink: 0, width: '40px', height: '40px', borderRadius: '4px', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <d.icon size={16} />
                   </div>
                   <div>
