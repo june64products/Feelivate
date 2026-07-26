@@ -2865,6 +2865,38 @@ IMPORTANT NOTES:
 # METRICS & AUDIO
 # ============================================================
 
+class ContactRequest(BaseModel):
+    name: str
+    email: str
+    message: str
+
+
+@app.post("/contact", tags=["contact"])
+async def contact_form(req: ContactRequest):
+    """Receive a website contact-form submission and email it to the team."""
+    import html as _html
+    import resend
+    resend.api_key = os.getenv("RESEND_API_KEY", "")
+    if not resend.api_key:
+        raise HTTPException(status_code=503, detail="Contact form is temporarily unavailable. Please email info@june64.com directly.")
+    name = _html.escape((req.name or "").strip())[:120]
+    email = _html.escape((req.email or "").strip())[:160]
+    message = _html.escape((req.message or "").strip())[:5000].replace("\n", "<br>")
+    if not email or not message:
+        raise HTTPException(status_code=400, detail="Email and message are required.")
+    try:
+        resend.Emails.send({
+            "from": f"Feelivate Contact <{os.getenv('FROM_EMAIL', 'onboarding@resend.dev')}>",
+            "to": ["info@june64.com"],
+            "subject": f"Website contact — {name or 'New message'}",
+            "html": f"<p><b>Name:</b> {name}</p><p><b>Email:</b> {email}</p><hr><p>{message}</p>",
+        })
+        return {"status": "sent"}
+    except Exception as e:
+        logger.error(f"Contact form failed: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail="Could not send your message right now. Please email info@june64.com directly.")
+
+
 @app.get("/metrics", tags=["observability"])
 def metrics(x_internal_token: Optional[str] = Header(None)):
     expected_token = os.environ.get("INTERNAL_METRICS_TOKEN")

@@ -7,6 +7,7 @@ import ContactPage from './pages/ContactPage';
 import BlogPage from './pages/BlogPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
+import NotFoundPage from './pages/NotFoundPage';
 import LandingPage from './pages/LandingPage';
 import WorkspacePage from './pages/WorkspacePage';
 import LoginPage from './pages/LoginPage';
@@ -35,6 +36,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth-callback" element={<AuthCallbackPage />} />
         <Route path="/google-callback" element={<GoogleCallbackPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>
   );

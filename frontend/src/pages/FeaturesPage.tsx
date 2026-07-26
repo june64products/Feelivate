@@ -1,4 +1,5 @@
-import { Check } from 'lucide-react';
+import { useState } from 'react';
+import { Check, ChevronDown } from 'lucide-react';
 import PageShell from '../components/site/PageShell';
 import { PageHero, PrimaryCta, clash, satoshi } from '../components/site/ui';
 import { SITE_URL } from '../components/site/Seo';
@@ -86,8 +87,16 @@ const GROUPS: Group[] = [
   },
 ];
 
+const FEATURE_FAQS = [
+  { q: 'Do I have to use every feature?', a: 'No. Start with a goal and a weekly plan — voice journaling, calendar sync, and the rest are there when you want them.' },
+  { q: 'Can I change my plan after it locks?', a: "You can't quietly make a locked week easier, but you can talk to your mentor to shape future weeks. The lock protects your commitment; it doesn't trap you." },
+  { q: 'How do the daily task emails work?', a: "Each morning you get a personalized email with that day's exact task and how-to tips, at the time and timezone you choose. Change the time or pause anytime." },
+  { q: 'Is my voice and emotion data private?', a: 'Yes. Journals and emotion logs are used only to personalize your plans, and sensitive fields are redacted from our logs by default.' },
+];
+
 export default function FeaturesPage() {
   const { isMobile } = useWindowSize();
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
   let n = 0;
 
   const jsonLd = [
@@ -98,6 +107,11 @@ export default function FeaturesPage() {
         { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL + '/' },
         { '@type': 'ListItem', position: 2, name: 'Features', item: SITE_URL + '/features' },
       ],
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FEATURE_FAQS.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
     },
   ];
 
@@ -151,6 +165,24 @@ export default function FeaturesPage() {
           </div>
         </section>
       ))}
+
+      {/* FAQ */}
+      <section style={{ padding: isMobile ? '48px 20px' : '72px 48px', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: isMobile ? '26px' : '34px', fontWeight: 700, letterSpacing: '-0.04em', fontFamily: clash, textAlign: 'center', marginBottom: '28px' }}>Feature FAQ</h2>
+          <div style={{ border: '1px solid var(--border-medium)', borderRadius: '2px', overflow: 'hidden' }}>
+            {FEATURE_FAQS.map((f, i) => (
+              <div key={f.q} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
+                <button onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '18px 20px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.01em' }}>{f.q}</span>
+                  <ChevronDown size={18} style={{ flexShrink: 0, transform: openFaq === i ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease', color: 'var(--text-secondary)' }} />
+                </button>
+                {openFaq === i && <p style={{ padding: '0 20px 18px', fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.7, fontFamily: satoshi, fontWeight: 500 }}>{f.a}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* CTA */}
       <section style={{ padding: isMobile ? '56px 20px 72px' : '80px 48px 100px', textAlign: 'center' }}>
