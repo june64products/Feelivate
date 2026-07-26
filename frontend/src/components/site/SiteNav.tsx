@@ -38,7 +38,7 @@ export default function SiteNav() {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: isMobile ? '0 20px' : '0 48px',
-        height: isMobile ? '60px' : '72px',
+        height: isMobile ? '60px' : '80px',
         background: 'color-mix(in srgb, var(--bg-primary) 82%, transparent)',
         backdropFilter: 'blur(12px)',
         borderBottom: '1px solid var(--border-subtle)',
@@ -48,12 +48,12 @@ export default function SiteNav() {
       <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
         <div
           style={{
-            width: '30px', height: '30px', borderRadius: '7px',
-            background: 'var(--card-bg)', border: '1px solid var(--border-medium)',
+            width: '32px', height: '32px', borderRadius: '8px',
+            background: '#f2f2f2', border: '1px solid var(--border-medium)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
           }}
         >
-          <img src="/logo_2_backup.png" alt="Feelivate logo" style={{ width: '20px', height: '20px', objectFit: 'contain', filter: 'var(--logo-filter)' }} />
+          <img src="/logo_2_backup.png" alt="Feelivate logo" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
         </div>
         <span style={{ fontWeight: 700, fontSize: '18px', letterSpacing: '-0.03em', color: 'var(--text-primary)', fontFamily: clash }}>
           Feelivate

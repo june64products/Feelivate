@@ -20,17 +20,19 @@ export function PrimaryCta({ children = 'Start Free', to = '/login' }: { childre
   );
 }
 
-/** Shared page-title block used at the top of subpages. */
+/** Shared editorial page-title block used at the top of subpages. */
 export function PageHero({ kicker, title, subtitle, isMobile }: { kicker: string; title: React.ReactNode; subtitle?: string; isMobile?: boolean }) {
   return (
-    <header style={{ padding: isMobile ? '48px 20px 40px' : '80px 48px 56px', borderBottom: '1px solid var(--border-subtle)' }}>
+    <header style={{ padding: isMobile ? '52px 20px 44px' : '92px 48px 64px', borderBottom: '1px solid var(--border-subtle)' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
+        {/* vertical hairline accent — editorial lead-in */}
+        <div style={{ width: '1px', height: isMobile ? '36px' : '56px', background: 'var(--border-medium)', marginBottom: isMobile ? '20px' : '28px' }} />
         <Kicker>{kicker}</Kicker>
-        <h1 style={{ fontSize: isMobile ? '34px' : '54px', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.04, margin: '16px 0 16px', fontFamily: clash, maxWidth: '760px' }}>
+        <h1 style={{ fontSize: isMobile ? '40px' : '68px', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 0.98, margin: '18px 0 18px', fontFamily: clash, maxWidth: '880px' }}>
           {title}
         </h1>
         {subtitle && (
-          <p style={{ fontSize: isMobile ? '15px' : '17px', color: 'var(--text-secondary)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500, maxWidth: '620px' }}>
+          <p style={{ fontSize: isMobile ? '15px' : '18px', color: 'var(--text-secondary)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500, maxWidth: '640px' }}>
             {subtitle}
           </p>
         )}

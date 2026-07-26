@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, MessageSquare, Lock, Mail, LineChart, Mic, Calendar, ChevronDown } from 'lucide-react';
+import { ArrowRight, MessageSquare, Lock, Mail, LineChart, Mic, Calendar, ChevronDown, Check, Flame } from 'lucide-react';
 import Seo, { SITE_URL } from '../components/site/Seo';
 import SiteNav from '../components/site/SiteNav';
 import SiteFooter from '../components/site/SiteFooter';
@@ -100,28 +100,61 @@ export default function HomePage() {
       />
       <SiteNav />
 
-      {/* Hero */}
-      <header style={{ padding: isMobile ? '56px 20px 64px' : '96px 48px 88px', textAlign: 'center', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+      {/* Hero — clear product explanation + live preview */}
+      <header style={{ padding: isMobile ? '40px 20px 52px' : '68px 48px 84px', borderBottom: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+        <div style={{ maxWidth: '1140px', margin: '0 auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.05fr 0.95fr', gap: isMobile ? '38px' : '56px', alignItems: 'center' }}>
+          {/* Left — what it is */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <Kicker>AI Accountability Mentor</Kicker>
-            <h1 style={{ fontSize: isMobile ? '40px' : '68px', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.02, margin: '18px 0 20px', fontFamily: clash }}>
-              Stop lying to yourself
-              <br />
-              <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif", fontWeight: 400, color: 'var(--text-secondary)' }}>about</span> tomorrow.
+            <h1 style={{ fontSize: isMobile ? '37px' : '58px', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.0, margin: '16px 0 18px', fontFamily: clash }}>
+              Turn your goals into a plan you'll{' '}
+              <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif", fontWeight: 400, color: 'var(--text-secondary)' }}>actually</span> finish.
             </h1>
-            <p style={{ fontSize: isMobile ? '15px' : '18px', color: 'var(--text-secondary)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500, maxWidth: '560px', margin: '0 auto 30px' }}>
-              Feelivate turns your biggest goals into locked, non-negotiable 7-day sprints — and drags you across the finish line every single day. No fluff. Just execution.
+            <p style={{ fontSize: isMobile ? '15px' : '17px', color: 'var(--text-secondary)', lineHeight: 1.65, fontFamily: satoshi, fontWeight: 500, marginBottom: '26px', maxWidth: '520px' }}>
+              Feelivate is your AI accountability mentor. Tell it what you want to achieve — it builds a locked 7-day plan, emails you the exact task every morning, tracks your streak, and hands you an honest weekly report. You just execute.
             </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <PrimaryCta>Start Free</PrimaryCta>
               <Link to="/features" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--border-medium)', padding: '15px 26px', borderRadius: '4px', fontSize: '14px', fontWeight: 700, fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase', textDecoration: 'none' }}>
-                See Features
+                See How It Works
               </Link>
             </div>
-            <p style={{ marginTop: '18px', fontSize: '12.5px', color: 'var(--text-muted)', fontFamily: satoshi, fontWeight: 500 }}>
+            <p style={{ marginTop: '16px', fontSize: '12.5px', color: 'var(--text-muted)', fontFamily: satoshi, fontWeight: 500 }}>
               Free for founding members · No credit card
             </p>
+          </motion.div>
+
+          {/* Right — product preview mock (div-based, no image) */}
+          <motion.div
+            initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }}
+            style={{ border: '1px solid var(--border-medium)', borderRadius: '10px', background: 'var(--card-bg)', padding: isMobile ? '18px' : '22px', boxShadow: 'var(--shadow-xl)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: satoshi }}>Week 1 · Wednesday</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: 'var(--accent-warm)', fontFamily: satoshi }}>
+                <Flame size={13} /> 3-day streak
+              </span>
+            </div>
+
+            <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '7px', padding: '16px', marginBottom: '14px', background: 'var(--bg-primary)' }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent-warm)', fontFamily: satoshi }}>Today's task</span>
+              <h3 style={{ fontSize: '17px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', margin: '8px 0 6px' }}>30-minute morning run</h3>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, fontFamily: satoshi, fontWeight: 500 }}>Easy pace — the goal is to show up, not to race. Lay your shoes out tonight.</p>
+            </div>
+
+            {[
+              { d: 'Mon', t: 'Meal prep + grocery run', done: true },
+              { d: 'Tue', t: '20-minute walk', done: true },
+              { d: 'Wed', t: '30-minute morning run', done: false },
+            ].map((row) => (
+              <div key={row.d} style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 0', borderTop: '1px solid var(--border-subtle)' }}>
+                <span style={{ width: '18px', height: '18px', borderRadius: '50%', border: '1px solid ' + (row.done ? 'var(--accent-warm)' : 'var(--border-focus)'), background: row.done ? 'var(--accent-warm)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {row.done && <Check size={11} style={{ color: '#fff' }} />}
+                </span>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', fontFamily: satoshi, width: '30px' }}>{row.d}</span>
+                <span style={{ fontSize: '13px', color: row.done ? 'var(--text-muted)' : 'var(--text-primary)', fontFamily: satoshi, fontWeight: 500, textDecoration: row.done ? 'line-through' : 'none' }}>{row.t}</span>
+              </div>
+            ))}
           </motion.div>
         </div>
       </header>
@@ -162,8 +195,8 @@ export default function HomePage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '18px' }}>
             {STEPS.map((s, i) => (
-              <div key={s.title} style={{ display: 'flex', gap: '16px', padding: '24px', border: '1px solid var(--border-medium)', borderRadius: '2px' }}>
-                <div style={{ flexShrink: 0, width: '42px', height: '42px', borderRadius: '4px', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div key={s.title} className="svc-card" style={{ display: 'flex', gap: '16px', padding: '24px', border: '1px solid var(--border-medium)', borderRadius: '2px' }}>
+                <div className="svc-icon" style={{ flexShrink: 0, width: '42px', height: '42px', borderRadius: '4px', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <s.icon size={18} />
                 </div>
                 <div>
@@ -193,8 +226,8 @@ export default function HomePage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1px', background: 'var(--border-subtle)', border: '1px solid var(--border-subtle)', borderRadius: '2px', overflow: 'hidden' }}>
             {HIGHLIGHTS.map((f) => (
-              <div key={f.title} style={{ padding: '26px 22px', background: 'var(--bg-primary)' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '4px', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+              <div key={f.title} className="svc-card" style={{ padding: '26px 22px', background: 'var(--bg-primary)' }}>
+                <div className="svc-icon" style={{ width: '40px', height: '40px', borderRadius: '4px', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
                   <f.icon size={17} />
                 </div>
                 <h3 style={{ fontSize: '15px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', marginBottom: '8px' }}>{f.title}</h3>
@@ -214,7 +247,7 @@ export default function HomePage() {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '18px' }}>
             {USE_CASES.map((u) => (
-              <div key={u.title} style={{ padding: '24px', border: '1px solid var(--border-medium)', borderRadius: '2px' }}>
+              <div key={u.title} className="svc-card" style={{ padding: '24px', border: '1px solid var(--border-medium)', borderRadius: '2px' }}>
                 <h3 style={{ fontSize: '17px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', marginBottom: '8px' }}>{u.title}</h3>
                 <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500 }}>{u.desc}</p>
               </div>
