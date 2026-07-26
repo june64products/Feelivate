@@ -1099,7 +1099,8 @@ async def google_login_callback(req: GoogleLoginCallbackRequest, db: DBSession =
     try:
         info = google_login_service.exchange_code_for_userinfo(req.code)
     except Exception as e:
-        # Pull every useful field oauthlib/Google exposes about the failure.
+        # Full diagnostics go to the SERVER logs only (Northflank runtime logs) —
+        # the user just sees a clean message, never the debug internals.
         desc = getattr(e, "description", "") or ""
         err_code = getattr(e, "error", "") or ""
         logger.exception(
@@ -1109,15 +1110,7 @@ async def google_login_callback(req: GoogleLoginCallbackRequest, db: DBSession =
             bool(google_login_service.client_secret),
             type(e).__name__, e, err_code, desc,
         )
-        # TEMP debug hint surfaced to the popup so the exact OAuth cause is visible.
-        detail = (
-            f"Google sign-in failed. [debug: {type(e).__name__}: {str(e)[:200]} "
-            f"| error={err_code} | desc={desc[:200]} "
-            f"| redirect_uri={google_login_service.redirect_uri} "
-            f"| client_id_set={bool(google_login_service.client_id)} "
-            f"| client_secret_set={bool(google_login_service.client_secret)}]"
-        )
-        raise HTTPException(status_code=400, detail=detail)
+        raise HTTPException(status_code=400, detail="Google sign-in failed. Please try again.")
 
     email = (info.get("email") or "").lower().strip()
     if not email:
