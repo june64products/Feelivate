@@ -1099,7 +1099,13 @@ async def google_login_callback(req: GoogleLoginCallbackRequest, db: DBSession =
     try:
         info = google_login_service.exchange_code_for_userinfo(req.code)
     except Exception as e:
-        logger.error(f"Google login callback failed: {e}")
+        logger.exception(
+            "Google login callback failed | redirect_uri=%s | client_id_set=%s | client_secret_set=%s | %s: %s",
+            google_login_service.redirect_uri,
+            bool(google_login_service.client_id),
+            bool(google_login_service.client_secret),
+            type(e).__name__, e,
+        )
         raise HTTPException(status_code=400, detail="Google sign-in failed. Please try again.")
 
     email = (info.get("email") or "").lower().strip()

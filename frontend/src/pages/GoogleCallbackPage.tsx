@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Loader2, X } from 'lucide-react';
 import { googleLoginCallback } from '../api';
 import { startOnboarding } from '../lib/onboarding';
+
+const clash = "'Clash Display', 'Inter', system-ui, sans-serif";
+const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
 
 // Handles the redirect back from Google Sign-In (the LOGIN flow).
 // Google sends ?code=... here; we swap it for a Feelivate JWT and go to /app.
@@ -10,12 +14,11 @@ const GoogleCallbackPage: React.FC = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [status, setStatus] = useState<'loading' | 'error'>('loading');
-    const [message, setMessage] = useState('Signing you in with Google...');
+    const [message, setMessage] = useState('Signing you in with Google…');
     const ran = useRef(false);
 
     useEffect(() => {
-        // The auth code is single-use — React StrictMode runs effects twice in
-        // dev, so guard against a double exchange (the 2nd would fail).
+        // The auth code is single-use — guard against a double exchange.
         if (ran.current) return;
         ran.current = true;
 
@@ -43,38 +46,42 @@ const GoogleCallbackPage: React.FC = () => {
     }, [searchParams, navigate]);
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                style={{ maxWidth: '28rem', width: '100%', backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', padding: '2rem', borderRadius: '1.5rem', textAlign: 'center' }}
+                transition={{ duration: 0.4 }}
+                style={{ maxWidth: '400px', width: '100%', background: 'var(--card-bg)', border: '1px solid var(--border-medium)', padding: '40px 32px', borderRadius: '4px', textAlign: 'center', boxShadow: 'var(--shadow-xl)' }}
             >
-                {status === 'loading' && (
-                    <div style={{ width: '3rem', height: '3rem', border: '4px solid rgba(204, 255, 0, 0.2)', borderTopColor: '#ccff00', borderRadius: '50%', margin: '0 auto 1.5rem', animation: 'spin 1s linear infinite' }} />
-                )}
-                {status === 'error' && (
-                    <div style={{ width: '4rem', height: '4rem', backgroundColor: 'rgba(239, 68, 68, 0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                        <svg style={{ width: '2rem', height: '2rem', color: '#ef4444' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                {status === 'loading' ? (
+                    <div style={{ width: '52px', height: '52px', borderRadius: '4px', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px' }}>
+                        <Loader2 size={22} style={{ color: 'var(--accent-warm)', animation: 'fv-spin 1s linear infinite' }} />
+                    </div>
+                ) : (
+                    <div style={{ width: '52px', height: '52px', borderRadius: '4px', border: '1px solid var(--border-medium)', background: 'rgba(217,119,87,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px' }}>
+                        <X size={22} style={{ color: 'var(--accent-warm)' }} />
                     </div>
                 )}
 
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem', fontFamily: 'sans-serif' }}>{status === 'error' ? 'Oops!' : 'Signing you in'}</h2>
-                <p style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'sans-serif' }}>{message}</p>
+                <h2 style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.04em', color: 'var(--text-primary)', marginBottom: '10px', fontFamily: clash }}>
+                    {status === 'error' ? 'Sign-in failed' : 'Signing you in'}
+                </h2>
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500 }}>
+                    {message}
+                </p>
 
                 {status === 'error' && (
                     <button
                         onClick={() => navigate('/login', { replace: true })}
-                        style={{ marginTop: '2rem', padding: '0.75rem 1.5rem', backgroundColor: 'white', color: 'black', fontWeight: 'bold', borderRadius: '9999px', cursor: 'pointer', border: 'none' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#ccff00')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
+                        style={{ marginTop: '26px', width: '100%', padding: '14px', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', fontWeight: 700, borderRadius: '4px', cursor: 'pointer', border: 'none', fontSize: '14px', fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase', transition: 'opacity 180ms ease' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                     >
                         Back to Login
                     </button>
                 )}
             </motion.div>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <style>{`@keyframes fv-spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 };
