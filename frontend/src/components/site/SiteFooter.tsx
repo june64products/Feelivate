@@ -42,7 +42,9 @@ export default function SiteFooter() {
         {/* Brand */}
         <div style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-            <img src="/logo_2_backup.png" alt="Feelivate logo" style={{ width: '30px', height: '30px', objectFit: 'contain', filter: 'var(--logo-filter)' }} />
+            <div style={{ width: '34px', height: '34px', borderRadius: '9px', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+              <img src="/logo_2_backup.png" alt="Feelivate logo" style={{ width: '24px', height: '24px', objectFit: 'contain', filter: 'var(--logo-filter)' }} />
+            </div>
             <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--text-primary)', fontFamily: clash, letterSpacing: '-0.03em' }}>Feelivate</span>
           </div>
           <p style={{ fontSize: '13px', color: tp(55), lineHeight: 1.65, fontFamily: satoshi, fontWeight: 500, marginBottom: '16px', maxWidth: '260px' }}>

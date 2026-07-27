@@ -218,13 +218,14 @@ export default function LoginPage() {
       overflowX: 'hidden',
     }}>
 
-      {/* NAVIGATION — shared BrandNav (same across every page) */}
-      <BrandNav />
+      {/* NAVIGATION — shared BrandNav, fixed + edge-to-edge so its margins
+          match the story page exactly (a sticky bar gets inset by the scrollbar). */}
+      <BrandNav variant="fixed" />
 
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN SPLIT — Login left, Marketing right
           ══════════════════════════════════════════════════════════════════════ */}
-      <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
+      <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row', paddingTop: isMobile ? '60px' : '76px' }}>
 
         {/* ── LEFT: Sign-In Form ────────────────────────────────────────────── */}
         <div style={{

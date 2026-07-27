@@ -18,10 +18,12 @@ export const NAV_LINKS = [
 
 type Props = {
   /**
-   * 'sticky'   — solid translucent bar (marketing + login pages)
-   * 'floating' — transparent, sits over a full-bleed hero (story/landing)
+   * 'sticky'   — solid translucent bar, in normal flow (marketing pages)
+   * 'floating' — fixed + transparent, sits over a full-bleed hero (story/landing)
+   * 'fixed'    — fixed + solid, edge-to-edge (login) so its margins match the
+   *              floating hero nav instead of being inset by the scrollbar
    */
-  variant?: 'sticky' | 'floating';
+  variant?: 'sticky' | 'floating' | 'fixed';
 };
 
 /**
@@ -36,6 +38,7 @@ export default function BrandNav({ variant = 'sticky' }: Props) {
   const [open, setOpen] = useState(false);
 
   const floating = variant === 'floating';
+  const isFixed = variant === 'floating' || variant === 'fixed';
   const activeLabel = NAV_LINKS.find((l) => l.to === pathname)?.label;
 
   const ctaStyle: React.CSSProperties = {
@@ -56,7 +59,7 @@ export default function BrandNav({ variant = 'sticky' }: Props) {
   return (
     <nav
       style={{
-        position: floating ? 'fixed' : 'sticky',
+        position: isFixed ? 'fixed' : 'sticky',
         top: 0,
         left: 0,
         right: 0,
@@ -73,16 +76,26 @@ export default function BrandNav({ variant = 'sticky' }: Props) {
         pointerEvents: floating ? 'none' : 'auto',
       }}
     >
-      {/* Brand — theme-adaptive logo via --logo-filter (no fixed-white chip) */}
+      {/* Brand — logo in a rounded square: black chip on light theme, white on
+          dark theme (--accent-primary), with the mark recoloured via --logo-filter. */}
       <Link
         to="/"
-        style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', pointerEvents: 'auto' }}
+        style={{ display: 'flex', alignItems: 'center', gap: '11px', textDecoration: 'none', pointerEvents: 'auto' }}
       >
-        <img
-          src="/logo_2_backup.png"
-          alt="Feelivate"
-          style={{ width: '30px', height: '30px', objectFit: 'contain', filter: 'var(--logo-filter)' }}
-        />
+        <div
+          style={{
+            width: '38px', height: '38px', borderRadius: '10px',
+            background: 'var(--accent-primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', flexShrink: 0,
+          }}
+        >
+          <img
+            src="/logo_2_backup.png"
+            alt="Feelivate"
+            style={{ width: '26px', height: '26px', objectFit: 'contain', filter: 'var(--logo-filter)' }}
+          />
+        </div>
         <span style={{ fontWeight: 700, fontSize: '18px', letterSpacing: '-0.03em', color: 'var(--text-primary)', fontFamily: clash }}>
           Feelivate
         </span>
