@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { login, signup, getGoogleLoginUrl } from '../api';
 import { startOnboarding } from '../lib/onboarding';
-import PillNav from '../components/PillNav';
+import BrandNav from '../components/site/BrandNav';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
@@ -218,63 +218,8 @@ export default function LoginPage() {
       overflowX: 'hidden',
     }}>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          NAVIGATION — Sticky, Swiss minimalist
-          ══════════════════════════════════════════════════════════════════════ */}
-      <nav className="login-nav" style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: isMobile ? '0 20px' : '0 48px',
-        height: isMobile ? '56px' : '72px',
-        background: 'var(--nav-bg)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        flexShrink: 0,
-        borderBottom: '1px solid var(--border-subtle)',
-      }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '38px', height: '38px',
-            background: 'var(--accent-primary)',
-            borderRadius: '8px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            overflow: 'hidden', flexShrink: 0,
-          }}>
-            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '28px', height: '28px', objectFit: 'contain', filter: 'var(--logo-filter)' }} />
-          </div>
-          <span style={{
-            fontWeight: 700, fontSize: '18px', letterSpacing: '-0.03em',
-            color: 'var(--text-primary)', fontFamily: clashDisplay,
-          }}>
-            Feelivate
-          </span>
-        </div>
-
-        {/* Animated Pill Nav — Hidden on mobile to save space */}
-        {!isMobile && (
-          <div className="nav-links-swiss">
-            <PillNav
-              items={[
-                { label: 'Features', onClick: () => setShowFeatures(true) },
-                { label: 'About', onClick: () => setShowAbout(true) },
-                { label: 'Pricing' },
-                { label: 'Contact', onClick: () => setShowContact(true) },
-              ]}
-              baseColor="var(--text-primary)"
-              pillColor="var(--bg-primary)"
-              pillTextColor="var(--text-primary)"
-              hoveredTextColor="var(--text-inverse)"
-              fontFamily={satoshi}
-              ease="power3.out"
-            />
-          </div>
-        )}
-      </nav>
+      {/* NAVIGATION — shared BrandNav (same across every page) */}
+      <BrandNav />
 
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN SPLIT — Login left, Marketing right

@@ -1,5 +1,5 @@
 import Seo from './Seo';
-import SiteNav from './SiteNav';
+import BrandNav from './BrandNav';
 import SiteFooter from './SiteFooter';
 
 type Props = {
@@ -12,7 +12,7 @@ export default function PageShell({ seo, children }: Props) {
   return (
     <div style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
       <Seo {...seo} />
-      <SiteNav />
+      <BrandNav />
       <main>{children}</main>
       <SiteFooter />
     </div>

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, MessageSquare, Lock, Mail, LineChart, Mic, Calendar, ChevronDown, Check, Flame } from 'lucide-react';
 import Seo, { SITE_URL } from '../components/site/Seo';
-import SiteNav from '../components/site/SiteNav';
+import BrandNav from '../components/site/BrandNav';
 import SiteFooter from '../components/site/SiteFooter';
 import { useWindowSize } from '../hooks/useWindowSize';
 
@@ -98,7 +98,7 @@ export default function HomePage() {
         path="/"
         jsonLd={jsonLd}
       />
-      <SiteNav />
+      <BrandNav />
 
       {/* Hero — clear product explanation + live preview */}
       <header style={{ padding: isMobile ? '40px 20px 52px' : '68px 48px 84px', borderBottom: '1px solid var(--border-subtle)', overflow: 'hidden' }}>

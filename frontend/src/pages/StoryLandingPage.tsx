@@ -1,14 +1,22 @@
 import React, { useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion, useScroll } from 'framer-motion';
 import { ArrowRight, Play, ImageIcon } from 'lucide-react';
 import Scene3D from '../components/three/Scene3D';
 import Seo from '../components/site/Seo';
-import PillNav from '../components/PillNav';
+import BrandNav from '../components/site/BrandNav';
 import { useWindowSize } from '../hooks/useWindowSize';
+import { useTheme } from '../hooks/useTheme';
 
 const clash = "'Clash Display', 'Inter', system-ui, sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
+
+// Theme-aware translucent text/border built on --text-primary, so every shade
+// flips correctly between light and dark mode.
+const tp = (pct: number) => `color-mix(in srgb, var(--text-primary) ${pct}%, transparent)`;
+const surface = 'var(--glass-surface)';
+const surfaceHi = 'var(--glass-hover)';
+const cardBorder = 'var(--border-medium)';
 
 type RootRef = React.RefObject<HTMLDivElement | null>;
 
@@ -45,16 +53,16 @@ function MediaSlot({ kind, label }: { kind: 'video' | 'image'; label: string }) 
     <div
       style={{
         width: '100%', aspectRatio: '16 / 10', borderRadius: '16px',
-        border: '1px dashed rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.03)',
+        border: `1px dashed ${tp(18)}`, background: surface,
         backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: '12px', textAlign: 'center', padding: '20px',
       }}
     >
-      <div style={{ width: '52px', height: '52px', borderRadius: '12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {kind === 'video' ? <Play size={20} style={{ color: '#f2f2f2' }} /> : <ImageIcon size={20} style={{ color: '#f2f2f2' }} />}
+      <div style={{ width: '52px', height: '52px', borderRadius: '12px', background: surfaceHi, border: `1px solid ${tp(15)}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {kind === 'video' ? <Play size={20} style={{ color: 'var(--text-primary)' }} /> : <ImageIcon size={20} style={{ color: 'var(--text-primary)' }} />}
       </div>
-      <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.8)', fontFamily: satoshi }}>{label}</span>
-      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontFamily: satoshi, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+      <span style={{ fontSize: '13px', fontWeight: 700, color: tp(80), fontFamily: satoshi }}>{label}</span>
+      <span style={{ fontSize: '11px', color: tp(40), fontFamily: satoshi, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
         {kind === 'video' ? 'Video clip here' : 'Screenshot here'}
       </span>
     </div>
@@ -97,7 +105,7 @@ const STEPS = [
 
 export default function StoryLandingPage() {
   const { isMobile } = useWindowSize();
-  const navigate = useNavigate();
+  const { isDark } = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ container: scrollRef });
 
@@ -107,7 +115,7 @@ export default function StoryLandingPage() {
   return (
     <div
       ref={scrollRef}
-      style={{ height: '100svh', overflowY: 'auto', overflowX: 'hidden', position: 'relative', background: '#0a0a0a', color: '#f2f2f2', scrollSnapType: 'y mandatory' }}
+      style={{ height: '100svh', overflowY: 'auto', overflowX: 'hidden', position: 'relative', background: 'var(--bg-primary)', color: 'var(--text-primary)', scrollSnapType: 'y mandatory' }}
     >
       <Seo
         title="Feelivate — Turn Your Goals Into What You Actually Do"
@@ -116,64 +124,35 @@ export default function StoryLandingPage() {
         noindex
       />
 
-      <Scene3D progress={scrollYProgress} isMobile={isMobile} />
+      <Scene3D progress={scrollYProgress} isMobile={isMobile} isDark={isDark} />
 
       {/* Scroll progress bar */}
-      <motion.div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '2px', background: '#f2f2f2', transformOrigin: '0%', scaleX: scrollYProgress, zIndex: 50, opacity: 0.7 }} />
+      <motion.div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '2px', background: 'var(--text-primary)', transformOrigin: '0%', scaleX: scrollYProgress, zIndex: 50, opacity: 0.7 }} />
 
-      {/* Top bar */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: isMobile ? '16px 20px' : '22px 40px', pointerEvents: 'none' }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '9px', textDecoration: 'none', pointerEvents: 'auto' }}>
-          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#f2f2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            <img src="/logo_2_backup.png" alt="Feelivate" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-          </div>
-          <span style={{ fontWeight: 700, fontSize: '17px', letterSpacing: '-0.03em', color: '#f2f2f2', fontFamily: clash }}>Feelivate</span>
-        </Link>
-        {/* Right cluster: animated pill nav (same as sign-in page) + Start Free */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '18px' }}>
-          {!isMobile && (
-            <div style={{ pointerEvents: 'auto' }}>
-              <PillNav
-                items={[
-                  { label: 'Features', onClick: () => navigate('/features') },
-                  { label: 'About', onClick: () => navigate('/about') },
-                  { label: 'Pricing', onClick: () => navigate('/pricing') },
-                  { label: 'Contact', onClick: () => navigate('/contact') },
-                ]}
-                baseColor="#111111"
-                pillColor="#f2f2f2"
-                pillTextColor="#111111"
-                hoveredTextColor="#f2f2f2"
-                fontFamily={satoshi}
-                ease="power3.out"
-              />
-            </div>
-          )}
-          <Link to="/login" style={{ pointerEvents: 'auto', background: '#f2f2f2', color: '#111', padding: '9px 18px', borderRadius: '100px', fontSize: '13px', fontWeight: 700, fontFamily: satoshi, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Start Free</Link>
-        </div>
-      </div>
+      {/* Shared navbar — same as every other page, floating over the hero */}
+      <BrandNav variant="floating" />
 
       <div style={{ position: 'relative', zIndex: 1 }}>
 
         {/* HERO */}
         <Screen isMobile={isMobile}>
           <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} style={{ maxWidth: '900px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(242,242,242,0.5)', fontFamily: satoshi }}>AI Accountability Mentor</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: tp(50), fontFamily: satoshi }}>AI Accountability Mentor</span>
             <h1 style={{ fontSize: isMobile ? '40px' : '76px', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.0, margin: '22px 0 18px', fontFamily: clash }}>
               You already know who<br />you want to become.
             </h1>
-            <p style={{ fontSize: isMobile ? '17px' : '22px', color: 'rgba(242,242,242,0.7)', fontFamily: satoshi, fontWeight: 500, lineHeight: 1.5, maxWidth: '600px', margin: '0 auto' }}>
-              The plan was never the problem. <span style={{ color: '#f2f2f2', fontStyle: 'italic', fontFamily: "'Georgia', serif" }}>Sticking to it</span> is.
+            <p style={{ fontSize: isMobile ? '17px' : '22px', color: tp(70), fontFamily: satoshi, fontWeight: 500, lineHeight: 1.5, maxWidth: '600px', margin: '0 auto' }}>
+              The plan was never the problem. <span style={{ color: 'var(--text-primary)', fontStyle: 'italic', fontFamily: "'Georgia', serif" }}>Sticking to it</span> is.
             </p>
           </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.55 }} transition={{ delay: 1.2, duration: 1 }} style={{ position: 'absolute', bottom: '30px', fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: satoshi, color: 'rgba(242,242,242,0.6)' }}>Scroll ↓</motion.div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.55 }} transition={{ delay: 1.2, duration: 1 }} style={{ position: 'absolute', bottom: '30px', fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: satoshi, color: tp(60) }}>Scroll ↓</motion.div>
         </Screen>
 
         {/* RELATE — one message per screen */}
         {RELATE.map((line, i) => (
           <Screen key={i} isMobile={isMobile}>
             <Reveal root={scrollRef}>
-              <p style={{ fontSize: big, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.12, fontFamily: clash, maxWidth: '820px', color: '#f2f2f2' }}>{line}</p>
+              <p style={{ fontSize: big, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.12, fontFamily: clash, maxWidth: '820px', color: 'var(--text-primary)' }}>{line}</p>
             </Reveal>
           </Screen>
         ))}
@@ -183,7 +162,7 @@ export default function StoryLandingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '20px' : '30px', maxWidth: '900px' }}>
             {RELATE_WEEK.map((line, i) => (
               <Reveal key={line} root={scrollRef} delay={i * 0.14}>
-                <p style={{ fontSize: big, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.12, fontFamily: clash, color: i === RELATE_WEEK.length - 1 ? 'rgba(242,242,242,0.6)' : '#f2f2f2' }}>{line}</p>
+                <p style={{ fontSize: big, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.12, fontFamily: clash, color: i === RELATE_WEEK.length - 1 ? tp(60) : 'var(--text-primary)' }}>{line}</p>
               </Reveal>
             ))}
           </div>
@@ -199,20 +178,20 @@ export default function StoryLandingPage() {
           <div style={{ maxWidth: '1000px' }}>
             <Reveal root={scrollRef}>
               <h2 style={{ fontSize: big, fontWeight: 700, letterSpacing: '-0.045em', lineHeight: 1.05, fontFamily: clash, marginBottom: '16px' }}>
-                Here's the truth — <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif", color: 'rgba(242,242,242,0.7)' }}>it's not you.</span>
+                Here's the truth — <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif", color: tp(70) }}>it's not you.</span>
               </h2>
             </Reveal>
             <Reveal root={scrollRef} delay={0.05}>
-              <p style={{ fontSize: isMobile ? '16px' : '19px', color: 'rgba(242,242,242,0.65)', fontFamily: satoshi, fontWeight: 500, lineHeight: 1.6, maxWidth: '620px', margin: '0 auto 44px' }}>
+              <p style={{ fontSize: isMobile ? '16px' : '19px', color: tp(65), fontFamily: satoshi, fontWeight: 500, lineHeight: 1.6, maxWidth: '620px', margin: '0 auto 44px' }}>
                 Motivation was never a plan. And willpower runs out — every single time. The real problem is everything underneath.
               </p>
             </Reveal>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '16px' }}>
               {PROBLEMS.map(([t, d], i) => (
                 <Reveal key={t} root={scrollRef} delay={i * 0.08}>
-                  <div style={{ padding: '28px 22px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(8px)', height: '100%' }}>
+                  <div style={{ padding: '28px 22px', borderRadius: '14px', border: `1px solid ${cardBorder}`, background: surface, backdropFilter: 'blur(8px)', height: '100%' }}>
                     <h3 style={{ fontSize: '19px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', marginBottom: '10px' }}>{t}</h3>
-                    <p style={{ fontSize: '14px', color: 'rgba(242,242,242,0.65)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500 }}>{d}</p>
+                    <p style={{ fontSize: '14px', color: tp(65), lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500 }}>{d}</p>
                   </div>
                 </Reveal>
               ))}
@@ -224,15 +203,15 @@ export default function StoryLandingPage() {
         <Screen isMobile={isMobile}>
           <div style={{ maxWidth: '860px' }}>
             <Reveal root={scrollRef}>
-              <p style={{ fontSize: isMobile ? '19px' : '25px', color: 'rgba(242,242,242,0.7)', fontFamily: satoshi, fontWeight: 500, marginBottom: '16px' }}>
-                So what if something actually <span style={{ color: '#f2f2f2', fontWeight: 700 }}>held you to it?</span>
+              <p style={{ fontSize: isMobile ? '19px' : '25px', color: tp(70), fontFamily: satoshi, fontWeight: 500, marginBottom: '16px' }}>
+                So what if something actually <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>held you to it?</span>
               </p>
             </Reveal>
             <Reveal root={scrollRef} delay={0.08}>
               <h2 style={{ fontSize: huge, fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 0.95, fontFamily: clash, margin: '0 0 18px' }}>Meet Feelivate.</h2>
             </Reveal>
             <Reveal root={scrollRef} delay={0.14}>
-              <p style={{ fontSize: isMobile ? '16px' : '19px', color: 'rgba(242,242,242,0.7)', fontFamily: satoshi, fontWeight: 500, lineHeight: 1.6, maxWidth: '520px', margin: '0 auto' }}>
+              <p style={{ fontSize: isMobile ? '16px' : '19px', color: tp(70), fontFamily: satoshi, fontWeight: 500, lineHeight: 1.6, maxWidth: '520px', margin: '0 auto' }}>
                 Your AI accountability mentor — it turns what you <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif" }}>want</span> into what you <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif" }}>do.</span>
               </p>
             </Reveal>
@@ -252,9 +231,9 @@ export default function StoryLandingPage() {
                   transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
                   style={{ order: isMobile ? 1 : flip ? 2 : 1 }}
                 >
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(242,242,242,0.45)', fontFamily: satoshi, letterSpacing: '0.08em' }}>{String(i + 1).padStart(2, '0')} / 06</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: tp(45), fontFamily: satoshi, letterSpacing: '0.08em' }}>{String(i + 1).padStart(2, '0')} / 06</span>
                   <h3 style={{ fontSize: isMobile ? '28px' : '42px', fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.06, fontFamily: clash, margin: '14px 0 16px' }}>{f.title}</h3>
-                  <p style={{ fontSize: isMobile ? '15px' : '18px', color: 'rgba(242,242,242,0.68)', lineHeight: 1.65, fontFamily: satoshi, fontWeight: 500 }}>{f.body}</p>
+                  <p style={{ fontSize: isMobile ? '15px' : '18px', color: tp(68), lineHeight: 1.65, fontFamily: satoshi, fontWeight: 500 }}>{f.body}</p>
                 </motion.div>
                 <motion.div
                   initial={{ opacity: 0, x: isMobile ? 0 : flip ? -50 : 50, y: isMobile ? 24 : 0 }}
@@ -279,10 +258,10 @@ export default function StoryLandingPage() {
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '16px' }}>
               {STEPS.map(([t, d], i) => (
                 <Reveal key={t} root={scrollRef} delay={i * 0.08}>
-                  <div style={{ padding: '28px 22px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(8px)', height: '100%', textAlign: 'left' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(242,242,242,0.45)', fontFamily: satoshi, marginBottom: '12px' }}>{String(i + 1).padStart(2, '0')}</div>
+                  <div style={{ padding: '28px 22px', borderRadius: '14px', border: `1px solid ${cardBorder}`, background: surface, backdropFilter: 'blur(8px)', height: '100%', textAlign: 'left' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: tp(45), fontFamily: satoshi, marginBottom: '12px' }}>{String(i + 1).padStart(2, '0')}</div>
                     <h3 style={{ fontSize: '20px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', marginBottom: '10px' }}>{t}</h3>
-                    <p style={{ fontSize: '14px', color: 'rgba(242,242,242,0.65)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500 }}>{d}</p>
+                    <p style={{ fontSize: '14px', color: tp(65), lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500 }}>{d}</p>
                   </div>
                 </Reveal>
               ))}
@@ -299,15 +278,15 @@ export default function StoryLandingPage() {
               </h2>
             </Reveal>
             <Reveal root={scrollRef} delay={0.1}>
-              <p style={{ fontSize: isMobile ? '17px' : '20px', color: 'rgba(242,242,242,0.7)', fontFamily: satoshi, fontWeight: 500, lineHeight: 1.6, marginBottom: '38px' }}>
+              <p style={{ fontSize: isMobile ? '17px' : '20px', color: tp(70), fontFamily: satoshi, fontWeight: 500, lineHeight: 1.6, marginBottom: '38px' }}>
                 Your future self is watching. Don't disappoint them.
               </p>
             </Reveal>
             <Reveal root={scrollRef} delay={0.18}>
-              <Link to="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: '#f2f2f2', color: '#111', padding: '18px 34px', borderRadius: '100px', fontSize: '15px', fontWeight: 700, fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase', textDecoration: 'none' }}>
+              <Link to="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', padding: '18px 34px', borderRadius: '100px', fontSize: '15px', fontWeight: 700, fontFamily: satoshi, letterSpacing: '0.02em', textTransform: 'uppercase', textDecoration: 'none' }}>
                 Start Free — Today <ArrowRight size={17} />
               </Link>
-              <p style={{ marginTop: '18px', fontSize: '13px', color: 'rgba(242,242,242,0.5)', fontFamily: satoshi, fontWeight: 500 }}>Free for founding members · No credit card</p>
+              <p style={{ marginTop: '18px', fontSize: '13px', color: tp(50), fontFamily: satoshi, fontWeight: 500 }}>Free for founding members · No credit card</p>
             </Reveal>
           </div>
         </Screen>

@@ -98,7 +98,7 @@ const PillNav: React.FC<PillNavProps> = ({
 
     layout();
     window.addEventListener('resize', layout);
-    document.fonts?.ready.then(layout).catch(() => {});
+    document.fonts?.ready.then(layout).catch(() => { });
 
     // Entrance animation — fire only once
     if (!entranceDoneRef.current) {

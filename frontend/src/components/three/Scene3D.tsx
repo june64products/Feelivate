@@ -9,7 +9,7 @@ import * as THREE from 'three';
  * into a locked, structured plan. Monochrome, Swiss.
  * Enhancements: staggered (organic) collapse, mouse parallax, living drift.
  */
-function OrderField({ progress, count, isMobile }: { progress: MotionValue<number>; count: number; isMobile: boolean }) {
+function OrderField({ progress, count, isMobile, particleColor }: { progress: MotionValue<number>; count: number; isMobile: boolean; particleColor: string }) {
   const ref = useRef<THREE.Points>(null);
   const parallax = useRef({ x: 0, y: 0 });
   const mouse = useRef({ x: 0, y: 0 });
@@ -85,12 +85,16 @@ function OrderField({ progress, count, isMobile }: { progress: MotionValue<numbe
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[live, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#eaeaea" size={0.034} sizeAttenuation transparent opacity={0.78} depthWrite={false} />
+      <pointsMaterial color={particleColor} size={0.034} sizeAttenuation transparent opacity={0.78} depthWrite={false} />
     </points>
   );
 }
 
-export default function Scene3D({ progress, isMobile }: { progress: MotionValue<number>; isMobile: boolean }) {
+export default function Scene3D({ progress, isMobile, isDark = true }: { progress: MotionValue<number>; isMobile: boolean; isDark?: boolean }) {
+  // Match the page's --bg-primary so the canvas blends into the hero, and pick a
+  // particle colour that contrasts the background in each theme.
+  const bg = isDark ? '#0f0f0f' : '#f2f2f2';
+  const particleColor = isDark ? '#eaeaea' : '#1c1c1c';
   return (
     <Canvas
       style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}
@@ -98,9 +102,9 @@ export default function Scene3D({ progress, isMobile }: { progress: MotionValue<
       dpr={[1, isMobile ? 1.4 : 2]}
       gl={{ antialias: !isMobile, powerPreference: 'high-performance' }}
     >
-      <color attach="background" args={['#0a0a0a']} />
-      <fog attach="fog" args={['#0a0a0a', 9, 21]} />
-      <OrderField progress={progress} count={isMobile ? 900 : 2200} isMobile={isMobile} />
+      <color attach="background" args={[bg]} />
+      <fog attach="fog" args={[bg, 9, 21]} />
+      <OrderField progress={progress} count={isMobile ? 900 : 2200} isMobile={isMobile} particleColor={particleColor} />
     </Canvas>
   );
 }
