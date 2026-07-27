@@ -1,9 +1,10 @@
 import React, { useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, useScroll } from 'framer-motion';
 import { ArrowRight, Play, ImageIcon } from 'lucide-react';
 import Scene3D from '../components/three/Scene3D';
 import Seo from '../components/site/Seo';
+import PillNav from '../components/PillNav';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 const clash = "'Clash Display', 'Inter', system-ui, sans-serif";
@@ -96,6 +97,7 @@ const STEPS = [
 
 export default function StoryLandingPage() {
   const { isMobile } = useWindowSize();
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ container: scrollRef });
 
@@ -127,7 +129,28 @@ export default function StoryLandingPage() {
           </div>
           <span style={{ fontWeight: 700, fontSize: '17px', letterSpacing: '-0.03em', color: '#f2f2f2', fontFamily: clash }}>Feelivate</span>
         </Link>
-        <Link to="/login" style={{ pointerEvents: 'auto', background: '#f2f2f2', color: '#111', padding: '9px 18px', borderRadius: '100px', fontSize: '13px', fontWeight: 700, fontFamily: satoshi, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Start Free</Link>
+        {/* Right cluster: animated pill nav (same as sign-in page) + Start Free */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '18px' }}>
+          {!isMobile && (
+            <div style={{ pointerEvents: 'auto' }}>
+              <PillNav
+                items={[
+                  { label: 'Features', onClick: () => navigate('/features') },
+                  { label: 'About', onClick: () => navigate('/about') },
+                  { label: 'Pricing', onClick: () => navigate('/pricing') },
+                  { label: 'Contact', onClick: () => navigate('/contact') },
+                ]}
+                baseColor="#111111"
+                pillColor="#f2f2f2"
+                pillTextColor="#111111"
+                hoveredTextColor="#f2f2f2"
+                fontFamily={satoshi}
+                ease="power3.out"
+              />
+            </div>
+          )}
+          <Link to="/login" style={{ pointerEvents: 'auto', background: '#f2f2f2', color: '#111', padding: '9px 18px', borderRadius: '100px', fontSize: '13px', fontWeight: 700, fontFamily: satoshi, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Start Free</Link>
+        </div>
       </div>
 
       <div style={{ position: 'relative', zIndex: 1 }}>
