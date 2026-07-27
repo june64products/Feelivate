@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import FeaturesPage from './pages/FeaturesPage';
 import PricingPage from './pages/PricingPage';
@@ -26,9 +26,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Landing = the story page (root, indexable). Old marketing home lives at /home. */}
-        <Route path="/" element={<Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }} />}><StoryLandingPage /></Suspense>} />
-        <Route path="/home" element={<HomePage />} />
+        {/* Marketing home. Logged-in users are redirected to /app inside HomePage. */}
+        <Route path="/" element={<HomePage />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/about" element={<AboutPage />} />
@@ -36,8 +35,8 @@ function App() {
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
-        {/* Old story URL now redirects to the root landing (avoids duplicate content). */}
-        <Route path="/story" element={<Navigate to="/" replace />} />
+        {/* Storytelling landing experience. */}
+        <Route path="/story" element={<Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }} />}><StoryLandingPage /></Suspense>} />
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/app" element={<WorkspacePage />} />
         <Route path="/login" element={<LoginPage />} />

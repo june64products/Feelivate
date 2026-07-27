@@ -95,8 +95,7 @@ export default function HomePage() {
       <Seo
         title="Feelivate — AI Accountability Mentor for Weekly Action Plans"
         description="Turn your goals into locked 7-day action plans. Daily task emails, streaks, weekly reports, and voice check-ins keep you accountable — every single day. Free for founding members."
-        path="/home"
-        noindex
+        path="/"
         jsonLd={jsonLd}
       />
       <BrandNav />

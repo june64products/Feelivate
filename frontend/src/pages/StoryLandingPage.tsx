@@ -103,28 +103,6 @@ const STEPS = [
   ["Don't negotiate", "Respect the lock. Do the task in front of you and let it push you."],
 ];
 
-// Structured data so search engines understand what Feelivate is.
-const JSON_LD = [
-  {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'Feelivate',
-    applicationCategory: 'LifestyleApplication',
-    operatingSystem: 'Web',
-    url: 'https://feelivate.com',
-    description:
-      'AI accountability mentor that turns your goals into a locked weekly plan with daily tasks, streaks and honest weekly reports.',
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'Feelivate',
-    url: 'https://feelivate.com',
-    logo: 'https://feelivate.com/logo_2_backup.png',
-  },
-];
-
 export default function StoryLandingPage() {
   const { isMobile } = useWindowSize();
   const { isDark } = useTheme();
@@ -142,8 +120,8 @@ export default function StoryLandingPage() {
       <Seo
         title="Feelivate — AI Accountability Mentor for Your Goals & Habits"
         description="Feelivate is an AI accountability mentor that turns your goals into a locked weekly plan — daily tasks, streaks, and honest weekly reports so you actually follow through."
-        path="/"
-        jsonLd={JSON_LD}
+        path="/story"
+        noindex
       />
 
       <Scene3D progress={scrollYProgress} isMobile={isMobile} isDark={isDark} />
