@@ -10,9 +10,9 @@ const LAYERS = [
   { opacity: 0.44, offset: -0.04 },
 ];
 
-export default function EchoStack({ text, fontSize = '11vw' }: { text: string; fontSize?: string }) {
+export default function EchoStack({ text, fontSize = '11vw', color = 'var(--text-primary)' }: { text: string; fontSize?: string; color?: string }) {
   const base: React.CSSProperties = {
-    color: 'var(--text-primary)',
+    color,
     fontSize,
     fontFamily: "'Clash Display', 'Inter', sans-serif",
     fontWeight: 700,

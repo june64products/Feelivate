@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import FeaturesPage from './pages/FeaturesPage';
@@ -9,6 +10,9 @@ import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LandingPage from './pages/LandingPage';
+
+// Lazy so three.js only loads on /story, keeping the other pages light.
+const StoryLandingPage = lazy(() => import('./pages/StoryLandingPage'));
 import WorkspacePage from './pages/WorkspacePage';
 import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
@@ -31,6 +35,7 @@ function App() {
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/story" element={<Suspense fallback={<div style={{ minHeight: '100vh', background: '#0a0a0a' }} />}><StoryLandingPage /></Suspense>} />
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/app" element={<WorkspacePage />} />
         <Route path="/login" element={<LoginPage />} />
