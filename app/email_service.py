@@ -8,7 +8,7 @@ email_service.py — Feelivate Email Service
 import os
 import json
 import re
-import random
+import secrets
 import string
 from datetime import datetime
 import pytz
@@ -26,7 +26,30 @@ DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 
 
 def generate_otp(length: int = 6) -> str:
-    return "".join(random.choices(string.digits, k=length))
+    """Cryptographically secure numeric OTP.
+
+    random.choices() draws from the Mersenne Twister, whose internal state is
+    recoverable from enough observed output — unsuitable for a value that
+    authorises an email address.
+    """
+    return "".join(secrets.choice(string.digits) for _ in range(length))
+
+
+def _mask_email(address: str) -> str:
+    """'shubham@example.com' -> 's****m@example.com'.
+
+    Enough to correlate a delivery failure with an account during support,
+    without writing the full address into retained platform logs.
+    """
+    address = (address or "").strip()
+    if "@" not in address:
+        return "[redacted]"
+    local, _, domain = address.partition("@")
+    if len(local) <= 2:
+        masked_local = "*" * len(local)
+    else:
+        masked_local = f"{local[0]}{'*' * (len(local) - 2)}{local[-1]}"
+    return f"{masked_local}@{domain}"
 
 
 # ── Feelivate Logo Block (inline, white rounded square) ──────────────────────
@@ -103,10 +126,10 @@ def send_verification_email(to_email: str, otp: str, user_name: str = "there") -
             "subject": f"{otp} — Your Feelivate verification code",
             "html": html,
         })
-        logger.info(f"OTP email sent → {to_email} | id={res}")
+        logger.info(f"OTP email sent → {_mask_email(to_email)} | id={res}")
         return True
     except Exception as e:
-        logger.error(f"OTP email failed → {to_email}: {type(e).__name__}: {e}")
+        logger.error(f"OTP email failed → {_mask_email(to_email)}: {type(e).__name__}: {e}")
         return False
 
 
@@ -313,10 +336,10 @@ def send_daily_task_email(
             "subject": f"Week {week_number} \u00b7 {day_label} \u2014 {task_title[:55]}{'...' if len(task_title) > 55 else ''}",
             "html": html,
         })
-        logger.info(f"Daily email sent → {to_email} (Week {week_number} · {day_label}) | id={res}")
+        logger.info(f"Daily email sent → {_mask_email(to_email)} (Week {week_number} · {day_label}) | id={res}")
         return True
     except Exception as e:
-        logger.error(f"Daily email failed → {to_email}: {type(e).__name__}: {e}")
+        logger.error(f"Daily email failed → {_mask_email(to_email)}: {type(e).__name__}: {e}")
         return False
 
 
@@ -508,7 +531,7 @@ def run_daily_email_scheduler():
 
                 # Already sent today (in user's local date)?
                 if user.last_daily_email_date == today_date_str:
-                    logger.info(f"[Scheduler] Already sent today ({today_date_str}) to {user.notification_email}")
+                    logger.info(f"[Scheduler] Already sent today ({today_date_str}) to {_mask_email(user.notification_email)}")
                     continue
 
                 logger.info(

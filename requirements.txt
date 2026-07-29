@@ -29,6 +29,10 @@ aiosqlite
 python-multipart
 passlib[argon2]
 python-jose[cryptography]
+# Fernet encryption for OAuth refresh tokens at rest (app/crypto.py).
+# Pulled in transitively by python-jose[cryptography]; pinned explicitly so it
+# can't disappear if that extra changes.
+cryptography
 
 # Google Calendar Integration
 google-auth

@@ -32,6 +32,18 @@ from .google_login import google_login_service
 from .email_service import generate_otp, send_verification_email, send_daily_task_email, run_daily_email_scheduler
 from .security import get_password_hash, verify_password, create_access_token, decode_access_token
 from .observability import REQUESTS_TOTAL
+from .ratelimit import LIMITERS as RATE_LIMITERS, prune_all as prune_rate_limiters
+from .crypto import encrypt_secret, decrypt_secret
+from .safety import CRISIS_SYSTEM_INSTRUCTION, crisis_payload, detect_crisis
+from .privacy import (
+    CONSENT_POLICY_VERSION,
+    REQUIRED_CONSENTS,
+    build_user_export,
+    delete_user_data,
+    missing_consents,
+    record_consents,
+    run_retention_sweep,
+)
 
 load_dotenv()
 
@@ -58,8 +70,19 @@ async def lifespan(app):
             id="daily_email_scheduler",
             replace_existing=True,
         )
+        # Storage limitation (GDPR Art 5(1)(e)) is an obligation, not a chore —
+        # it has to run on its own schedule rather than depend on someone
+        # remembering to clean up.
+        _scheduler.add_job(
+            _retention_job,
+            trigger="cron",
+            hour="3",
+            minute="17",   # off the hour so it doesn't pile onto other cron work
+            id="retention_sweep",
+            replace_existing=True,
+        )
         _scheduler.start()
-        logger.info("[Scheduler] APScheduler started — checking every minute for daily emails")
+        logger.info("[Scheduler] APScheduler started — daily emails + nightly retention sweep")
     yield
     if _SCHEDULER_AVAILABLE and _scheduler:
         _scheduler.shutdown(wait=False)
@@ -74,11 +97,20 @@ _raw_origins = os.environ.get(
 )
 _allowed_origins = [o.strip().rstrip("/") for o in _raw_origins.split(",") if o.strip()]
 
-# Allow ANY Vercel deployment (prod + preview) for every frontend — old, the
-# june64 Feelivate one, and future deploys — without having to list each URL.
-# Safe with allow_credentials because the regex echoes the matched origin (not "*"),
-# and the API is JWT-protected regardless of origin.
-_vercel_origin_regex = r"https://([a-zA-Z0-9-]+\.)*vercel\.app"
+# Preview deployments live on unpredictable *.vercel.app subdomains, so during
+# development it is convenient to allow the whole zone. In production that means
+# *any* Vercel-hosted site — including someone else's — can make credentialed
+# requests to this API, which removes a layer of defence in an XSS or leaked
+# token scenario. So the wildcard is opt-in and off by default; production
+# should list its real origins in ALLOWED_ORIGINS instead.
+_allow_vercel_previews = os.environ.get("ALLOW_VERCEL_PREVIEW_ORIGINS", "").lower() in {"1", "true", "yes"}
+_vercel_origin_regex = r"https://([a-zA-Z0-9-]+\.)*vercel\.app" if _allow_vercel_previews else None
+
+if _allow_vercel_previews:
+    logger.warning(
+        "CORS: all *.vercel.app origins are allowed (ALLOW_VERCEL_PREVIEW_ORIGINS). "
+        "Leave this unset in production."
+    )
 
 app.add_middleware(
     CORSMiddleware,
@@ -107,6 +139,80 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: DBSession = 
     return user
 
 
+async def get_consented_user(
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Like get_current_user, but also requires a current, valid consent.
+
+    Applied to the endpoints that actually process wellbeing content. A client
+    that skips the consent screen therefore cannot reach them — the gate does
+    not depend on the frontend behaving.
+
+    Defined here, next to get_current_user, because FastAPI evaluates Depends()
+    defaults at import time: a dependency must exist before the first endpoint
+    that references it.
+    """
+    outstanding = missing_consents(db, current_user.id)
+    if outstanding:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "consent_required",
+                "message": "Please review and accept the updated terms to continue.",
+                "missing": outstanding,
+                "policy_version": CONSENT_POLICY_VERSION,
+            },
+        )
+    return current_user
+
+
+# ── Client identification & rate limiting ───────────────────────────────────
+
+def client_ip(request: Request) -> str:
+    """Best-effort client IP.
+
+    Northflank terminates TLS in front of the app, so request.client.host is the
+    proxy. Trust the left-most X-Forwarded-For entry, which is the original
+    client for a single trusted proxy hop.
+    """
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("x-real-ip", "")
+    if real_ip:
+        return real_ip.strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _enforce_rate_limit(bucket: str, request: Request, identity: Optional[str] = None) -> None:
+    """Raise 429 when the caller has exhausted the quota for `bucket`.
+
+    `identity` (email or user id) is preferred over IP where available, so a
+    shared NAT/office IP can't lock everyone out of their own account.
+    """
+    limiter = RATE_LIMITERS.get(bucket)
+    if limiter is None:
+        return
+    key = f"{bucket}:{(identity or '').lower().strip() or client_ip(request)}"
+    allowed, retry_after = limiter.check(key)
+    if not allowed:
+        logger.warning(f"[RateLimit] blocked bucket={bucket}")
+        raise HTTPException(
+            status_code=429,
+            detail="Too many attempts. Please wait a little while and try again.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+
+def _clear_rate_limit(bucket: str, request: Request, identity: Optional[str] = None) -> None:
+    """Reset a bucket after a legitimate success."""
+    limiter = RATE_LIMITERS.get(bucket)
+    if limiter is None:
+        return
+    limiter.reset(f"{bucket}:{(identity or '').lower().strip() or client_ip(request)}")
+
+
 @app.on_event("startup")
 def on_startup():
     try:
@@ -117,13 +223,48 @@ def on_startup():
         import traceback
         logger.error(traceback.format_exc())
 
+    # One-shot, idempotent: leaves no readable password in storage.
+    try:
+        from .database import migrate_plaintext_passwords
+        migrate_plaintext_passwords()
+    except Exception as e:
+        logger.error(f"Password migration failed at startup: {e}")
+
+
+def _retention_job():
+    """Scheduled housekeeping: storage limitation + limiter bookkeeping."""
+    db = SessionLocal()
+    try:
+        run_retention_sweep(db)
+    except Exception as e:
+        logger.error(f"[Retention] sweep failed: {e}")
+    finally:
+        db.close()
+    try:
+        prune_rate_limiters()
+    except Exception as e:
+        logger.debug(f"[RateLimit] prune failed: {e}")
+
 
 @app.post("/admin/migrate", tags=["admin"])
-def run_migrations_endpoint():
+def run_migrations_endpoint(x_internal_token: Optional[str] = Header(None)):
     """
     Emergency endpoint: run DB migrations manually.
     Safe to call multiple times — all statements use IF NOT EXISTS.
+
+    Requires INTERNAL_ADMIN_TOKEN. An unauthenticated endpoint that issues DDL
+    is an availability risk on a database holding special-category data, so it
+    refuses to run at all when no token is configured.
     """
+    expected = os.environ.get("INTERNAL_ADMIN_TOKEN", "").strip()
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail="Admin endpoint disabled: INTERNAL_ADMIN_TOKEN is not configured.",
+        )
+    if not x_internal_token or not secrets.compare_digest(x_internal_token, expected):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     try:
         from .database import init_db as _init_db
         _init_db()
@@ -164,6 +305,26 @@ class SignupRequest(BaseModel):
     email: str
     password: str
     name: Optional[str] = None
+    # Consent decisions keyed by the entries in privacy.REQUIRED_CONSENTS /
+    # OPTIONAL_CONSENTS, e.g. {"terms": true, "privacy": true,
+    # "sensitive_data": true, "age_18": true}. Every required key must be true.
+    consents: Optional[Dict[str, bool]] = None
+
+
+class ConsentRequest(BaseModel):
+    consents: Dict[str, bool]
+
+
+class ConsentWithdrawRequest(BaseModel):
+    consent_type: str
+
+
+class AccountDeleteRequest(BaseModel):
+    # Typing the exact word is the confirmation step — the action is
+    # irreversible and must not be reachable by a single stray click.
+    confirmation: str
+    # Required for password accounts; Google-only accounts pass nothing.
+    password: Optional[str] = None
 
 class TaskUpdate(BaseModel):
     is_completed: bool
@@ -352,7 +513,7 @@ async def chat(
     payload: ChatRequest,
     background_tasks: BackgroundTasks,
     db: DBSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_consented_user)
 ):
     """
     The ONE chat endpoint. Handles everything:
@@ -373,7 +534,12 @@ async def chat(
     if not message:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
     
-    logger.info(f"Chat request from user {user_id}, session {session_id}")
+    # Session id only. The user id and the message body stay out of the log
+    # stream — chat content here is wellbeing data (GDPR Art 9).
+    logger.info(f"Chat request | session={session_id}")
+
+    # Screened locally, before the message goes anywhere else.
+    in_crisis = detect_crisis(message)
     
     try:
         # 1. Get or create session
@@ -542,6 +708,12 @@ async def chat(
             current_week_complete=current_week_complete,
         )
 
+        # 5a. Crisis override. If the message indicates suicide or self-harm
+        # risk, the mentor persona is suspended for this turn: no plan, no
+        # streak pressure, just an honest handoff to real help.
+        if in_crisis:
+            prompt_messages.insert(0, {"role": "system", "content": CRISIS_SYSTEM_INSTRUCTION})
+
         # 5b. Anti-repetition guardrail — detect if last assistant messages are very similar
         # and inject a system hint to vary the response
         recent_assistant_msgs = [m["content"] for m in history if m["role"] == "assistant"][-3:]
@@ -603,7 +775,7 @@ async def chat(
         }
         msg_normalized = message.lower().strip().rstrip("!.?,")
         if plan_data and msg_normalized in _CASUAL_WORDS:
-            logger.info(f"Casual message '{message}' triggered plan — suppressing plan_data")
+            logger.info("Casual acknowledgement triggered a plan — suppressing plan_data")
             plan_data = None
         
         # 6b. Validate plan structure — plan must have 'days' array with items
@@ -741,22 +913,34 @@ async def chat(
         except Exception as e:
             logger.warning(f"Failed to save chat memory (non-fatal): {e}")
         
-        return {
+        response: Dict[str, Any] = {
             "reply": reply_text,
             "plan": plan_data,
             "session_id": session_id
         }
-        
+        if in_crisis:
+            # Suppress any plan the model produced anyway, and hand the client a
+            # structured block to render as a resource card rather than leaving
+            # help buried in a paragraph.
+            response["plan"] = None
+            response["safety"] = crisis_payload()
+        return response
+
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
         logger.error(f"Chat failed: {str(e)}")
         logger.error(tb)
-        return {
+        fallback = {
             "reply": "Sorry, I hit a snag on my end. Please try again in a moment.",
             "plan": None,
             "session_id": session_id
         }
+        # A backend failure must not swallow a crisis signal.
+        if in_crisis:
+            fallback["reply"] = crisis_payload()["body"]
+            fallback["safety"] = crisis_payload()
+        return fallback
 
 
 @app.post("/chat/{session_id}/approve_plan", tags=["chat"])
@@ -879,9 +1063,25 @@ async def approve_plan(
 # PERSISTENCE ENDPOINTS
 # ============================================================
 
+def _assert_session_owner(db: DBSession, session_id: str, current_user: User) -> Session:
+    """Load a session and confirm it belongs to the caller.
+
+    Authentication alone is not authorization: without this check any logged-in
+    user could read or mutate another user's chat history, plans and tasks —
+    which here includes emotional/wellbeing content (GDPR Art 32 confidentiality).
+    """
+    session = db.query(Session).filter(Session.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return session
+
+
 @app.get("/sessions/{session_id}/history", tags=["persistence"])
 def get_session_history(session_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Fetch all chat messages for a specific session."""
+    _assert_session_owner(db, session_id, current_user)
     messages = db.query(ChatMessage).filter(
         ChatMessage.session_id == session_id
     ).order_by(ChatMessage.created_at.asc()).all()
@@ -891,6 +1091,7 @@ def get_session_history(session_id: str, db: DBSession = Depends(get_db), curren
 @app.get("/sessions/{session_id}/tasks", tags=["persistence"])
 def get_session_tasks(session_id: str, db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Fetch all roadmap tasks for a specific session."""
+    _assert_session_owner(db, session_id, current_user)
     tasks = db.query(RoadmapTask).filter(
         RoadmapTask.session_id == session_id
     ).order_by(RoadmapTask.month.asc(), RoadmapTask.week.asc()).all()
@@ -903,6 +1104,9 @@ def update_task_status(task_id: int, payload: TaskUpdate, db: DBSession = Depend
     task = db.query(RoadmapTask).filter(RoadmapTask.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    # task_id is a sequential integer, so without this check the endpoint is
+    # trivially enumerable across every user's tasks.
+    _assert_session_owner(db, task.session_id, current_user)
     task.is_completed = 1 if payload.is_completed else 0
     db.commit()
     return task
@@ -989,7 +1193,7 @@ async def get_session_detail(session_id: str, db: DBSession = Depends(get_db), c
 @app.post("/transcribe", tags=["chat"])
 async def transcribe_audio(
     audio: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_consented_user)
 ):
     """Transcribe voice input via Groq Whisper Large v3 Turbo (fast, <1s)."""
     from .llm import call_groq_transcribe
@@ -1011,12 +1215,29 @@ async def transcribe_audio(
 
 
 @app.post("/signup", tags=["auth"])
-async def signup(req: SignupRequest, db: DBSession = Depends(get_db)):
-    """Secure signup with password hashing."""
+async def signup(req: SignupRequest, request: Request, db: DBSession = Depends(get_db)):
+    """Create an account, recording the consents that make processing lawful."""
+    _enforce_rate_limit("signup", request)
+
+    decisions = req.consents or {}
+
+    # No account is created without a lawful basis for the data it will hold.
+    # Checking before the INSERT means a refused consent leaves nothing behind.
+    not_granted = [key for key in REQUIRED_CONSENTS if not decisions.get(key)]
+    if not_granted:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "consent_required",
+                "message": "Please accept the required items to create your account.",
+                "missing": not_granted,
+            },
+        )
+
     user = db.query(User).filter(User.email == req.email).first()
     if user:
         raise HTTPException(status_code=400, detail="User already exists")
-    
+
     new_user = User(
         id=str(uuid.uuid4()),
         email=req.email,
@@ -1024,54 +1245,239 @@ async def signup(req: SignupRequest, db: DBSession = Depends(get_db)):
         name=req.name
     )
     db.add(new_user)
+    db.flush()  # assign the row before the consent rows reference it
+
+    record_consents(
+        db,
+        new_user.id,
+        decisions,
+        ip_address=client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+        commit=False,
+    )
     db.commit()
-    
+
     access_token = create_access_token(data={"sub": new_user.id})
     return {
-        "message": "User created", 
-        "user_id": new_user.id, 
+        "message": "User created",
+        "user_id": new_user.id,
         "name": new_user.name,
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "consent_required": [],
     }
 
 @app.post("/login", tags=["auth"])
-async def login(req: LoginRequest, db: DBSession = Depends(get_db)):
-    """Secure login with JWT generation and lazy password hashing."""
+async def login(req: LoginRequest, request: Request, db: DBSession = Depends(get_db)):
+    """Secure login with JWT generation."""
+    _enforce_rate_limit("login", request, req.email)
+
     user = db.query(User).filter(User.email == req.email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Lazy Migration Logic: If it doesn't look like an Argon2 hash, assume plain text
-    if not user.password.startswith("$argon2"):
-        if user.password == req.password:
-            user.password = get_password_hash(req.password)
-            db.commit()
-            logger.info(f"Upgraded password for user {user.email} to hash.")
-        else:
-            raise HTTPException(status_code=401, detail="Invalid password")
-    else:
-        if not verify_password(req.password, user.password):
-            raise HTTPException(status_code=401, detail="Invalid password")
-        
+
+    # Same status and message for "no such account" and "wrong password".
+    # Distinguishing them would let anyone test whether a given email address
+    # has a Feelivate account — on a wellbeing product that is itself a
+    # disclosure of personal data.
+    if not user or not verify_password(req.password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    _clear_rate_limit("login", request, req.email)
     access_token = create_access_token(data={"sub": user.id})
     return {
         "message": "Login successful",
         "user_id": user.id,
         "name": user.name,
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        # Accounts created before consent was collected, or under an older
+        # policy version, land here with a non-empty list. The client shows the
+        # consent screen; the backend independently refuses the sensitive
+        # endpoints until it is cleared.
+        "consent_required": missing_consents(db, user.id),
     }
 
 
 @app.get("/me", tags=["auth"])
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Return the authenticated user's profile — name, email, and join date."""
     return {
         "id": current_user.id,
         "name": current_user.name,
         "email": current_user.email,
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+        "consent_required": missing_consents(db, current_user.id),
+    }
+
+
+# ============================================================
+# ACCOUNT & DATA RIGHTS  (GDPR Art 7, 15, 17, 20)
+# ============================================================
+
+@app.get("/legal/consents", tags=["account"])
+async def get_consent_catalogue():
+    """Public: the consent items and current policy version.
+
+    Unauthenticated because the signup form needs it before an account exists.
+    Serving it from here rather than hardcoding the list in the frontend means
+    adding or rewording a consent can never leave the two out of step.
+    """
+    from .privacy import consent_catalogue
+
+    return {"policy_version": CONSENT_POLICY_VERSION, "catalogue": consent_catalogue()}
+
+
+@app.get("/account/consents", tags=["account"])
+async def get_consents(db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Current consent state plus the catalogue the consent screen renders."""
+    from .privacy import consent_catalogue, current_consents
+
+    return {
+        "policy_version": CONSENT_POLICY_VERSION,
+        "catalogue": consent_catalogue(),
+        "state": current_consents(db, current_user.id),
+        "missing": missing_consents(db, current_user.id),
+    }
+
+
+@app.post("/account/consents", tags=["account"])
+async def submit_consents(
+    req: ConsentRequest,
+    request: Request,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Record consent decisions — used by signup and the post-login screen."""
+    not_granted = [key for key in REQUIRED_CONSENTS if not req.consents.get(key)]
+    if not_granted:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "consent_required",
+                "message": "All required items must be accepted to continue using Feelivate.",
+                "missing": not_granted,
+            },
+        )
+
+    record_consents(
+        db,
+        current_user.id,
+        req.consents,
+        ip_address=client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    return {"status": "ok", "policy_version": CONSENT_POLICY_VERSION, "missing": []}
+
+
+@app.post("/account/consents/withdraw", tags=["account"])
+async def withdraw_consent_endpoint(
+    req: ConsentWithdrawRequest,
+    request: Request,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Withdraw a consent (Art 7(3) — must be as easy as giving it).
+
+    Withdrawing a *required* consent does not delete anything by itself; it
+    stops further processing. The response says plainly what that means so the
+    user can choose deletion if that is what they actually want.
+    """
+    from .privacy import withdraw_consent
+
+    if not withdraw_consent(
+        db,
+        current_user.id,
+        req.consent_type,
+        ip_address=client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    ):
+        raise HTTPException(status_code=400, detail="Unknown consent type")
+
+    outstanding = missing_consents(db, current_user.id)
+    return {
+        "status": "withdrawn",
+        "consent_type": req.consent_type,
+        "missing": outstanding,
+        "blocks_service": bool(outstanding),
+        "message": (
+            "Consent withdrawn. Feelivate can no longer process your wellbeing content, so "
+            "those features are paused until you accept again. Your existing data is still "
+            "stored — use Delete account if you want it erased."
+            if outstanding
+            else "Consent withdrawn."
+        ),
+    }
+
+
+@app.get("/account/export", tags=["account"])
+async def export_account(
+    request: Request,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download everything we hold about you, as JSON (Art 15 and Art 20).
+
+    Served as an attachment so the browser saves a file the user can keep or
+    hand to another service, which is the point of portability.
+    """
+    _enforce_rate_limit("account_export", request, current_user.id)
+
+    payload = build_user_export(db, current_user)
+    filename = f"feelivate-export-{current_user.id[:8]}.json"
+    logger.info("[Export] account export generated")
+    return Response(
+        content=json.dumps(payload, indent=2, ensure_ascii=False),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # Never let a proxy or the browser keep a copy of this file.
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@app.delete("/account", tags=["account"])
+async def delete_account(
+    req: AccountDeleteRequest,
+    request: Request,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Permanently erase the account and all associated data (Art 17).
+
+    Irreversible and immediate — there is no soft-delete and no grace period.
+    Two safeguards guard the action: the literal confirmation word, and the
+    account password where the account has one (so a stolen session token on
+    its own cannot destroy someone's history).
+    """
+    _enforce_rate_limit("account_delete", request, current_user.id)
+
+    if (req.confirmation or "").strip().upper() != "DELETE":
+        raise HTTPException(status_code=400, detail='Type DELETE to confirm account deletion.')
+
+    # Google-only accounts hold an unguessable random password they never set,
+    # so a password prompt would be impossible to satisfy. Those accounts rely
+    # on the confirmation word plus a valid session.
+    if req.password:
+        if not verify_password(req.password, current_user.password):
+            raise HTTPException(status_code=401, detail="Incorrect password.")
+
+    # Best-effort: hand the Google refresh token back before the row is gone,
+    # otherwise it stays live at Google with nothing left here to revoke it.
+    if current_user.google_refresh_token:
+        try:
+            calendar_service.revoke_token(decrypt_secret(current_user.google_refresh_token))
+        except Exception as e:
+            logger.warning(f"[Erasure] Google token revocation failed (non-fatal): {type(e).__name__}")
+
+    result = delete_user_data(db, current_user)
+
+    return {
+        "status": "deleted",
+        "message": "Your account and all associated data have been permanently deleted.",
+        "deleted": result["deleted"],
+        # Named honestly rather than swallowed: if an external store could not
+        # be reached, the user is told so they can hold us to finishing it.
+        "incomplete": result["warnings"],
     }
 
 
@@ -1144,6 +1550,9 @@ async def google_login_callback(req: GoogleLoginCallbackRequest, db: DBSession =
         "access_token": access_token,
         "token_type": "bearer",
         "is_new_user": is_new,
+        # Google sign-in cannot carry consent, so both new and returning Google
+        # users clear it on the consent screen straight after landing.
+        "consent_required": missing_consents(db, user.id),
     }
 
 
@@ -1171,7 +1580,8 @@ async def google_auth_callback(code: str, user_id: str, db: DBSession = Depends(
             raise HTTPException(status_code=404, detail="User not found")
             
         if refresh_token:
-            user.google_refresh_token = refresh_token
+            # Encrypted at rest: a database dump must not yield live calendar access.
+            user.google_refresh_token = encrypt_secret(refresh_token)
         
         user.calendar_sync_enabled = 1
         db.commit()
@@ -1213,7 +1623,7 @@ async def sync_calendar(session_id: str, user_id: str, background_tasks: Backgro
         
         background_tasks.add_task(
             calendar_service.sync_roadmap_to_calendar,
-            user.google_refresh_token,
+            decrypt_secret(user.google_refresh_token),
             roadmap_data,
             user_context,
             preferred_time
@@ -1236,7 +1646,7 @@ async def stop_calendar_sync(user_id: str, background_tasks: BackgroundTasks, db
     user.calendar_sync_enabled = 0
     db.commit()
 
-    background_tasks.add_task(calendar_service.clear_roadmap_events, user.google_refresh_token)
+    background_tasks.add_task(calendar_service.clear_roadmap_events, decrypt_secret(user.google_refresh_token))
     
     return {"message": "Notifications disabled and future events being removed."}
 
@@ -1269,6 +1679,7 @@ class UpdateNotificationTimeRequest(BaseModel):
 @app.post("/notifications/email/send-otp", tags=["notifications"])
 async def send_email_otp(
     payload: SendEmailOTPRequest,
+    request: Request,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1277,6 +1688,10 @@ async def send_email_otp(
 
     if payload.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Each call sends a real email to an address the caller supplies — without a
+    # cap this is a mail-bombing primitive pointed at third parties.
+    _enforce_rate_limit("otp_send", request, current_user.id)
 
     user = db.query(User).filter(User.id == payload.user_id).first()
     if not user:
@@ -1304,6 +1719,7 @@ async def send_email_otp(
 @app.post("/notifications/email/verify-otp", tags=["notifications"])
 async def verify_email_otp(
     payload: VerifyEmailOTPRequest,
+    request: Request,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1312,6 +1728,10 @@ async def verify_email_otp(
 
     if payload.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    # A 6-digit code is only 10^6 wide; unlimited guesses defeat the point of
+    # verifying the address at all.
+    _enforce_rate_limit("otp_verify", request, current_user.id)
 
     user = db.query(User).filter(User.id == payload.user_id).first()
     if not user:
@@ -1507,7 +1927,7 @@ def _recalculate_streak(db: DBSession, user_id: str, client_date: Optional[str] 
 async def daily_checkin(
     payload: CheckinRequest,
     db: DBSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_consented_user),
 ):
     """
     Mark today as done or skipped. Idempotent — calling twice updates the status.
@@ -2110,7 +2530,7 @@ async def create_voice_journal(
     session_id: Optional[str] = None,
     client_date: Optional[str] = None,  # ISO date from client local timezone
     db: DBSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_consented_user),
 ):
     """
     Upload a voice note → transcribe (Groq Whisper) → analyze emotion (LLM) → save.
@@ -2198,7 +2618,7 @@ async def create_voice_journal(
     # Pass today (client date) so streak boundary uses user's local timezone
     _recalculate_streak(db, user_id, client_date=today)
 
-    return {
+    response: Dict[str, Any] = {
         "date": today,
         "transcript": transcript,
         "emotion_label": emotion["label"],
@@ -2206,6 +2626,11 @@ async def create_voice_journal(
         "one_liner": emotion["one_liner"],
         "recorded_today": True,
     }
+    # A voice note is often where someone says the thing they wouldn't type.
+    # Same screen as the chat endpoint, applied to the transcript.
+    if detect_crisis(transcript):
+        response["safety"] = crisis_payload()
+    return response
 
 
 @app.post("/streak/backfill", tags=["streak"])
@@ -2882,10 +3307,13 @@ class ContactRequest(BaseModel):
 
 
 @app.post("/contact", tags=["contact"])
-async def contact_form(req: ContactRequest):
+async def contact_form(req: ContactRequest, request: Request):
     """Receive a website contact-form submission and email it to the team."""
     import html as _html
     import resend
+
+    # Unauthenticated and it sends mail — cap it per IP.
+    _enforce_rate_limit("contact", request)
     resend.api_key = os.getenv("RESEND_API_KEY", "")
     if not resend.api_key:
         raise HTTPException(status_code=503, detail="Contact form is temporarily unavailable. Please email info@june64.com directly.")

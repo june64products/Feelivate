@@ -29,10 +29,25 @@ AGENT_LATENCY = Histogram(
 )
 
 
+# Fields that must never reach the log stream. Logs are shipped to the hosting
+# platform and retained there, so anything listed here would otherwise become a
+# second, uncontrolled copy of personal data (GDPR Art 5(1)(c) and Art 32).
+_REDACTED_KEYS = {
+    # identifiers
+    "user_id", "email", "notification_email", "to_email", "ip", "ip_address",
+    # credentials and tokens
+    "password", "token", "access_token", "refresh_token", "google_refresh_token",
+    "otp", "email_otp_code", "api_key", "authorization",
+    # content — journals, chat and emotion data are special category
+    "text", "comments", "message", "content", "transcript", "note", "focus",
+    "vision", "reply", "one_liner", "emotion_label",
+}
+
+
 def _redact(payload: Dict[str, Any]) -> Dict[str, Any]:
     redacted = {}
     for k, v in payload.items():
-        if k in {"user_id", "text", "comments"}:
+        if k.lower() in _REDACTED_KEYS:
             redacted[k] = "[redacted]"
         else:
             redacted[k] = v

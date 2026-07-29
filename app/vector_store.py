@@ -73,10 +73,68 @@ class VectorStore:
                     )
                 ]
             )
-            logger.info(f"Memory stored in Qdrant for user {user_id}")
+            logger.info("Memory stored in Qdrant")
             return True
         except Exception as e:
             logger.error(f"Failed to add memory to Qdrant: {e}")
+            return False
+
+    def _user_filter(self, user_id: str) -> "models.Filter":
+        return models.Filter(
+            must=[models.FieldCondition(key="user_id", match=models.MatchValue(value=user_id))]
+        )
+
+    def export_user_memories(self, user_id: str, limit: int = 10_000) -> List[Dict[str, Any]]:
+        """Return every stored memory payload for a user (GDPR Art 15/20).
+
+        Vectors themselves are omitted — they are a derived numeric
+        representation of the text, which is already included.
+        """
+        if not self.enabled or not self.client:
+            return []
+
+        results: List[Dict[str, Any]] = []
+        offset = None
+        try:
+            while len(results) < limit:
+                points, offset = self.client.scroll(
+                    collection_name=COLLECTION_NAME,
+                    scroll_filter=self._user_filter(user_id),
+                    limit=min(256, limit - len(results)),
+                    offset=offset,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+                if not points:
+                    break
+                results.extend(dict(p.payload or {}) for p in points)
+                if offset is None:
+                    break
+            return results
+        except Exception as e:
+            logger.error(f"Qdrant export failed: {e}")
+            return results
+
+    def delete_user_memories(self, user_id: str) -> bool:
+        """Erase every vector belonging to a user (GDPR Art 17).
+
+        Returns False on failure so the caller can surface an incomplete
+        deletion instead of silently reporting success.
+        """
+        if not self.enabled or not self.client:
+            # Nothing stored here to erase.
+            return True
+
+        try:
+            self.client.delete(
+                collection_name=COLLECTION_NAME,
+                points_selector=models.FilterSelector(filter=self._user_filter(user_id)),
+                wait=True,
+            )
+            logger.info("Qdrant memories deleted for account erasure")
+            return True
+        except Exception as e:
+            logger.error(f"Qdrant deletion failed: {e}")
             return False
 
     def search_memories(self, user_id: str, embedding: List[float], limit: int = 5, extra_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:

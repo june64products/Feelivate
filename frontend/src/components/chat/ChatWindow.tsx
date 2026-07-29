@@ -1,6 +1,8 @@
 import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import PlanCard from './PlanCard';
+import SafetyCard from './SafetyCard';
+import type { SafetyNotice } from '../../api';
 import { useWindowSize } from '../../hooks/useWindowSize';
 
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
@@ -10,6 +12,8 @@ interface Message {
     role: string;
     content: string;
     plan?: any;
+    /** Set when the backend's crisis screen fired on the user's message. */
+    safety?: SafetyNotice;
 }
 
 interface ChatWindowProps {
@@ -216,6 +220,10 @@ export default function ChatWindow({
                                     />
                                 </div>
                             </motion.div>
+
+                            {/* Crisis resources, rendered before anything else in
+                                this turn so it isn't pushed below a plan card. */}
+                            {msg.safety && <SafetyCard notice={msg.safety} />}
 
                             {/* If this message has an associated plan, show PlanCard */}
                             {msg.plan && !isPlanApproved && (

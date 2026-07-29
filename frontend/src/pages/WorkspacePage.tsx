@@ -27,6 +27,7 @@ import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 import ProfileMenu from '../components/workspace/ProfileMenu';
+import ConsentGate from '../components/legal/ConsentGate';
 import GuidedDemo, { type DemoHandles } from '../components/demo/GuidedDemo';
 import { DEMO_PLAN, DEMO_EMOTION } from '../components/demo/demoScript';
 import { isDemoQueued, startDemo, completeDemo } from '../lib/onboarding';
@@ -318,7 +319,9 @@ export default function WorkspacePage() {
             const assistantMsg = {
                 role: 'assistant',
                 content: res.reply,
-                plan: res.plan
+                plan: res.plan,
+                // Only present when the message triggered the crisis screen.
+                safety: res.safety,
             };
             setMessages(prev => [...prev, assistantMsg]);
 
@@ -538,6 +541,11 @@ export default function WorkspacePage() {
     }, [userId]);
 
     return (
+        <>
+        {/* Mounted here rather than in App so it can never cover /privacy or
+            /terms — the pages the user has to be able to read in order to
+            give informed consent in the first place. */}
+        <ConsentGate />
         <div style={{
             display: 'flex',
             height: '100dvh',
@@ -1530,5 +1538,6 @@ export default function WorkspacePage() {
                 />
             )}
         </div>
+        </>
     );
 }

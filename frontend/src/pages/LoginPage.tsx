@@ -2,9 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
-import { login, signup, getGoogleLoginUrl } from '../api';
+import { login, signup, getGoogleLoginUrl, getConsentCatalogue, type ConsentItem } from '../api';
 import { startOnboarding } from '../lib/onboarding';
 import BrandNav from '../components/site/BrandNav';
+import { ConsentCheckbox } from '../components/legal/ConsentControls';
+import { allRequiredGranted } from '../lib/consent';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
@@ -160,11 +162,39 @@ export default function LoginPage() {
 
   const [formData, setFormData] = useState({ email: '', password: '', name: '' });
 
+  // Consent catalogue is fetched, not hardcoded, so the wording here always
+  // matches what the backend actually records against the account.
+  const [consentCatalogue, setConsentCatalogue] = useState<ConsentItem[]>([]);
+  const [consents, setConsents] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let active = true;
+    getConsentCatalogue()
+      .then(({ catalogue }) => {
+        if (!active) return;
+        setConsentCatalogue(catalogue);
+        // Every box starts unticked — a pre-ticked consent is not consent.
+        setConsents(Object.fromEntries(catalogue.map(c => [c.key, false])));
+      })
+      .catch(() => { /* Non-fatal: the submit guard below still blocks signup. */ });
+    return () => { active = false; };
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const consentsSatisfied = consentCatalogue.length > 0 && allRequiredGranted(consentCatalogue, consents);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLogin && !consentsSatisfied) {
+      setError(
+        consentCatalogue.length === 0
+          ? 'Could not load the consent terms. Please refresh and try again.'
+          : 'Please accept the required items to create your account.'
+      );
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -174,7 +204,7 @@ export default function LoginPage() {
         localStorage.setItem('user_name', res.name || res.full_name || formData.email.split('@')[0]);
         navigate('/app');
       } else {
-        const res = await signup({ email: formData.email, password: formData.password, name: formData.name });
+        const res = await signup({ email: formData.email, password: formData.password, name: formData.name, consents });
         localStorage.setItem('user_id', res.user_id);
         localStorage.setItem('user_name', formData.name || res.name || formData.email.split('@')[0]);
         // Brand-new account → queue the first-time walkthrough (runs once on /app).
@@ -361,21 +391,52 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {/* Consent (signup only) — the lawful basis for everything that
+                  follows. The Art 9 item renders as its own bordered block so it
+                  reads as a separate, deliberate decision rather than fine print
+                  bundled into the terms. */}
+              <AnimatePresence initial={false}>
+                {!isLogin && consentCatalogue.length > 0 && (
+                  <motion.div
+                    key="consent-block"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '6px' }}>
+                      {consentCatalogue.map(item => (
+                        <ConsentCheckbox
+                          key={item.key}
+                          item={item}
+                          checked={consents[item.key] === true}
+                          disabled={loading}
+                          onChange={next => setConsents(c => ({ ...c, [item.key]: next }))}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Continue button — sharp, Swiss */}
               <button
-                type="submit" disabled={loading}
+                type="submit" disabled={loading || (!isLogin && !consentsSatisfied)}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                   background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', border: 'none',
                   padding: '15px', borderRadius: '4px',
-                  fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '14px', fontWeight: 700,
+                  cursor: loading || (!isLogin && !consentsSatisfied) ? 'not-allowed' : 'pointer',
                   transition: 'opacity 180ms ease, transform 150ms ease',
-                  marginTop: '4px', opacity: loading ? 0.6 : 1,
+                  marginTop: '4px',
+                  opacity: loading || (!isLogin && !consentsSatisfied) ? 0.5 : 1,
                   fontFamily: satoshi, letterSpacing: '0.02em',
                   textTransform: 'uppercase',
                 }}
                 onMouseEnter={e => { if (!loading) { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1.01)'; } }}
-                onMouseLeave={e => { if (!loading) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)'; } }}
+                onMouseLeave={e => { if (!loading) { e.currentTarget.style.opacity = (!isLogin && !consentsSatisfied) ? '0.5' : '1'; e.currentTarget.style.transform = 'scale(1)'; } }}
               >
                 {loading
                   ? <Loader2 size={16} className="animate-spin" />

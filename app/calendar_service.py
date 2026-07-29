@@ -59,6 +59,32 @@ class GoogleCalendarService:
             "scopes": credentials.scopes
         }
 
+    def revoke_token(self, refresh_token: str) -> bool:
+        """Tell Google to invalidate a refresh token.
+
+        Called during account deletion: erasing our copy of the token does not
+        end the grant at Google's end, so without this the user's calendar
+        access would remain delegated to an account that no longer exists.
+        """
+        if not refresh_token:
+            return True
+        try:
+            import requests as _requests
+
+            resp = _requests.post(
+                "https://oauth2.googleapis.com/revoke",
+                params={"token": refresh_token},
+                headers={"content-type": "application/x-www-form-urlencoded"},
+                timeout=10,
+            )
+            # 400 usually means the token was already invalid — same end state.
+            ok = resp.status_code in (200, 400)
+            logger.info(f"Google token revocation returned {resp.status_code}")
+            return ok
+        except Exception as e:
+            logger.warning(f"Google token revocation failed: {type(e).__name__}")
+            return False
+
     async def generate_motivation(self, day_action: str, focus: str, history: str) -> str:
         """Generates a high-energy, personalized motivational message in English."""
         prompt = f"""

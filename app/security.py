@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Union
 
@@ -10,18 +11,44 @@ from loguru import logger
 load_dotenv()
 
 # Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "feelivate-default-secret-key-please-set-jwt-secret-in-env")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days — prevents logout on reload
 
-if SECRET_KEY == "feelivate-default-secret-key-please-set-jwt-secret-in-env":
-    logger.warning("⚠️  JWT_SECRET_KEY is not set in environment variables! Using default. Set JWT_SECRET_KEY in production.")
+# A hardcoded fallback secret is a token-forgery hole: anyone who can read the
+# repo can mint a valid JWT for any user. Refuse to boot without a real secret
+# outside local development (GDPR Art 32 — appropriate security of processing).
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "").strip()
+APP_ENV = os.getenv("APP_ENV", "production").strip().lower()
+
+if not SECRET_KEY:
+    if APP_ENV in {"dev", "development", "local", "test"}:
+        # Ephemeral per-process secret: tokens die on restart, which is fine
+        # locally and impossible to leak through source control.
+        SECRET_KEY = secrets.token_urlsafe(64)
+        logger.warning(
+            "JWT_SECRET_KEY not set — generated an ephemeral development secret. "
+            "Tokens will be invalidated on every restart."
+        )
+    else:
+        raise RuntimeError(
+            "JWT_SECRET_KEY is not set. Refusing to start: without it every access "
+            "token would be forgeable. Set JWT_SECRET_KEY in the environment "
+            "(or set APP_ENV=development for local work)."
+        )
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against a hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a plain password against a hash.
+
+    Returns False (never raises) for malformed or legacy non-Argon2 values, so a
+    stray row can't turn into a 500 that leaks storage details to the client.
+    """
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        logger.warning("Password verification failed: stored value is not a valid Argon2 hash.")
+        return False
 
 def get_password_hash(password: str) -> str:
     """Generate an Argon2 hash from a plain password."""

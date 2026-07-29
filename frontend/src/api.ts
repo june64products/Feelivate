@@ -57,6 +57,25 @@ const secureFetch = async (url: string, options: RequestInit = {}) => {
         throw new Error('Session expired. Please log in again.');
     }
 
+    if (response.status === 403) {
+        // The backend refuses anything touching wellbeing content until the
+        // user has accepted the current policy version. Broadcast it so the
+        // consent gate can open from wherever the app happens to be, instead of
+        // every caller needing to know about consent.
+        const clone = response.clone();
+        try {
+            const body = await clone.json();
+            const detail = body?.detail;
+            if (detail?.error === 'consent_required') {
+                window.dispatchEvent(new CustomEvent('feelivate:consent-required', { detail }));
+                throw new Error('Please accept the updated terms to continue.');
+            }
+        } catch (e) {
+            if (e instanceof Error && e.message.startsWith('Please accept')) throw e;
+            // Not a consent 403 — fall through and let the caller handle it.
+        }
+    }
+
     return response;
 };
 
@@ -64,10 +83,20 @@ const secureFetch = async (url: string, options: RequestInit = {}) => {
 // CORE CHAT API
 // ============================================================
 
+/** Crisis-support resources the backend attaches when a message indicates risk. */
+export interface SafetyNotice {
+    type: 'crisis_support';
+    headline: string;
+    body: string;
+    resources: { region: string; name: string; contact: string; note: string }[];
+}
+
 export interface ChatResponse {
     reply: string;
     plan: any | null;
     session_id: string;
+    /** Present only when the message triggered the crisis screen. */
+    safety?: SafetyNotice;
 }
 
 export const chatWithMentor = async (
@@ -134,6 +163,8 @@ export interface UserProfile {
     name: string | null;
     email: string;
     created_at: string;
+    /** Non-empty when the consent gate must be shown before using the app. */
+    consent_required?: string[];
 }
 
 /** Fetch the authenticated user's profile (name, email, join date). */
@@ -145,7 +176,13 @@ export const getMe = async (): Promise<UserProfile> => {
     return response.json();
 };
 
-export const signup = async (data: { email: string; password: string; name?: string }) => {
+export const signup = async (data: {
+    email: string;
+    password: string;
+    name?: string;
+    /** Required. The account is not created unless every required consent is true. */
+    consents: Record<string, boolean>;
+}) => {
     const response = await fetch(`${API_BASE_URL}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -153,7 +190,13 @@ export const signup = async (data: { email: string; password: string; name?: str
     });
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.error || 'Signup failed');
+        // Consent failures come back as a structured detail object; showing
+        // "[object Object]" to the user would be worse than useless.
+        const detail = errorData.detail;
+        if (detail && typeof detail === 'object') {
+            throw new Error(detail.message || 'Signup failed');
+        }
+        throw new Error(detail || errorData.error || 'Signup failed');
     }
     const result = await response.json();
     if (result.access_token) {
@@ -189,6 +232,126 @@ export const googleLoginCallback = async (code: string) => {
         localStorage.setItem('access_token', result.access_token);
     }
     return result; // { access_token, user_id, name, is_new_user }
+};
+
+// ============================================================
+// ACCOUNT & DATA RIGHTS  (GDPR Art 7, 15, 17, 20)
+// ============================================================
+
+export interface ConsentItem {
+    key: string;
+    label: string;
+    required: boolean;
+    /** True for the Art 9 consent — must be its own unticked checkbox. */
+    explicit: boolean;
+}
+
+export interface ConsentState {
+    policy_version: string;
+    catalogue: ConsentItem[];
+    state: Record<string, { granted: boolean; policy_version: string; recorded_at: string | null }>;
+    missing: string[];
+}
+
+/**
+ * Public consent catalogue — used by the signup form, which runs before an
+ * account exists. Fetched rather than hardcoded so the wording and the keys can
+ * never drift from what the backend actually requires.
+ */
+export const getConsentCatalogue = async (): Promise<{ policy_version: string; catalogue: ConsentItem[] }> => {
+    const response = await fetch(`${API_BASE_URL}/legal/consents`);
+    if (!response.ok) throw new Error('Could not load the consent terms.');
+    return response.json();
+};
+
+/** Fetch the consent catalogue and the user's current decisions. */
+export const getConsents = async (): Promise<ConsentState> => {
+    const response = await secureFetch(`${API_BASE_URL}/account/consents`, { method: 'GET' });
+    if (!response.ok) throw new Error('Could not load consent settings.');
+    return response.json();
+};
+
+/** Record consent decisions. Every required item must be true or this rejects. */
+export const submitConsents = async (consents: Record<string, boolean>) => {
+    const response = await fetch(`${API_BASE_URL}/account/consents`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${getToken() ?? ''}`,
+        },
+        body: JSON.stringify({ consents }),
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        const detail = err.detail;
+        throw new Error(
+            (detail && typeof detail === 'object' ? detail.message : detail) || 'Could not save your choices.'
+        );
+    }
+    return response.json();
+};
+
+/** Withdraw a single consent (Art 7(3)). */
+export const withdrawConsent = async (consentType: string) => {
+    const response = await secureFetch(`${API_BASE_URL}/account/consents/withdraw`, {
+        method: 'POST',
+        body: JSON.stringify({ consent_type: consentType }),
+    });
+    if (!response.ok) throw new Error('Could not withdraw consent.');
+    return response.json();
+};
+
+/**
+ * Download everything we hold about the user as a JSON file (Art 15 / Art 20).
+ * Triggers a browser download rather than returning the data, since the point
+ * is a file the user keeps or hands to another service.
+ */
+export const downloadMyData = async (): Promise<void> => {
+    const response = await secureFetch(`${API_BASE_URL}/account/export`, { method: 'GET' });
+    if (!response.ok) throw new Error('Could not prepare your data export. Please try again.');
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `feelivate-export-${getLocalISODate()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Release the blob — without this the whole export stays in memory for the
+    // life of the tab.
+    URL.revokeObjectURL(url);
+};
+
+export interface DeleteAccountResult {
+    status: string;
+    message: string;
+    deleted: Record<string, number>;
+    /** Non-empty if an external store could not be cleared — surface it, don't hide it. */
+    incomplete: string[];
+}
+
+/**
+ * Permanently delete the account. Irreversible.
+ *
+ * `confirmation` is the word the user actually typed — passed through rather
+ * than hardcoded, so the backend check confirms a real human intent instead of
+ * a constant the client always sends.
+ * `password` is required for password accounts and omitted for Google-only ones.
+ */
+export const deleteMyAccount = async (confirmation: string, password?: string): Promise<DeleteAccountResult> => {
+    const response = await secureFetch(`${API_BASE_URL}/account`, {
+        method: 'DELETE',
+        body: JSON.stringify({ confirmation, password: password || null }),
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        const detail = err.detail;
+        throw new Error(
+            (detail && typeof detail === 'object' ? detail.message : detail) || 'Account deletion failed.'
+        );
+    }
+    return response.json();
 };
 
 // ============================================================

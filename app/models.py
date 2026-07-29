@@ -29,6 +29,33 @@ class User(Base):
     preferred_notification_timezone = Column(String, default="UTC")  # IANA timezone string (set from the user's browser on subscribe)
     last_daily_email_date = Column(String, nullable=True)  # ISO date of last sent email
 
+class UserConsent(Base):
+    """
+    Append-only consent ledger.
+
+    GDPR Art 7(1) puts the burden of proof on us: we must be able to demonstrate
+    that a user consented, to what, and when. So every grant and every withdrawal
+    is a new row — nothing is ever updated in place. The most recent row for a
+    (user_id, consent_type) pair is the current state.
+
+    `policy_version` matters because consent is only valid for what was actually
+    shown. When the policy materially changes the version bumps and consent is
+    re-collected rather than assumed to carry over.
+    """
+    __tablename__ = "user_consents"
+
+    id             = Column(Integer, primary_key=True, index=True)
+    user_id        = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    consent_type   = Column(String, nullable=False, index=True)  # see privacy.REQUIRED_CONSENTS
+    granted        = Column(Integer, nullable=False, default=1)  # 1 = given, 0 = withdrawn
+    policy_version = Column(String, nullable=False)
+    ip_address     = Column(String, nullable=True)   # evidence of when/where consent was given
+    user_agent     = Column(String, nullable=True)
+    created_at     = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User")
+
+
 class Session(Base):
     __tablename__ = "sessions"
 

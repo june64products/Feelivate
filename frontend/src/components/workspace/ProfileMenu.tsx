@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, HelpCircle } from 'lucide-react';
-import { getMe, type UserProfile } from '../../api';
+import { LogOut, HelpCircle, Download, Trash2, Loader2 } from 'lucide-react';
+import { downloadMyData, getMe, type UserProfile } from '../../api';
+import DeleteAccountModal from '../legal/DeleteAccountModal';
 
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
@@ -21,6 +22,9 @@ const getInitials = (name: string) => {
 export default function ProfileMenu({ onLogout }: { onLogout: () => void }) {
     const [open, setOpen] = useState(false);
     const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [exporting, setExporting] = useState(false);
+    const [exportError, setExportError] = useState('');
+    const [showDelete, setShowDelete] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
     const name = profile?.name || localStorage.getItem('user_name') || 'User';
@@ -121,6 +125,66 @@ export default function ProfileMenu({ onLogout }: { onLogout: () => void }) {
                             </button>
                         </div>
 
+                        {/* Data rights — GDPR Art 15/20 (export) and Art 17 (erasure).
+                            Kept in the profile menu on purpose: the right to get
+                            your data out and the right to have it deleted should
+                            be exactly as reachable as the log-out button. */}
+                        <div style={{ padding: '8px 8px 0' }}>
+                            <button
+                                onClick={async () => {
+                                    setExportError('');
+                                    setExporting(true);
+                                    try {
+                                        await downloadMyData();
+                                    } catch (e: any) {
+                                        setExportError(e?.message || 'Export failed.');
+                                    } finally {
+                                        setExporting(false);
+                                    }
+                                }}
+                                disabled={exporting}
+                                style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                                    padding: '10px 12px', borderRadius: '10px',
+                                    border: '1px solid var(--border-subtle)',
+                                    background: 'transparent', color: 'var(--text-secondary)',
+                                    cursor: exporting ? 'wait' : 'pointer', fontSize: '12px', fontWeight: 700,
+                                    fontFamily: satoshi, letterSpacing: '0.04em', textTransform: 'uppercase',
+                                    transition: 'background 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--btn-hover-bg)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                                {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                {exporting ? 'Preparing…' : 'Download my data'}
+                            </button>
+                            {exportError && (
+                                <p style={{ fontSize: '11px', color: '#ef4444', margin: '8px 4px 0', lineHeight: 1.5 }}>
+                                    {exportError}
+                                </p>
+                            )}
+                        </div>
+
+                        <div style={{ padding: '8px 8px 0' }}>
+                            <button
+                                onClick={() => { setOpen(false); setShowDelete(true); }}
+                                style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                                    padding: '10px 12px', borderRadius: '10px',
+                                    border: '1px solid var(--border-subtle)',
+                                    background: 'transparent', color: 'var(--text-secondary)',
+                                    cursor: 'pointer', fontSize: '12px', fontWeight: 700,
+                                    fontFamily: satoshi, letterSpacing: '0.04em', textTransform: 'uppercase',
+                                    transition: 'background 0.15s, color 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; e.currentTarget.style.color = '#ef4444'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                            >
+                                <Trash2 size={14} />
+                                Delete account
+                            </button>
+                        </div>
+
                         {/* Logout */}
                         <div style={{ padding: '8px' }}>
                             <button
@@ -142,6 +206,20 @@ export default function ProfileMenu({ onLogout }: { onLogout: () => void }) {
                             </button>
                         </div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showDelete && (
+                    <DeleteAccountModal
+                        onClose={() => setShowDelete(false)}
+                        onDeleted={() => {
+                            // The account is gone, so the stored token now points at
+                            // nothing — clear local state and send them to the door.
+                            setShowDelete(false);
+                            onLogout();
+                        }}
+                    />
                 )}
             </AnimatePresence>
         </div>

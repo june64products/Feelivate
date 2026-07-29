@@ -130,7 +130,7 @@ def init_db():
         # Import ALL models so SQLAlchemy registers them with Base before create_all
         from .models import (
             User, Session, ChatMessage, RoadmapTask, EmotionalState, Feedback,
-            DailyCheckin, UserStreak, VoiceJournal, WeeklyReport,
+            DailyCheckin, UserStreak, VoiceJournal, WeeklyReport, UserConsent,
         )
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created/verified (including new USP tables)")
@@ -176,6 +176,15 @@ def init_db():
                 CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_checkins_user_date
                 ON daily_checkins (user_id, date);
                 """,
+                # ── consent ledger (GDPR Art 7(1)) ──
+                # create_all() builds the table for fresh databases; these keep
+                # an already-created table in step if columns are added later.
+                "ALTER TABLE user_consents ADD COLUMN IF NOT EXISTS ip_address VARCHAR;",
+                "ALTER TABLE user_consents ADD COLUMN IF NOT EXISTS user_agent VARCHAR;",
+                """
+                CREATE INDEX IF NOT EXISTS ix_user_consents_lookup
+                ON user_consents (user_id, consent_type, created_at);
+                """,
             ]
         else:
             migrations = [
@@ -207,6 +216,10 @@ def init_db():
                 "ALTER TABLE weekly_reports ADD COLUMN week_number INTEGER DEFAULT 1;",
                 # SQLite unique index (no IF NOT EXISTS, so we catch the error)
                 "CREATE UNIQUE INDEX uq_daily_checkins_user_date ON daily_checkins (user_id, date);",
+                # ── consent ledger (GDPR Art 7(1)) ──
+                "ALTER TABLE user_consents ADD COLUMN ip_address VARCHAR;",
+                "ALTER TABLE user_consents ADD COLUMN user_agent VARCHAR;",
+                "CREATE INDEX ix_user_consents_lookup ON user_consents (user_id, consent_type, created_at);",
             ]
 
         # Run each migration in its OWN transaction. On PostgreSQL a single failed
@@ -233,5 +246,46 @@ def init_db():
         logger.error(f"Failed to initialize database: {e}")
         import traceback
         logger.error(traceback.format_exc())
+
+
+def migrate_plaintext_passwords() -> int:
+    """Hash any password still stored in clear text.
+
+    The login endpoint used to compare passwords literally and upgrade the hash
+    on next sign-in, which meant readable passwords sat in the database
+    indefinitely for anyone who had not logged in since. Storing credentials in
+    recoverable form fails GDPR Art 32(1)(a), so this converts them in one pass
+    at startup and lets the login path drop the plaintext branch entirely.
+
+    Runs on every boot and is a no-op once clean: an Argon2 hash starts with
+    "$argon2", so nothing already hashed is touched.
+    """
+    from .models import User
+    from .security import get_password_hash
+
+    converted = 0
+    db = SessionLocal()
+    try:
+        for user in db.query(User).all():
+            stored = user.password or ""
+            if stored.startswith("$"):
+                continue  # already a modular-crypt hash
+            user.password = get_password_hash(stored)
+            converted += 1
+
+        if converted:
+            db.commit()
+            logger.warning(
+                f"Converted {converted} plaintext password(s) to Argon2 hashes. "
+                "These credentials should be treated as compromised — consider "
+                "forcing a reset for the affected accounts."
+            )
+        return converted
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Plaintext password migration failed: {e}")
+        return 0
+    finally:
+        db.close()
 
 

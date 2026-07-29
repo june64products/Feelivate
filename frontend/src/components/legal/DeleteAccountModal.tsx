@@ -1,0 +1,287 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { AlertTriangle, Loader2, X } from 'lucide-react';
+import { deleteMyAccount } from '../../api';
+
+const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
+const clashDisplay = "'Clash Display', 'Inter', sans-serif";
+
+const WHAT_GETS_DELETED = [
+    'Your account, name and email',
+    'Every chat, goal and weekly plan',
+    'All voice journal entries and their transcripts',
+    'Your emotion logs, check-ins, streaks and weekly reports',
+    'Your long-term memory and any Google Calendar connection',
+];
+
+/**
+ * Irreversible account deletion (GDPR Art 17).
+ *
+ * Two gates before it fires — the typed word and, for password accounts, the
+ * password. Deletion is immediate and total: there is no soft-delete, because a
+ * row flagged `deleted` is still personal data we would be holding.
+ */
+export default function DeleteAccountModal({
+    onClose,
+    onDeleted,
+}: {
+    onClose: () => void;
+    onDeleted: () => void;
+}) {
+    const [confirmation, setConfirmation] = useState('');
+    const [password, setPassword] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
+    const [warning, setWarning] = useState<string[] | null>(null);
+
+    const canDelete = confirmation.trim().toUpperCase() === 'DELETE' && !busy;
+
+    const handleDelete = async () => {
+        setBusy(true);
+        setError('');
+        try {
+            const result = await deleteMyAccount(confirmation, password || undefined);
+            if (result.incomplete?.length) {
+                // Told plainly rather than glossed over — the user is entitled to
+                // know that part of the erasure needs a manual follow-up.
+                setWarning(result.incomplete);
+                return;
+            }
+            onDeleted();
+        } catch (e: any) {
+            setError(e?.message || 'Could not delete your account. Please try again.');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const inputStyle: React.CSSProperties = {
+        width: '100%',
+        padding: '12px 14px',
+        borderRadius: '4px',
+        border: '1px solid var(--border-medium)',
+        background: 'var(--input-bg)',
+        color: 'var(--text-primary)',
+        fontSize: '13.5px',
+        fontFamily: satoshi,
+        outline: 'none',
+    };
+
+    return (
+        <>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={busy ? undefined : onClose}
+                style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'var(--modal-overlay, rgba(0,0,0,0.6))',
+                    backdropFilter: 'blur(6px)',
+                    zIndex: 800,
+                }}
+            />
+            <motion.div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-account-title"
+                initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-46%' }}
+                animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+                exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-48%' }}
+                transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                style={{
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    width: 'calc(100% - 32px)',
+                    maxWidth: '460px',
+                    maxHeight: '86vh',
+                    overflowY: 'auto',
+                    background: 'var(--modal-bg, #fff)',
+                    border: '1px solid var(--modal-border, rgba(0,0,0,0.1))',
+                    borderRadius: '8px',
+                    padding: '30px 26px 24px',
+                    zIndex: 801,
+                    boxShadow: 'var(--shadow-xl)',
+                    fontFamily: satoshi,
+                }}
+            >
+                {!busy && (
+                    <button
+                        onClick={onClose}
+                        aria-label="Close"
+                        style={{
+                            position: 'absolute',
+                            top: '14px',
+                            right: '14px',
+                            background: 'var(--glass-hover)',
+                            border: 'none',
+                            borderRadius: '4px',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            padding: '6px',
+                            display: 'flex',
+                        }}
+                    >
+                        <X size={15} />
+                    </button>
+                )}
+
+                <div
+                    style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(239,68,68,0.3)',
+                        background: 'rgba(239,68,68,0.06)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '16px',
+                    }}
+                >
+                    <AlertTriangle size={18} style={{ color: '#ef4444' }} />
+                </div>
+
+                <h2
+                    id="delete-account-title"
+                    style={{
+                        fontSize: '22px',
+                        fontWeight: 700,
+                        letterSpacing: '-0.03em',
+                        color: 'var(--text-primary)',
+                        marginBottom: '10px',
+                        fontFamily: clashDisplay,
+                    }}
+                >
+                    Delete your account
+                </h2>
+
+                {warning ? (
+                    <>
+                        <p style={{ fontSize: '13.5px', lineHeight: 1.65, color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                            Your account and database records have been deleted. One external store could not
+                            be reached, so a small amount of data may still be held there:
+                        </p>
+                        <ul style={{ fontSize: '13px', color: 'var(--text-secondary)', paddingLeft: '18px', marginBottom: '18px', lineHeight: 1.7 }}>
+                            {warning.map((w) => (
+                                <li key={w}>{w.replace(/_/g, ' ')}</li>
+                            ))}
+                        </ul>
+                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: 1.6 }}>
+                            Please email <strong>info@june64.com</strong> and we will confirm its removal.
+                        </p>
+                        <button onClick={onDeleted} style={primaryButtonStyle}>
+                            Done
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <p style={{ fontSize: '13.5px', lineHeight: 1.65, color: 'var(--text-secondary)', marginBottom: '14px' }}>
+                            This is permanent and immediate. There is no undo and no recovery period.
+                            Everything below is erased:
+                        </p>
+                        <ul
+                            style={{
+                                fontSize: '12.5px',
+                                color: 'var(--text-secondary)',
+                                paddingLeft: '18px',
+                                marginBottom: '18px',
+                                lineHeight: 1.75,
+                            }}
+                        >
+                            {WHAT_GETS_DELETED.map((line) => (
+                                <li key={line}>{line}</li>
+                            ))}
+                        </ul>
+                        <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.6 }}>
+                            Want a copy first? Close this and choose <strong>Download my data</strong>.
+                        </p>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '18px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label htmlFor="delete-confirm" style={labelStyle}>
+                                    Type DELETE to confirm
+                                </label>
+                                <input
+                                    id="delete-confirm"
+                                    type="text"
+                                    value={confirmation}
+                                    onChange={(e) => setConfirmation(e.target.value)}
+                                    placeholder="DELETE"
+                                    autoComplete="off"
+                                    disabled={busy}
+                                    style={inputStyle}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label htmlFor="delete-password" style={labelStyle}>
+                                    Password
+                                </label>
+                                <input
+                                    id="delete-password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Leave blank if you sign in with Google"
+                                    autoComplete="current-password"
+                                    disabled={busy}
+                                    style={inputStyle}
+                                />
+                            </div>
+                        </div>
+
+                        {error && (
+                            <p style={{ fontSize: '12.5px', color: '#dc2626', marginBottom: '14px', lineHeight: 1.5 }}>
+                                {error}
+                            </p>
+                        )}
+
+                        <button
+                            onClick={handleDelete}
+                            disabled={!canDelete}
+                            style={{
+                                ...primaryButtonStyle,
+                                background: '#dc2626',
+                                color: '#fff',
+                                cursor: canDelete ? 'pointer' : 'not-allowed',
+                                opacity: canDelete ? 1 : 0.45,
+                            }}
+                        >
+                            {busy ? <Loader2 size={15} className="animate-spin" /> : 'Delete my account permanently'}
+                        </button>
+                    </>
+                )}
+            </motion.div>
+        </>
+    );
+}
+
+const labelStyle: React.CSSProperties = {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: 'var(--text-secondary)',
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    fontFamily: satoshi,
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '14px',
+    borderRadius: '4px',
+    border: 'none',
+    background: 'var(--btn-primary-bg)',
+    color: 'var(--btn-primary-text)',
+    fontSize: '13px',
+    fontWeight: 700,
+    letterSpacing: '0.02em',
+    textTransform: 'uppercase',
+    fontFamily: satoshi,
+    cursor: 'pointer',
+};

@@ -2,34 +2,123 @@ import PageShell from '../components/site/PageShell';
 import { PageHero, clash, satoshi } from '../components/site/ui';
 import { useWindowSize } from '../hooks/useWindowSize';
 
-// NOTE: Boilerplate tailored to Feelivate — have it reviewed by legal before launch.
+/**
+ * The published privacy notice.
+ *
+ * Kept in sync with `privacy-policy.md`, which lives in the parent project
+ * folder alongside the compliance pack and is deliberately not tracked in this
+ * repo. That file is the source of truth and this page is what users actually
+ * read, so a change to one without the other leaves two conflicting notices
+ * published, which is its own compliance problem.
+ *
+ * POLICY_VERSION must match CONSENT_POLICY_VERSION in the backend environment.
+ * Bumping it re-prompts every user for consent on next sign-in, so change it
+ * only when the substance changes.
+ *
+ * TODO before EU launch — the notice is incomplete without these:
+ *   1. Controller's registered legal name and postal address (Art 13(1)(a))
+ *   2. EU representative's name and address (Art 27)
+ *   3. Confirmed transfer safeguards per provider (Art 13(1)(f))
+ *   4. Actual log retention period from the hosting provider
+ */
+const POLICY_VERSION = '2026-07-29';
+const LAST_UPDATED = '29 July 2026';
+
 const SECTIONS: { h: string; p: string[] }[] = [
-  { h: 'Information we collect', p: [
-    'Account details you provide: your name, email address, and password.',
-    'Content you create: your goals, weekly plans, tasks, check-ins, streaks, voice memos and their transcripts, and daily emotion logs.',
-    'Optional integrations: if you connect Google Calendar, we access the calendar scope you grant to sync your plan.',
-    'Usage and device data collected automatically to keep the service secure and improve it.',
+  { h: 'Who we are', p: [
+    'Feelivate is operated by JUNE64. We are established outside the European Union but offer Feelivate to people in the EU and EEA, so the GDPR applies to us under Article 3(2).',
+    'Controller: JUNE64 — [registered legal name and postal address to be completed before EU launch].',
+    'EU representative (GDPR Article 27): [to be appointed and named before EU launch]. Once appointed you may contact them instead of us on any privacy matter.',
+    'Privacy contact: info@june64.com',
   ] },
-  { h: 'How we use your information', p: [
-    'To generate and personalize your weekly plans, daily task emails, streaks, and weekly reports.',
-    'To transcribe voice memos and adapt guidance based on your logged emotions.',
-    'To send you the daily and account emails you opt into, at your chosen time.',
-    'To secure, maintain, and improve the product.',
+
+  { h: 'What we collect', p: [
+    'Account details you provide: your name, email address, and a password we store only as an Argon2 hash — we cannot see your password.',
+    'Content you create: your goals, weekly plans, tasks, check-ins, streaks, voice notes and their transcripts, daily emotion logs, weekly reports, and any feedback you send us.',
+    'Notification settings: the email address, time and timezone you choose for your daily task email.',
+    'Collected automatically: your IP address, browser and device information, timezone, and service logs. Our logs redact identifiers and content by default — we do not write your chat messages, journal text or email address into them.',
+    'Optional integrations: if you connect Google Calendar or sign in with Google, we access only the scope you grant.',
   ] },
-  { h: 'Third-party services', p: [
-    'We use trusted processors to run the service — for AI processing of your inputs, email delivery, and (if you connect it) Google Calendar. These providers process data only to deliver the feature you use.',
-    'We do not sell your personal data.',
+
+  { h: 'Wellbeing data — and why we ask separately', p: [
+    'Your journal entries, voice transcripts, and the emotion label and score our AI derives from them can reveal information about your mental and emotional health. Under GDPR Article 9 that is special category data and gets the strongest protection.',
+    'We only process it with your explicit consent, collected as its own separate checkbox — never bundled with the terms. You can withdraw that consent at any time.',
+    'We do not analyse your voice itself. Your recording is converted to text and only the text is analysed for emotion. We do not process tone, pitch, prosody or voiceprints, and we never use your voice to identify you.',
+    'We do not store your voice recordings. The audio is transcribed and discarded in the same request; only the transcript is saved.',
   ] },
-  { h: 'Data retention & security', p: [
-    'We keep your data while your account is active and as needed to provide the service. You can request deletion at any time.',
-    'We apply reasonable technical and organizational measures to protect your data, and redact sensitive fields from our logs by default.',
+
+  { h: 'Why we process it, and our legal basis', p: [
+    'To run your account and generate your plans, tasks, streaks and weekly reports — performance of our contract with you (Article 6(1)(b)).',
+    'To process your journals, voice transcripts and emotion logs so the mentor can adapt to how your week actually went — your explicit consent (Articles 6(1)(a) and 9(2)(a)).',
+    'To send your daily task email at your chosen time, and to sync your plan to Google Calendar — your consent, withdrawable at any time (Article 6(1)(a)).',
+    'To keep the service secure, prevent abuse, rate-limit logins, fix bugs and improve the product — our legitimate interests (Article 6(1)(f)). You can object at any time.',
+    'To keep proof of consent and meet legal obligations — legal obligation (Article 6(1)(c)).',
+    'We never sell your personal data and we never use it for advertising.',
   ] },
+
+  { h: 'AI processing', p: [
+    'You are talking to an AI system, not a person. Every response in the app is generated by a large language model, and it will tell you so if you ask.',
+    'When you chat, record a voice note, or we generate your plan, report or daily email, the relevant content is sent to our AI providers for processing: Groq, Inc. (United States) as our primary provider, and OpenAI, L.L.C. (United States) as an automatic fallback. Groq also provides the speech-to-text that transcribes your voice notes.',
+    'The AI gets things wrong. Its plans, reports and suggestions are not always accurate, and are never medical, psychological or professional advice.',
+    'No decision with legal or similarly significant effects is made about you automatically. Plans and reports are suggestions — nothing here decides anything about your rights, money, employment or access to services.',
+  ] },
+
+  { h: 'Who else sees your data', p: [
+    'We use a small number of service providers to run Feelivate — hosting, database, AI processing, email delivery, vector memory, and Google if you connect it. Each is bound by a written data processing agreement, acts only on our instructions, and may not use your data for its own purposes.',
+    'The full current list, including what each provider receives and where it processes it, is published in our sub-processor list and kept up to date.',
+    'Apart from those providers we share your personal data with no one, except where we are legally compelled to, or where it is necessary to establish or defend legal claims.',
+  ] },
+
+  { h: 'Sending data outside the EU', p: [
+    'Our servers and several of our providers are located outside the European Economic Area, including in the United States.',
+    'Transfers outside the EEA are covered either by a European Commission adequacy decision — where the provider is certified under the EU–US Data Privacy Framework — or by the Commission’s Standard Contractual Clauses together with a transfer impact assessment.',
+    'You can ask us for a copy of the safeguards we rely on by emailing info@june64.com.',
+  ] },
+
+  { h: 'How long we keep it', p: [
+    'Your account, plans, chats, journals, emotion logs and reports: for as long as your account is open.',
+    'On account deletion: everything is erased immediately and permanently. We do not keep a hidden copy.',
+    'Email verification codes: 10 minutes, then cleared automatically.',
+    'Consent records: kept for the life of the account and deleted with it.',
+    'Records we are required to keep by law: for the period the law requires.',
+  ] },
+
   { h: 'Your rights', p: [
-    'You can access, correct, export, or delete your personal data, and stop daily emails at any time from your settings.',
-    'To exercise any of these rights, email us at info@june64.com.',
+    'Access and portability (Articles 15 and 20): choose Download my data in your profile menu and you get a complete, machine-readable copy of everything we hold, immediately.',
+    'Erasure (Article 17): choose Delete account in your profile menu. It is immediate and permanent.',
+    'Rectification (Article 16): edit your details in the app, or email us.',
+    'Restriction (Article 18) and objection (Article 21): email info@june64.com.',
+    'Withdraw consent (Article 7(3)): turn off daily emails or disconnect Calendar in settings at any time. To withdraw consent for wellbeing-data processing, email us — this stops the journal and emotion features, since we would no longer have a basis to run them.',
+    'For anything handled by email we respond within one month. We may ask you to confirm your identity first — only so we do not hand your journal to someone else.',
   ] },
+
+  { h: 'Complaining', p: [
+    'If you think we have handled your data wrongly, please tell us first at info@june64.com so we can put it right.',
+    'You also have the right to complain directly to a data protection supervisory authority, without going through us. You can complain to the authority in the EU or EEA country where you live, where you work, or where you think the problem happened. The European Data Protection Board publishes a list of all national authorities at edpb.europa.eu.',
+  ] },
+
+  { h: 'Security', p: [
+    'Passwords are hashed with Argon2. All traffic is encrypted in transit with HTTPS. Google Calendar refresh tokens are encrypted at rest with a key held separately from the database.',
+    'Access to your data is scoped to your own account and enforced on the server for every request. Login, sign-up, verification-code and contact endpoints are rate-limited against brute force and abuse.',
+    'No system is perfectly secure. If a breach occurs that is likely to risk your rights and freedoms, we will notify the relevant supervisory authority within 72 hours and tell you directly if the risk to you is high.',
+  ] },
+
+  { h: 'Cookies and local storage', p: [
+    'Feelivate uses no tracking cookies, no analytics, no advertising pixels and no session recorders. There is no cookie banner because there is nothing to consent to.',
+    'We store a small amount of data in your browser’s local storage, all of it strictly necessary to provide the service you asked for: your sign-in token, your user id and name, the journey you had open, and your interface preferences. Logging out clears the sign-in entries.',
+    'If we ever add analytics, we will ask for your consent before loading it and update this page.',
+  ] },
+
+  { h: 'Children', p: [
+    'Feelivate is for adults. You must be 18 or over to use it, and we ask you to confirm this at sign-up. We do not knowingly collect data from anyone under 18 — if you believe a minor has an account, email info@june64.com and we will delete it.',
+  ] },
+
+  { h: 'Changes to this policy', p: [
+    'If we change this policy in a way that materially affects you, we will update the version number and ask you to review and accept the change the next time you sign in. You will not be silently opted into anything new.',
+  ] },
+
   { h: 'Contact', p: [
-    'Questions about privacy? Contact info@june64.com. Feelivate is a product of JUNE64.',
+    'Privacy questions, or to exercise any right: info@june64.com. Feelivate is a product of JUNE64.',
   ] },
 ];
 
@@ -39,18 +128,66 @@ export default function PrivacyPage() {
     <PageShell
       seo={{
         title: 'Privacy Policy | Feelivate',
-        description: "How Feelivate collects, uses, and protects your data — including plans, voice memos, and emotion logs. We don't sell your personal data.",
+        description:
+          "How Feelivate collects, uses and protects your data — including plans, voice notes and emotion logs. We don't sell your personal data and we don't track you.",
         path: '/privacy',
       }}
     >
-      <PageHero kicker="Legal" title="Privacy Policy" subtitle="How we collect, use, and protect your information." isMobile={isMobile} />
+      <PageHero
+        kicker="Legal"
+        title="Privacy Policy"
+        subtitle="How we collect, use, and protect your information."
+        isMobile={isMobile}
+      />
       <section style={{ padding: isMobile ? '40px 20px 80px' : '56px 48px 100px' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+          <p
+            style={{
+              fontSize: '13px',
+              color: 'var(--text-muted)',
+              fontFamily: satoshi,
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              marginBottom: '8px',
+            }}
+          >
+            Last updated {LAST_UPDATED} · Version {POLICY_VERSION}
+          </p>
+
           {SECTIONS.map((s, i) => (
-            <div key={s.h} style={{ paddingTop: '24px', paddingBottom: '24px', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
-              <h2 style={{ fontSize: isMobile ? '19px' : '22px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', marginBottom: '12px' }}>{s.h}</h2>
+            <div
+              key={s.h}
+              style={{
+                paddingTop: '24px',
+                paddingBottom: '24px',
+                borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)',
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: isMobile ? '19px' : '22px',
+                  fontWeight: 700,
+                  fontFamily: clash,
+                  letterSpacing: '-0.02em',
+                  marginBottom: '12px',
+                }}
+              >
+                {s.h}
+              </h2>
               {s.p.map((para) => (
-                <p key={para} style={{ fontSize: '14.5px', color: 'var(--text-secondary)', lineHeight: 1.7, fontFamily: satoshi, fontWeight: 500, marginBottom: '10px' }}>{para}</p>
+                <p
+                  key={para}
+                  style={{
+                    fontSize: '14.5px',
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.7,
+                    fontFamily: satoshi,
+                    fontWeight: 500,
+                    marginBottom: '10px',
+                  }}
+                >
+                  {para}
+                </p>
               ))}
             </div>
           ))}
