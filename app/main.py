@@ -61,7 +61,31 @@ except ImportError:
 
 @asynccontextmanager
 async def lifespan(app):
-    """Start scheduler on startup, stop on shutdown."""
+    """Initialise the database, then start the scheduler; stop it on shutdown.
+
+    Everything that must happen at boot belongs *here*. Starlette only runs the
+    handlers registered via @app.on_event when it is using its own default
+    lifespan — pass a custom one, as this app does, and those handlers are
+    silently ignored. init_db() used to live in an on_event("startup") hook and
+    therefore never ran: existing deployments only worked because their tables
+    had been created before the lifespan was introduced, and the first genuinely
+    new table (user_consents) failed to appear, turning every signup into a 500.
+    """
+    try:
+        init_db()
+        logger.info("Application startup: DB initialization done.")
+    except Exception as e:
+        logger.error(f"CRITICAL: Database initialization failed: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+
+    # Idempotent, and a no-op once clean: leaves no readable password in storage.
+    try:
+        from .database import migrate_plaintext_passwords
+        migrate_plaintext_passwords()
+    except Exception as e:
+        logger.error(f"Password migration failed at startup: {e}")
+
     if _SCHEDULER_AVAILABLE and _scheduler:
         _scheduler.add_job(
             run_daily_email_scheduler,
@@ -213,24 +237,6 @@ def _clear_rate_limit(bucket: str, request: Request, identity: Optional[str] = N
     limiter.reset(f"{bucket}:{(identity or '').lower().strip() or client_ip(request)}")
 
 
-@app.on_event("startup")
-def on_startup():
-    try:
-        init_db()
-        logger.info("Application startup: DB initialization done.")
-    except Exception as e:
-        logger.error(f"CRITICAL: Database initialization failed: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-
-    # One-shot, idempotent: leaves no readable password in storage.
-    try:
-        from .database import migrate_plaintext_passwords
-        migrate_plaintext_passwords()
-    except Exception as e:
-        logger.error(f"Password migration failed at startup: {e}")
-
-
 def _retention_job():
     """Scheduled housekeeping: storage limitation + limiter bookkeeping."""
     db = SessionLocal()
@@ -274,12 +280,40 @@ def run_migrations_endpoint(x_internal_token: Optional[str] = Header(None)):
         return {"status": "error", "message": "Migration failed. Check server logs."}
 
 
+def _cors_headers_for(request: Request) -> Dict[str, str]:
+    """CORS headers to attach to responses that bypass CORSMiddleware.
+
+    Starlette runs handlers registered for bare `Exception` inside
+    ServerErrorMiddleware, which sits *outside* CORSMiddleware — so a 500 goes
+    back with no CORS headers at all. The browser then reports it as an opaque
+    "Failed to fetch" instead of a 500, which hides the actual failure from the
+    frontend and from anyone debugging it.
+    """
+    origin = request.headers.get("origin")
+    if not origin:
+        return {}
+    allowed = origin in _allowed_origins or (
+        _vercel_origin_regex is not None and re.fullmatch(_vercel_origin_regex, origin) is not None
+    )
+    if not allowed:
+        return {}
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Vary": "Origin",
+    }
+
+
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     REQUESTS_TOTAL.labels(route=str(request.url.path), method=request.method, status="500").inc()
     logger.exception("unhandled_exception")
     # Never leak internal error text (may contain provider/model/infra details) to the client.
-    return JSONResponse(status_code=500, content={"error": "Something went wrong. Please try again."})
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Something went wrong. Please try again."},
+        headers=_cors_headers_for(request),
+    )
 
 
 @app.get("/", tags=["health"])
