@@ -15,8 +15,8 @@ import { useWindowSize } from '../hooks/useWindowSize';
  *   2. Governing law / jurisdiction, and the liability floor amount
  *   3. Have the whole thing reviewed by an EU-qualified lawyer
  */
-const TERMS_VERSION = '2026-07-29';
-const LAST_UPDATED = '29 July 2026';
+const TERMS_VERSION = '2026-07-30';
+const LAST_UPDATED = '30 July 2026';
 
 const SECTIONS: { h: string; p: string[] }[] = [
   { h: 'Acceptance and eligibility', p: [

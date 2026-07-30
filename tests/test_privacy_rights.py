@@ -21,12 +21,17 @@ import tempfile
 import pytest
 
 
-FULL_CONSENT = {
-    "terms": True,
-    "privacy": True,
-    "age_18": True,
-    "sensitive_data": True,
-}
+def full_consent(client):
+    """Every required consent, granted.
+
+    Read from the running app rather than hardcoded, so renaming or adding a
+    required consent can't leave the suite signing up with an incomplete set
+    and still passing. Fetched through the client instead of imported from
+    app.privacy because importing the app package at module scope would bind
+    the database engine before the fixture has pointed it at a temp file.
+    """
+    body = client.get("/legal/consents").json()
+    return {item["key"]: True for item in body["catalogue"] if item["required"]}
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +75,7 @@ def register(client, email, consents=None):
             "email": email,
             "password": "correct-horse-battery",
             "name": email.split("@")[0],
-            "consents": FULL_CONSENT if consents is None else consents,
+            "consents": full_consent(client) if consents is None else consents,
         },
     )
     if resp.status_code != 200:
@@ -88,12 +93,22 @@ def test_consent_catalogue_is_public(client):
 
     body = resp.json()
     required = {item["key"] for item in body["catalogue"] if item["required"]}
-    assert required == {"terms", "privacy", "sensitive_data", "age_18"}
+    assert required, "there must be at least one required consent"
 
-    # The Art 9 consent must be flagged so the UI renders it separately rather
-    # than bundling it in with the terms.
-    art9 = next(i for i in body["catalogue"] if i["key"] == "sensitive_data")
-    assert art9["explicit"] is True
+    # The Art 9 consent must be its own item, flagged explicit, so the UI can
+    # render it separately. Art 7(2) requires it to be clearly distinguishable
+    # from the terms, and Art 9(2)(a) requires it to be explicit — merging it
+    # into the terms tick to shorten the form would invalidate it.
+    explicit = [i for i in body["catalogue"] if i["explicit"]]
+    assert len(explicit) == 1
+    assert explicit[0]["key"] == "sensitive_data"
+    assert explicit[0]["required"] is True
+
+    # Specific enough to be informed consent: it has to say what is processed
+    # and what for, not just "your data".
+    label = explicit[0]["label"].lower()
+    assert "explicitly consent" in label
+    assert "journals" in label and "voice notes" in label and "emotion logs" in label
 
 
 def test_signup_without_consent_creates_nothing(client):
@@ -114,7 +129,7 @@ def test_signup_without_consent_creates_nothing(client):
 
 
 def test_signup_refused_when_only_the_art9_consent_is_withheld(client):
-    partial = {**FULL_CONSENT, "sensitive_data": False}
+    partial = {**full_consent(client), "sensitive_data": False}
     _, _, resp = register(client, "partial@example.com", consents=partial)
     assert resp.status_code == 400
     assert "sensitive_data" in resp.json()["detail"]["missing"]
@@ -122,16 +137,17 @@ def test_signup_refused_when_only_the_art9_consent_is_withheld(client):
 
 def test_consent_is_recorded_as_evidence(client):
     """Art 7(1) — we must be able to show what was agreed, and under which version."""
-    headers, _, resp = register(
-        client, "ledger@example.com", consents={**FULL_CONSENT, "daily_emails": False}
-    )
+    headers, _, resp = register(client, "ledger@example.com")
     assert resp.json()["consent_required"] == []
 
     state = client.get("/account/consents", headers=headers).json()
-    assert state["state"]["sensitive_data"]["granted"] is True
-    # A refused optional consent is recorded too — silence is not a decision.
-    assert state["state"]["daily_emails"]["granted"] is False
-    assert state["state"]["terms"]["policy_version"] == state["policy_version"]
+    # Every required consent is on the ledger, stamped with the policy version
+    # that was actually shown — consent to an older wording is not consent to
+    # the current one.
+    for key in full_consent(client):
+        assert state["state"][key]["granted"] is True
+        assert state["state"][key]["policy_version"] == state["policy_version"]
+        assert state["state"][key]["recorded_at"]
 
 
 def test_withdrawing_consent_stops_the_processing(client):
@@ -157,7 +173,7 @@ def test_withdrawing_consent_stops_the_processing(client):
     # Withdrawal must never cost the user access to their own data.
     assert client.get("/account/export", headers=headers).status_code == 200
 
-    regrant = client.post("/account/consents", json={"consents": FULL_CONSENT}, headers=headers)
+    regrant = client.post("/account/consents", json={"consents": full_consent(client)}, headers=headers)
     assert regrant.status_code == 200
     assert regrant.json()["missing"] == []
 
@@ -187,7 +203,9 @@ def test_export_is_complete_and_excludes_credentials(client):
     export = json.loads(resp.content)
     assert export["account"]["email"] == "export@example.com"
     assert export["sessions"][0]["messages"][0]["content"] == "a private entry"
-    assert len(export["consents"]) >= 4
+    # One ledger row per required consent — the evidence Art 7(1) demands has
+    # to survive into the export the user can actually read.
+    assert len(export["consents"]) == len(full_consent(client))
 
     # Credentials are not information about the person, and exporting them only
     # creates another place for them to leak.
@@ -224,7 +242,7 @@ def test_deletion_is_immediate_and_cascades(client):
     assert deleted["sessions"] == 1
     assert deleted["chat_messages"] == 1
     assert deleted["roadmap_tasks"] == 1
-    assert deleted["user_consents"] >= 4
+    assert deleted["user_consents"] == len(full_consent(client))
 
     assert client.get("/me", headers=headers).status_code == 401
     assert client.post(

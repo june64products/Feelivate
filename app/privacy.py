@@ -44,42 +44,46 @@ from .models import (
 # Bump this whenever the privacy policy or terms change in a way that affects
 # what the user agreed to. Users whose latest consent predates the current
 # version are re-prompted rather than assumed to still agree.
-CONSENT_POLICY_VERSION = os.getenv("CONSENT_POLICY_VERSION", "2026-07-29")
+CONSENT_POLICY_VERSION = os.getenv("CONSENT_POLICY_VERSION", "2026-07-30")
 
 # Every consent here must be granted before the account can be used.
 # `explicit` marks the Art 9 consent, which the UI must present as its own
 # unticked checkbox — never bundled with the terms acceptance.
 REQUIRED_CONSENTS: Dict[str, Dict[str, Any]] = {
-    "terms": {
-        "label": "I agree to the Terms of Service.",
+    # Contract acceptance, the Art 13 notice and the age statement are not
+    # GDPR "consent" at all, so bundling them into one tick is lawful — and
+    # fewer boxes means the one that matters actually gets read.
+    "terms_privacy_age": {
+        "label": "I'm 18 or older, and I agree to the Terms of Service and Privacy Policy.",
         "explicit": False,
     },
-    "privacy": {
-        "label": "I have read the Privacy Policy and understand how my data is processed.",
-        "explicit": False,
-    },
+    # This one can never be merged into the tick above. Art 7(2) requires a
+    # consent request to be clearly distinguishable from other matters and
+    # Art 9(2)(a) requires it to be explicit; bundling it would invalidate it
+    # outright, leaving the wellbeing data with no lawful basis.
+    #
+    # Kept to one line on purpose. Art 12 asks for concise and intelligible,
+    # and a wall of text is skipped rather than read — which defeats the
+    # "informed" limb of consent. It still names what is processed and why,
+    # which is what makes it specific; the AI processors and everything else
+    # are covered by the Privacy Policy linked in the tick above.
     "sensitive_data": {
         "label": (
-            "I explicitly consent to Feelivate processing the wellbeing information I choose "
-            "to share — my journal entries, voice notes and their transcripts, and the emotion "
-            "labels derived from them — to personalise my plans and reports. This information "
-            "is processed by our AI providers as described in the Privacy Policy."
+            "I explicitly consent to Feelivate processing my journals, voice notes "
+            "and emotion logs to personalise my plans."
         ),
         "explicit": True,
-    },
-    "age_18": {
-        "label": "I confirm that I am 18 years of age or older.",
-        "explicit": False,
     },
 }
 
 # Optional consents: absence never blocks the product.
-OPTIONAL_CONSENTS: Dict[str, Dict[str, Any]] = {
-    "daily_emails": {
-        "label": "Send me my daily task email at the time I choose.",
-        "explicit": False,
-    },
-}
+#
+# Empty by design. Daily task emails used to sit here, but the notification
+# flow already collects a stronger consent — the user enters an address and
+# confirms an OTP sent to it. A signup tick that granted nothing and blocked
+# nothing was decoration, and a control that appears to do something while
+# doing nothing is worse than no control at all.
+OPTIONAL_CONSENTS: Dict[str, Dict[str, Any]] = {}
 
 ALL_CONSENTS = {**REQUIRED_CONSENTS, **OPTIONAL_CONSENTS}
 

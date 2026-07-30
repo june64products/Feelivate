@@ -21,8 +21,8 @@ import { useWindowSize } from '../hooks/useWindowSize';
  *   3. Confirmed transfer safeguards per provider (Art 13(1)(f))
  *   4. Actual log retention period from the hosting provider
  */
-const POLICY_VERSION = '2026-07-29';
-const LAST_UPDATED = '29 July 2026';
+const POLICY_VERSION = '2026-07-30';
+const LAST_UPDATED = '30 July 2026';
 
 const SECTIONS: { h: string; p: string[] }[] = [
   { h: 'Who we are', p: [

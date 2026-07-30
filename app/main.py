@@ -340,8 +340,8 @@ class SignupRequest(BaseModel):
     password: str
     name: Optional[str] = None
     # Consent decisions keyed by the entries in privacy.REQUIRED_CONSENTS /
-    # OPTIONAL_CONSENTS, e.g. {"terms": true, "privacy": true,
-    # "sensitive_data": true, "age_18": true}. Every required key must be true.
+    # OPTIONAL_CONSENTS, e.g. {"terms_privacy_age": true, "sensitive_data": true}.
+    # Every required key must be true.
     consents: Optional[Dict[str, bool]] = None
 
 

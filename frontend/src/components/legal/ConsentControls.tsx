@@ -59,7 +59,7 @@ export function ConsentCheckbox({
                     fontWeight: 500,
                 }}
             >
-                {renderLabel(item)}
+                {renderLabel(item.label)}
                 {!item.required && (
                     <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}> (optional)</span>
                 )}
@@ -68,13 +68,24 @@ export function ConsentCheckbox({
     );
 }
 
+/** Document names that become links wherever they appear in a consent label. */
+const LINKED_DOCUMENTS: { phrase: string; href: string }[] = [
+    { phrase: 'Terms of Service', href: '/terms' },
+    { phrase: 'Privacy Policy', href: '/privacy' },
+];
+
 /**
- * Turns the Terms / Privacy Policy mentions in the label into real links.
+ * Turns Terms / Privacy Policy mentions in the label into real links.
  *
  * Consent is only informed if the person can actually read what they are
  * agreeing to without leaving the form to hunt for it.
+ *
+ * Matches on the phrase rather than the consent key, because the labels are
+ * authored server-side: rewording a consent or splitting one in two would
+ * otherwise silently drop the links and leave the text unreadable in place.
  */
-function renderLabel(item: ConsentItem) {
+function renderLabel(label: string) {
+    const pattern = new RegExp(`(${LINKED_DOCUMENTS.map(d => d.phrase).join('|')})`, 'g');
     const linkStyle: React.CSSProperties = {
         color: 'var(--text-primary)',
         fontWeight: 700,
@@ -82,27 +93,23 @@ function renderLabel(item: ConsentItem) {
         textUnderlineOffset: '2px',
     };
 
-    if (item.key === 'terms') {
+    return label.split(pattern).map((part, i) => {
+        const doc = LINKED_DOCUMENTS.find(d => d.phrase === part);
+        if (!doc) return <span key={i}>{part}</span>;
         return (
-            <>
-                I agree to the{' '}
-                <a href="/terms" target="_blank" rel="noopener noreferrer" style={linkStyle}>
-                    Terms of Service
-                </a>
-                .
-            </>
+            <a
+                key={i}
+                href={doc.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={linkStyle}
+                // The label is itself a <label>, so a click on the link would
+                // otherwise also toggle the checkbox the user is trying to read
+                // about before deciding.
+                onClick={e => e.stopPropagation()}
+            >
+                {part}
+            </a>
         );
-    }
-    if (item.key === 'privacy') {
-        return (
-            <>
-                I have read the{' '}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={linkStyle}>
-                    Privacy Policy
-                </a>{' '}
-                and understand how my data is processed.
-            </>
-        );
-    }
-    return item.label;
+    });
 }
