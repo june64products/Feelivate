@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
@@ -166,19 +166,21 @@ export default function LoginPage() {
   // matches what the backend actually records against the account.
   const [consentCatalogue, setConsentCatalogue] = useState<ConsentItem[]>([]);
   const [consents, setConsents] = useState<Record<string, boolean>>({});
+  const [consentLoad, setConsentLoad] = useState<'loading' | 'ready' | 'failed'>('loading');
 
-  useEffect(() => {
-    let active = true;
-    getConsentCatalogue()
+  const loadConsentCatalogue = useCallback(() => {
+    setConsentLoad('loading');
+    return getConsentCatalogue()
       .then(({ catalogue }) => {
-        if (!active) return;
         setConsentCatalogue(catalogue);
         // Every box starts unticked — a pre-ticked consent is not consent.
         setConsents(Object.fromEntries(catalogue.map(c => [c.key, false])));
+        setConsentLoad('ready');
       })
-      .catch(() => { /* Non-fatal: the submit guard below still blocks signup. */ });
-    return () => { active = false; };
+      .catch(() => setConsentLoad('failed'));
   }, []);
+
+  useEffect(() => { loadConsentCatalogue(); }, [loadConsentCatalogue]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -396,7 +398,7 @@ export default function LoginPage() {
                   reads as a separate, deliberate decision rather than fine print
                   bundled into the terms. */}
               <AnimatePresence initial={false}>
-                {!isLogin && consentCatalogue.length > 0 && (
+                {!isLogin && consentLoad === 'ready' && consentCatalogue.length > 0 && (
                   <motion.div
                     key="consent-block"
                     initial={{ opacity: 0, height: 0 }}
@@ -417,6 +419,61 @@ export default function LoginPage() {
                       ))}
                     </div>
                   </motion.div>
+                )}
+
+                {/* The terms are a precondition, so failing to load them can't be
+                    silent. Without this the form looks ordinary and the button is
+                    simply dead, which reads as a broken signup rather than a
+                    reachable problem. */}
+                {!isLogin && consentLoad === 'failed' && (
+                  <motion.div
+                    key="consent-error"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{
+                      padding: '14px 16px', borderRadius: '4px', marginTop: '4px',
+                      background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                      fontFamily: satoshi,
+                    }}>
+                      <p style={{ fontSize: '13px', color: '#dc2626', fontWeight: 600, marginBottom: '4px' }}>
+                        Couldn't load the terms you need to accept.
+                      </p>
+                      <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
+                        We can't create an account without them. Check your connection and try again.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => loadConsentCatalogue()}
+                        style={{
+                          background: 'transparent', border: '1px solid rgba(239,68,68,0.3)',
+                          borderRadius: '4px', padding: '7px 14px', cursor: 'pointer',
+                          fontSize: '12px', fontWeight: 700, color: '#dc2626',
+                          fontFamily: satoshi, letterSpacing: '0.04em', textTransform: 'uppercase',
+                        }}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {!isLogin && consentLoad === 'loading' && (
+                  <motion.p
+                    key="consent-loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{
+                      fontSize: '12.5px', color: 'var(--text-muted)', fontFamily: satoshi,
+                      paddingTop: '6px',
+                    }}
+                  >
+                    Loading terms…
+                  </motion.p>
                 )}
               </AnimatePresence>
 
