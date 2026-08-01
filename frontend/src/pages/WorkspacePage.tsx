@@ -132,6 +132,9 @@ export default function WorkspacePage() {
     // Calendar sync states
     const [showCalendarModal, setShowCalendarModal] = useState(false);
     const [showCalendarMaintenance, setShowCalendarMaintenance] = useState(false);
+    // "Upgrade" in the header opens a reassurance popup, not a checkout — there is
+    // no paid tier yet, every account already runs the full-feature build.
+    const [showPlanInfo, setShowPlanInfo] = useState(false);
     const [preferredTime, setPreferredTime] = useState("08:00");
     const [syncLoading, setSyncLoading] = useState(false);
     const [syncMessage, setSyncMessage] = useState("");
@@ -767,7 +770,11 @@ export default function WorkspacePage() {
                                 </button>
                             )}
 
-                            <button className="upgrade-btn hide-on-mobile">
+                            <button
+                                className="upgrade-btn hide-on-mobile"
+                                onClick={() => setShowPlanInfo(true)}
+                                title="Your plan"
+                            >
                                 Upgrade
                             </button>
 
@@ -1517,6 +1524,102 @@ export default function WorkspacePage() {
                                 >
                                     <Bell size={13} />
                                     Open Alerts
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* "Upgrade" → you're already on the top plan */}
+            <AnimatePresence>
+                {showPlanInfo && (
+                    <div
+                        onClick={() => setShowPlanInfo(false)}
+                        style={{
+                            position: 'fixed', inset: 0,
+                            background: 'var(--modal-overlay)',
+                            backdropFilter: 'blur(12px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            zIndex: 1000, padding: '20px',
+                        }}
+                    >
+                        <motion.div
+                            onClick={e => e.stopPropagation()}
+                            initial={{ scale: 0.95, opacity: 0, y: 12 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+                            style={{
+                                width: '100%', maxWidth: '420px',
+                                background: 'var(--modal-bg)',
+                                border: '1px solid var(--modal-border)',
+                                borderRadius: '20px', padding: '26px',
+                                boxShadow: 'var(--shadow-lg)',
+                                fontFamily: "'Satoshi', 'Inter', sans-serif",
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                                <div style={{
+                                    width: '40px', height: '40px', borderRadius: '12px',
+                                    background: 'var(--glass-surface)', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                }}>
+                                    <Sparkles size={18} style={{ color: 'var(--accent-warm)' }} />
+                                </div>
+                                <span style={{
+                                    padding: '4px 10px', borderRadius: '100px',
+                                    border: '1px solid var(--border-medium)',
+                                    color: 'var(--text-secondary)', fontSize: '10px', fontWeight: 700,
+                                    letterSpacing: '0.08em', textTransform: 'uppercase',
+                                }}>
+                                    Current plan · Max
+                                </span>
+                            </div>
+
+                            <h3 style={{
+                                fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)',
+                                marginBottom: '8px', fontFamily: "'Clash Display', 'Inter', sans-serif",
+                                letterSpacing: '-0.01em',
+                            }}>
+                                You're already on the highest plan
+                            </h3>
+                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '18px' }}>
+                                There's nothing to upgrade to — every account is on Feelivate Max. Your coach
+                                runs on our highest-tier reasoning models, and no feature is locked behind a
+                                paywall. You're getting the best version of Feelivate we ship.
+                            </p>
+
+                            <div style={{ display: 'grid', gap: '9px', marginBottom: '22px' }}>
+                                {[
+                                    'Highest-tier AI reasoning — no throttled or cut-down model',
+                                    'Unlimited chats, plans and check-ins',
+                                    'Adaptive week plans that rebuild around your progress',
+                                    'Voice check-ins, weekly reviews and full journey history',
+                                    'Daily alerts, data export and account deletion — always included',
+                                ].map(item => (
+                                    <div key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '9px' }}>
+                                        <CheckCircle size={14} style={{ color: 'var(--accent-warm)', flexShrink: 0, marginTop: '1px' }} />
+                                        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                            {item}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <button
+                                    onClick={() => setShowPlanInfo(false)}
+                                    style={{
+                                        padding: '9px 18px', borderRadius: '100px',
+                                        border: 'none', background: 'var(--btn-primary-bg)',
+                                        color: 'var(--btn-primary-text)', fontSize: '11px', fontWeight: 700,
+                                        cursor: 'pointer',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
+                                    }}
+                                >
+                                    Got it
                                 </button>
                             </div>
                         </motion.div>
