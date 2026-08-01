@@ -932,3 +932,42 @@ body {
 .svc-card:hover { background: var(--card-bg) !important; border-color: var(--border-focus) !important; }
 .svc-icon { transition: transform 320ms cubic-bezier(0.77, 0, 0.175, 1); }
 .svc-card:hover .svc-icon { transform: rotate(12deg); }
+
+/* ─── Testimonial wall (marquee rows above the footer) ─── */
+.tw-wall {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  /* Fade the rows out at both edges instead of hard-cutting them. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+}
+
+.tw-row { overflow: hidden; }
+
+.tw-track {
+  display: flex;
+  /* No `gap` on purpose — the spacing lives on each card's margin-right so the
+     duplicated list is exactly 2x one list, and translating -50% lands on the
+     seam with no gap-width jitter. */
+  width: max-content;
+  animation: twScroll 46s linear infinite;
+}
+
+.tw-track--reverse {
+  animation-direction: reverse;
+  animation-duration: 58s;
+}
+
+.tw-row:hover .tw-track { animation-play-state: paused; }
+
+@keyframes twScroll {
+  from { transform: translate3d(0, 0, 0); }
+  /* The list is duplicated once, so -50% lands exactly on the seam. */
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw-row { overflow-x: auto; }
+  .tw-track { animation: none; }
+}

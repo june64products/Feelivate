@@ -5,10 +5,24 @@ import { ArrowRight, MessageSquare, Lock, Mail, LineChart, Mic, Calendar, Chevro
 import Seo, { SITE_URL } from '../components/site/Seo';
 import BrandNav from '../components/site/BrandNav';
 import SiteFooter from '../components/site/SiteFooter';
+import Testimonials from '../components/site/Testimonials';
+import { VideoSlot, PhotoSlot } from '../components/site/MediaSlots';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 const clash = "'Clash Display', 'Inter', system-ui, sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
+
+// ─── Hero media ───────────────────────────────────────────────────────────────
+// Drop the files into frontend/public/media/ and fill these in. Until then the
+// slots render labelled placeholders at the exact final size, so adding the real
+// assets never shifts the layout.
+const HERO_VIDEO_SRC: string | undefined = undefined;   // e.g. '/media/demo.mp4'
+const HERO_VIDEO_POSTER: string | undefined = undefined; // e.g. '/media/demo-poster.jpg'
+const HERO_PHOTOS: { src?: string; label: string; alt: string }[] = [
+  { src: undefined, label: 'Photo 1 · Chat', alt: 'Planning a week with the Feelivate mentor' },
+  { src: undefined, label: 'Photo 2 · Daily email', alt: 'The daily task email' },
+  { src: undefined, label: 'Photo 3 · Weekly report', alt: 'End-of-week report card' },
+];
 
 const STEPS = [
   { icon: MessageSquare, title: 'Tell your mentor the goal', desc: 'Chat naturally. Feelivate strips the noise and pulls out what you actually want to become.' },
@@ -157,6 +171,26 @@ export default function HomePage() {
             ))}
           </motion.div>
         </div>
+
+        {/* Hero media — demo clip + supporting screenshots */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          style={{ maxWidth: '1140px', margin: isMobile ? '38px auto 0' : '56px auto 0' }}
+        >
+          <VideoSlot
+            src={HERO_VIDEO_SRC}
+            poster={HERO_VIDEO_POSTER}
+            label="See a week get built in 60 seconds"
+            hint="Video slot — drop demo.mp4 in /public/media, then set HERO_VIDEO_SRC in HomePage.tsx"
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '14px', marginTop: '14px' }}>
+            {HERO_PHOTOS.map((p) => (
+              <PhotoSlot key={p.label} src={p.src} alt={p.alt} label={p.label} ratio="16 / 10" />
+            ))}
+          </div>
+        </motion.div>
       </header>
 
       {/* Problem */}
@@ -308,6 +342,10 @@ export default function HomePage() {
           <PrimaryCta>Start Free</PrimaryCta>
         </div>
       </section>
+
+      {/* Testimonial wall — placeholders until real, permissioned quotes exist.
+          See the notes at the top of Testimonials.tsx before editing the copy. */}
+      <Testimonials />
 
       <SiteFooter />
     </div>
