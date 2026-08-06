@@ -91,12 +91,26 @@ export interface SafetyNotice {
     resources: { region: string; name: string; contact: string; note: string }[];
 }
 
+/**
+ * Attached when the request was refused before the mentor model ever ran.
+ * `category` is for our own logging — the copy shown to the user is the same
+ * whatever it says, so it never hints at where the boundary sits.
+ */
+export interface BlockedNotice {
+    type: 'request_blocked';
+    headline: string;
+    body: string;
+    category: string;
+}
+
 export interface ChatResponse {
     reply: string;
     plan: any | null;
     session_id: string;
     /** Present only when the message triggered the crisis screen. */
     safety?: SafetyNotice;
+    /** Present only when the request was refused outright. */
+    blocked?: BlockedNotice;
 }
 
 export const chatWithMentor = async (

@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Calendar, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { Check, Calendar, ChevronDown, ChevronUp, ArrowRight, AlertTriangle } from 'lucide-react';
 import { useWindowSize } from '../../hooks/useWindowSize';
 import ConfirmDialog from '../workspace/ConfirmDialog';
+import { projectedWeekWindow, daysBetween, formatDay, localISODate } from '../../lib/weekWindow';
 
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
+
+/** A plan left unlocked longer than this is worth a second look before it starts. */
+const STALE_AFTER_DAYS = 7;
 
 interface PlanDay {
     day: string;
@@ -18,6 +22,8 @@ interface PlanData {
     theme: string;
     win_condition: string;
     days: PlanDay[];
+    /** Stamped by the backend when the plan was built. Absent on older plans. */
+    generated_date?: string;
 }
 
 interface PlanCardProps {
@@ -25,13 +31,34 @@ interface PlanCardProps {
     onApprove: () => void;
     onRequestChange: (feedback: string) => void;
     isApproved: boolean;
+    /** First plan of the session — it may start short on purpose (see Week 0). */
+    isFirstPlan?: boolean;
 }
 
-export default function PlanCard({ plan, onApprove, onRequestChange, isApproved }: PlanCardProps) {
+export default function PlanCard({ plan, onApprove, onRequestChange, isApproved, isFirstPlan = false }: PlanCardProps) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [approveAnimation, setApproveAnimation] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const { isMobile } = useWindowSize();
+
+    // Where this week lands if locked right now, and how long the plan has been
+    // sitting unlocked. The week starts on the lock day, so a plan built weeks
+    // ago is about to be stretched over a completely different set of dates.
+    const today = localISODate();
+    const window_ = projectedWeekWindow(today, isFirstPlan);
+    const planAge = plan.generated_date ? daysBetween(plan.generated_date, today) : 0;
+    const isStale = planAge >= STALE_AFTER_DAYS;
+
+    const windowLine = window_.startsLater
+        ? `This week starts ${formatDay(window_.start)} and runs to ${formatDay(window_.end)} — ${window_.dayCount} days. Locking today reserves it; the journal opens on ${formatDay(window_.start)}.`
+        : `This week runs ${formatDay(window_.start)} → ${formatDay(window_.end)} — ${window_.dayCount} days. Days before today won't appear in your journal.`;
+
+    const handleRebuild = () => {
+        setShowConfirm(false);
+        onRequestChange(
+            `it was built ${planAge} days ago and is out of date — please rebuild Week ${plan.week_number} from scratch for ${window_.dayCount} days starting ${window_.start}, based on where I am now.`
+        );
+    };
 
     const handleApprove = () => {
         setApproveAnimation(true);
@@ -267,15 +294,106 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved 
             </AnimatePresence>
         </motion.div>
 
-        {showConfirm && (
+        {showConfirm && !isStale && (
             <ConfirmDialog
                 title="Lock this week's plan?"
-                message="Once you lock it, this week's plan can't be changed until the week ends. Ready to commit?"
+                message={`Once you lock it, this week's plan can't be changed until the week ends. ${windowLine}`}
                 confirmLabel="Yes, lock it"
                 cancelLabel="Not yet"
                 onConfirm={() => { setShowConfirm(false); handleApprove(); }}
                 onCancel={() => setShowConfirm(false)}
             />
+        )}
+
+        {/* A plan that sat unlocked for a while is about to be locked onto a
+            completely different set of dates than it was written for — say so,
+            and offer to rebuild it instead of silently starting it. */}
+        {showConfirm && isStale && (
+            <div
+                onClick={() => setShowConfirm(false)}
+                style={{
+                    position: 'fixed', inset: 0,
+                    background: 'var(--modal-overlay)', backdropFilter: 'blur(8px)',
+                    zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '20px',
+                }}
+            >
+                <motion.div
+                    onClick={e => e.stopPropagation()}
+                    initial={{ scale: 0.92, opacity: 0, y: 16 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+                    style={{
+                        width: '100%', maxWidth: '430px',
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--modal-border)',
+                        borderRadius: '20px', padding: '26px',
+                        boxShadow: 'var(--shadow-lg)', fontFamily: satoshi,
+                    }}
+                >
+                    <div style={{
+                        width: '38px', height: '38px', borderRadius: '11px',
+                        background: 'rgba(217,119,87,0.10)', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', marginBottom: '14px',
+                    }}>
+                        <AlertTriangle size={17} style={{ color: 'var(--accent-warm)' }} />
+                    </div>
+
+                    <h3 style={{
+                        fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)',
+                        margin: '0 0 8px', fontFamily: clashDisplay, letterSpacing: '-0.01em',
+                    }}>
+                        This plan is {planAge} days old
+                    </h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 10px' }}>
+                        You built Week {plan.week_number} on {formatDay(plan.generated_date!)} and haven't locked it yet.
+                        A week starts the day you lock it, so this one would begin now, not back then.
+                    </p>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 22px' }}>
+                        {windowLine}
+                    </p>
+
+                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={() => setShowConfirm(false)}
+                            style={{
+                                padding: '9px 18px', borderRadius: '100px',
+                                border: '1px solid var(--border-medium)', background: 'transparent',
+                                color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 700,
+                                cursor: 'pointer', fontFamily: satoshi,
+                                letterSpacing: '0.04em', textTransform: 'uppercase',
+                            }}
+                        >
+                            Not yet
+                        </button>
+                        <button
+                            onClick={handleRebuild}
+                            style={{
+                                padding: '9px 18px', borderRadius: '100px',
+                                border: '1px solid var(--accent-primary)', background: 'transparent',
+                                color: 'var(--text-primary)', fontSize: '12px', fontWeight: 700,
+                                cursor: 'pointer', fontFamily: satoshi,
+                                letterSpacing: '0.04em', textTransform: 'uppercase',
+                            }}
+                        >
+                            Build a fresh plan
+                        </button>
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => { setShowConfirm(false); handleApprove(); }}
+                            style={{
+                                padding: '9px 18px', borderRadius: '100px', border: 'none',
+                                background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                                fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                                fontFamily: satoshi, letterSpacing: '0.04em', textTransform: 'uppercase',
+                            }}
+                        >
+                            Start it today
+                        </motion.button>
+                    </div>
+                </motion.div>
+            </div>
         )}
         </>
     );

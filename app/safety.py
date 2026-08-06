@@ -32,7 +32,10 @@ _CRISIS_PATTERNS: List[str] = [
     r"\bkill (?:myself|my self)\b",
     r"\b(?:want|wanna|going) to die\b",
     r"\bi (?:want|wish) (?:to |i )?(?:was |were )?dead\b",
-    r"\bend (?:my|it all|my life)\b",
+    # "ending my life" / "ending it all" are as common as the bare verb. The
+    # object has to be named — a bare "end my ..." also matches "end my
+    # procrastination", which is the most ordinary sentence in this app.
+    r"\bend(?:ing|s)? (?:it all|my (?:life|existence|suffering))\b",
     r"\btake my (?:own )?life\b",
     r"\bsuicid(?:e|al)\b",
     r"\bkms\b",

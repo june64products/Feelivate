@@ -1,8 +1,9 @@
 import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import PlanCard from './PlanCard';
+import BlockedNoticeCard from './BlockedNoticeCard';
 import SafetyCard from './SafetyCard';
-import type { SafetyNotice } from '../../api';
+import type { SafetyNotice, BlockedNotice } from '../../api';
 import { useWindowSize } from '../../hooks/useWindowSize';
 
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
@@ -14,6 +15,7 @@ interface Message {
     plan?: any;
     /** Set when the backend's crisis screen fired on the user's message. */
     safety?: SafetyNotice;
+    blocked?: BlockedNotice;
 }
 
 interface ChatWindowProps {
@@ -22,6 +24,8 @@ interface ChatWindowProps {
     onApprovePlan: () => void;
     onRequestPlanChange: (feedback: string) => void;
     isPlanApproved: boolean;
+    /** No plan has ever been locked in this session — the week may start short on purpose. */
+    isFirstPlan?: boolean;
     /** Guided demo controls its own gentle scrolling — skip the snap auto-scroll. */
     demoMode?: boolean;
 }
@@ -32,6 +36,7 @@ export default function ChatWindow({
     onApprovePlan,
     onRequestPlanChange,
     isPlanApproved,
+    isFirstPlan = false,
     demoMode = false,
 }: ChatWindowProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -225,6 +230,9 @@ export default function ChatWindow({
                                 this turn so it isn't pushed below a plan card. */}
                             {msg.safety && <SafetyCard notice={msg.safety} />}
 
+                            {/* Refused before the mentor ran — no plan can follow it. */}
+                            {msg.blocked && <BlockedNoticeCard notice={msg.blocked} />}
+
                             {/* If this message has an associated plan, show PlanCard */}
                             {msg.plan && !isPlanApproved && (
                                 <PlanCard
@@ -232,6 +240,7 @@ export default function ChatWindow({
                                     onApprove={onApprovePlan}
                                     onRequestChange={onRequestPlanChange}
                                     isApproved={false}
+                                    isFirstPlan={isFirstPlan}
                                 />
                             )}
                         </div>

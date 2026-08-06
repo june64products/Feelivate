@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PanelLeft, AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock, Archive } from 'lucide-react';
+import { PanelLeft, AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock, Archive, ShieldAlert } from 'lucide-react';
 import {
     chatWithMentor,
     approvePlan,
@@ -18,6 +18,7 @@ import {
     getEmailNotificationStatus,
     updateNotificationTime,
 } from '../api';
+import type { BlockedNotice } from '../api';
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
 import RadiantPromptInput from '../components/chat/RadiantPromptInput';
@@ -135,6 +136,8 @@ export default function WorkspacePage() {
     // "Upgrade" in the header opens a reassurance popup, not a checkout — there is
     // no paid tier yet, every account already runs the full-feature build.
     const [showPlanInfo, setShowPlanInfo] = useState(false);
+    // Set when the backend refuses a request outright (see app/guardrail.py).
+    const [blockedNotice, setBlockedNotice] = useState<BlockedNotice | null>(null);
     const [preferredTime, setPreferredTime] = useState("08:00");
     const [syncLoading, setSyncLoading] = useState(false);
     const [syncMessage, setSyncMessage] = useState("");
@@ -325,8 +328,14 @@ export default function WorkspacePage() {
                 plan: res.plan,
                 // Only present when the message triggered the crisis screen.
                 safety: res.safety,
+                // Only present when the request was refused before the model ran.
+                blocked: res.blocked,
             };
             setMessages(prev => [...prev, assistantMsg]);
+
+            // Raise it as a dialog too — the refusal has to be impossible to
+            // miss, and a card in the thread can scroll past unread.
+            if (res.blocked) setBlockedNotice(res.blocked);
 
             if (res.plan) {
                 setActivePlan(res.plan);
@@ -920,6 +929,7 @@ export default function WorkspacePage() {
                                     onApprovePlan={demoMode ? () => demoHandles.setPlanApproved(true) : handleApprovePlan}
                                     onRequestPlanChange={demoMode ? () => {} : handleRequestPlanChange}
                                     isPlanApproved={uiIsPlanApproved}
+                                    isFirstPlan={!demoMode && planHistory.length === 0}
                                     demoMode={demoMode}
                                 />
                             </motion.div>
@@ -1524,6 +1534,75 @@ export default function WorkspacePage() {
                                 >
                                     <Bell size={13} />
                                     Open Alerts
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Request refused before the mentor ran (app/guardrail.py). Stated
+                once, plainly, with no detail about which rule was hit — that
+                detail is only useful to someone probing the boundary. */}
+            <AnimatePresence>
+                {blockedNotice && (
+                    <div
+                        onClick={() => setBlockedNotice(null)}
+                        style={{
+                            position: 'fixed', inset: 0,
+                            background: 'var(--modal-overlay)',
+                            backdropFilter: 'blur(12px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            zIndex: 1200, padding: '20px',
+                        }}
+                    >
+                        <motion.div
+                            onClick={e => e.stopPropagation()}
+                            role="alertdialog"
+                            aria-label={blockedNotice.headline}
+                            initial={{ scale: 0.95, opacity: 0, y: 12 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+                            style={{
+                                width: '100%', maxWidth: '400px',
+                                background: 'var(--modal-bg)',
+                                border: '1px solid var(--modal-border)',
+                                borderRadius: '20px', padding: '26px',
+                                boxShadow: 'var(--shadow-lg)',
+                                fontFamily: "'Satoshi', 'Inter', sans-serif",
+                            }}
+                        >
+                            <div style={{
+                                width: '40px', height: '40px', borderRadius: '12px',
+                                background: 'var(--glass-surface)', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', marginBottom: '14px',
+                            }}>
+                                <ShieldAlert size={18} style={{ color: 'var(--text-secondary)' }} />
+                            </div>
+                            <h3 style={{
+                                fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)',
+                                marginBottom: '8px', fontFamily: "'Clash Display', 'Inter', sans-serif",
+                            }}>
+                                {blockedNotice.headline}
+                            </h3>
+                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '22px' }}>
+                                {blockedNotice.body}
+                            </p>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <button
+                                    autoFocus
+                                    onClick={() => setBlockedNotice(null)}
+                                    style={{
+                                        padding: '9px 18px', borderRadius: '100px',
+                                        border: 'none', background: 'var(--btn-primary-bg)',
+                                        color: 'var(--btn-primary-text)', fontSize: '11px', fontWeight: 700,
+                                        cursor: 'pointer',
+                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
+                                        letterSpacing: '0.04em', textTransform: 'uppercase',
+                                    }}
+                                >
+                                    Got it
                                 </button>
                             </div>
                         </motion.div>

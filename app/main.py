@@ -35,6 +35,7 @@ from .observability import REQUESTS_TOTAL
 from .ratelimit import LIMITERS as RATE_LIMITERS, prune_all as prune_rate_limiters
 from .crypto import encrypt_secret, decrypt_secret
 from .safety import CRISIS_SYSTEM_INSTRUCTION, crisis_payload, detect_crisis
+from . import guardrail
 from .privacy import (
     CONSENT_POLICY_VERSION,
     REQUIRED_CONSENTS,
@@ -542,6 +543,38 @@ def _generate_and_save_title(session_id: str, user_message: str, assistant_reply
         db.close()
 
 
+async def _blocked_chat_response(db: DBSession, session_id: str, user_id: str,
+                                 message: str, verdict) -> Dict[str, Any]:
+    """Answer a blocked message without ever calling the mentor model.
+
+    The exchange is still written to the thread so the conversation reads
+    coherently when the user scrolls back — but it is deliberately kept out of
+    the vector store, so a blocked request never becomes long-term context the
+    mentor recalls later. No flag of any kind is stored against the user.
+    """
+    reply_text = guardrail.refusal_text()
+    try:
+        session_rec = db.query(Session).filter(Session.id == session_id).first()
+        if not session_rec:
+            session_rec = Session(id=session_id, user_id=user_id, focus="", history="", vision="")
+            db.add(session_rec)
+            db.commit()
+
+        db.add(ChatMessage(session_id=session_id, role="user", content=message))
+        db.add(ChatMessage(session_id=session_id, role="assistant", content=reply_text))
+        db.commit()
+    except Exception as e:
+        # The refusal matters more than the transcript — still return it.
+        logger.warning(f"Could not persist blocked exchange (non-fatal): {e}")
+
+    return {
+        "reply": reply_text,
+        "plan": None,
+        "session_id": session_id,
+        "blocked": guardrail.blocked_payload(verdict),
+    }
+
+
 @app.post("/chat", tags=["chat"])
 async def chat(
     payload: ChatRequest,
@@ -574,7 +607,17 @@ async def chat(
 
     # Screened locally, before the message goes anywhere else.
     in_crisis = detect_crisis(message)
-    
+
+    # Security agent. Crisis wins: someone in distress gets the helpline card,
+    # never a policy refusal. Everyone else is screened before the mentor model
+    # is called at all — a blocked request never reaches it, so there is no
+    # reply to leak and no plan object to slip out alongside one.
+    if not in_crisis:
+        verdict = await asyncio.to_thread(guardrail.screen, message)
+        if not verdict.allowed:
+            logger.info(f"Chat blocked | session={session_id} | stage={verdict.stage}")
+            return await _blocked_chat_response(db, session_id, user_id, message, verdict)
+
     try:
         # 1. Get or create session
         session_rec = db.query(Session).filter(Session.id == session_id).first()
@@ -833,21 +876,22 @@ async def chat(
                 except Exception:
                     _gen_today = _dt2.date.today()
 
-                # Determine the plan's true start date + day-count.
-                #   • First plan (no stamped start yet) → starts TODAY (the lock day),
-                #     running today → this Sunday.
-                #   • Later weeks → start on their computed Monday block (week 2+) or
-                #     stamped start, via the session's week-bounds helper.
+                # Determine the plan's true start date + day-count, assuming the user
+                # locks it now. This is only a projection — the week's real start is
+                # stamped on approve, because an unlocked plan may sit for weeks. If
+                # it does, approve re-trims and re-labels against the actual lock day.
                 _plan_week = plan_data.get("week_number", 0)
-                _start_date = _gen_today
-                _max_days = 7 - _gen_today.weekday()  # today → upcoming Sunday (inclusive)
-                if session_rec.plan_start_date:
-                    try:
-                        _ws, _we, _dc = _week_bounds_for(session_rec, _plan_week)
-                        _start_date = _dt2.date.fromisoformat(_ws)
-                        _max_days = _dc
-                    except Exception as _be:
-                        logger.warning(f"week-bounds lookup failed, using today: {_be}")
+                _proj_start = _projected_week_start(session_rec, _plan_week, _gen_today.isoformat())
+                _ws, _we, _dc = _bounds_from_start(_proj_start)
+                _start_date = _dt2.date.fromisoformat(_ws)
+                _max_days = _dc
+
+                # Record when this plan was built so the client can warn before a
+                # long-stale plan gets locked into a brand new week. Only the build
+                # date is stamped — the projected window is recomputed client-side at
+                # lock time, since a plan can sit unlocked for weeks and any window
+                # stored here would be stale by then.
+                plan_data["generated_date"] = _gen_today.isoformat()
 
                 _days = plan_data["days"]
                 if len(_days) > _max_days:
@@ -1017,21 +1061,17 @@ async def approve_plan(
     else:
         today_iso = _date.today().isoformat()
 
+    # EVERY week starts the day it is locked — not the day after the previous week
+    # ended. A plan generated weeks ago and locked today must run from today,
+    # otherwise its whole window sits in the past and every day is marked missed
+    # the moment it is locked. _projected_week_start keeps the previous week's end
+    # as a floor so an early lock can't overlap it, and rolls a Sat/Sun lock
+    # forward to Monday so the week is never a 1–2 day stub.
+    _cur_wk = session_rec.current_week if session_rec.current_week is not None else 1
+    start_iso = _projected_week_start(session_rec, _cur_wk, today_iso)
+
     try:
         approved_plan = json.loads(session_rec.week_plan_json)
-        # The FIRST plan starts on the lock day (lock Wed → Wed–Sun). But every
-        # SUBSEQUENT week must be a FULL Mon–Sun week that begins the day AFTER the
-        # previous week ended — otherwise locking Week N+1 late in the week (e.g. on
-        # a Sunday) would shrink it to a single day and truncate the plan to 1 day.
-        _cur_wk = session_rec.current_week if session_rec.current_week is not None else 1
-        if not session_rec.plan_start_date:
-            start_iso = today_iso  # first plan ever for this session
-        else:
-            try:
-                _, _prev_end, _ = _week_bounds_for(session_rec, _cur_wk - 1)
-                start_iso = (_date.fromisoformat(_prev_end) + _timedelta(days=1)).isoformat()
-            except Exception:
-                start_iso = today_iso
         # Stamp the computed start so the locked week spans the right calendar dates
         approved_plan["start_date"] = start_iso
 
@@ -1070,10 +1110,12 @@ async def approve_plan(
         logger.warning(f"Could not save plan to history: {e}")
 
     session_rec.phase = "active"
-    # Store when the FIRST plan was approved (don't overwrite for later weeks — each
-    # week's own start now lives in the plan's stamped start_date)
+    # Store where the FIRST week actually starts (don't overwrite for later weeks —
+    # each week's own start now lives in the plan's stamped start_date). This is
+    # start_iso, not the lock date: a plan locked on Saturday starts the following
+    # Monday, and the legacy fallback must agree with the stamp.
     if not session_rec.plan_start_date:
-        session_rec.plan_start_date = today_iso
+        session_rec.plan_start_date = start_iso
     db.commit()
     
     # Add a system message to the chat
@@ -2100,101 +2142,14 @@ async def submit_weekly_review(
 # WEEK INFO — session-scoped week bounds
 # ============================================================
 
-def _get_week_bounds(plan_start_date_str: str, week_number: int):
-    """
-    Given the plan_start_date (ISO string) and a week_number (0, 1, 2, ...),
-    return (week_start: str, week_end: str, day_count: int).
-
-    Rules:
-      - Day of week: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
-      - If plan started Mon/Tue/Wed (weekday <= 2):
-          Week 1 = plan_start_date → that Sunday
-          Week 2+ = standard Mon–Sun
-      - If plan started Thu/Fri/Sat/Sun (weekday >= 3):
-          Week 0 = plan_start_date → that Sunday (partial)
-          Week 1 = next Monday → next Sunday (full)
-          Week 2+ = standard Mon–Sun after that
-    """
-    from datetime import date, timedelta
-    plan_start = date.fromisoformat(plan_start_date_str)
-    dow = plan_start.weekday()  # 0=Mon, 6=Sun
-
-    if dow <= 2:  # Mon/Tue/Wed — direct Week 1 start
-        has_week0 = False
-        w1_start = plan_start
-        # End of week 1 = that Sunday
-        days_to_sunday = 6 - dow
-        w1_end = plan_start + timedelta(days=days_to_sunday)
-    else:  # Thu/Fri/Sat/Sun — Week 0 exists
-        has_week0 = True
-        w0_start = plan_start
-        days_to_sunday = 6 - dow
-        w0_end = plan_start + timedelta(days=days_to_sunday)
-        # Week 1 starts next Monday
-        w1_start = w0_end + timedelta(days=1)
-        w1_end = w1_start + timedelta(days=6)
-
-    if week_number == 0:
-        if not has_week0:
-            # No week 0 exists for Mon/Tue/Wed starters; return week 1 instead
-            ws, we = w1_start, w1_end
-        else:
-            ws, we = w0_start, w0_end
-    elif week_number == 1:
-        ws, we = w1_start, w1_end
-    else:
-        # Week 2, 3, ... = Mon–Sun blocks starting from w1_end + 1
-        offset_weeks = week_number - 1  # weeks after week 1
-        next_monday = w1_end + timedelta(days=1)
-        ws = next_monday + timedelta(weeks=offset_weeks - 1)
-        we = ws + timedelta(days=6)
-
-    day_count = (we - ws).days + 1
-    return ws.isoformat(), we.isoformat(), day_count
-
-
-def _bounds_from_start(start_date_str: str):
-    """Week bounds anchored to an explicit lock date (the day the plan was approved).
-    The week runs from that day through the SAME calendar week's Sunday — so a plan
-    locked on Wednesday yields Wed→Sun and Mon/Tue are excluded entirely."""
-    from datetime import date, timedelta
-    start = date.fromisoformat(start_date_str)
-    dow = start.weekday()  # 0=Mon .. 6=Sun
-    end = start + timedelta(days=(6 - dow))
-    return start.isoformat(), end.isoformat(), (end - start).days + 1
-
-
-def _stamped_week_start(session_rec, week_number: int):
-    """Return the lock date stamped into the approved plan for this week, if present."""
-    # Active plan (current week_plan_json)
-    if session_rec.week_plan_json:
-        try:
-            plan = json.loads(session_rec.week_plan_json)
-            if plan.get("week_number") == week_number and plan.get("start_date"):
-                return plan["start_date"]
-        except Exception:
-            pass
-    # Approved-plan history (result_json holds a list of approved plan dicts)
-    if session_rec.result_json:
-        try:
-            hist = json.loads(session_rec.result_json)
-            if isinstance(hist, list):
-                for p in hist:
-                    if isinstance(p, dict) and p.get("week_number") == week_number and p.get("start_date"):
-                        return p["start_date"]
-        except Exception:
-            pass
-    return None
-
-
-def _week_bounds_for(session_rec, week_number: int):
-    """Week bounds for a session+week, preferring the stamped lock date so each week
-    starts exactly when its plan was locked (not a forced Mon–Sun block). Falls back to
-    the legacy plan_start_date computation for weeks locked before this was introduced."""
-    sd = _stamped_week_start(session_rec, week_number)
-    if sd:
-        return _bounds_from_start(sd)
-    return _get_week_bounds(session_rec.plan_start_date, week_number)
+# Week bounds now live in app/weeks.py so maintenance scripts can import them
+# without loading the whole app. Re-exported here — everything below still
+# calls them by their original names.
+from .weeks import (  # noqa: E402
+    _bounds_from_start,
+    _projected_week_start,
+    _week_bounds_for,
+)
 
 
 def _latest_approved_week(session_rec) -> int:
