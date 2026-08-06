@@ -62,94 +62,124 @@ export default function DeleteAccountModal({
         border: '1px solid var(--border-medium)',
         background: 'var(--input-bg)',
         color: 'var(--text-primary)',
-        fontSize: '13.5px',
+        // 16px is a hard floor on iOS: anything smaller makes Safari zoom the
+        // whole page in when the field is focused, and it never zooms back out.
+        fontSize: '16px',
         fontFamily: satoshi,
         outline: 'none',
     };
 
     return (
-        <>
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={busy ? undefined : onClose}
-                style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'var(--modal-overlay, rgba(0,0,0,0.6))',
-                    backdropFilter: 'blur(6px)',
-                    zIndex: 800,
-                }}
-            />
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={busy ? undefined : onClose}
+            style={{
+                position: 'fixed',
+                inset: 0,
+                // dvh, not vh: on mobile Safari `vh` is the viewport with the
+                // browser chrome hidden, so a vh-sized dialog runs under the
+                // address bar and its bottom controls become unreachable.
+                height: '100dvh',
+                background: 'var(--modal-overlay, rgba(0,0,0,0.6))',
+                backdropFilter: 'blur(6px)',
+                zIndex: 800,
+                display: 'flex',
+                overflowY: 'auto',
+                // Respect the notch and the home indicator rather than sitting under them.
+                paddingTop: 'max(16px, env(safe-area-inset-top))',
+                paddingRight: 'max(16px, env(safe-area-inset-right))',
+                paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+                paddingLeft: 'max(16px, env(safe-area-inset-left))',
+            }}
+        >
             <motion.div
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="delete-account-title"
-                initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-46%' }}
-                animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-                exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-48%' }}
+                onClick={(e) => e.stopPropagation()}
+                initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 6 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 24 }}
                 style={{
-                    position: 'fixed',
-                    top: '50%',
-                    left: '50%',
-                    width: 'calc(100% - 32px)',
+                    position: 'relative',
+                    width: '100%',
                     maxWidth: '460px',
-                    maxHeight: '86vh',
-                    overflowY: 'auto',
+                    // `margin: auto` rather than the parent's align-items: it
+                    // centres when the card fits and lets it scroll from the top
+                    // when it doesn't — align-items would clip the heading off
+                    // the top of a card taller than the screen.
+                    margin: 'auto',
                     background: 'var(--modal-bg, #fff)',
                     border: '1px solid var(--modal-border, rgba(0,0,0,0.1))',
-                    borderRadius: '8px',
-                    padding: '30px 26px 24px',
-                    zIndex: 801,
+                    borderRadius: '14px',
+                    // Scales with the screen instead of eating half the width of
+                    // a small phone.
+                    padding: 'clamp(20px, 5.5vw, 30px)',
                     boxShadow: 'var(--shadow-xl)',
                     fontFamily: satoshi,
                 }}
             >
-                {!busy && (
-                    <button
-                        onClick={onClose}
-                        aria-label="Close"
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginBottom: '16px',
+                }}>
+                    <div
                         style={{
-                            position: 'absolute',
-                            top: '14px',
-                            right: '14px',
-                            background: 'var(--glass-hover)',
-                            border: 'none',
-                            borderRadius: '4px',
-                            color: 'var(--text-secondary)',
-                            cursor: 'pointer',
-                            padding: '6px',
+                            width: '40px',
+                            height: '40px',
+                            flexShrink: 0,
+                            borderRadius: '10px',
+                            border: '1px solid rgba(239,68,68,0.3)',
+                            background: 'rgba(239,68,68,0.06)',
                             display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                         }}
                     >
-                        <X size={15} />
-                    </button>
-                )}
+                        <AlertTriangle size={18} style={{ color: '#ef4444' }} />
+                    </div>
 
-                <div
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(239,68,68,0.3)',
-                        background: 'rgba(239,68,68,0.06)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '16px',
-                    }}
-                >
-                    <AlertTriangle size={18} style={{ color: '#ef4444' }} />
+                    {/* In the header row, not absolutely positioned — it used to
+                        float over the corner and drift away from the content on
+                        a narrow screen. 40px keeps it a comfortable tap target. */}
+                    {!busy && (
+                        <button
+                            onClick={onClose}
+                            aria-label="Close"
+                            style={{
+                                width: '40px',
+                                height: '40px',
+                                flexShrink: 0,
+                                background: 'var(--glass-hover)',
+                                border: 'none',
+                                borderRadius: '10px',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <X size={16} />
+                        </button>
+                    )}
                 </div>
 
                 <h2
                     id="delete-account-title"
                     style={{
-                        fontSize: '22px',
+                        // Shrinks on a small phone instead of wrapping the title
+                        // across three lines.
+                        fontSize: 'clamp(19px, 5.2vw, 22px)',
                         fontWeight: 700,
                         letterSpacing: '-0.03em',
+                        lineHeight: 1.15,
                         color: 'var(--text-primary)',
                         marginBottom: '10px',
                         fontFamily: clashDisplay,
@@ -254,7 +284,7 @@ export default function DeleteAccountModal({
                     </>
                 )}
             </motion.div>
-        </>
+        </motion.div>
     );
 }
 

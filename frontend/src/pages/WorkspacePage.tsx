@@ -28,7 +28,7 @@ import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 import ProfileMenu from '../components/workspace/ProfileMenu';
-import ConsentGate from '../components/legal/ConsentGate';
+import ConsentGate, { type ConsentStatus } from '../components/legal/ConsentGate';
 import GuidedDemo, { type DemoHandles } from '../components/demo/GuidedDemo';
 import { DEMO_PLAN, DEMO_EMOTION } from '../components/demo/demoScript';
 import { isDemoQueued, startDemo, completeDemo } from '../lib/onboarding';
@@ -138,6 +138,8 @@ export default function WorkspacePage() {
     const [showPlanInfo, setShowPlanInfo] = useState(false);
     // Set when the backend refuses a request outright (see app/guardrail.py).
     const [blockedNotice, setBlockedNotice] = useState<BlockedNotice | null>(null);
+    // Reported by ConsentGate. The walkthrough waits until this is 'clear'.
+    const [consentStatus, setConsentStatus] = useState<ConsentStatus>('checking');
     const [preferredTime, setPreferredTime] = useState("08:00");
     const [syncLoading, setSyncLoading] = useState(false);
     const [syncMessage, setSyncMessage] = useState("");
@@ -540,8 +542,25 @@ export default function WorkspacePage() {
     }), []);
 
     // Auto-open the demo for newly signed-up users, and on "Replay tutorial".
+    //
+    // Gated on the consent gate being settled. A brand new account hits both at
+    // once — consent is required before we may process anything, and the demo
+    // wants to open the moment the workspace mounts — and the two were landing
+    // on top of each other, with the tour explaining a screen the user could
+    // not yet reach. Consent is the blocking one, so the tour waits its turn.
     useEffect(() => {
+        if (consentStatus !== 'clear') return;
         if (isDemoQueued(userId)) setDemoMode(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId, consentStatus]);
+
+    // If the gate re-opens mid-tour (a stale policy version, say), stand down
+    // without marking the tour done — it resumes once consent is settled.
+    useEffect(() => {
+        if (consentStatus === 'blocking') setDemoMode(false);
+    }, [consentStatus]);
+
+    useEffect(() => {
         const onReplay = () => {
             startDemo(userId);
             resetDemoState();
@@ -557,7 +576,7 @@ export default function WorkspacePage() {
         {/* Mounted here rather than in App so it can never cover /privacy or
             /terms — the pages the user has to be able to read in order to
             give informed consent in the first place. */}
-        <ConsentGate />
+        <ConsentGate onStatusChange={setConsentStatus} />
         <div style={{
             display: 'flex',
             height: '100dvh',

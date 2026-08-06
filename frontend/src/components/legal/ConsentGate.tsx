@@ -22,13 +22,28 @@ const clashDisplay = "'Clash Display', 'Inter', sans-serif";
  * offer. The user can always log out, and once inside they can delete the
  * account outright from the profile menu.
  */
-export default function ConsentGate() {
+/**
+ * 'checking' — we don't yet know whether consent is outstanding. Anything that
+ * wants to wait its turn (the walkthrough) must treat this as "not clear yet",
+ * or it opens on top of the gate the moment the page mounts.
+ */
+export type ConsentStatus = 'checking' | 'blocking' | 'clear';
+
+export default function ConsentGate({
+    onStatusChange,
+}: {
+    onStatusChange?: (status: ConsentStatus) => void;
+} = {}) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [catalogue, setCatalogue] = useState<ConsentItem[]>([]);
     const [decisions, setDecisions] = useState<Record<string, boolean>>({});
+    const [status, setStatus] = useState<ConsentStatus>('checking');
+
+    // Report upward whenever it changes, so callers don't have to poll.
+    useEffect(() => { onStatusChange?.(status); }, [status, onStatusChange]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -43,9 +58,15 @@ export default function ConsentGate() {
                 next[item.key] = item.required ? false : data.state[item.key]?.granted === true;
             }
             setDecisions(next);
-            setOpen(data.missing.length > 0);
+            const missing = data.missing.length > 0;
+            setOpen(missing);
+            setStatus(missing ? 'blocking' : 'clear');
         } catch {
             setError('Could not load the consent terms. Please refresh and try again.');
+            // The gate stays shut on a load failure, so don't leave callers
+            // stuck on 'checking' forever. If consent really is missing, the
+            // backend refuses the next request and re-opens the gate anyway.
+            setStatus('clear');
         } finally {
             setLoading(false);
         }
@@ -53,7 +74,10 @@ export default function ConsentGate() {
 
     // On mount: only ask the backend if the user is actually signed in.
     useEffect(() => {
-        if (!localStorage.getItem('access_token')) return;
+        if (!localStorage.getItem('access_token')) {
+            setStatus('clear');
+            return;
+        }
         void load();
     }, [load]);
 
@@ -61,6 +85,7 @@ export default function ConsentGate() {
     useEffect(() => {
         const handler = () => {
             setOpen(true);
+            setStatus('blocking');
             void load();
         };
         window.addEventListener('feelivate:consent-required', handler);
@@ -73,6 +98,7 @@ export default function ConsentGate() {
         try {
             await submitConsents(decisions);
             setOpen(false);
+            setStatus('clear');
         } catch (e: any) {
             setError(e?.message || 'Could not save your choices.');
         } finally {
@@ -93,39 +119,49 @@ export default function ConsentGate() {
     return (
         <AnimatePresence>
             {open && (
-                <>
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        style={{
-                            position: 'fixed',
-                            inset: 0,
-                            background: 'var(--modal-overlay, rgba(0,0,0,0.6))',
-                            backdropFilter: 'blur(6px)',
-                            zIndex: 900,
-                        }}
-                    />
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        // dvh, not vh — on mobile Safari `vh` measures the
+                        // viewport with the browser chrome hidden, so the
+                        // bottom of the dialog ends up under the address bar.
+                        height: '100dvh',
+                        background: 'var(--modal-overlay, rgba(0,0,0,0.6))',
+                        backdropFilter: 'blur(6px)',
+                        zIndex: 900,
+                        display: 'flex',
+                        overflowY: 'auto',
+                        paddingTop: 'max(16px, env(safe-area-inset-top))',
+                        paddingRight: 'max(16px, env(safe-area-inset-right))',
+                        paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+                        paddingLeft: 'max(16px, env(safe-area-inset-left))',
+                    }}
+                >
                     <motion.div
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="consent-gate-title"
-                        initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-46%' }}
-                        animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-                        exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-48%' }}
+                        initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.96, y: 6 }}
                         transition={{ type: 'spring', stiffness: 260, damping: 24 }}
                         style={{
-                            position: 'fixed',
-                            top: '50%',
-                            left: '50%',
-                            width: 'calc(100% - 32px)',
+                            position: 'relative',
+                            width: '100%',
                             maxWidth: '520px',
-                            maxHeight: '86vh',
-                            overflowY: 'auto',
+                            // `margin: auto` centres the card when it fits and
+                            // lets it scroll from the top when it doesn't —
+                            // align-items would clip the heading off-screen on a
+                            // short phone, and this dialog cannot be dismissed.
+                            margin: 'auto',
                             background: 'var(--modal-bg, #fff)',
                             border: '1px solid var(--modal-border, rgba(0,0,0,0.1))',
-                            borderRadius: '8px',
-                            padding: '32px 28px 26px',
+                            borderRadius: '14px',
+                            padding: 'clamp(20px, 5.5vw, 32px)',
                             zIndex: 901,
                             boxShadow: 'var(--shadow-xl)',
                             fontFamily: satoshi,
@@ -135,7 +171,8 @@ export default function ConsentGate() {
                             style={{
                                 width: '40px',
                                 height: '40px',
-                                borderRadius: '8px',
+                                flexShrink: 0,
+                                borderRadius: '10px',
                                 border: '1px solid var(--border-medium)',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -149,9 +186,12 @@ export default function ConsentGate() {
                         <h2
                             id="consent-gate-title"
                             style={{
-                                fontSize: '24px',
+                                // Scales down on a narrow phone rather than
+                                // wrapping the heading across three lines.
+                                fontSize: 'clamp(20px, 5.6vw, 24px)',
                                 fontWeight: 700,
                                 letterSpacing: '-0.03em',
+                                lineHeight: 1.15,
                                 color: 'var(--text-primary)',
                                 marginBottom: '10px',
                                 fontFamily: clashDisplay,
@@ -261,7 +301,7 @@ export default function ConsentGate() {
                             profile menu.
                         </p>
                     </motion.div>
-                </>
+                </motion.div>
             )}
         </AnimatePresence>
     );
