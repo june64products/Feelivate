@@ -297,6 +297,20 @@ export default function RadiantPromptInput({
             }}>
                 By using Feelivate you agree to our <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>Terms</span> and <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>Privacy Policy</span>
             </p>
+
+            {/* AI disclosure, sat directly under the terms line. Required by the
+                EU AI Act Art 50(1): a person has to be told they are talking to
+                a machine, at the point they start talking to it — not only in
+                the Terms page they may never open. */}
+            <p style={{
+                textAlign: 'center',
+                fontSize: '11px',
+                color: 'var(--text-muted)',
+                marginTop: '4px',
+                fontFamily: satoshi,
+            }}>
+                You are interacting with an AI, not a human.
+            </p>
         </div>
     );
 }
