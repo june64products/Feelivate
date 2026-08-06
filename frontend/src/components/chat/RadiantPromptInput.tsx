@@ -1,8 +1,15 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Mic, MicOff, ArrowUp, Loader2 } from 'lucide-react';
 import { transcribeAudio } from '../../api';
 
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
+
+/** One line of text at the styles below — keeps the collapsed box button-height. */
+const LINE_HEIGHT = 1.6;
+const FONT_SIZE = 14.5;
+const ONE_LINE = Math.round(FONT_SIZE * LINE_HEIGHT); // 23px
+/** Ceiling before the textarea scrolls instead of pushing the page around. */
+const MAX_INPUT_HEIGHT = 180;
 
 export interface RadiantPromptInputProps {
     placeholder?: string;
@@ -34,14 +41,20 @@ export default function RadiantPromptInput({
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
 
-    // Auto-resize textarea properly
+    // Grow only as far as the text actually needs. The box sits at one line by
+    // default and gains a line at a time, which matters most on a phone where a
+    // permanently tall composer eats the conversation above it.
     const resizeTextarea = () => {
         const ta = textareaRef.current;
         if (!ta) return;
         ta.style.height = 'auto';
-        const newH = Math.min(ta.scrollHeight, 220);
+        const newH = Math.min(ta.scrollHeight, MAX_INPUT_HEIGHT);
         ta.style.height = `${newH}px`;
     };
+
+    // The value can change without a keystroke — voice transcription fills it in
+    // — so the height has to follow the value, not just the typing.
+    useEffect(resizeTextarea, [value]);
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         if (!isControlled) setInternalValue(e.target.value);
@@ -53,8 +66,10 @@ export default function RadiantPromptInput({
         if (value.trim() && !disabled) {
             onSubmit(value.trim());
             if (!isControlled) setInternalValue("");
+            // 'auto' rather than a fixed px: the value is about to clear, and
+            // auto collapses back to exactly one line on the next paint.
             if (textareaRef.current) {
-                textareaRef.current.style.height = '24px';
+                textareaRef.current.style.height = 'auto';
             }
         }
     };
@@ -151,12 +166,15 @@ export default function RadiantPromptInput({
                     boxShadow: 'var(--shadow-md)',
                 }}
             >
-                {/* Top row: Textarea */}
+                {/* Single row: textarea + mic + send. They used to be stacked,
+                    which cost ~40px of permanent height for a box that is empty
+                    most of the time. Bottom-aligned so the buttons stay put as
+                    the text grows upward. */}
                 <div style={{
                     display: 'flex',
-                    alignItems: 'flex-start',
-                    padding: '12px 14px 4px 14px',
-                    gap: '8px',
+                    alignItems: 'flex-end',
+                    padding: '6px 8px 6px 16px',
+                    gap: '6px',
                 }}>
                     {/* Textarea — Swiss style */}
                     <textarea
@@ -179,39 +197,21 @@ export default function RadiantPromptInput({
                             border: 'none',
                             outline: 'none',
                             color: isRecording ? '#ef4444' : 'var(--text-primary)',
-                            fontSize: '14.5px',
+                            fontSize: `${FONT_SIZE}px`,
                             fontWeight: 400,
-                            lineHeight: '1.6',
+                            lineHeight: LINE_HEIGHT,
                             resize: 'none',
-                            minHeight: '24px',
-                            maxHeight: '220px',
+                            // Padding + one line = 32px, exactly the button height,
+                            // so an empty box is a single clean row.
+                            minHeight: `${ONE_LINE + 9}px`,
+                            maxHeight: `${MAX_INPUT_HEIGHT}px`,
                             overflowY: 'auto',
-                            padding: '4px 0 4px',
+                            padding: '4px 0 5px',
                             fontFamily: satoshi,
                         }}
                     />
-                </div>
 
-                {/* Bottom row: Settings + Mic + Send */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '6px 10px 10px 12px',
-                    position: 'relative',
-                }}>
-                    {/* Left spacer — keeps Mic/Send right-aligned */}
-                    <div />
-
-                    {/* Right: Mic error + Mic + Send */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {micError && (
-                            <span style={{ fontSize: '11px', color: '#ef4444', whiteSpace: 'nowrap' }}>
-                                {micError}
-                            </span>
-                        )}
-
-                        {/* Mic button */}
+                    {/* Mic button */}
                         <button
                             type="button"
                             data-tour="mic-button"
@@ -283,9 +283,22 @@ export default function RadiantPromptInput({
                                 : <ArrowUp size={16} strokeWidth={2.5} />
                             }
                         </button>
-                    </div>
                 </div>
             </div>
+
+            {/* Mic errors sit under the box, not inside the row — in one row they
+                would squeeze the textarea the moment they appeared. */}
+            {micError && (
+                <p style={{
+                    textAlign: 'center',
+                    fontSize: '11px',
+                    color: '#ef4444',
+                    marginTop: '8px',
+                    fontFamily: satoshi,
+                }}>
+                    {micError}
+                </p>
+            )}
 
             {/* Hint text */}
             <p style={{
