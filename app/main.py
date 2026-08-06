@@ -281,6 +281,51 @@ def run_migrations_endpoint(x_internal_token: Optional[str] = Header(None)):
         return {"status": "error", "message": "Migration failed. Check server logs."}
 
 
+@app.post("/admin/repair-stranded-weeks", tags=["admin"])
+def repair_stranded_weeks_endpoint(
+    apply: bool = False,
+    session_id: Optional[str] = None,
+    today: Optional[str] = None,
+    x_internal_token: Optional[str] = Header(None),
+    db: DBSession = Depends(get_db),
+):
+    """Move weeks that were locked into an already-past window onto today.
+
+    Same job as scripts/repair_stranded_weeks.py, over HTTP — a deployment
+    without an interactive shell still needs a way to run it.
+
+    Defaults to a dry run: it reports what it would change and writes nothing
+    until `apply=true`. Weeks that have journals inside their window are never
+    touched — that week ran normally and moving it would rewrite real history.
+
+    Guarded by INTERNAL_ADMIN_TOKEN like /admin/migrate, and refuses outright
+    when no token is configured: this endpoint rewrites user content.
+    """
+    expected = os.environ.get("INTERNAL_ADMIN_TOKEN", "").strip()
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail="Admin endpoint disabled: INTERNAL_ADMIN_TOKEN is not configured.",
+        )
+    if not x_internal_token or not secrets.compare_digest(x_internal_token, expected):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    from datetime import date as _d
+    from . import repair as _repair
+
+    today_iso = today or _d.today().isoformat()
+    try:
+        _d.fromisoformat(today_iso)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="`today` must be YYYY-MM-DD.")
+
+    try:
+        return _repair.run(db, today_iso, apply=apply, session_id=session_id)
+    except Exception:
+        logger.exception("Stranded-week repair failed")
+        raise HTTPException(status_code=500, detail="Repair failed. Check server logs.")
+
+
 def _cors_headers_for(request: Request) -> Dict[str, str]:
     """CORS headers to attach to responses that bypass CORSMiddleware.
 
