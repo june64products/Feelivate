@@ -565,6 +565,105 @@ def _parse_llm_response(raw_text: str) -> Dict[str, Any]:
     return {"reply": clean_text or "I'm here — what can I help you with?", "plan": None}
 
 
+def _clean_reply_text(reply: str, has_plan: bool) -> str:
+    """Strip a plan the model restated inside its own chat message.
+
+    The plan is rendered as a card from the `plan` object, so anything the model
+    also writes into `reply` is a duplicate — and when it pastes the raw JSON
+    (which it does, because the current plan is injected into its context as
+    JSON) the user sees `{"week_number": 0, "days": [...]}` in a chat bubble.
+
+    Prompt rules alone don't hold here: the model is being shown JSON and asked
+    not to echo it. So the reply is cleaned on the way out as well.
+    """
+    if not reply:
+        return reply
+
+    cleaned = reply
+
+    # A JSON object carrying plan fields, wherever it appears in the message.
+    cleaned = re.sub(
+        r'\{[^{}]*"(?:week_number|days|win_condition|generated_date)"\s*:.*',
+        '',
+        cleaned,
+        flags=re.DOTALL,
+    )
+
+    # Prose schedules are only stripped when a card is actually attached. With a
+    # card, any day-by-day text in the message is by definition the same plan
+    # written twice. Without one, the identical wording may be a legitimate
+    # answer — "what time should I study?" deserves times in the reply — so it
+    # is left alone rather than gutted.
+    if has_plan:
+        # Inline, mid-sentence: "...here's your plan: Day 1 (Saturday): Watch 30
+        # minutes... Day 2 (Sunday): Review." Cut from the first day marker on.
+        cleaned = re.sub(
+            r'(?:Day\s*\d+|\b[A-Z][a-z]{2}\s+\d{1,2})\s*\([A-Za-z]{3,9}\)\s*[:,].*',
+            '',
+            cleaned,
+            flags=re.DOTALL,
+        )
+
+        # A schedule dump: the first time block and everything after it.
+        cleaned = re.sub(
+            r'\b\d{1,2}:\d{2}\s*(?:[-–]\s*\d{1,2}:\d{2})?\s*(?:AM|PM|am|pm)?\s*:.*',
+            '',
+            cleaned,
+            flags=re.DOTALL,
+        )
+
+        # A day list on its own lines: "- Aug 08 (Sat): ..." / "**Day 1**: ...".
+        cleaned = re.sub(
+            r'(?:^|\n)\s*(?:[-*•]\s*)?\*{0,2}(?:Day\s*\d+|\w{3}\s+\d{1,2})\b[^\n]{0,40}?\*{0,2}\s*[:\-–]\s*\n?(?:\s{2,}[^\n]*\n?)*',
+            '\n',
+            cleaned,
+        )
+
+    # Tidy the leftovers: dangling colons, repeated blank lines, stray quotes,
+    # and the preposition left hanging where the cut landed ("...broken down For").
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    cleaned = cleaned.strip().strip('"').strip()
+    cleaned = re.sub(r'[:\-–,]\s*$', '', cleaned).strip()
+    cleaned = re.sub(
+        r'[\s,]+(?:for|and|with|into|on|at|by|to|in|of|like)\s*$', '', cleaned, flags=re.I
+    ).strip()
+    cleaned = re.sub(r'[:\-–,]\s*$', '', cleaned).strip()
+
+    if len(cleaned) < 15:
+        # Everything of substance was a restated plan. With a card attached the
+        # plan is still on screen; without one the model meant to send a plan and
+        # didn't, so point the user at the one action that produces it.
+        return (
+            "Here's your plan — take a look and tell me if you want anything changed."
+            if has_plan
+            else "Got it. Say \"make a plan\" and I'll put that straight into your week."
+        )
+    return cleaned
+
+
+def _fill_plan_gaps(plan: Optional[dict]) -> Optional[dict]:
+    """Supply the header fields the card renders, when the model leaves them out.
+
+    A plan with no `theme` renders as a card headed "WEEK 0" with an empty
+    "Win:" line, which reads like the app broke.
+    """
+    if not isinstance(plan, dict):
+        return plan
+    days = plan.get("days") if isinstance(plan.get("days"), list) else []
+    if not str(plan.get("theme") or "").strip():
+        wk = plan.get("week_number")
+        plan["theme"] = "Getting Started" if wk in (0, 1) else f"Week {wk}"
+    if not str(plan.get("win_condition") or "").strip() and days:
+        target = max(1, round(len(days) * 0.8))
+        plan["win_condition"] = f"Complete {target} of {len(days)} days"
+    if not str(plan.get("week_label") or "").strip() and days:
+        first = str(days[0].get("day", "")) if isinstance(days[0], dict) else ""
+        last = str(days[-1].get("day", "")) if isinstance(days[-1], dict) else ""
+        if first and last:
+            plan["week_label"] = first if first == last else f"{first} – {last}"
+    return plan
+
+
 def _generate_and_save_title(session_id: str, user_message: str, assistant_reply: str):
     """
     Background task: generate a short sidebar title for a session's first exchange
@@ -691,7 +790,26 @@ async def chat(
         system_context = None
         if session_rec.week_plan_json:
             phase_label = "LOCKED" if session_rec.phase == "active" else "PENDING APPROVAL"
-            system_context = f"CURRENT WEEK {session_rec.current_week} PLAN ({phase_label}):\n{session_rec.week_plan_json}"
+            # Show the plan as a readable list, not as the stored JSON. Handing
+            # the model JSON is what teaches it to paste JSON back into the chat
+            # message — including bookkeeping fields like generated_date, which
+            # the user then reads in a chat bubble.
+            try:
+                _cur = json.loads(session_rec.week_plan_json)
+                _lines = [
+                    f"- {d.get('day', '?')}: {d.get('action', '')}"
+                    for d in (_cur.get("days") or []) if isinstance(d, dict)
+                ]
+                _readable = (
+                    f"Theme: {_cur.get('theme', '—')}\n"
+                    f"Win condition: {_cur.get('win_condition', '—')}\n"
+                    + "\n".join(_lines)
+                )
+            except Exception:
+                _readable = session_rec.week_plan_json
+            system_context = (
+                f"CURRENT WEEK {session_rec.current_week} PLAN ({phase_label}):\n{_readable}"
+            )
         
         # 4. Load plan history for multi-week context
         plan_history = []
@@ -884,7 +1002,12 @@ async def chat(
         # 6. Parse response
         parsed = _parse_llm_response(raw_response)
         reply_text = parsed["reply"]
-        plan_data = parsed["plan"]
+        plan_data = _fill_plan_gaps(parsed["plan"])
+        # The card is the plan. Anything the model also wrote into the chat
+        # message is a duplicate at best and raw JSON at worst — and it does
+        # this with `plan` set to null too, which is how a bare JSON blob ends
+        # up in a chat bubble with no card under it.
+        reply_text = _clean_reply_text(reply_text, has_plan=bool(plan_data))
         
         # 6a. Casual message guardrail — if user sent a short acknowledgment,
         # discard any plan the model may have hallucinated.

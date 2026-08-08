@@ -147,14 +147,18 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
                 }}>
                     {plan.theme}
                 </div>
-                <div style={{
-                    fontSize: '13px', color: 'var(--text-secondary)',
-                    fontStyle: 'italic',
-                    fontFamily: "'Georgia', 'Times New Roman', serif",
-                    lineHeight: 1.4,
-                }}>
-                    Win: {plan.win_condition}
-                </div>
+                {/* Older plans were stored without these, and a bare "Win:" with
+                    nothing after it reads as a broken card. */}
+                {plan.win_condition?.trim() && (
+                    <div style={{
+                        fontSize: '13px', color: 'var(--text-secondary)',
+                        fontStyle: 'italic',
+                        fontFamily: "'Georgia', 'Times New Roman', serif",
+                        lineHeight: 1.4,
+                    }}>
+                        Win: {plan.win_condition}
+                    </div>
+                )}
             </div>
 
             {/* Days — Tabular layout */}
