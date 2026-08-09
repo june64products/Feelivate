@@ -4,6 +4,7 @@ import { Check, Calendar, ChevronDown, ChevronUp, ArrowRight, AlertTriangle } fr
 import { useWindowSize } from '../../hooks/useWindowSize';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 import { projectedWeekWindow, daysBetween, formatDay, localISODate } from '../../lib/weekWindow';
+import { useExpandableDay, CLAMP_CHARS } from '../../lib/useExpandableDay';
 
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -40,6 +41,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
     const [approveAnimation, setApproveAnimation] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const { isMobile } = useWindowSize();
+    const { openDay, setOpenDay, openRef } = useExpandableDay();
 
     // Where this week lands if locked right now, and how long the plan has been
     // sitting unlocked. The week starts on the lock day, so a plan built weeks
@@ -161,51 +163,87 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
                 )}
             </div>
 
-            {/* Days — Tabular layout */}
+            {/* Days — tabular, and any long day opens out in place. Same
+                behaviour as the week drawer, so a day reads the same whether
+                you meet it in chat or reopen it from an old session. */}
             <div style={{ padding: '4px 0' }}>
-                {plan.days.map((day, idx) => (
-                    <div
-                        key={idx}
-                        style={{
-                            display: 'flex',
-                            flexDirection: isMobile ? 'column' : 'row',
-                            gap: isMobile ? '6px' : '0',
-                            padding: isMobile ? '16px 20px' : '14px 24px',
-                            borderBottom: idx < plan.days.length - 1
-                                ? '1px solid var(--border-subtle)'
-                                : 'none',
-                            background: idx % 2 === 1
-                                ? 'var(--glass-surface)'
-                                : 'transparent',
-                            transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-hover)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 1 ? 'var(--glass-surface)' : 'transparent'; }}
-                    >
-                        <div style={{
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            color: 'var(--text-primary)',
-                            fontFamily: clashDisplay,
-                            letterSpacing: '0.04em',
-                            textTransform: 'uppercase',
-                            minWidth: '110px',
-                            flexShrink: 0,
-                            paddingTop: '2px',
-                        }}>
-                            {day.day}
-                        </div>
-                        <div style={{
-                            fontSize: '13px',
-                            color: 'var(--text-secondary)',
-                            lineHeight: '1.6',
-                            fontFamily: satoshi,
-                            fontWeight: 400,
-                        }}>
-                            {day.action}
-                        </div>
-                    </div>
-                ))}
+                {plan.days.map((day, idx) => {
+                    const action = String(day.action ?? '');
+                    const isLong = action.length > CLAMP_CHARS;
+                    const isOpen = openDay === idx;
+
+                    return (
+                        <motion.div
+                            key={idx}
+                            ref={isOpen ? openRef : undefined}
+                            layout
+                            transition={{ type: 'spring', stiffness: 380, damping: 32, mass: 0.7 }}
+                            onClick={() => { if (isLong) setOpenDay(isOpen ? null : idx); }}
+                            style={{
+                                display: 'flex',
+                                flexDirection: (isMobile || isOpen) ? 'column' : 'row',
+                                gap: (isMobile || isOpen) ? '8px' : '0',
+                                padding: isOpen ? '18px 22px' : isMobile ? '16px 20px' : '14px 24px',
+                                borderBottom: idx < plan.days.length - 1
+                                    ? '1px solid var(--border-subtle)'
+                                    : 'none',
+                                cursor: isLong ? 'pointer' : 'default',
+                                position: 'relative',
+                                zIndex: isOpen ? 2 : 1,
+                                background: isOpen
+                                    ? 'var(--bg-surface)'
+                                    : idx % 2 === 1 ? 'var(--glass-surface)' : 'transparent',
+                                boxShadow: isOpen ? 'var(--shadow-lg)' : 'none',
+                                borderRadius: isOpen ? '12px' : 0,
+                                margin: isOpen ? '6px' : 0,
+                            }}
+                        >
+                            <motion.div layout="position" style={{
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                color: isOpen ? 'var(--accent-warm)' : 'var(--text-primary)',
+                                fontFamily: clashDisplay,
+                                letterSpacing: '0.04em',
+                                textTransform: 'uppercase',
+                                minWidth: (isMobile || isOpen) ? undefined : '110px',
+                                flexShrink: 0,
+                                paddingTop: '2px',
+                            }}>
+                                {day.day}
+                            </motion.div>
+
+                            <motion.div layout="position" style={{
+                                flex: 1,
+                                minWidth: 0,
+                                fontSize: isOpen ? '14px' : '13px',
+                                color: isOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                lineHeight: isOpen ? 1.75 : 1.6,
+                                fontFamily: satoshi,
+                                fontWeight: 400,
+                                wordBreak: 'break-word',
+                                ...(isOpen || !isLong ? {} : {
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical' as const,
+                                    overflow: 'hidden',
+                                }),
+                            }}>
+                                {action}
+                            </motion.div>
+
+                            {isLong && (
+                                <motion.div layout="position" style={{
+                                    fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
+                                    textTransform: 'uppercase', fontFamily: satoshi,
+                                    color: 'var(--accent-warm)', flexShrink: 0,
+                                    alignSelf: 'flex-start', whiteSpace: 'nowrap',
+                                }}>
+                                    {isOpen ? 'Show less' : 'See more'}
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    );
+                })}
             </div>
 
             {/* Actions — Swiss pill buttons */}

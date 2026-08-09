@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronDown, X, Lock, Sparkles, FileText, ChevronUp, Mic } from 'lucide-react';
 import { getSessionReports, type ArchivedWeekReport } from '../../api';
+import { useExpandableDay, CLAMP_CHARS } from '../../lib/useExpandableDay';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,36 +95,9 @@ function correctDayLabel(raw: string): string {
     return `${datePart} (${wd})`;
 }
 
-/** Roughly two lines in this column — past this a day gets a "See more". */
-const CLAMP_CHARS = 110;
-
 // ─── Week Plan day list — Swiss tabular matching PlanCard ─────────────────────
 function WeekPlanDays({ plan }: { plan: any }) {
-    // Which day is opened out. Only one at a time — two expanded cards in a
-    // narrow drawer is worse than none.
-    const [openDay, setOpenDay] = useState<number | null>(null);
-    const openRef = useRef<HTMLDivElement>(null);
-
-    // Click anywhere outside the opened card closes it. Clicks landing inside
-    // it — selecting the text, hitting "Show less" — must not, so the check is
-    // containment against the card itself rather than a backdrop.
-    useEffect(() => {
-        if (openDay === null) return;
-        const onPointerDown = (e: MouseEvent | TouchEvent) => {
-            if (openRef.current && !openRef.current.contains(e.target as Node)) {
-                setOpenDay(null);
-            }
-        };
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenDay(null); };
-        document.addEventListener('mousedown', onPointerDown);
-        document.addEventListener('touchstart', onPointerDown);
-        document.addEventListener('keydown', onKey);
-        return () => {
-            document.removeEventListener('mousedown', onPointerDown);
-            document.removeEventListener('touchstart', onPointerDown);
-            document.removeEventListener('keydown', onKey);
-        };
-    }, [openDay]);
+    const { openDay, setOpenDay, openRef } = useExpandableDay();
 
     if (!plan?.days?.length) return null;
     return (

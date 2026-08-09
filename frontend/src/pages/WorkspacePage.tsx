@@ -797,8 +797,13 @@ export default function WorkspacePage() {
                         </div>
                     </div>
 
-                    {/* Locked Weeks Panel (Desktop: Fixed Right / Mobile: Relative under Header) */}
-                    {uiIsPlanApproved && uiSessionId && (
+                    {/* Locked Weeks Panel (Desktop: Fixed Right / Mobile: Relative under Header)
+                        Also shown once a session is finished, and for any session
+                        that has weeks behind it. It was gated on the plan being
+                        currently active, so reopening an old session left no way
+                        to get at its weeks at all — the panel is the only route
+                        to the week drawer. */}
+                    {uiSessionId && (uiIsPlanApproved || isSessionCompleted || planHistory.length > 0) && (
                         <LockedWeeksPanel
                             sessionId={uiSessionId}
                             currentWeek={uiActivePlan?.week_number ?? 1}
