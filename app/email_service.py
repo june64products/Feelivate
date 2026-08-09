@@ -10,7 +10,7 @@ import json
 import re
 import secrets
 import string
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 import resend
@@ -477,6 +477,245 @@ def get_today_task_for_user(user, db):
 # ╔══════════════════════════════════════════════════════════════╗
 # ║  APScheduler Job (runs every minute)                         ║
 # ╚══════════════════════════════════════════════════════════════╝
+
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  Evening reminders                                           ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+# Local clock times these go out at. Both are checked per user, in that user's
+# own timezone, so 20:00 means 20:00 wherever they are.
+JOURNAL_REMINDER_TIME = os.getenv("JOURNAL_REMINDER_TIME", "20:00")
+STREAK_REMINDER_TIME = os.getenv("STREAK_REMINDER_TIME", "21:00")
+
+
+def _reminder_email(
+    to_email: str,
+    subject: str,
+    eyebrow: str,
+    heading: str,
+    body_lines: list,
+    cta_label: str,
+    accent: str = "#a855f7",
+    footer_note: str = "",
+) -> bool:
+    """One template for both evening nudges.
+
+    Deliberately short. This lands in the evening, when the point is to get
+    someone back into the app in one tap — not to be read.
+    """
+    if not resend.api_key:
+        logger.error("RESEND_API_KEY not set.")
+        return False
+
+    paragraphs = "".join(
+        f'<p style="margin:0 0 14px;color:#a1a1aa;font-size:15px;line-height:1.65;">{line}</p>'
+        for line in body_lines
+    )
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:48px 20px;">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;">
+
+      <tr><td align="center" style="padding-bottom:20px;">{LOGO_BLOCK}</td></tr>
+
+      <tr><td style="background:#13131a;border:1px solid rgba(168,85,247,0.15);border-radius:20px;padding:38px 34px;">
+
+        <p style="margin:0 0 10px;color:{accent};font-size:11px;font-weight:700;
+                  letter-spacing:0.14em;text-transform:uppercase;">{eyebrow}</p>
+
+        <h1 style="margin:0 0 18px;color:#fafafa;font-size:23px;line-height:1.25;
+                   font-weight:700;letter-spacing:-0.02em;">{heading}</h1>
+
+        {paragraphs}
+
+        <table cellpadding="0" cellspacing="0" style="margin:26px 0 0;">
+          <tr><td style="background:{accent};border-radius:100px;">
+            <a href="{APP_URL}/app" style="display:inline-block;padding:14px 30px;color:#0a0a0f;
+               font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
+               text-decoration:none;">{cta_label}</a>
+          </td></tr>
+        </table>
+
+      </td></tr>
+
+      <tr><td style="padding:22px 8px 0;">
+        <p style="margin:0;color:#52525b;font-size:12px;line-height:1.6;">
+          {footer_note}
+          You can turn these reminders off any time from Alerts in the app.
+        </p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+    try:
+        resend.Emails.send({
+            "from": f"Feelivate <{FROM_EMAIL}>",
+            "to": [to_email],
+            "subject": subject,
+            "html": html,
+        })
+        logger.info(f"Reminder sent → {_mask_email(to_email)} | {eyebrow}")
+        return True
+    except Exception as e:
+        logger.error(f"Reminder failed → {_mask_email(to_email)}: {type(e).__name__}: {e}")
+        return False
+
+
+def send_journal_reminder_email(to_email: str, user_name: str) -> bool:
+    """20:00 local — today's voice journal hasn't been recorded."""
+    name = (user_name or "there").split()[0]
+    return _reminder_email(
+        to_email=to_email,
+        subject="Your journal is still empty today",
+        eyebrow="Evening check-in",
+        heading=f"{name}, today hasn't been logged yet",
+        body_lines=[
+            "You haven't recorded your voice journal today. It takes about a minute — "
+            "just say how the day actually went, good or bad.",
+            "This is the part that makes next week's plan fit you. Without it your "
+            "mentor is guessing.",
+        ],
+        cta_label="Log today",
+        accent="#a855f7",
+    )
+
+
+def send_streak_reminder_email(to_email: str, user_name: str, current_streak: int) -> bool:
+    """21:00 local — the streak is alive but today is still unchecked."""
+    name = (user_name or "there").split()[0]
+    day_word = "day" if current_streak == 1 else "days"
+    return _reminder_email(
+        to_email=to_email,
+        subject=f"Your {current_streak}-{day_word} streak ends at midnight",
+        eyebrow="Streak at risk",
+        heading=f"{current_streak} {day_word} on the line, {name}",
+        body_lines=[
+            f"You've shown up {current_streak} {day_word} in a row. Today isn't marked "
+            "done yet, and the streak resets at midnight.",
+            "A few minutes now keeps it. Open the app, finish today's task and log your "
+            "journal.",
+        ],
+        cta_label="Keep the streak",
+        accent="#f59e0b",
+        footer_note="Streaks are a motivational feature, nothing more &mdash; nothing is lost if one breaks. ",
+    )
+
+
+def _has_journal_today(db, user_id: str, local_date: str) -> bool:
+    from .models import VoiceJournal
+    return (
+        db.query(VoiceJournal)
+        .filter(VoiceJournal.user_id == user_id, VoiceJournal.date == local_date)
+        .first()
+        is not None
+    )
+
+
+def _has_active_plan(db, user_id: str) -> bool:
+    """Only nudge people who are actually mid-plan.
+
+    Someone with no locked week has nothing to be reminded about, and emailing
+    them anyway is the fastest way to get the whole channel muted.
+    """
+    from .models import Session as SessionModel
+    return (
+        db.query(SessionModel)
+        .filter(SessionModel.user_id == user_id, SessionModel.phase == "active")
+        .first()
+        is not None
+    )
+
+
+def run_evening_reminders():
+    """Called every minute by APScheduler, alongside the daily task email.
+
+    Same timezone handling as the morning email: for each user we ask what time
+    it is where THEY are, and match against the reminder times. 20:00 in Delhi
+    and 20:00 in Chicago are different UTC instants, and both get hit.
+
+    Only users who enabled email notifications are contacted — that switch is
+    the consent record for this channel, so it gates every message here.
+    """
+    from .database import SessionLocal
+    from .models import User, UserStreak
+
+    now_utc = datetime.now(pytz.utc)
+    db = SessionLocal()
+    try:
+        users = (
+            db.query(User)
+            .filter(
+                User.email_notifications_enabled == 1,
+                User.notification_email.isnot(None),
+            )
+            .all()
+        )
+        if not users:
+            return
+
+        for user in users:
+            try:
+                tz_str = user.preferred_notification_timezone or "UTC"
+                try:
+                    user_tz = pytz.timezone(tz_str)
+                except Exception:
+                    user_tz, tz_str = pytz.utc, "UTC"
+
+                now_local = now_utc.astimezone(user_tz)
+                hhmm = now_local.strftime("%H:%M")
+                today = now_local.strftime("%Y-%m-%d")
+
+                if hhmm not in (JOURNAL_REMINDER_TIME, STREAK_REMINDER_TIME):
+                    continue
+                if not _has_active_plan(db, user.id):
+                    continue
+
+                # ── 20:00 — journal not logged ──
+                if hhmm == JOURNAL_REMINDER_TIME:
+                    if user.last_journal_reminder_date == today:
+                        continue
+                    if _has_journal_today(db, user.id, today):
+                        continue
+                    if send_journal_reminder_email(user.notification_email, user.name):
+                        user.last_journal_reminder_date = today
+                        db.commit()
+
+                # ── 21:00 — streak alive but today still unchecked ──
+                elif hhmm == STREAK_REMINDER_TIME:
+                    if user.last_streak_reminder_date == today:
+                        continue
+                    streak = (
+                        db.query(UserStreak)
+                        .filter(UserStreak.user_id == user.id)
+                        .first()
+                    )
+                    # Nothing to save if there's no run going, and nothing to
+                    # warn about if today is already done — last_checkin would
+                    # be today in that case, not yesterday.
+                    if not streak or (streak.current_streak or 0) < 1:
+                        continue
+                    yesterday = (now_local.date() - timedelta(days=1)).isoformat()
+                    if streak.last_checkin != yesterday:
+                        continue
+                    if send_streak_reminder_email(
+                        user.notification_email, user.name, streak.current_streak
+                    ):
+                        user.last_streak_reminder_date = today
+                        db.commit()
+
+            except Exception as e:
+                logger.error(f"[Reminders] failed for user {user.id}: {e}")
+                db.rollback()
+    finally:
+        db.close()
+
 
 def run_daily_email_scheduler():
     """

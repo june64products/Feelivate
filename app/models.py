@@ -28,6 +28,10 @@ class User(Base):
     preferred_notification_time = Column(String, default="08:00")        # HH:MM in user's local timezone
     preferred_notification_timezone = Column(String, default="UTC")  # IANA timezone string (set from the user's browser on subscribe)
     last_daily_email_date = Column(String, nullable=True)  # ISO date of last sent email
+    # Evening nudges. Each stores the user's LOCAL date so a reminder goes out
+    # at most once per their day, whatever the server's date happens to be.
+    last_journal_reminder_date = Column(String, nullable=True)  # 20:00 local — journal not logged
+    last_streak_reminder_date  = Column(String, nullable=True)  # 21:00 local — streak about to break
 
 class UserConsent(Base):
     """

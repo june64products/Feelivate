@@ -29,7 +29,10 @@ from .models import (
 )
 from .calendar_service import calendar_service
 from .google_login import google_login_service
-from .email_service import generate_otp, send_verification_email, send_daily_task_email, run_daily_email_scheduler
+from .email_service import (
+    generate_otp, send_verification_email, send_daily_task_email,
+    run_daily_email_scheduler, run_evening_reminders,
+)
 from .security import get_password_hash, verify_password, create_access_token, decode_access_token
 from .observability import REQUESTS_TOTAL
 from .ratelimit import LIMITERS as RATE_LIMITERS, prune_all as prune_rate_limiters
@@ -95,6 +98,15 @@ async def lifespan(app):
             id="daily_email_scheduler",
             replace_existing=True,
         )
+        # Evening nudges, same per-user-timezone check: 20:00 local if the day's
+        # journal is missing, 21:00 local if a live streak is about to lapse.
+        _scheduler.add_job(
+            run_evening_reminders,
+            trigger="cron",
+            minute="*",
+            id="evening_reminders",
+            replace_existing=True,
+        )
         # Storage limitation (GDPR Art 5(1)(e)) is an obligation, not a chore —
         # it has to run on its own schedule rather than depend on someone
         # remembering to clean up.
@@ -107,7 +119,7 @@ async def lifespan(app):
             replace_existing=True,
         )
         _scheduler.start()
-        logger.info("[Scheduler] APScheduler started — daily emails + nightly retention sweep")
+        logger.info("[Scheduler] APScheduler started — daily emails + evening reminders + nightly retention sweep")
     yield
     if _SCHEDULER_AVAILABLE and _scheduler:
         _scheduler.shutdown(wait=False)

@@ -152,6 +152,8 @@ def init_db():
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_notification_time VARCHAR DEFAULT '08:00';",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_notification_timezone VARCHAR DEFAULT 'UTC';",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_daily_email_date VARCHAR;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_journal_reminder_date VARCHAR;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_reminder_date VARCHAR;",
                 # ── sessions ──
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS title VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;",

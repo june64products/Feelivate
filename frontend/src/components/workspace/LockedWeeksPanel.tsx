@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronDown, X, Lock, Sparkles, FileText, ChevronUp, Mic } from 'lucide-react';
 import { getSessionReports, type ArchivedWeekReport } from '../../api';
@@ -94,8 +94,37 @@ function correctDayLabel(raw: string): string {
     return `${datePart} (${wd})`;
 }
 
+/** Roughly two lines in this column — past this a day gets a "See more". */
+const CLAMP_CHARS = 110;
+
 // ─── Week Plan day list — Swiss tabular matching PlanCard ─────────────────────
 function WeekPlanDays({ plan }: { plan: any }) {
+    // Which day is opened out. Only one at a time — two expanded cards in a
+    // narrow drawer is worse than none.
+    const [openDay, setOpenDay] = useState<number | null>(null);
+    const openRef = useRef<HTMLDivElement>(null);
+
+    // Click anywhere outside the opened card closes it. Clicks landing inside
+    // it — selecting the text, hitting "Show less" — must not, so the check is
+    // containment against the card itself rather than a backdrop.
+    useEffect(() => {
+        if (openDay === null) return;
+        const onPointerDown = (e: MouseEvent | TouchEvent) => {
+            if (openRef.current && !openRef.current.contains(e.target as Node)) {
+                setOpenDay(null);
+            }
+        };
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenDay(null); };
+        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('touchstart', onPointerDown);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('touchstart', onPointerDown);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [openDay]);
+
     if (!plan?.days?.length) return null;
     return (
         <div style={{ marginTop: '4px' }}>
@@ -130,34 +159,86 @@ function WeekPlanDays({ plan }: { plan: any }) {
                 )}
             </div>
 
-            {/* Days — tabular rows with alternating tint */}
-            <div style={{ background: 'var(--card-bg)', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
-                {plan.days.map((day: any, idx: number) => (
-                    <div key={idx} style={{
-                        display: 'flex', gap: '14px',
-                        padding: '11px 16px',
-                        borderBottom: idx < plan.days.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                        background: idx % 2 === 1 ? 'var(--glass-surface)' : 'transparent',
-                    }}>
-                        <div style={{
-                            fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)',
-                            fontFamily: clashDisplay, letterSpacing: '0.04em',
-                            textTransform: 'uppercase',
-                            minWidth: '80px', flexShrink: 0, paddingTop: '1px',
-                            whiteSpace: 'nowrap',
-                        }}>
-                            {correctDayLabel(day.day)}
-                        </div>
-                        <div style={{
-                            flex: 1, minWidth: 0,
-                            fontSize: '12px', color: 'var(--text-secondary)',
-                            lineHeight: '1.55', fontFamily: satoshi, fontWeight: 400,
-                            wordBreak: 'break-word',
-                        }}>
-                            {day.action}
-                        </div>
-                    </div>
-                ))}
+            {/* Days — tabular rows, any one of which can open out in place.
+                Plan actions run to several sentences now, which is unreadable
+                clamped into a narrow drawer column but overwhelming if every
+                day is shown in full. */}
+            <div style={{ background: 'var(--card-bg)', borderRadius: '0 0 12px 12px' }}>
+                {plan.days.map((day: any, idx: number) => {
+                    const action = String(day.action ?? '');
+                    const isLong = action.length > CLAMP_CHARS;
+                    const isOpen = openDay === idx;
+
+                    return (
+                        <motion.div
+                            key={idx}
+                            ref={isOpen ? openRef : undefined}
+                            layout
+                            transition={{ type: 'spring', stiffness: 380, damping: 32, mass: 0.7 }}
+                            onClick={() => { if (isLong) setOpenDay(isOpen ? null : idx); }}
+                            style={{
+                                display: 'flex',
+                                flexDirection: isOpen ? 'column' : 'row',
+                                gap: isOpen ? '8px' : '14px',
+                                padding: isOpen ? '16px' : '11px 16px',
+                                borderBottom: idx < plan.days.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                                cursor: isLong ? 'pointer' : 'default',
+                                position: 'relative',
+                                zIndex: isOpen ? 2 : 1,
+                                // The opened day lifts off the list rather than
+                                // just getting taller, so it reads as "this one".
+                                background: isOpen
+                                    ? 'var(--bg-surface)'
+                                    : idx % 2 === 1 ? 'var(--glass-surface)' : 'transparent',
+                                boxShadow: isOpen ? 'var(--shadow-lg)' : 'none',
+                                borderRadius: isOpen ? '12px' : 0,
+                                margin: isOpen ? '6px' : 0,
+                            }}
+                        >
+                            <motion.div layout="position" style={{
+                                fontSize: '11px', fontWeight: 700,
+                                color: isOpen ? 'var(--accent-warm)' : 'var(--text-primary)',
+                                fontFamily: clashDisplay, letterSpacing: '0.04em',
+                                textTransform: 'uppercase',
+                                minWidth: isOpen ? undefined : '80px',
+                                flexShrink: 0, paddingTop: '1px',
+                                whiteSpace: 'nowrap',
+                            }}>
+                                {correctDayLabel(day.day)}
+                            </motion.div>
+
+                            <motion.div layout="position" style={{
+                                flex: 1, minWidth: 0,
+                                fontSize: isOpen ? '13px' : '12px',
+                                color: isOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                lineHeight: isOpen ? 1.7 : 1.55,
+                                fontFamily: satoshi, fontWeight: 400,
+                                wordBreak: 'break-word',
+                                ...(isOpen || !isLong ? {} : {
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical' as const,
+                                    overflow: 'hidden',
+                                }),
+                            }}>
+                                {action}
+                            </motion.div>
+
+                            {isLong && (
+                                <motion.div layout="position" style={{
+                                    fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
+                                    textTransform: 'uppercase', fontFamily: satoshi,
+                                    color: 'var(--accent-warm)', flexShrink: 0,
+                                    alignSelf: isOpen ? 'flex-start' : 'flex-end',
+                                    paddingTop: isOpen ? '2px' : 0,
+                                    whiteSpace: 'nowrap',
+                                }}>
+                                    {isOpen ? 'Show less' : 'See more'}
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    );
+                })}
             </div>
         </div>
     );
