@@ -876,6 +876,87 @@ body {
 /* UPGRADE BUTTON — Swiss                      */
 /* ============================================ */
 
+/* ============================================ */
+/* WORKSPACE HEADER BUTTONS                     */
+/* One shape for Archive / Calendar / Alerts /  */
+/* Running so the row reads as a single set.    */
+/* ============================================ */
+
+.hdr-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 100px;
+  border: 1px solid var(--border-medium);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.hdr-btn:hover {
+  background: var(--glass-hover);
+  color: var(--text-primary);
+}
+
+/* Alerts when daily email is on — the one button that shows state. */
+.hdr-btn.is-active {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+/* Running: same shape, danger colours, and it keeps its label on mobile
+   because a lone pulsing dot doesn't say "your week is live". */
+.hdr-btn.is-running {
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+}
+
+.hdr-btn.is-running:hover {
+  background: rgba(239, 68, 68, 0.06);
+  color: #ef4444;
+}
+
+@media (max-width: 768px) {
+  /* Labels drop, icons stay — Archive, Calendar, Alerts, Running and the
+     avatar all have to fit a phone header without wrapping. */
+  .hdr-btn {
+    padding: 6px 10px;
+    gap: 0;
+  }
+
+  .hdr-btn.is-running {
+    padding: 6px 12px;
+    gap: 6px;
+  }
+
+  .hdr-actions {
+    gap: 6px !important;
+  }
+}
+
+/* Narrow phones: Running keeps its dot but loses the word, so Archive,
+   Calendar, Alerts, Running and the avatar still fit on one line. */
+@media (max-width: 400px) {
+  .hdr-btn.is-running {
+    padding: 6px 10px;
+    gap: 0;
+    font-size: 0;
+  }
+
+  .hdr-actions {
+    gap: 5px !important;
+  }
+}
+
 .upgrade-btn {
   padding: 7px 16px;
   border-radius: 100px;

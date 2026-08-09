@@ -32,8 +32,6 @@ import ConsentGate, { type ConsentStatus } from '../components/legal/ConsentGate
 import GuidedDemo, { type DemoHandles } from '../components/demo/GuidedDemo';
 import { DEMO_PLAN, DEMO_EMOTION } from '../components/demo/demoScript';
 import { isDemoQueued, startDemo, completeDemo } from '../lib/onboarding';
-import PillNav from '../components/PillNav';
-import type { PillNavItem } from '../components/PillNav';
 
 
 
@@ -732,69 +730,43 @@ export default function WorkspacePage() {
                             )}
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="hdr-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
                             {/* Archive — view past weekly reports anytime, including stopped sessions */}
                             {!demoMode && activeSessionId && (isPlanApproved || isSessionCompleted) && (
                                 <button
+                                    className="hdr-btn"
                                     onClick={() => { setJourneyInitialTab('archive'); setView('journey'); }}
                                     title="View your weekly reports"
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '7px',
-                                        padding: '6px 14px', borderRadius: '100px',
-                                        border: '1px solid var(--border-medium)', background: 'transparent',
-                                        color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 700,
-                                        cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0,
-                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
-                                        letterSpacing: '0.04em', textTransform: 'uppercase',
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                                 >
                                     <Archive size={14} />
                                     <span className="hide-on-mobile">Archive</span>
                                 </button>
                             )}
 
-                            {/* PillNav strip for header buttons — desktop only */}
-                            <div className="hide-on-mobile" data-tour="alerts-button">
-                            {uiIsPlanApproved && (() => {
-                                const items: PillNavItem[] = [
-                                    { label: 'Calendar', onClick: () => setShowCalendarMaintenance(true) },
-                                    { label: 'Alerts', onClick: handleOpenEmailModal },
-                                ];
-                                return (
-                                    <PillNav
-                                        items={items}
-                                        activeLabel={isNotifEnabled ? 'Alerts' : undefined}
-                                        baseColor="var(--text-primary)"
-                                        pillColor="var(--bg-primary)"
-                                        pillTextColor="var(--text-primary)"
-                                        hoveredTextColor="var(--text-inverse)"
-                                        fontFamily="'Satoshi', 'Inter', sans-serif"
-                                        ease="power3.out"
-                                    />
-                                );
-                            })()}
-                            </div>
-
-                            {/* Mobile: Alerts bell button */}
+                            {/* Calendar and Alerts — same shape as Archive, on every screen
+                                size. They used to be a desktop-only pill strip with a
+                                separate bell button standing in on mobile, which meant the
+                                header looked like two different designs depending on width. */}
                             {uiIsPlanApproved && (
                                 <button
-                                    className="show-on-mobile"
+                                    className="hdr-btn"
+                                    onClick={() => setShowCalendarMaintenance(true)}
+                                    title="Calendar sync"
+                                >
+                                    <Clock size={14} />
+                                    <span className="hide-on-mobile">Calendar</span>
+                                </button>
+                            )}
+
+                            {uiIsPlanApproved && (
+                                <button
+                                    className={'hdr-btn' + (isNotifEnabled ? ' is-active' : '')}
                                     data-tour="alerts-button"
                                     onClick={handleOpenEmailModal}
-                                    style={{
-                                        width: '32px', height: '32px', borderRadius: '8px',
-                                        border: '1px solid var(--border-medium)',
-                                        background: isNotifEnabled ? 'var(--accent-primary)' : 'transparent',
-                                        color: isNotifEnabled ? '#fff' : 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        cursor: 'pointer', flexShrink: 0,
-                                        transition: 'all 0.15s',
-                                    }}
-                                    title="Daily Alerts"
+                                    title="Daily alerts"
                                 >
-                                    <Bell size={15} />
+                                    <Bell size={14} />
+                                    <span className="hide-on-mobile">Alerts</span>
                                 </button>
                             )}
 
@@ -808,25 +780,13 @@ export default function WorkspacePage() {
 
                             {isPlanApproved && !isSessionCompleted && activeSessionId && (
                                 <button
+                                    className="hdr-btn is-running"
                                     onClick={() => setShowCompleteModal(true)}
                                     title="Stop plan"
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '7px',
-                                        padding: '5px 14px', borderRadius: '100px',
-                                        border: '1px solid rgba(239,68,68,0.25)',
-                                        background: 'transparent',
-                                        color: '#ef4444', fontSize: '11px',
-                                        fontWeight: 700, cursor: 'pointer',
-                                        transition: 'all 0.15s',
-                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
-                                        letterSpacing: '0.04em', textTransform: 'uppercase',
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                                 >
                                     <div style={{
                                         width: '6px', height: '6px', borderRadius: '50%',
-                                        background: '#ef4444',
+                                        background: '#ef4444', flexShrink: 0,
                                         animation: 'pulse 1.5s ease-in-out infinite',
                                     }} />
                                     Running

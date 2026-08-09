@@ -985,16 +985,25 @@ async def chat(
                         "fine", "thanks", "ty", "thankyou", "thank you", "got it",
                         "alright", "right", "yep", "yup", "nope", "hm", "ohh", "oh",
                         "wow", "lol", "haha", "interesting", "understood"}
-        if _casual_check in _casual_set:
+        _is_casual = _casual_check in _casual_set
+        if _is_casual:
             chat_temperature = 0.9  # More creative for casual replies
-        
+
+        # Repetition penalties help small talk stay fresh, but they actively
+        # fight a plan: every day is supposed to share a shape ("…~40 min. Done
+        # when…"), and penalising repeated tokens pushes the model off that
+        # structure and toward vaguer, more varied wording. Keep them for
+        # chit-chat, drop them everywhere else.
+        _presence = 0.4 if _is_casual else 0.1
+        _frequency = 0.35 if _is_casual else 0.05
+
         raw_response = await asyncio.to_thread(
             call_with_fallback_chain,
             prompt_messages,
             temperature=chat_temperature,
             max_tokens=4000,
-            presence_penalty=0.4,
-            frequency_penalty=0.35
+            presence_penalty=_presence,
+            frequency_penalty=_frequency
         )
         
         logger.debug(f"Raw LLM response: {raw_response[:200]}...")
