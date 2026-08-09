@@ -608,6 +608,17 @@ def send_streak_reminder_email(to_email: str, user_name: str, current_streak: in
     )
 
 
+def _recipient_for(user) -> str:
+    """Where a user's mail actually goes.
+
+    Falls back to the address the account was created with. `notification_email`
+    only exists because alerts can be pointed at a different inbox, and it is
+    null for anyone who never did that — which was silently excluding them from
+    every scheduled email even though we hold a perfectly good address for them.
+    """
+    return (user.notification_email or user.email or "").strip()
+
+
 def _has_journal_today(db, user_id: str, local_date: str) -> bool:
     from .models import VoiceJournal
     return (
@@ -651,10 +662,7 @@ def run_evening_reminders():
     try:
         users = (
             db.query(User)
-            .filter(
-                User.email_notifications_enabled == 1,
-                User.notification_email.isnot(None),
-            )
+            .filter(User.email_notifications_enabled == 1)
             .all()
         )
         if not users:
@@ -674,6 +682,9 @@ def run_evening_reminders():
 
                 if hhmm not in (JOURNAL_REMINDER_TIME, STREAK_REMINDER_TIME):
                     continue
+                recipient = _recipient_for(user)
+                if not recipient:
+                    continue
                 if not _has_active_plan(db, user.id):
                     continue
 
@@ -683,7 +694,7 @@ def run_evening_reminders():
                         continue
                     if _has_journal_today(db, user.id, today):
                         continue
-                    if send_journal_reminder_email(user.notification_email, user.name):
+                    if send_journal_reminder_email(recipient, user.name):
                         user.last_journal_reminder_date = today
                         db.commit()
 
@@ -705,7 +716,7 @@ def run_evening_reminders():
                     if streak.last_checkin != yesterday:
                         continue
                     if send_streak_reminder_email(
-                        user.notification_email, user.name, streak.current_streak
+                        recipient, user.name, streak.current_streak
                     ):
                         user.last_streak_reminder_date = today
                         db.commit()
@@ -739,7 +750,6 @@ def run_daily_email_scheduler():
             db.query(User)
             .filter(
                 User.email_notifications_enabled == 1,
-                User.notification_email.isnot(None),
                 User.preferred_notification_time.isnot(None),
             )
             .all()
@@ -768,13 +778,17 @@ def run_daily_email_scheduler():
                 if user_time_str != user.preferred_notification_time:
                     continue
 
+                recipient = _recipient_for(user)
+                if not recipient:
+                    continue
+
                 # Already sent today (in user's local date)?
                 if user.last_daily_email_date == today_date_str:
-                    logger.info(f"[Scheduler] Already sent today ({today_date_str}) to {_mask_email(user.notification_email)}")
+                    logger.info(f"[Scheduler] Already sent today ({today_date_str}) to {_mask_email(recipient)}")
                     continue
 
                 logger.info(
-                    f"[Scheduler] Sending to {user.notification_email} "
+                    f"[Scheduler] Sending to {_mask_email(recipient)} "
                     f"at {user_time_str} {tz_str}"
                 )
 
@@ -783,7 +797,7 @@ def run_daily_email_scheduler():
                     continue  # week finished or no active plan
 
                 success = send_daily_task_email(
-                    to_email=user.notification_email,
+                    to_email=recipient,
                     user_name=user.name or "there",
                     day_label=task_info["day_label"],
                     task_title=task_info["task_title"],
