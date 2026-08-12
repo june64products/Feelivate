@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional, List, Union
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Depends, BackgroundTasks, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from loguru import logger
@@ -33,7 +33,10 @@ from .email_service import (
     generate_otp, send_verification_email, send_daily_task_email,
     run_daily_email_scheduler, run_evening_reminders,
 )
-from .security import get_password_hash, verify_password, create_access_token, decode_access_token
+from .security import (
+    get_password_hash, verify_password, create_access_token, decode_access_token,
+    verify_email_action_token,
+)
 from .observability import REQUESTS_TOTAL
 from .ratelimit import LIMITERS as RATE_LIMITERS, prune_all as prune_rate_limiters
 from .crypto import encrypt_secret, decrypt_secret
@@ -518,7 +521,11 @@ def _parse_llm_response(raw_text: str) -> Dict[str, Any]:
                 if isinstance(data, dict) and "reply" in data:
                     return {
                         "reply": str(data.get("reply", "")),
-                        "plan": data.get("plan", None)
+                        "plan": data.get("plan", None),
+                        # Optional fields: the one-time "why" (RULE 1c) and the
+                        # setup-questions form for the popup (RULE 1).
+                        "commitment_why": data.get("commitment_why"),
+                        "questions": data.get("questions"),
                     }
             except json.JSONDecodeError:
                 pass
@@ -533,7 +540,11 @@ def _parse_llm_response(raw_text: str) -> Dict[str, Any]:
                 if isinstance(data, dict) and "reply" in data:
                     return {
                         "reply": str(data.get("reply", "")),
-                        "plan": data.get("plan", None)
+                        "plan": data.get("plan", None),
+                        # Optional fields: the one-time "why" (RULE 1c) and the
+                        # setup-questions form for the popup (RULE 1).
+                        "commitment_why": data.get("commitment_why"),
+                        "questions": data.get("questions"),
                     }
             except json.JSONDecodeError as e:
                 logger.warning(f"Balanced-brace JSON parse failed: {e}")
@@ -549,7 +560,11 @@ def _parse_llm_response(raw_text: str) -> Dict[str, Any]:
                 if isinstance(data, dict) and "reply" in data:
                     return {
                         "reply": str(data.get("reply", "")),
-                        "plan": data.get("plan", None)
+                        "plan": data.get("plan", None),
+                        # Optional fields: the one-time "why" (RULE 1c) and the
+                        # setup-questions form for the popup (RULE 1).
+                        "commitment_why": data.get("commitment_why"),
+                        "questions": data.get("questions"),
                     }
         except (json.JSONDecodeError, Exception) as e:
             logger.warning(f"find/rfind JSON parse attempt failed: {e}")
@@ -668,6 +683,27 @@ def _fill_plan_gaps(plan: Optional[dict]) -> Optional[dict]:
     if not str(plan.get("win_condition") or "").strip() and days:
         target = max(1, round(len(days) * 0.8))
         plan["win_condition"] = f"Complete {target} of {len(days)} days"
+    else:
+        # The model sometimes writes a win the plan can't hold — "3 of 4 runs"
+        # over a week that schedules two runs. The days array is the ground
+        # truth, so the win's arithmetic is checked against it and rewritten
+        # when they disagree.
+        win = str(plan.get("win_condition") or "")
+        m = re.search(r"(\d+)\s+(?:out\s+of|of)\s+(\d+)\s*([A-Za-z]*)", win)
+        if m and days:
+            rest_re = re.compile(r"^\s*(?:optional\s+)?(?:rest|recovery)\b", re.I)
+            action_count = sum(
+                1 for d in days
+                if isinstance(d, dict) and not rest_re.match(str(d.get("action") or ""))
+            )
+            x, y = int(m.group(1)), int(m.group(2))
+            # "4 of 6 days" counting every day is as valid as "2 of 2 runs"
+            # counting only the work — broken only when the denominator matches
+            # neither, or the target exceeds it.
+            if (y not in (action_count, len(days)) or x > y) and action_count:
+                unit = m.group(3) or "days"
+                target = max(1, round(action_count * 0.8))
+                plan["win_condition"] = f"Complete {target} of {action_count} {unit}"
     if not str(plan.get("week_label") or "").strip() and days:
         first = str(days[0].get("day", "")) if isinstance(days[0], dict) else ""
         last = str(days[-1].get("day", "")) if isinstance(days[-1], dict) else ""
@@ -947,6 +983,39 @@ async def chat(
             except Exception as e:
                 logger.warning(f"current_week_complete calc failed: {e}")
 
+        # 4f. Accountability context — the user's own "why", plus recovery mode
+        # after a missed day. This is what makes the mentor act like a mentor:
+        # it remembers the commitment, catches the slip, and fixes the plan.
+        if session_rec.commitment_why:
+            system_context = (system_context or "") + (
+                f"\n\nUSER'S OWN WHY (their commitment, in their words): \"{session_rec.commitment_why}\""
+                "\nUse it sparingly — at slips, doubts and weak moments, gently quote their own words back."
+                " Never weaponise it, never repeat it every message."
+            )
+        if session_rec.phase == "active":
+            try:
+                import datetime as _rdt
+                try:
+                    import zoneinfo as _rzi
+                    _rtoday_iso = _rdt.datetime.now(_rzi.ZoneInfo(payload.timezone or "UTC")).date().isoformat()
+                except Exception:
+                    _rtoday_iso = _rdt.date.today().isoformat()
+                from .streaks import yesterday_missed as _yesterday_missed
+                if _yesterday_missed(db, user_id, _rtoday_iso):
+                    system_context = (system_context or "") + (
+                        "\n\n🔄 RECOVERY MODE — the user MISSED yesterday's check-in."
+                        "\nWhen the miss comes up (or they open with guilt), respond as a recovery coach:"
+                        "\n1. Zero shame, and say the science plainly: missing ONE day does not break a habit"
+                        " (Lally et al., 2010) — but missing twice starts a new one. Today is the only day that matters."
+                        "\n2. Ask ONE question: \"What got in the way?\""
+                        "\n3. Fix the PLAN, not the person: from their answer, suggest one concrete tweak for TODAY"
+                        " within the locked week (a smaller version, a different time), and note the if-then change"
+                        " for next week."
+                        "\nOne warm, direct message — don't lecture, don't walk the three steps mechanically."
+                    )
+            except Exception as _rec_err:
+                logger.warning(f"Recovery context calc failed (non-fatal): {_rec_err}")
+
         # 5. Build prompt messages
         prompt_messages = build_chat_prompt(
             messages=history,
@@ -1024,6 +1093,15 @@ async def chat(
         parsed = _parse_llm_response(raw_response)
         reply_text = parsed["reply"]
         plan_data = _fill_plan_gaps(parsed["plan"])
+
+        # 6a-pre. Capture the user's "why" the first time they voice it. Stored
+        # once, never overwritten — this is the quote the recovery flow brings
+        # back at weak moments.
+        _cw = parsed.get("commitment_why")
+        if isinstance(_cw, str) and _cw.strip() and not session_rec.commitment_why:
+            session_rec.commitment_why = _cw.strip()[:2000]
+            db.commit()
+            logger.info(f"[Commitment] why saved for session {session_id}")
         # The card is the plan. Anything the model also wrote into the chat
         # message is a duplicate at best and raw JSON at worst — and it does
         # this with `plan` set to null too, which is how a bare JSON blob ends
@@ -1180,9 +1258,27 @@ async def chat(
         except Exception as e:
             logger.warning(f"Failed to save chat memory (non-fatal): {e}")
         
+        # Setup-questions form (rendered by the client as a popup). Only a
+        # NEW-goal discovery turn may carry one, never alongside a plan, and a
+        # malformed structure is dropped rather than trusted.
+        questions_data = parsed.get("questions")
+        if plan_data or not isinstance(questions_data, list):
+            questions_data = None
+        else:
+            questions_data = [
+                {
+                    "id": str(q.get("id") or f"q{i}"),
+                    "label": str(q.get("label"))[:200],
+                    "placeholder": str(q.get("placeholder") or "")[:200],
+                }
+                for i, q in enumerate(questions_data)
+                if isinstance(q, dict) and q.get("label")
+            ][:4] or None
+
         response: Dict[str, Any] = {
             "reply": reply_text,
             "plan": plan_data,
+            "questions": questions_data,
             "session_id": session_id
         }
         if in_crisis:
@@ -1190,6 +1286,7 @@ async def chat(
             # structured block to render as a resource card rather than leaving
             # help buried in a paragraph.
             response["plan"] = None
+            response["questions"] = None
             response["safety"] = crisis_payload()
         return response
 
@@ -1307,11 +1404,25 @@ async def approve_plan(
         session_rec.plan_start_date = start_iso
     db.commit()
     
-    # Add a system message to the chat
+    # Add a system message to the chat. First-ever approval gets the endowed-
+    # progress framing: the user has already banked something (setup + a real
+    # plan + a commitment), so they never start from zero.
+    _is_first_approval = len(plan_history) <= 1
+    if _is_first_approval:
+        _approve_msg = (
+            f"Week {session_rec.current_week} is set — and here's the thing: you're not starting from zero. "
+            f"Goal defined ✓, plan built ✓, commitment made ✓ — that's the setup week done, and it's already banked. "
+            f"From here it's one day at a time: do today's task, log it on the Journey page, and I'm here whenever you need me."
+        )
+    else:
+        _approve_msg = (
+            f"Week {session_rec.current_week} is set — commitment made, and that's the hard part done. "
+            f"From here it's one day at a time: do today's task, log it on the Journey page, and I'm here in chat whenever you need me."
+        )
     system_msg = ChatMessage(
         session_id=session_id,
         role="assistant",
-        content=f"Week {session_rec.current_week} plan approved and locked! Let's go — your plan is set. You can chat with me anytime, or head to the Journey page to log your daily voice entry."
+        content=_approve_msg
     )
     db.add(system_msg)
     db.commit()
@@ -2116,76 +2227,14 @@ async def update_notification_time(
 # STREAK & DAILY CHECK-IN
 # ============================================================
 
-def _recalculate_streak(db: DBSession, user_id: str, client_date: Optional[str] = None) -> UserStreak:
-    """
-    Recalculate current and longest streak from daily_checkins.
-    Called after every checkin mutation. O(n) but checkins are small.
-    Pass client_date (YYYY-MM-DD) from the user's local timezone to avoid
-    UTC vs IST mismatch when checking today/yesterday boundaries.
-    """
-    from datetime import date, timedelta
-
-    # Get all 'done' checkins ordered newest first
-    done_rows = (
-        db.query(DailyCheckin)
-        .filter(DailyCheckin.user_id == user_id, DailyCheckin.status == "done")
-        .order_by(DailyCheckin.date.desc())
-        .all()
-    )
-    done_dates = sorted({r.date for r in done_rows}, reverse=True)
-
-    # Use client local date if provided (avoids UTC vs IST mismatch)
-    if client_date:
-        try:
-            today_d = date.fromisoformat(client_date)
-        except ValueError:
-            today_d = date.today()
-    else:
-        today_d = date.today()
-
-    today = today_d.isoformat()
-    yesterday = (today_d - timedelta(days=1)).isoformat()
-
-    # Current streak: count consecutive done days ending at or before today.
-    # Streak is still alive if the most recent done day is today OR yesterday
-    # (user hasn't done today yet but hasn't broken the chain).
-    current = 0
-    if done_dates and done_dates[0] in (today, yesterday):
-        expected = done_dates[0]
-        for d in done_dates:
-            if d == expected:
-                current += 1
-                prev = date.fromisoformat(expected) - timedelta(days=1)
-                expected = prev.isoformat()
-            else:
-                break
-
-    # Longest streak: scan all done dates ascending
-    longest = 0
-    run = 0
-    prev_date_str = None
-    for d in sorted(done_dates):
-        if prev_date_str is None:
-            run = 1
-        else:
-            delta = (date.fromisoformat(d) - date.fromisoformat(prev_date_str)).days
-            run = run + 1 if delta == 1 else 1
-        longest = max(longest, run)
-        prev_date_str = d
-
-    # Upsert UserStreak
-    streak_rec = db.query(UserStreak).filter(UserStreak.user_id == user_id).first()
-    if not streak_rec:
-        streak_rec = UserStreak(user_id=user_id)
-        db.add(streak_rec)
-    streak_rec.current_streak = current
-    # longest_streak should always be the historical maximum — never decrease
-    streak_rec.longest_streak = max(longest, streak_rec.longest_streak or 0)
-    streak_rec.total_done = len(done_dates)
-    streak_rec.last_checkin = done_dates[0] if done_dates else None
-    db.commit()
-    db.refresh(streak_rec)
-    return streak_rec
+# Streak math + automatic streak insurance live in streaks.py (shared with the
+# email scheduler). The old in-file implementation moved there and gained
+# shield-awareness: a "shielded" day keeps the chain unbroken without counting.
+from .streaks import (
+    recalculate_streak as _recalculate_streak,
+    apply_streak_shield as _apply_streak_shield,
+    shields_left as _shields_left,
+)
 
 
 @app.post("/checkin", tags=["streak"])
@@ -2230,11 +2279,17 @@ async def daily_checkin(
         db.add(checkin)
     db.commit()
 
+    # A returning user's first action of the day: if yesterday would have broken
+    # the chain, spend a shield on it silently before the streak is recalculated.
+    shield_info = _apply_streak_shield(db, current_user, today)
+
     # Pass client_date so streak boundary uses user's local timezone
     streak = _recalculate_streak(db, user_id, client_date=today)
     return {
         "date": today,
         "status": payload.status,
+        "shield_applied": bool(shield_info),
+        "shields_left": _shields_left(current_user),
         "current_streak": streak.current_streak,
         "longest_streak": streak.longest_streak,
         "total_done": streak.total_done,
@@ -2255,6 +2310,12 @@ async def get_streak(
 
     if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Opening the app IS the moment protection matters: shield yesterday's miss
+    # (if a shield is available) before the streak is recalculated, so the user
+    # sees a preserved streak instead of a broken one.
+    _today_iso = client_date or date.today().isoformat()
+    shield_info = _apply_streak_shield(db, current_user, _today_iso)
 
     # Re-calculate streak using client's local date so UTC vs IST doesn't break it
     streak_rec = _recalculate_streak(db, user_id, client_date=client_date)
@@ -2286,7 +2347,82 @@ async def get_streak(
         "total_done": streak_rec.total_done if streak_rec else 0,
         "last_checkin": streak_rec.last_checkin if streak_rec else None,
         "days_this_week": days,
+        "shield_applied": bool(shield_info),
+        "shields_left": _shields_left(current_user),
     }
+
+
+# Where "Open Feelivate" buttons on server-rendered pages point (the frontend).
+FRONTEND_APP_URL = os.getenv("APP_URL", "https://emotion-time-travel-brlz.vercel.app")
+
+
+def _email_checkin_page(title: str, body: str, accent: str = "#a855f7") -> str:
+    """Tiny standalone confirmation page for one-tap email actions."""
+    return f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title} — Feelivate</title></head>
+<body style="margin:0;background:#0a0a0f;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+             display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;">
+  <div style="max-width:420px;text-align:center;background:#13131a;border:1px solid rgba(168,85,247,0.2);
+              border-radius:20px;padding:44px 34px;">
+    <div style="font-size:44px;margin-bottom:14px;">{'&#10003;' if accent != '#f87171' else '&#9888;'}</div>
+    <h1 style="color:#f4f4f5;font-size:22px;margin:0 0 10px;">{title}</h1>
+    <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 26px;">{body}</p>
+    <a href="{FRONTEND_APP_URL}/app" style="display:inline-block;background:{accent};color:#0a0a0f;
+       text-decoration:none;font-size:13px;font-weight:700;padding:12px 28px;border-radius:100px;
+       letter-spacing:0.05em;text-transform:uppercase;">Open Feelivate</a>
+  </div>
+</body></html>"""
+
+
+@app.get("/checkin/email", response_class=HTMLResponse, tags=["streak"])
+async def checkin_from_email(token: str, db: DBSession = Depends(get_db)):
+    """One-tap "Done" from the daily email — no login.
+
+    The signed token (user + date + action, 48h) IS the authorisation. This
+    exists because the daily loop must be completable from the inbox: forcing a
+    login round-trip on the one action we most need people to take is exactly
+    where the loop breaks.
+    """
+    data = verify_email_action_token(token, "checkin")
+    if not data:
+        return HTMLResponse(
+            _email_checkin_page(
+                "This link has expired",
+                "One-tap links live for 48 hours. Open the app to log today instead — it takes two taps.",
+                accent="#f87171",
+            ),
+            status_code=400,
+        )
+
+    user_id, date_iso = data["sub"], data["d"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return HTMLResponse(
+            _email_checkin_page("Account not found", "This link doesn't match an active account.", accent="#f87171"),
+            status_code=404,
+        )
+
+    existing = (
+        db.query(DailyCheckin)
+        .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == date_iso)
+        .first()
+    )
+    if existing:
+        existing.status = "done"
+    else:
+        db.add(DailyCheckin(user_id=user_id, date=date_iso, status="done", note="one-tap from email"))
+    db.commit()
+
+    _apply_streak_shield(db, user, date_iso)
+    streak = _recalculate_streak(db, user_id, client_date=date_iso)
+    day_word = "day" if streak.current_streak == 1 else "days"
+    return HTMLResponse(
+        _email_checkin_page(
+            "Done. That's what counts.",
+            f"Today is logged — your streak is at <strong style='color:#f4f4f5;'>{streak.current_streak} {day_word}</strong>. See you tomorrow.",
+        )
+    )
 
 
 # ============================================================

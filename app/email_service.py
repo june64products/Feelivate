@@ -20,6 +20,9 @@ from loguru import logger
 resend.api_key = os.getenv("RESEND_API_KEY", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "onboarding@resend.dev")
 APP_URL = os.getenv("APP_URL", "https://emotion-time-travel-brlz.vercel.app")
+# The API's own public URL (Northflank) — one-tap check-in links point HERE,
+# not at the frontend. Left empty, emails simply ship without the button.
+API_BASE_URL = os.getenv("API_BASE_URL", "").rstrip("/")
 
 # Monday=0 ... Sunday=6
 DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -206,6 +209,8 @@ def send_daily_task_email(
     week_theme: str = "",
     week_label: str = "",    # e.g. "Jun 5 – Jun 11"
     user_timezone: str = "UTC",
+    checkin_url: str = "",   # signed one-tap "Done" link (empty = no button)
+    shield_note: str = "",   # set when a streak shield auto-covered yesterday
 ) -> bool:
     if not resend.api_key:
         logger.error("RESEND_API_KEY not set.")
@@ -222,6 +227,30 @@ def send_daily_task_email(
     how_to_html = _bullets_to_html(ai["how_to"], "#d4d4d8", "&#8594;", "#a855f7", "14px")
     avoid_html  = _bullets_to_html(ai["what_not_to_do"], "#fca5a5", "&#10007;", "#f87171", "13px")
     week_sub    = week_label if week_label else week_theme
+
+    # Streak shield banner — only when a shield silently covered yesterday.
+    shield_html = ""
+    if shield_note:
+        shield_html = f"""
+        <tr><td style="padding:14px 36px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.25);border-radius:12px;padding:14px 18px;">
+            <tr><td>
+              <p style="color:#60a5fa;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 6px;">&#128737;&#65039; Streak shield</p>
+              <p style="color:#bfdbfe;font-size:13px;margin:0;line-height:1.6;">{shield_note}</p>
+            </td></tr>
+          </table>
+        </td></tr>"""
+
+    # One-tap check-in — the email IS the daily loop, not just a reminder.
+    if checkin_url:
+        cta_html = f"""
+          <a href="{checkin_url}" style="display:inline-block;background:linear-gradient(135deg,#059669,#10b981);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">Mark today done &#10003;</a>
+          <p style="margin:12px 0 0;"><a href="{APP_URL}/app" style="color:#71717a;font-size:12px;text-decoration:none;">Open Feelivate &#8594;</a></p>"""
+    else:
+        cta_html = f"""
+          <a href="{APP_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">
+            Open Feelivate &#8594;
+          </a>"""
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -261,6 +290,7 @@ def send_daily_task_email(
           <p style="color:#a1a1aa;font-size:15px;margin:0 0 4px;">Good morning, <strong style="color:#e4e4e7;">{user_name}</strong> &#128075;</p>
           <p style="color:#52525b;font-size:13px;margin:0;">Your future self sent you today&#39;s mission. Let&#39;s make it count.</p>
         </td></tr>
+        {shield_html}
 
         <!-- Task Card -->
         <tr><td style="padding:18px 36px;">
@@ -307,9 +337,7 @@ def send_daily_task_email(
 
         <!-- CTA -->
         <tr><td style="padding:0 36px 32px;text-align:center;">
-          <a href="{APP_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">
-            Open Feelivate &#8594;
-          </a>
+          {cta_html}
         </td></tr>
 
         <!-- Footer -->
@@ -340,6 +368,119 @@ def send_daily_task_email(
         return True
     except Exception as e:
         logger.error(f"Daily email failed → {_mask_email(to_email)}: {type(e).__name__}: {e}")
+        return False
+
+
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  Recovery Email — "don't miss twice"                         ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+def send_recovery_email(
+    to_email: str,
+    user_name: str,
+    task_title: str,
+    commitment_why: str = "",
+    checkin_url: str = "",
+) -> bool:
+    """The email a missed day earns INSTEAD of the normal daily one.
+
+    Failure is where people quit, and it's the moment most apps stay silent or
+    guilt-trip. This does neither: state the science (one miss changes nothing),
+    point everything at today, and — the part no generic chatbot can do —
+    quote the user's own stored "why" back to them.
+    """
+    if not resend.api_key:
+        logger.error("RESEND_API_KEY not set.")
+        return False
+
+    name = (user_name or "there").split()[0]
+
+    why_html = ""
+    if (commitment_why or "").strip():
+        why_html = f"""
+        <tr><td style="padding:0 36px 16px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(99,102,241,0.04));border-left:3px solid #7c3aed;border-radius:0 12px 12px 0;padding:18px 22px;">
+            <tr><td>
+              <p style="color:#7c3aed;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin:0 0 10px;">Your own words, {name}</p>
+              <p style="color:#c4b5fd;font-size:14px;font-style:italic;line-height:1.8;margin:0;">&#8220;{commitment_why.strip()}&#8221;</p>
+            </td></tr>
+          </table>
+        </td></tr>"""
+
+    if checkin_url:
+        cta_html = f"""
+          <a href="{checkin_url}" style="display:inline-block;background:linear-gradient(135deg,#059669,#10b981);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">Done &#8212; I&#39;m back &#10003;</a>
+          <p style="margin:12px 0 0;"><a href="{APP_URL}/app" style="color:#71717a;font-size:12px;text-decoration:none;">What got in the way? Tell your mentor &#8594;</a></p>"""
+    else:
+        cta_html = f"""
+          <a href="{APP_URL}/app" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">I&#39;m back &#8212; open Feelivate &#8594;</a>"""
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:48px 20px;">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;">
+
+      <tr><td align="center" style="padding-bottom:20px;">{LOGO_BLOCK}</td></tr>
+
+      <tr><td style="background:#13131a;border:1px solid rgba(168,85,247,0.15);border-radius:20px;overflow:hidden;">
+
+        <tr><td style="background:linear-gradient(135deg,#1a0a2e 0%,#0f0f1a 100%);padding:28px 36px 22px;border-bottom:1px solid rgba(168,85,247,0.1);">
+          <p style="color:#7c3aed;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 10px;">Recovery &middot; don&#39;t miss twice</p>
+          <h1 style="color:#f4f4f5;font-size:26px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-0.5px;">One missed day changes nothing</h1>
+        </td></tr>
+
+        <tr><td style="padding:24px 36px 16px;">
+          <p style="color:#a1a1aa;font-size:15px;margin:0 0 12px;line-height:1.7;">Hey <strong style="color:#e4e4e7;">{name}</strong> — yesterday didn&#39;t happen. That&#39;s fine. Really.</p>
+          <p style="color:#a1a1aa;font-size:14px;margin:0 0 12px;line-height:1.7;">The research is clear: missing a <strong style="color:#e4e4e7;">single day does not break a habit</strong> (Lally et&nbsp;al., 2010). What starts a new, worse habit is missing <em>twice</em>. So there&#39;s exactly one day that matters now &#8212; today.</p>
+        </td></tr>
+
+        {why_html}
+
+        <tr><td style="padding:0 36px 16px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(109,40,217,0.12),rgba(99,102,241,0.06));border:1px solid rgba(168,85,247,0.2);border-radius:14px;overflow:hidden;">
+            <tr><td style="padding:6px 18px;background:rgba(168,85,247,0.12);">
+              <p style="color:#c084fc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin:0;">&#127919; Today&#39;s task &#8212; smaller counts too</p>
+            </td></tr>
+            <tr><td style="padding:16px 18px 18px;">
+              <p style="color:#f4f4f5;font-size:16px;font-weight:700;margin:0 0 6px;line-height:1.4;">{task_title}</p>
+              <p style="color:#a1a1aa;font-size:13px;margin:0;line-height:1.7;">Bad day? Do the 2-minute version. A small win keeps the chain alive &#8212; perfection was never the deal.</p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:8px 36px 32px;text-align:center;">
+          {cta_html}
+        </td></tr>
+
+        <tr><td style="border-top:1px solid #1f1f2e;padding:18px 36px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="color:#3f3f46;font-size:11px;">&#169; 2026 Feelivate &middot; Behavioral Architecture Engine</td>
+              <td align="right"><a href="{APP_URL}" style="color:#52525b;font-size:11px;text-decoration:none;">Unsubscribe</a></td>
+            </tr>
+          </table>
+        </td></tr>
+
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+    try:
+        resend.Emails.send({
+            "from": f"Feelivate <{FROM_EMAIL}>",
+            "to": [to_email],
+            "subject": "One missed day changes nothing — today's the one that matters",
+            "html": html,
+        })
+        logger.info(f"Recovery email sent → {_mask_email(to_email)}")
+        return True
+    except Exception as e:
+        logger.error(f"Recovery email failed → {_mask_email(to_email)}: {type(e).__name__}: {e}")
         return False
 
 
@@ -468,6 +609,8 @@ def get_today_task_for_user(user, db):
             "week_theme":       week_theme,
             "day_label":        DAY_LABELS[today_idx],
             "session_focus":    session.focus or "personal transformation",
+            # The user's stored "why" — quoted back in the recovery email.
+            "commitment_why":   getattr(session, "commitment_why", None) or "",
         }
     except Exception as e:
         logger.error(f"get_today_task_for_user failed for user {user.id}: {e}")
@@ -707,13 +850,36 @@ def run_evening_reminders():
                         .filter(UserStreak.user_id == user.id)
                         .first()
                     )
-                    # Nothing to save if there's no run going, and nothing to
-                    # warn about if today is already done — last_checkin would
-                    # be today in that case, not yesterday.
+                    # Nothing to save if there's no run going.
                     if not streak or (streak.current_streak or 0) < 1:
                         continue
+                    # Chain must be alive through yesterday — a "shielded"
+                    # yesterday counts (that user is exactly the at-risk one:
+                    # tonight decides whether they miss twice).
+                    from .models import DailyCheckin
                     yesterday = (now_local.date() - timedelta(days=1)).isoformat()
-                    if streak.last_checkin != yesterday:
+                    chain_yesterday = (
+                        db.query(DailyCheckin)
+                        .filter(
+                            DailyCheckin.user_id == user.id,
+                            DailyCheckin.date == yesterday,
+                            DailyCheckin.status.in_(("done", "shielded")),
+                        )
+                        .first()
+                    )
+                    if not chain_yesterday:
+                        continue
+                    # Today already done → nothing to warn about.
+                    done_today = (
+                        db.query(DailyCheckin)
+                        .filter(
+                            DailyCheckin.user_id == user.id,
+                            DailyCheckin.date == today,
+                            DailyCheckin.status == "done",
+                        )
+                        .first()
+                    )
+                    if done_today:
                         continue
                     if send_streak_reminder_email(
                         recipient, user.name, streak.current_streak
@@ -796,6 +962,53 @@ def run_daily_email_scheduler():
                 if not task_info:
                     continue  # week finished or no active plan
 
+                # ── Accountability layer ─────────────────────────────────────
+                # 1) Shield first: a miss that can be covered is covered
+                #    silently, and the daily email carries the shield note.
+                # 2) No shield + real miss → the RECOVERY email replaces the
+                #    normal one ("don't miss twice", their own why quoted back).
+                from .streaks import apply_streak_shield, yesterday_missed
+
+                shield_info = apply_streak_shield(db, user, today_date_str)
+                shield_note = ""
+                if shield_info:
+                    _dw = "day" if shield_info["streak"] == 1 else "days"
+                    _sl = shield_info["shields_left"]
+                    shield_note = (
+                        f"Yesterday slipped — your streak shield covered it, automatically. "
+                        f"{shield_info['streak']} {_dw} safe, {_sl} shield{'s' if _sl != 1 else ''} left in the bank"
+                        f"{' — a 7-day run earns you another' if _sl < 2 else ''}. "
+                        f"Today's the day that matters."
+                    )
+
+                checkin_url = ""
+                if API_BASE_URL:
+                    try:
+                        from .security import create_email_action_token
+                        _tok = create_email_action_token(user.id, "checkin", today_date_str)
+                        checkin_url = f"{API_BASE_URL}/checkin/email?token={_tok}"
+                    except Exception as _tok_err:
+                        logger.warning(f"[Scheduler] one-tap token failed (non-fatal): {_tok_err}")
+
+                if (
+                    not shield_info
+                    and yesterday_missed(db, user.id, today_date_str)
+                    and user.last_recovery_email_date != today_date_str
+                ):
+                    success = send_recovery_email(
+                        to_email=recipient,
+                        user_name=user.name or "there",
+                        task_title=task_info["task_title"],
+                        commitment_why=task_info.get("commitment_why", ""),
+                        checkin_url=checkin_url,
+                    )
+                    if success:
+                        user.last_recovery_email_date = today_date_str
+                        user.last_daily_email_date = today_date_str
+                        db.commit()
+                        sent_count += 1
+                    continue
+
                 success = send_daily_task_email(
                     to_email=recipient,
                     user_name=user.name or "there",
@@ -807,6 +1020,8 @@ def run_daily_email_scheduler():
                     session_focus=task_info["session_focus"],
                     week_theme=task_info["week_theme"],
                     user_timezone=tz_str,
+                    checkin_url=checkin_url,
+                    shield_note=shield_note,
                 )
 
                 if success:

@@ -33,6 +33,16 @@ class User(Base):
     last_journal_reminder_date = Column(String, nullable=True)  # 20:00 local — journal not logged
     last_streak_reminder_date  = Column(String, nullable=True)  # 21:00 local — streak about to break
 
+    # Automatic streak insurance — EARNED model (see streaks.py):
+    # every user starts with 1 shield banked (endowed progress), earns another
+    # at each 7-day run of their current streak, capped at 2 in the bank.
+    # Shields apply silently when a miss would break the chain.
+    shield_stock = Column(Integer, default=1)          # protected days banked (cap 2)
+    shield_run_milestone = Column(Integer, default=0)  # streak//7 last rewarded in the current run
+    # Recovery flow: local date the last "don't miss twice" email went out,
+    # so a missed day triggers at most one recovery email.
+    last_recovery_email_date = Column(String, nullable=True)
+
 class UserConsent(Base):
     """
     Append-only consent ledger.
@@ -89,6 +99,10 @@ class Session(Base):
     plan_start_date = Column(String, nullable=True)    # ISO date when first plan was approved
     is_completed = Column(Integer, default=0)          # 0 = active, 1 = user stopped the session
     session_report_json = Column(Text, nullable=True)  # final aggregated session report
+
+    # The user's own "why" — their commitment in their own words, captured once
+    # during goal discovery. Quoted back (sparingly) at slips and weak moments.
+    commitment_why = Column(Text, nullable=True)
     
     user = relationship("User", back_populates="sessions")
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")

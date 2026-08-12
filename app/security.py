@@ -73,3 +73,31 @@ def decode_access_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+def create_email_action_token(user_id: str, action: str, date_iso: str, expires_hours: int = 48) -> str:
+    """Short-lived signed token for one-tap actions from email (no login).
+
+    Scoped three ways: to one user, one action kind, and one calendar date —
+    so a leaked "mark Aug 12 done" link can never mark any other day, do any
+    other thing, or outlive its 48 hours. Deliberately NOT an access token:
+    it carries no session and works nowhere else in the API.
+    """
+    payload = {
+        "sub": user_id,
+        "act": action,
+        "d": date_iso,
+        "exp": datetime.utcnow() + timedelta(hours=expires_hours),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_email_action_token(token: str, action: str) -> Optional[dict]:
+    """Validate a one-tap email token; returns its payload or None."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("act") != action or not payload.get("sub") or not payload.get("d"):
+            return None
+        return payload
+    except JWTError:
+        return None

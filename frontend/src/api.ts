@@ -103,10 +103,19 @@ export interface BlockedNotice {
     category: string;
 }
 
+/** One field of the setup form the mentor sends for a brand-new goal. */
+export interface SetupQuestion {
+    id?: string;
+    label: string;
+    placeholder?: string;
+}
+
 export interface ChatResponse {
     reply: string;
     plan: any | null;
     session_id: string;
+    /** Discovery questions for a new goal — rendered as a popup form. */
+    questions?: SetupQuestion[] | null;
     /** Present only when the message triggered the crisis screen. */
     safety?: SafetyNotice;
     /** Present only when the request was refused outright. */
@@ -549,7 +558,10 @@ export interface StreakData {
     longest_streak: number;
     total_done: number;
     last_checkin: string | null;
-    days_this_week: { date: string; status: 'pending' | 'done' | 'skipped' }[];
+    // "shielded" = automatic streak insurance covered a missed day (see backend streaks.py)
+    days_this_week: { date: string; status: 'pending' | 'done' | 'skipped' | 'shielded' }[];
+    shield_applied?: boolean;
+    shields_left?: number;
 }
 
 export const getStreak = async (userId: string): Promise<StreakData> => {

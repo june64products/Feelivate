@@ -17,6 +17,7 @@ interface StreakBarProps {
 const FLAME_FROM = '#ffb24d';
 const FLAME_TO = '#ff5a36';
 const ACCENT = '#f59e0b';        // amber — done days / progress arc
+const SHIELD = '#60a5fa';        // blue — days saved by automatic streak insurance
 const TXT = '#ededf0';
 const TXT_MUTED = '#8a8a93';
 const TXT_DIM = '#5b5b63';
@@ -43,7 +44,7 @@ function useCountUp(target: number, duration = 750) {
 export default function StreakBar({ userId, isPlanActive, collapsed = false, demoMode = false }: StreakBarProps) {
     const [streak, setStreak] = useState<StreakData | null>(demoMode ? (DEMO_STREAK as StreakData) : null);
     const [checkinLoading, setCheckinLoading] = useState(false);
-    const [todayStatus, setTodayStatus] = useState<'pending' | 'done' | 'skipped'>('pending');
+    const [todayStatus, setTodayStatus] = useState<'pending' | 'done' | 'skipped' | 'shielded'>('pending');
     const [showCelebration, setShowCelebration] = useState(false);
 
     // Local date (matches the client_date the backend uses for streak boundaries) —
@@ -113,6 +114,11 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false, dem
     if (!isPlanActive) return null;
 
     const longestStreak = streak?.longest_streak ?? 0;
+    const totalDone = streak?.total_done ?? 0;
+    // Endowed progress — never greet anyone with a bare zero. A brand-new user
+    // is on "Day 1", a returning one has days already banked.
+    const isFresh = currentStreak === 0 && totalDone === 0;
+    const isResuming = currentStreak === 0 && totalDone > 0;
     const active = currentStreak > 0;
     const isDoneToday = todayStatus === 'done';
 
@@ -172,9 +178,9 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false, dem
                 </div>
                 <span style={{
                     fontSize: '11px', fontWeight: 800, lineHeight: 1,
-                    color: active ? TXT : TXT_DIM, fontFamily: "'Clash Display', 'Inter', sans-serif",
+                    color: (active || isFresh) ? TXT : TXT_DIM, fontFamily: "'Clash Display', 'Inter', sans-serif",
                 }}>
-                    {currentStreak}
+                    {isFresh ? 1 : isResuming ? totalDone : currentStreak}
                 </span>
             </div>
         );
@@ -220,8 +226,9 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false, dem
                         const isToday = d.date === today;
                         const fill =
                             d.status === 'done' ? ACCENT :
-                                isToday ? '#ffffff' :
-                                    'rgba(255,255,255,0.18)';
+                                d.status === 'shielded' ? SHIELD :
+                                    isToday ? '#ffffff' :
+                                        'rgba(255,255,255,0.18)';
                         return (
                             <g key={d.date}>
                                 {isToday && d.status !== 'done' && (
@@ -280,17 +287,17 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false, dem
                 </AnimatePresence>
             </div>
 
-            {/* Streak count (count-up) */}
+            {/* Streak count (count-up) — never a bare zero (endowed progress) */}
             <div style={{ textAlign: 'center', marginBottom: '2px' }}>
                 <span style={{
                     fontSize: '26px', fontWeight: 800, lineHeight: 1,
-                    color: active ? TXT : TXT_DIM,
+                    color: (active || isFresh || isResuming) ? TXT : TXT_DIM,
                     fontFamily: "'Clash Display', 'Inter', sans-serif", letterSpacing: '-0.02em',
                 }}>
-                    {animatedStreak}
+                    {isFresh ? 'Day 1' : isResuming ? totalDone : animatedStreak}
                 </span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: active ? TXT : TXT_DIM, marginLeft: '6px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
-                    Day Streak
+                <span style={{ fontSize: '13px', fontWeight: 700, color: (active || isFresh || isResuming) ? TXT : TXT_DIM, marginLeft: '6px', fontFamily: "'Clash Display', 'Inter', sans-serif" }}>
+                    {isFresh ? 'begins today' : isResuming ? 'days banked' : 'Day Streak'}
                 </span>
             </div>
 
@@ -298,10 +305,15 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false, dem
             <div style={{
                 textAlign: 'center', fontSize: '10px', fontWeight: 700,
                 letterSpacing: '0.12em', textTransform: 'uppercase',
-                color: isDoneToday ? ACCENT : TXT_MUTED, marginBottom: '12px',
+                color: isDoneToday ? ACCENT : streak?.shield_applied && !isDoneToday ? SHIELD : TXT_MUTED, marginBottom: '12px',
                 fontFamily: "'Satoshi', 'Inter', sans-serif",
             }}>
-                {isDoneToday ? 'Daily goal complete' : todayStatus === 'skipped' ? 'Skipped today' : 'Keep your streak alive'}
+                {isDoneToday ? 'Daily goal complete'
+                    : todayStatus === 'skipped' ? "Skipped — tomorrow's the one that counts"
+                        : streak?.shield_applied ? 'Shield covered yesterday — today matters'
+                            : isFresh ? 'Setup done — your first task is live'
+                                : isResuming ? 'Pick up right where you left off'
+                                    : 'Keep your streak alive'}
             </div>
 
             {/* Action / status */}
@@ -364,6 +376,11 @@ export default function StreakBar({ userId, isPlanActive, collapsed = false, dem
             }}>
                 <TrendingUp size={11} />
                 Best: {longestStreak} days
+                {typeof streak?.shields_left === 'number' && (
+                    <span style={{ color: SHIELD }} title="Streak shields — every 7-day run earns one (max 2)">
+                        · 🛡 {streak.shields_left} banked
+                    </span>
+                )}
             </div>
         </div>
     );

@@ -73,7 +73,7 @@ export const TOUR_STEPS: TourStep[] = [
         title: 'Review your plan',
         body:
             "Here's your plan. Tap “Tweak” to change anything — just tell Feelivate what you'd like different. " +
-            "Tap “Let's go” when you're happy with it. Note: once it's locked, the plan can't be changed, so review it first.",
+            "Tap “Let's go” when you're happy with it. Once you commit, this week's plan is set until the week wraps — next week adapts from there — so give it a good look first.",
     },
     {
         id: 'lock-plan',
@@ -81,8 +81,8 @@ export const TOUR_STEPS: TourStep[] = [
         mode: 'await',
         until: 'week-panel',
         placement: 'top',
-        title: 'Lock it in',
-        body: "When you're ready, tap “Let's go” to lock this week's plan.",
+        title: 'Commit to it',
+        body: "When you're ready, tap “Let's go” to commit to this week's plan.",
     },
     {
         id: 'week-panel',
@@ -90,7 +90,7 @@ export const TOUR_STEPS: TourStep[] = [
         mode: 'read',
         placement: 'left',
         title: 'Your week is saved here',
-        body: "Your plan is now locked for the week. Tap this “Week” button any time to see the plan you approved.",
+        body: "Your week is set — commitment made. Tap this “Week” button any time to see the plan you approved.",
     },
     {
         id: 'alerts-button',

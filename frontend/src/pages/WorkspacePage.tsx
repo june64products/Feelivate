@@ -18,9 +18,10 @@ import {
     getEmailNotificationStatus,
     updateNotificationTime,
 } from '../api';
-import type { BlockedNotice } from '../api';
+import type { BlockedNotice, SetupQuestion } from '../api';
 import SessionSidebar from '../components/workspace/SessionSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
+import SetupQuestionsModal from '../components/chat/SetupQuestionsModal';
 import RadiantPromptInput from '../components/chat/RadiantPromptInput';
 import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
 import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
@@ -136,6 +137,9 @@ export default function WorkspacePage() {
     const [showPlanInfo, setShowPlanInfo] = useState(false);
     // Set when the backend refuses a request outright (see app/guardrail.py).
     const [blockedNotice, setBlockedNotice] = useState<BlockedNotice | null>(null);
+    // Discovery questions for a brand-new goal — rendered as a popup form
+    // instead of a one-at-a-time chat interrogation.
+    const [setupQuestions, setSetupQuestions] = useState<SetupQuestion[] | null>(null);
     // Reported by ConsentGate. The walkthrough waits until this is 'clear'.
     const [consentStatus, setConsentStatus] = useState<ConsentStatus>('checking');
     const [preferredTime, setPreferredTime] = useState("08:00");
@@ -336,6 +340,12 @@ export default function WorkspacePage() {
             // Raise it as a dialog too — the refusal has to be impossible to
             // miss, and a card in the thread can scroll past unread.
             if (res.blocked) setBlockedNotice(res.blocked);
+
+            // New-goal discovery: the mentor sent its setup questions as one
+            // form — open the popup instead of letting it interrogate in chat.
+            if (res.questions && res.questions.length > 0 && !res.plan) {
+                setSetupQuestions(res.questions);
+            }
 
             if (res.plan) {
                 setActivePlan(res.plan);
@@ -1524,6 +1534,22 @@ export default function WorkspacePage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* New-goal setup form — all discovery questions in one popup;
+                answers go back as a single message and the plan builds
+                immediately. Dismiss = answer in chat instead; skip = the
+                mentor makes smart assumptions and drafts anyway. */}
+            {setupQuestions && !demoMode && (
+                <SetupQuestionsModal
+                    questions={setupQuestions}
+                    onSubmit={(text) => { setSetupQuestions(null); handleSendMessage(text); }}
+                    onSkip={() => {
+                        setSetupQuestions(null);
+                        handleSendMessage("I skipped the setup form — make smart assumptions and build me a draft plan now. I'll tweak it after.");
+                    }}
+                    onDismiss={() => setSetupQuestions(null)}
+                />
+            )}
 
             {/* Request refused before the mentor ran (app/guardrail.py). Stated
                 once, plainly, with no detail about which rule was hit — that

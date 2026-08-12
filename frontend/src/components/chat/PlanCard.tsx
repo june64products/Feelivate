@@ -338,9 +338,9 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
 
         {showConfirm && !isStale && (
             <ConfirmDialog
-                title="Lock this week's plan?"
-                message={`Once you lock it, this week's plan can't be changed until the week ends. ${windowLine}`}
-                confirmLabel="Yes, lock it"
+                title="Commit to this week?"
+                message={`Once you commit, this week's plan is set until the week wraps — no mid-week renegotiation, that's what makes it work. Next week always adapts to how this one goes. ${windowLine}`}
+                confirmLabel="I'm committing to this"
                 cancelLabel="Not yet"
                 onConfirm={() => { setShowConfirm(false); handleApprove(); }}
                 onCancel={() => setShowConfirm(false)}

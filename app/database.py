@@ -154,6 +154,10 @@ def init_db():
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_daily_email_date VARCHAR;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_journal_reminder_date VARCHAR;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_reminder_date VARCHAR;",
+                # ── NEW: automatic streak insurance (earned model) + recovery flow ──
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS shield_stock INTEGER DEFAULT 1;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS shield_run_milestone INTEGER DEFAULT 0;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_recovery_email_date VARCHAR;",
                 # ── sessions ──
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS title VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;",
@@ -169,6 +173,8 @@ def init_db():
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS plan_start_date VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS is_completed INTEGER DEFAULT 0;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_report_json TEXT;",
+                # ── NEW: the user's own "why" (voice commitment) ──
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS commitment_why TEXT;",
                 # ── NEW: session-scoped journals & reports ──
                 "ALTER TABLE voice_journals ADD COLUMN IF NOT EXISTS session_id VARCHAR REFERENCES sessions(id);",
                 "ALTER TABLE weekly_reports ADD COLUMN IF NOT EXISTS session_id VARCHAR REFERENCES sessions(id);",
@@ -199,6 +205,11 @@ def init_db():
                 "ALTER TABLE users ADD COLUMN preferred_notification_time VARCHAR DEFAULT '08:00';",
                 "ALTER TABLE users ADD COLUMN preferred_notification_timezone VARCHAR DEFAULT 'UTC';",
                 "ALTER TABLE users ADD COLUMN last_daily_email_date VARCHAR;",
+                "ALTER TABLE users ADD COLUMN last_journal_reminder_date VARCHAR;",
+                "ALTER TABLE users ADD COLUMN last_streak_reminder_date VARCHAR;",
+                "ALTER TABLE users ADD COLUMN shield_stock INTEGER DEFAULT 1;",
+                "ALTER TABLE users ADD COLUMN shield_run_milestone INTEGER DEFAULT 0;",
+                "ALTER TABLE users ADD COLUMN last_recovery_email_date VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN title VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN updated_at TIMESTAMP;",
                 "ALTER TABLE sessions ADD COLUMN history TEXT;",
@@ -212,6 +223,7 @@ def init_db():
                 "ALTER TABLE sessions ADD COLUMN plan_start_date VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN is_completed INTEGER DEFAULT 0;",
                 "ALTER TABLE sessions ADD COLUMN session_report_json TEXT;",
+                "ALTER TABLE sessions ADD COLUMN commitment_why TEXT;",
                 # NEW: session-scoped journals & reports
                 "ALTER TABLE voice_journals ADD COLUMN session_id VARCHAR REFERENCES sessions(id);",
                 "ALTER TABLE weekly_reports ADD COLUMN session_id VARCHAR REFERENCES sessions(id);",
