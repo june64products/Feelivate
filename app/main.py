@@ -877,6 +877,18 @@ async def chat(
                 " plan, tell them to start a new session."
             )
 
+        # First message of a new session = a bare goal, no setup done. Force the setup
+        # form — the model otherwise ignores the softer prompt rule, one-shots a plan and
+        # fabricates the missing details (times, level).
+        if len(db_messages) == 0 and not message.strip().lower().startswith("setup answers"):
+            system_context = (system_context or "") + (
+                "\n\n⚠️ FIRST TURN — SETUP REQUIRED. The user just gave their goal and has done NO"
+                " setup. Reply with ONLY the questions form: a short reply + a \"questions\" array"
+                " (3-4 questions reworded for their goal, WHY last), and \"plan\": null. Do NOT output"
+                " a plan this turn — you do not know their schedule or level, and inventing them"
+                " (e.g. a 7:00 AM you were never told) is the exact failure being prevented."
+            )
+
         # 4. Load plan history for multi-week context
         plan_history = []
         if session_rec.result_json:
@@ -1280,6 +1292,25 @@ async def chat(
         except Exception as e:
             logger.warning(f"Failed to save chat memory (non-fatal): {e}")
         
+        # DETERMINISTIC FIRST-TURN GATE — the model is not allowed to build a plan on the
+        # very first message. If it ignored the instruction and one-shot a plan (fabricating
+        # times/level), discard it, undo any session mutation, and force the setup form.
+        if len(db_messages) == 0 and not message.strip().lower().startswith("setup answers") and plan_data:
+            logger.info("First-turn one-shot plan blocked — forcing setup questions.")
+            plan_data = None
+            session_rec.week_plan_json = None
+            session_rec.phase = "chat"
+            session_rec.current_week = 0
+            reply_text = "Love it — 30 seconds of setup and I'll build a plan that actually fits YOU (not a generic one)."
+            assistant_msg.content = reply_text
+            if not isinstance(parsed.get("questions"), list) or not parsed.get("questions"):
+                parsed["questions"] = [
+                    {"id": "goal", "label": "What exactly do you want to achieve?", "placeholder": "be as specific as you can"},
+                    {"id": "time", "label": "How much time can you give, and when?", "placeholder": "e.g. 30 min, weekday mornings"},
+                    {"id": "level", "label": "Where are you now, and what usually gets in the way?", "placeholder": "e.g. total beginner — I lose steam by Wednesday"},
+                    {"id": "why", "label": "Why does this actually matter to you? The real reason.", "placeholder": "your own words — this stays between us"},
+                ]
+
         # Setup-questions form (rendered by the client as a popup). Only a
         # NEW-goal discovery turn may carry one, never alongside a plan, and a
         # malformed structure is dropped rather than trusted.
