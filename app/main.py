@@ -858,7 +858,25 @@ async def chat(
             system_context = (
                 f"CURRENT WEEK {session_rec.current_week} PLAN ({phase_label}):\n{_readable}"
             )
-        
+
+        # Persist the user's core goal + measurable targets across EVERY week, so a long
+        # conversation never drops what they first asked for (e.g. "protein 150g/day").
+        if session_rec.focus:
+            system_context = (system_context or "") + (
+                f"\n\nUSER'S CORE GOAL (stated at the start — honour it in EVERY plan): \"{session_rec.focus}\""
+                "\nPreserve every specific, measurable target they gave (daily protein grams, weight,"
+                " hours, reps, pages) in every week's plan — never silently drop a stated requirement."
+            )
+
+        # A completed / stopped session is a plain conversation — planning is over.
+        if session_rec.is_completed or session_rec.phase == "completed":
+            system_context = (system_context or "") + (
+                "\n\n⛔ THIS SESSION IS COMPLETED. The user finished and closed this journey."
+                " Behave as a plain conversational assistant — answer, reflect, encourage. Do NOT"
+                " build, offer, or output any plan; always keep \"plan\": null. If they want a new"
+                " plan, tell them to start a new session."
+            )
+
         # 4. Load plan history for multi-week context
         plan_history = []
         if session_rec.result_json:
@@ -1193,6 +1211,10 @@ async def chat(
         db.add(assistant_msg)
         
         # 8. If plan was generated, update session — with lock guards
+        # A completed / stopped session must never accept or revive a plan — it is chat-only now.
+        if plan_data and (session_rec.is_completed or session_rec.phase == "completed"):
+            logger.info("Completed session — discarding generated plan (chat-only mode).")
+            plan_data = None
         if plan_data and isinstance(plan_data, dict):
             new_week_num = plan_data.get("week_number", 1)
             cur_wk = session_rec.current_week or 0
