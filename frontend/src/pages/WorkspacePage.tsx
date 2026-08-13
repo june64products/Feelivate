@@ -1543,10 +1543,6 @@ export default function WorkspacePage() {
                 <SetupQuestionsModal
                     questions={setupQuestions}
                     onSubmit={(text) => { setSetupQuestions(null); handleSendMessage(text); }}
-                    onSkip={() => {
-                        setSetupQuestions(null);
-                        handleSendMessage("I skipped the setup form — make smart assumptions and build me a draft plan now. I'll tweak it after.");
-                    }}
                     onDismiss={() => setSetupQuestions(null)}
                 />
             )}

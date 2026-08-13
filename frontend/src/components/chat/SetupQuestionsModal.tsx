@@ -11,8 +11,6 @@ interface SetupQuestionsModalProps {
     questions: SetupQuestion[];
     /** All answers collected → sent back to the mentor as one message. */
     onSubmit: (message: string) => void;
-    /** User chose "skip" — mentor makes smart assumptions and drafts anyway. */
-    onSkip: () => void;
     /** Closed without answering (overlay/Esc) — nothing is sent. */
     onDismiss: () => void;
 }
@@ -22,17 +20,17 @@ interface SetupQuestionsModalProps {
  * one-at-a-time chat interrogation. Answers go back as a single message and
  * the plan builds immediately — no dead-end turns, no twenty-questions.
  */
-export default function SetupQuestionsModal({ questions, onSubmit, onSkip, onDismiss }: SetupQuestionsModalProps) {
+export default function SetupQuestionsModal({ questions, onSubmit, onDismiss }: SetupQuestionsModalProps) {
     const [answers, setAnswers] = useState<string[]>(() => questions.map(() => ''));
     const { isMobile } = useWindowSize();
 
-    const answeredCount = answers.filter(a => a.trim()).length;
+    // The first (up to) 3 questions are the essentials (goal / time / level) the plan
+    // needs; the WHY (last) is optional. No skip — a real plan needs real answers.
+    const essentialCount = Math.min(3, questions.length);
+    const canSubmit = answers.slice(0, essentialCount).every(a => a.trim());
 
     const handleSubmit = () => {
-        if (answeredCount === 0) {
-            onSkip();
-            return;
-        }
+        if (!canSubmit) return;
         const lines = questions
             .map((q, i) => ({ q, a: answers[i].trim() }))
             .filter(({ a }) => a)
@@ -113,36 +111,29 @@ export default function SetupQuestionsModal({ questions, onSubmit, onSkip, onDis
                     </div>
                 ))}
 
-                <div style={{
-                    display: 'flex', flexDirection: isMobile ? 'column' : 'row',
-                    gap: '10px', alignItems: 'center', justifyContent: 'space-between', marginTop: '22px',
-                }}>
-                    <button
-                        onClick={onSkip}
-                        style={{
-                            padding: '10px 16px', borderRadius: '100px',
-                            border: 'none', background: 'transparent',
-                            color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600,
-                            cursor: 'pointer', fontFamily: satoshi,
-                        }}
-                    >
-                        Skip — let my mentor guess
-                    </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '22px' }}>
                     <motion.button
-                        whileTap={{ scale: 0.97 }}
+                        whileTap={{ scale: canSubmit ? 0.97 : 1 }}
                         onClick={handleSubmit}
+                        disabled={!canSubmit}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '12px 24px', borderRadius: '100px', border: 'none',
+                            padding: '13px 24px', borderRadius: '100px', border: 'none',
                             background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
-                            fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                            fontSize: '13px', fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed',
+                            opacity: canSubmit ? 1 : 0.5,
                             fontFamily: satoshi, letterSpacing: '0.04em', textTransform: 'uppercase',
-                            width: isMobile ? '100%' : 'auto', justifyContent: 'center',
+                            width: '100%', justifyContent: 'center',
                         }}
                     >
                         Build my plan
                         <ArrowRight size={14} />
                     </motion.button>
+                    {!canSubmit && (
+                        <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', textAlign: 'center', margin: 0, fontFamily: satoshi }}>
+                            Answer the first few so your plan actually fits you — no guessing.
+                        </p>
+                    )}
                 </div>
             </motion.div>
         </div>
