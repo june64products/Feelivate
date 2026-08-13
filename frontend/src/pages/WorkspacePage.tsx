@@ -1543,7 +1543,6 @@ export default function WorkspacePage() {
                 <SetupQuestionsModal
                     questions={setupQuestions}
                     onSubmit={(text) => { setSetupQuestions(null); handleSendMessage(text); }}
-                    onDismiss={() => setSetupQuestions(null)}
                 />
             )}
 

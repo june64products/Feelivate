@@ -11,8 +11,6 @@ interface SetupQuestionsModalProps {
     questions: SetupQuestion[];
     /** All answers collected → sent back to the mentor as one message. */
     onSubmit: (message: string) => void;
-    /** Closed without answering (overlay/Esc) — nothing is sent. */
-    onDismiss: () => void;
 }
 
 /**
@@ -20,7 +18,7 @@ interface SetupQuestionsModalProps {
  * one-at-a-time chat interrogation. Answers go back as a single message and
  * the plan builds immediately — no dead-end turns, no twenty-questions.
  */
-export default function SetupQuestionsModal({ questions, onSubmit, onDismiss }: SetupQuestionsModalProps) {
+export default function SetupQuestionsModal({ questions, onSubmit }: SetupQuestionsModalProps) {
     const [answers, setAnswers] = useState<string[]>(() => questions.map(() => ''));
     const { isMobile } = useWindowSize();
 
@@ -40,7 +38,6 @@ export default function SetupQuestionsModal({ questions, onSubmit, onDismiss }: 
 
     return (
         <div
-            onClick={onDismiss}
             style={{
                 position: 'fixed', inset: 0,
                 background: 'var(--modal-overlay)', backdropFilter: 'blur(8px)',

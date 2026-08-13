@@ -877,16 +877,19 @@ async def chat(
                 " plan, tell them to start a new session."
             )
 
-        # First message of a new session = a bare goal, no setup done. Force the setup
-        # form — the model otherwise ignores the softer prompt rule, one-shots a plan and
-        # fabricates the missing details (times, level).
-        if len(db_messages) == 0 and not message.strip().lower().startswith("setup answers"):
+        # SETUP GATE: no plan may be built until the user has actually completed the setup
+        # form ("Setup answers: ..."). This covers RE-TYPED goals, not just the first message —
+        # otherwise the model one-shots a generic plan on the 2nd/3rd try and fabricates times.
+        _is_setup_answers = message.strip().lower().startswith("setup answers")
+        _prior_setup = any("setup answers" in (m.content or "").lower() for m in db_messages)
+        _needs_setup = (not _is_setup_answers) and (not _prior_setup) and (not session_rec.week_plan_json)
+        if _needs_setup:
             system_context = (system_context or "") + (
-                "\n\n⚠️ FIRST TURN — SETUP REQUIRED. The user just gave their goal and has done NO"
-                " setup. Reply with ONLY the questions form: a short reply + a \"questions\" array"
-                " (3-4 questions reworded for their goal, WHY last), and \"plan\": null. Do NOT output"
-                " a plan this turn — you do not know their schedule or level, and inventing them"
-                " (e.g. a 7:00 AM you were never told) is the exact failure being prevented."
+                "\n\n⚠️ SETUP REQUIRED. The user has NOT completed the setup form yet. Reply with ONLY"
+                " the questions form: a short reply + a \"questions\" array (3-4 questions reworded for"
+                " their goal, WHY last), and \"plan\": null. Do NOT output a plan this turn under any"
+                " circumstance — you don't know their schedule or level, and inventing them (e.g. a"
+                " 7:00 AM you were never told) is the exact failure being prevented."
             )
 
         # 4. Load plan history for multi-week context
@@ -1295,8 +1298,8 @@ async def chat(
         # DETERMINISTIC FIRST-TURN GATE — the model is not allowed to build a plan on the
         # very first message. If it ignored the instruction and one-shot a plan (fabricating
         # times/level), discard it, undo any session mutation, and force the setup form.
-        if len(db_messages) == 0 and not message.strip().lower().startswith("setup answers") and plan_data:
-            logger.info("First-turn one-shot plan blocked — forcing setup questions.")
+        if _needs_setup and plan_data:
+            logger.info("Plan blocked before setup completed — forcing setup questions.")
             plan_data = None
             session_rec.week_plan_json = None
             session_rec.phase = "chat"
