@@ -503,27 +503,16 @@ export default function LoginPage() {
             position: 'relative',
             overflow: 'hidden',
           }}>
-            {/* The product playing itself, in the app's own components rather
-                than a recording — accurate, theme-aware, and nothing to
-                download. Skipped on mobile, where this panel is display:none. */}
-            {!isMobile && (
-              <div style={{
-                position: 'absolute', inset: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '56px 48px 200px',
-              }}>
-                <div style={{ width: '100%', maxWidth: '400px', opacity: 0.92 }}>
-                  <ProductDemo compact />
-                </div>
-              </div>
-            )}
+            {/* Ten seconds of the product, filling the panel edge to edge.
+                Skipped on mobile, where this panel is display:none anyway. */}
+            {!isMobile && <ProductDemo fill />}
 
             {/* Legibility scrim — the line sits bottom-left, so the darkness
                 is weighted there rather than flattening the whole frame. */}
             <div style={{
               position: 'absolute', inset: 0,
               background:
-                'linear-gradient(to top, var(--bg-secondary) 4%, rgba(0,0,0,0) 46%)',
+                'linear-gradient(to top, var(--bg-secondary) 0%, rgba(0,0,0,0) 34%)',
               pointerEvents: 'none',
             }} />
 
