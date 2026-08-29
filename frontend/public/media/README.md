@@ -1,23 +1,35 @@
 # Marketing media
 
-Files dropped here are served from the site root, so `public/media/demo.mp4`
-is reachable at `/media/demo.mp4`.
+Served from the site root: `public/media/hero.jpg` → `/media/hero.jpg`.
 
-## Hero (src/pages/HomePage.tsx)
+| File | Where it appears | Notes |
+| --- | --- | --- |
+| `hero.jpg` | Landing hero, 16:9 | Also the poster if a hero video is added |
+| `shot-1.jpg` | Landing, "Tell it the goal" | |
+| `shot-2.jpg` | Landing, "Today's task lands…" | |
+| `shot-3.jpg` | Landing, "What you did versus what you said" | |
+| `signup-loop.mp4` | Sign-up page right panel, 9:16 | Autoplays muted, desktop only |
 
-| Constant             | Suggested file            | Notes                                       |
-| -------------------- | ------------------------- | ------------------------------------------- |
-| `HERO_VIDEO_SRC`     | `demo.mp4`                | 16:9, H.264, keep it under ~8 MB            |
-| `HERO_VIDEO_POSTER`  | `demo-poster.jpg`         | First frame — shown before playback         |
-| `HERO_PHOTOS[].src`  | `shot-1.jpg` … `shot-3.jpg` | 16:10, ~1200px wide                       |
+All five are generated cinematic imagery, not screenshots. That is deliberate:
+an invented interface on the marketing page is a promise the product has to keep
+the moment someone signs up.
 
-Until a constant is filled in, the slot renders a labelled placeholder at the
-final size, so adding the real asset never shifts the layout.
+## Swapping in the real product
 
-## Testimonial avatars (src/components/site/Testimonials.tsx)
+The slots take a real asset without any layout change:
 
-`avatar: '/media/avatars/<file>.jpg'`, square, ~200px. Optional — entries
-without an avatar fall back to initials.
+- **Three feature images** — take three screenshots (chat with a plan card, the
+  daily task email, a weekly report) and point `HERO_PHOTOS[].src` at them in
+  `src/pages/HomePage.tsx`. The captions already carry the explanation.
+- **Hero video** — record a demo, drop it here, set `HERO_VIDEO_SRC`. The hero
+  swaps from still to video in the same 16:9 box, with `hero.jpg` as the poster.
 
-Only add a testimonial once a real user said it and agreed to it being
-published. See the comment block at the top of `Testimonials.tsx`.
+## Regenerating
+
+Keep the look consistent: pre-dawn blue hour, deep crushed blacks, a single warm
+terracotta light source, 35mm grain, shallow depth of field. Every prompt must
+say **no text, no logos, no legible screen content** — otherwise the model
+invents an interface.
+
+JPEGs are `sips`-encoded at quality 80–82 (hero 1600px wide, shots 1100px).
+The five files total ~1.5 MB; keep it there.

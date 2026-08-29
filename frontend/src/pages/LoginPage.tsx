@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X, ArrowUpRight } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X } from 'lucide-react';
 import { login, signup, getGoogleLoginUrl, getConsentCatalogue, type ConsentItem } from '../api';
 import { startOnboarding } from '../lib/onboarding';
 import BrandNav from '../components/site/BrandNav';
@@ -18,13 +18,6 @@ const GoogleIcon = () => (
     <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335" />
   </svg>
 );
-
-// ─── Feature Cards ────────────────────────────────────────────────────────────
-const features = [
-  { title: 'No More Bullshit', desc: 'Tell us what you want. Our AI strips away the noise and extracts the exact daily micro-actions needed.' },
-  { title: 'Zero Decision Fatigue', desc: 'Forget vague to-do lists. You get a hyper-precise schedule: what to do, when, and exactly how.' },
-  { title: 'The Lock-In Protocol', desc: "Once your week is set, it's locked. You can't edit it to make it easier. You do the work, or you don't." },
-];
 
 // ─── Full Feature List (Features modal) ───────────────────────────────────────
 const platformFeatures = [
@@ -88,61 +81,14 @@ const labelStyle: React.CSSProperties = {
   fontFamily: "'Satoshi', 'Inter', system-ui, sans-serif",
 };
 
-// ─── Echo Stack Component ────────────────────────────────────────────────────
-const EchoStack = ({ text, fontSize = '11vw' }: { text: string; fontSize?: string }) => {
-  const layers = [
-    { opacity: 0.15, offset: -0.16 },
-    { opacity: 0.25, offset: -0.12 },
-    { opacity: 0.35, offset: -0.08 },
-    { opacity: 0.45, offset: -0.04 },
-  ];
-
-  return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
-      {layers.map((layer, i) => (
-        <span
-          key={i}
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: `${layer.offset}em`,
-            color: 'var(--text-primary)',
-            opacity: layer.opacity,
-            fontSize,
-            fontFamily: "'Clash Display', 'Inter', sans-serif",
-            fontWeight: 700,
-            lineHeight: 0.9,
-            letterSpacing: '-0.05em',
-            pointerEvents: 'none',
-            userSelect: 'none',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {text}
-        </span>
-      ))}
-      <span
-        style={{
-          position: 'relative',
-          color: 'var(--text-primary)',
-          fontSize,
-          fontFamily: "'Clash Display', 'Inter', sans-serif",
-          fontWeight: 700,
-          lineHeight: 0.9,
-          letterSpacing: '-0.05em',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {text}
-      </span>
-    </div>
-  );
-};
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { isMobile } = useWindowSize();
+  // Read once — someone who has asked the OS for less motion should not have a
+  // looping video start under the sign-up form.
+  const prefersReducedMotion = typeof window !== 'undefined'
+    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -552,152 +498,77 @@ export default function LoginPage() {
         {!isMobile && (
           <div className="brand-panel-swiss" style={{
             flex: '0 0 52%',
-            background: 'var(--bg-secondary)',
+            background: '#07070a',
             borderLeft: '1px solid var(--border-subtle)',
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '60px 64px',
+            alignItems: 'flex-end',
+            padding: '64px',
             position: 'relative',
             overflow: 'hidden',
           }}>
+            {/* Ambient loop. Muted + playsInline so it autoplays on iOS, and
+                purely decorative — the sign-up form never depends on it.
 
-          {/* Vertical hairline accent */}
-          <div style={{
-            position: 'absolute', top: '0', left: '50%',
-            width: '1px', height: '80px',
-            background: 'var(--border-medium)',
-          }} />
-
-          {/* Echo Hero Text */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.77, 0, 0.175, 1] }}
-            style={{ marginBottom: '48px', textAlign: 'center' }}
-          >
-            <EchoStack text="EXECUTE" fontSize="clamp(60px, 9vw, 140px)" />
-          </motion.div>
-
-          {/* Tagline */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' }}
-            style={{ textAlign: 'center', maxWidth: '460px', marginBottom: '48px' }}
-          >
-            <h2 style={{
-              fontSize: 'clamp(22px, 2.8vw, 36px)', fontWeight: 700,
-              lineHeight: 1.1, letterSpacing: '-0.05em',
-              color: 'var(--text-primary)', marginBottom: '16px',
-              fontFamily: clashDisplay,
-            }}>
-              Stop lying to yourself
-              <br />
-              <span style={{
-                fontStyle: 'italic',
-                fontFamily: "'Georgia', 'Times New Roman', serif",
-                fontWeight: 400,
-                color: 'var(--text-secondary)',
-              }}>
-                about
-              </span>
-              {' '}tomorrow.
-            </h2>
-            <p style={{
-              fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.7,
-              fontFamily: satoshi, fontWeight: 500,
-            }}>
-              Feelivate is a ruthless AI mentor that breaks your biggest goals into non-negotiable 7-day sprints. No fluff. No escape. Just execution.
-            </p>
-          </motion.div>
-
-          {/* Feature Cards — 3-column grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '20px',
-            width: '100%',
-            maxWidth: '540px',
-            marginBottom: '40px',
-          }}>
-            {features.map((f, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 + 0.3, duration: 0.5, ease: 'easeOut' }}
+                Not rendered at all on mobile: the panel is display:none there,
+                but a hidden <video> still pulls the file down, and making
+                someone on mobile data fund a background they cannot see is not
+                a trade worth making. Reduced-motion holds it on the first
+                frame rather than removing the image. */}
+            {!isMobile && (
+              <video
+                src="/media/signup-loop.mp4"
+                autoPlay={!prefersReducedMotion}
+                muted
+                loop
+                playsInline
+                preload="auto"
+                aria-hidden="true"
                 style={{
-                  padding: '24px 18px',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: '2px',
-                  background: 'transparent',
-                  transition: 'background 250ms ease, border-color 250ms ease',
-                  cursor: 'default',
+                  position: 'absolute', inset: 0,
+                  width: '100%', height: '100%',
+                  objectFit: 'cover',
+                  // Motion is the point, but not at the cost of the words on top.
+                  opacity: 0.55,
                 }}
-                onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
-                  e.currentTarget.style.background = 'var(--card-bg)';
-                  e.currentTarget.style.borderColor = 'var(--border-focus)';
-                }}
-                onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.borderColor = 'var(--border-medium)';
-                }}
-              >
-                {/* Geometric icon container */}
-                <div style={{
-                  width: '40px', height: '40px',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: '2px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: '16px',
-                  transition: 'transform 300ms ease',
-                }}>
-                  <ArrowUpRight size={16} style={{ color: 'var(--text-primary)' }} />
-                </div>
-                <h3 style={{
-                  fontSize: '14px', fontWeight: 700,
-                  color: 'var(--text-primary)', marginBottom: '8px',
-                  letterSpacing: '-0.02em',
-                  fontFamily: clashDisplay,
-                }}>{f.title}</h3>
-                <p style={{
-                  fontSize: '12px', color: 'var(--text-secondary)',
-                  lineHeight: 1.55, fontFamily: satoshi,
-                  fontWeight: 500,
-                }}>{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
+              />
+            )}
 
-          {/* Philosophy Quote */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7, duration: 0.5 }}
-            style={{
-              textAlign: 'center',
-              maxWidth: '400px',
-              padding: '20px 0',
-              borderTop: '1px solid var(--border-subtle)',
-            }}
-          >
-            <p style={{
-              fontSize: '16px', color: 'var(--text-muted)', lineHeight: 1.6,
-              fontStyle: 'italic', fontFamily: "'Georgia', 'Times New Roman', serif",
-              marginBottom: '8px',
-            }}>
-              "Your future self is watching. Don't disappoint them."
-            </p>
-            <p style={{
-              fontSize: '10px', color: 'var(--text-primary)', fontWeight: 700,
-              letterSpacing: '0.15em', fontFamily: satoshi,
-              textTransform: 'uppercase',
-            }}>
-            </p>
-          </motion.div>
-        </div>
+            {/* Legibility scrim — the line sits bottom-left, so the darkness
+                is weighted there rather than flattening the whole frame. */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background:
+                'linear-gradient(to top, rgba(4,4,7,0.94) 0%, rgba(4,4,7,0.72) 28%, rgba(4,4,7,0.18) 62%, rgba(4,4,7,0.35) 100%)',
+              pointerEvents: 'none',
+            }} />
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.2, ease: [0.77, 0, 0.175, 1] }}
+              style={{ position: 'relative', zIndex: 1, maxWidth: '520px' }}
+            >
+              <h2 style={{
+                fontSize: 'clamp(30px, 4vw, 52px)', fontWeight: 700,
+                lineHeight: 1.05, letterSpacing: '-0.05em',
+                color: '#fff', margin: 0,
+                fontFamily: clashDisplay,
+                textShadow: '0 2px 40px rgba(0,0,0,0.6)',
+              }}>
+                Stop lying to yourself
+                <br />
+                <span style={{
+                  fontStyle: 'italic',
+                  fontFamily: "'Georgia', 'Times New Roman', serif",
+                  fontWeight: 400,
+                  color: 'rgba(255,255,255,0.72)',
+                }}>
+                  about
+                </span>
+                {' '}tomorrow.
+              </h2>
+            </motion.div>
+          </div>
         )}
       </div>
 
