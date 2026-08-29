@@ -6,43 +6,21 @@ import Seo, { SITE_URL } from '../components/site/Seo';
 import BrandNav from '../components/site/BrandNav';
 import SiteFooter from '../components/site/SiteFooter';
 import Testimonials from '../components/site/Testimonials';
-import { VideoSlot, PhotoSlot } from '../components/site/MediaSlots';
+import ProductDemo from '../components/site/ProductDemo';
+import { ChatFrame, EmailFrame, ReportFrame } from '../components/site/ProductFrames';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 const clash = "'Clash Display', 'Inter', system-ui, sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
 
 // ─── Hero media ───────────────────────────────────────────────────────────────
-// The hero shows a still until a real product demo exists. Record one, drop it
-// in frontend/public/media/, set HERO_VIDEO_SRC, and the hero swaps to video in
-// the same 16:9 box — the layout does not move.
-const HERO_VIDEO_SRC: string | undefined = undefined;    // e.g. '/media/demo.mp4'
-const HERO_VIDEO_POSTER: string | undefined = '/media/hero.jpg';
-const HERO_IMAGE = '/media/hero.jpg';
-
-// Deliberately atmosphere rather than screenshots. These stand for the moment
-// each feature belongs to; the caption does the explaining. If you want the
-// product itself on the page, take three real screenshots and swap the src —
-// what must never go here is an invented interface that isn't in the app.
-const HERO_PHOTOS: { src?: string; label: string; alt: string; caption: string }[] = [
-  {
-    src: '/media/shot-1.jpg',
-    label: 'Photo 1 · Chat',
-    alt: 'Someone working late at a laptop, lit only by the screen',
-    caption: 'Tell it the goal. It asks what it needs, then builds the week.',
-  },
-  {
-    src: '/media/shot-2.jpg',
-    label: 'Photo 2 · Daily email',
-    alt: 'A hand reaching for a phone on a bedside table at dawn',
-    caption: "Today's task lands before you're properly awake.",
-  },
-  {
-    src: '/media/shot-3.jpg',
-    label: 'Photo 3 · Weekly report',
-    alt: 'An open notebook of ticks and crossings-out beside morning coffee',
-    caption: 'At week end, what you did versus what you said. No flattery.',
-  },
+// The product shows itself. Each panel is the app's own markup, so it is sharp
+// at any density, follows the visitor's theme, and can never drift into
+// advertising an interface that isn't there.
+const HERO_PANELS = [
+  { Frame: ChatFrame, caption: 'Tell it the goal. It asks what it needs, then builds the week — and says why.' },
+  { Frame: EmailFrame, caption: "Today's exact task lands at your hour, in your timezone." },
+  { Frame: ReportFrame, caption: 'At week end: what you did versus what you said. Next week answers it.' },
 ];
 
 const STEPS = [
@@ -200,29 +178,16 @@ export default function HomePage() {
           transition={{ duration: 0.6, delay: 0.3 }}
           style={{ maxWidth: '1140px', margin: isMobile ? '38px auto 0' : '56px auto 0' }}
         >
-          {HERO_VIDEO_SRC ? (
-            <VideoSlot
-              src={HERO_VIDEO_SRC}
-              poster={HERO_VIDEO_POSTER}
-              label="See a week get built in 60 seconds"
-            />
-          ) : (
-            <PhotoSlot
-              src={HERO_IMAGE}
-              alt="Pre-dawn bedroom, someone sitting on the edge of the bed lacing running shoes"
-              label="Hero"
-              ratio="16 / 9"
-            />
-          )}
+          <ProductDemo />
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '14px', marginTop: '14px' }}>
-            {HERO_PHOTOS.map((p) => (
-              <div key={p.label}>
-                <PhotoSlot src={p.src} alt={p.alt} label={p.label} ratio="16 / 10" />
+            {HERO_PANELS.map(({ Frame, caption }) => (
+              <div key={caption}>
+                <Frame />
                 <p style={{
                   fontSize: '12.5px', color: 'var(--text-muted)', fontFamily: satoshi,
                   fontWeight: 500, lineHeight: 1.5, margin: '10px 2px 0',
                 }}>
-                  {p.caption}
+                  {caption}
                 </p>
               </div>
             ))}

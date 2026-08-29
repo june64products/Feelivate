@@ -8,6 +8,7 @@ import BrandNav from '../components/site/BrandNav';
 import { ConsentCheckbox } from '../components/legal/ConsentControls';
 import { allRequiredGranted } from '../lib/consent';
 import { useWindowSize } from '../hooks/useWindowSize';
+import ProductDemo from '../components/site/ProductDemo';
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
 const GoogleIcon = () => (
@@ -85,10 +86,6 @@ const labelStyle: React.CSSProperties = {
 export default function LoginPage() {
   const navigate = useNavigate();
   const { isMobile } = useWindowSize();
-  // Read once — someone who has asked the OS for less motion should not have a
-  // looping video start under the sign-up form.
-  const prefersReducedMotion = typeof window !== 'undefined'
-    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -498,7 +495,7 @@ export default function LoginPage() {
         {!isMobile && (
           <div className="brand-panel-swiss" style={{
             flex: '0 0 52%',
-            background: '#07070a',
+            background: 'var(--bg-secondary)',
             borderLeft: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'flex-end',
@@ -506,31 +503,19 @@ export default function LoginPage() {
             position: 'relative',
             overflow: 'hidden',
           }}>
-            {/* Ambient loop. Muted + playsInline so it autoplays on iOS, and
-                purely decorative — the sign-up form never depends on it.
-
-                Not rendered at all on mobile: the panel is display:none there,
-                but a hidden <video> still pulls the file down, and making
-                someone on mobile data fund a background they cannot see is not
-                a trade worth making. Reduced-motion holds it on the first
-                frame rather than removing the image. */}
+            {/* The product playing itself, in the app's own components rather
+                than a recording — accurate, theme-aware, and nothing to
+                download. Skipped on mobile, where this panel is display:none. */}
             {!isMobile && (
-              <video
-                src="/media/signup-loop.mp4"
-                autoPlay={!prefersReducedMotion}
-                muted
-                loop
-                playsInline
-                preload="auto"
-                aria-hidden="true"
-                style={{
-                  position: 'absolute', inset: 0,
-                  width: '100%', height: '100%',
-                  objectFit: 'cover',
-                  // Motion is the point, but not at the cost of the words on top.
-                  opacity: 0.55,
-                }}
-              />
+              <div style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '56px 48px 200px',
+              }}>
+                <div style={{ width: '100%', maxWidth: '400px', opacity: 0.92 }}>
+                  <ProductDemo compact />
+                </div>
+              </div>
             )}
 
             {/* Legibility scrim — the line sits bottom-left, so the darkness
@@ -538,7 +523,7 @@ export default function LoginPage() {
             <div style={{
               position: 'absolute', inset: 0,
               background:
-                'linear-gradient(to top, rgba(4,4,7,0.94) 0%, rgba(4,4,7,0.72) 28%, rgba(4,4,7,0.18) 62%, rgba(4,4,7,0.35) 100%)',
+                'linear-gradient(to top, var(--bg-secondary) 4%, rgba(0,0,0,0) 46%)',
               pointerEvents: 'none',
             }} />
 
@@ -551,9 +536,9 @@ export default function LoginPage() {
               <h2 style={{
                 fontSize: 'clamp(30px, 4vw, 52px)', fontWeight: 700,
                 lineHeight: 1.05, letterSpacing: '-0.05em',
-                color: '#fff', margin: 0,
+                color: 'var(--text-primary)', margin: 0,
                 fontFamily: clashDisplay,
-                textShadow: '0 2px 40px rgba(0,0,0,0.6)',
+
               }}>
                 Stop lying to yourself
                 <br />
@@ -561,7 +546,7 @@ export default function LoginPage() {
                   fontStyle: 'italic',
                   fontFamily: "'Georgia', 'Times New Roman', serif",
                   fontWeight: 400,
-                  color: 'rgba(255,255,255,0.72)',
+                  color: 'var(--text-secondary)',
                 }}>
                   about
                 </span>
