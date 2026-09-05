@@ -8,7 +8,7 @@ import BrandNav from '../components/site/BrandNav';
 import { ConsentCheckbox } from '../components/legal/ConsentControls';
 import { allRequiredGranted } from '../lib/consent';
 import { useWindowSize } from '../hooks/useWindowSize';
-import ProductDemo from '../components/site/ProductDemo';
+import BenefitsReel from '../components/site/BenefitsReel';
 
 // ─── Google SVG Icon ─────────────────────────────────────────────────────────
 const GoogleIcon = () => (
@@ -498,36 +498,24 @@ export default function LoginPage() {
             background: 'var(--bg-secondary)',
             borderLeft: '1px solid var(--border-subtle)',
             display: 'flex',
-            alignItems: 'flex-end',
-            padding: '64px',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            gap: 'clamp(22px, 3vh, 36px)',
+            padding: 'clamp(36px, 5vw, 64px)',
             position: 'relative',
             overflow: 'hidden',
           }}>
-            {/* Ten seconds of the product, filling the panel edge to edge.
-                Skipped on mobile, where this panel is display:none anyway. */}
-            {!isMobile && <ProductDemo fill />}
-
-            {/* Legibility scrim — the line sits bottom-left, so the darkness
-                is weighted there rather than flattening the whole frame. */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background:
-                'linear-gradient(to top, var(--bg-secondary) 0%, rgba(0,0,0,0) 34%)',
-              pointerEvents: 'none',
-            }} />
-
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.2, ease: [0.77, 0, 0.175, 1] }}
-              style={{ position: 'relative', zIndex: 1, maxWidth: '520px' }}
+              style={{ maxWidth: '520px', flexShrink: 0 }}
             >
               <h2 style={{
-                fontSize: 'clamp(30px, 4vw, 52px)', fontWeight: 700,
+                fontSize: 'clamp(26px, 3.2vw, 44px)', fontWeight: 700,
                 lineHeight: 1.05, letterSpacing: '-0.05em',
                 color: 'var(--text-primary)', margin: 0,
                 fontFamily: clashDisplay,
-
               }}>
                 Stop lying to yourself
                 <br />
@@ -541,7 +529,27 @@ export default function LoginPage() {
                 </span>
                 {' '}tomorrow.
               </h2>
+              <p style={{
+                margin: '12px 0 0', fontSize: '14px', lineHeight: 1.55,
+                color: 'var(--text-secondary)', fontFamily: satoshi, fontWeight: 500, maxWidth: '440px',
+              }}>
+                Here is what you actually get once you're in.
+              </p>
             </motion.div>
+
+            {/* What you get, in motion. A fixed-ratio box rather than a fill, so it
+                never stretches into the wrong shape or hides under the headline.
+                Skipped on mobile, where this panel is display:none anyway. */}
+            {!isMobile && (
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.9, delay: 0.35, ease: [0.77, 0, 0.175, 1] }}
+                style={{ width: '100%', maxWidth: '600px' }}
+              >
+                <BenefitsReel />
+              </motion.div>
+            )}
           </div>
         )}
       </div>

@@ -6,7 +6,7 @@ import Seo, { SITE_URL } from '../components/site/Seo';
 import BrandNav from '../components/site/BrandNav';
 import SiteFooter from '../components/site/SiteFooter';
 import Testimonials from '../components/site/Testimonials';
-import ProductDemo from '../components/site/ProductDemo';
+import AppWalkthrough from '../components/site/AppWalkthrough';
 import { ChatFrame, EmailFrame, ReportFrame } from '../components/site/ProductFrames';
 import { useWindowSize } from '../hooks/useWindowSize';
 
@@ -171,15 +171,19 @@ export default function HomePage() {
           </motion.div>
         </div>
 
-        {/* Hero media — demo clip + supporting screenshots */}
+        {/* Hero media — the product in use, then three still frames of what it hands you.
+            The walkthrough is capped at 800px so it reads as a window into the app,
+            not a wall: at full row width it was taller than a laptop viewport. */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
           style={{ maxWidth: '1140px', margin: isMobile ? '38px auto 0' : '56px auto 0' }}
         >
-          <ProductDemo />
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '14px', marginTop: '14px' }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <AppWalkthrough />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '14px', marginTop: isMobile ? '18px' : '28px' }}>
             {HERO_PANELS.map(({ Frame, caption }) => (
               <div key={caption}>
                 <Frame />
