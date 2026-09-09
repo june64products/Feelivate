@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Target, ChevronDown, Plus, Flame, Shield, Bell, Calendar,
+    ChevronDown, Plus, Flame, Shield, Bell, Calendar,
     Archive, Check, StopCircle,
 } from 'lucide-react';
 import { getUserSessions, type SessionPreview, type StreakData } from '../../api';
@@ -97,7 +97,17 @@ export default function MissionTopBar({
                         cursor: 'pointer', fontFamily: satoshi, maxWidth: '260px',
                     }}
                 >
-                    <Target size={15} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                    <span style={{
+                        width: '22px', height: '22px', borderRadius: '7px', flexShrink: 0,
+                        background: 'var(--accent-primary)', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                    }}>
+                        <img
+                            src="/logo_2_backup.png"
+                            alt=""
+                            style={{ width: '15px', height: '15px', objectFit: 'contain', filter: 'var(--logo-filter)' }}
+                        />
+                    </span>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {goalLabel}{isPlanActive && currentWeek > 0 ? ` · Week ${currentWeek}` : ''}
                     </span>

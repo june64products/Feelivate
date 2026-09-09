@@ -769,9 +769,16 @@ export default function WorkspacePage() {
                     )}
 
                     {/* ─── MISSION CONTENT ─── */}
+                    {/* Approved plan wins over everything: a session mid-week must
+                        land on Today even if its chat history is empty. */}
                     <div style={{ flex: 1, overflowY: 'auto', position: 'relative', zIndex: 5 }}>
-                        <AnimatePresence mode="wait">
-                            {isEmptyState ? (
+                        {/* Plain conditional (no AnimatePresence): the stages swap
+                            rapidly while a session loads, and mode="wait" was
+                            dropping the entering stage's animation — leaving the
+                            whole screen stuck at opacity 0. Entry animations on
+                            each stage still play on mount. */}
+                        <>
+                            {isEmptyState && !uiIsPlanApproved ? (
                                 /* No goal yet — one question, not a chat thread */
                                 <GoalStart
                                     key="goal-start"
@@ -785,7 +792,6 @@ export default function WorkspacePage() {
                                     key="commit-stage"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0, y: -16 }}
                                     style={{ padding: '18px 20px 60px' }}
                                 >
                                     <CommitStage
@@ -802,7 +808,6 @@ export default function WorkspacePage() {
                                     key="today-stage"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0, y: -16 }}
                                     style={{
                                         maxWidth: '820px', margin: '0 auto',
                                         padding: '14px 20px 60px', display: 'flex',
@@ -852,18 +857,20 @@ export default function WorkspacePage() {
                                                 display: 'flex', alignItems: 'center', gap: '14px',
                                                 padding: '16px 18px', borderRadius: '18px',
                                                 border: '1px solid var(--border-subtle)',
-                                                background: 'linear-gradient(135deg, rgba(168,85,247,0.08), transparent 60%), var(--card-bg)',
+                                                background: 'var(--card-bg)',
                                                 cursor: 'pointer', textAlign: 'left', fontFamily: missionSatoshi,
                                                 boxShadow: 'var(--shadow-sm)',
+                                                transition: 'border-color 0.15s',
                                             }}
+                                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-medium)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
                                         >
                                             <span style={{
                                                 width: '42px', height: '42px', borderRadius: '13px', flexShrink: 0,
-                                                background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                                                background: 'var(--btn-primary-bg)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                boxShadow: '0 4px 14px rgba(124,58,237,0.35)',
                                             }}>
-                                                <Mic size={19} color="#fff" />
+                                                <Mic size={19} style={{ color: 'var(--btn-primary-text)' }} />
                                             </span>
                                             <span style={{ flex: 1, minWidth: 0 }}>
                                                 <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -882,7 +889,7 @@ export default function WorkspacePage() {
                                                         transition={(micLocked || uiTodayEmotion) ? {} : { duration: 1.2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.13 }}
                                                         style={{
                                                             width: '3px', borderRadius: '100px',
-                                                            background: (micLocked || uiTodayEmotion) ? 'var(--border-medium)' : '#a855f7',
+                                                            background: (micLocked || uiTodayEmotion) ? 'var(--border-medium)' : 'var(--accent-primary)',
                                                             height: h,
                                                         }}
                                                     />
@@ -899,27 +906,21 @@ export default function WorkspacePage() {
                                                 display: 'flex', alignItems: 'center', gap: '14px',
                                                 padding: '16px 18px', borderRadius: '18px',
                                                 border: '1px solid var(--border-subtle)',
-                                                background: 'linear-gradient(135deg, rgba(99,102,241,0.08), transparent 60%), var(--card-bg)',
+                                                background: 'var(--card-bg)',
                                                 cursor: 'pointer', textAlign: 'left', fontFamily: missionSatoshi,
                                                 boxShadow: 'var(--shadow-sm)',
+                                                transition: 'border-color 0.15s',
                                             }}
+                                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-medium)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
                                         >
                                             <span style={{
                                                 width: '42px', height: '42px', borderRadius: '13px', flexShrink: 0,
-                                                background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                                                background: 'var(--glass-hover)',
+                                                border: '1px solid var(--border-medium)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
-                                                position: 'relative',
                                             }}>
-                                                <MessageCircle size={19} color="#fff" />
-                                                <motion.span
-                                                    animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-                                                    transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
-                                                    style={{
-                                                        position: 'absolute', inset: 0, borderRadius: '13px',
-                                                        border: '1.5px solid #6366f1',
-                                                    }}
-                                                />
+                                                <MessageCircle size={19} style={{ color: 'var(--accent-primary)' }} />
                                             </span>
                                             <span style={{ flex: 1, minWidth: 0 }}>
                                                 <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -940,7 +941,6 @@ export default function WorkspacePage() {
                                     key="discovery-stage"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
                                     style={{
                                         flex: 1, display: 'flex', flexDirection: 'column',
                                         alignItems: 'center', justifyContent: 'center',
@@ -977,7 +977,7 @@ export default function WorkspacePage() {
                                     </button>
                                 </motion.div>
                             )}
-                        </AnimatePresence>
+                        </>
                     </div>
 
                     {/* Mentor drawer — the chat, summonable from anywhere */}
