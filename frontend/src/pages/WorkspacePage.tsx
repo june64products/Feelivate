@@ -170,7 +170,11 @@ export default function WorkspacePage() {
     })();
 
     // Which mission stage fills the screen (demo mirrors respected).
-    const uiMentorOpen = demoMode ? (demoView === 'chat' && demoMessages.length > 0) : mentorOpen;
+    // Demo drawer rule: open while the scripted conversation is being built,
+    // closed once the scene locks the plan — the Today surface takes the stage.
+    const uiMentorOpen = demoMode
+        ? (demoView === 'chat' && demoMessages.length > 0 && !demoPlanApproved)
+        : mentorOpen;
     const isPlanningStage = !uiIsPlanApproved && !!uiActivePlan && !isEmptyState;
 
     // Mic locked state — check localStorage for today's recording (PER SESSION, so a

@@ -188,32 +188,42 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
     }, [active, goToStep]);
 
     // Track the spotlight target rect + measure the card height.
+    // A per-frame rAF loop (not a 120ms interval): the mission surface animates
+    // its cards in with framer-motion, and a slow poll made the ring visibly
+    // trail the element. Reading one getBoundingClientRect per frame is cheap;
+    // state only updates when the rect actually moved, so idle frames are free.
     useEffect(() => {
         if (!active) return;
         const step = DEMO_STEPS[stepIndex];
         if (!step) return;
         const target = effectiveTarget(step.target, isMobile);
+        let raf = 0;
         const tick = () => {
-            if (target === 'center') setRect(null);
-            else {
+            if (target === 'center') {
+                setRect(null);
+            } else {
                 const el = findVisible(target);
-                setRect(el ? el.getBoundingClientRect() : null);
+                if (!el) {
+                    setRect(prev => (prev === null ? prev : null));
+                } else {
+                    const r = el.getBoundingClientRect();
+                    setRect(prev =>
+                        prev &&
+                            Math.abs(prev.left - r.left) < 0.5 && Math.abs(prev.top - r.top) < 0.5 &&
+                            Math.abs(prev.width - r.width) < 0.5 && Math.abs(prev.height - r.height) < 0.5
+                            ? prev : r
+                    );
+                }
             }
             const card = cardRef.current;
             if (card) {
                 const h = card.offsetHeight;
                 if (h && Math.abs(h - cardHRef.current) > 2) { cardHRef.current = h; setCardH(h); }
             }
+            raf = requestAnimationFrame(tick);
         };
-        tick();
-        const id = window.setInterval(tick, 120);
-        window.addEventListener('resize', tick);
-        window.addEventListener('scroll', tick, true);
-        return () => {
-            window.clearInterval(id);
-            window.removeEventListener('resize', tick);
-            window.removeEventListener('scroll', tick, true);
-        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
     }, [active, stepIndex, isMobile]);
 
     // Keyboard: Enter / → advance, ← back, Esc exit — never while typing in a field.

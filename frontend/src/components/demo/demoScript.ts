@@ -1,11 +1,15 @@
 /**
- * Self-playing guided demo — the declarative script.
+ * Self-playing guided demo — the declarative script (mission layout).
  *
  * Each step is a SCENE: a complete description of the app state at that point
  * (which messages are shown, whether the plan is locked, which view/tab is open,
  * whether the week drawer is open, etc.). Because every step declares the FULL
  * state, the controller can jump to any step — forward OR backward — just by
  * applying that scene. To add a step, add an entry here; no controller changes.
+ *
+ * Drawer rule: in demo mode the mentor drawer is open while a conversation
+ * exists and the plan is NOT yet approved; approving closes it and the Today
+ * mission surface takes over (see WorkspacePage's uiMentorOpen).
  *
  * Nothing here calls the backend; DEMO_PLAN / DEMO_STREAK / DEMO_EMOTION /
  * DEMO_ARCHIVE are canned data so the user's real account is never touched.
@@ -15,7 +19,8 @@ import type { Placement } from './spotlight';
 export type DemoTarget =
     | 'chat-input' | 'mic-button' | 'plan-actions' | 'lets-go' | 'tweak'
     | 'week-pill' | 'week-panel' | 'week-drawer' | 'alerts-button'
-    | 'logo-toggle' | 'streak' | 'journey-nav' | 'journey-mic' | 'archive-tab'
+    | 'today-card' | 'done-button' | 'goal-pill' | 'streak'
+    | 'journey-nav' | 'journey-mic' | 'archive-tab'
     | 'emotion-orb' | 'profile-menu' | 'center';
 
 export interface DemoSceneMessage {
@@ -32,7 +37,7 @@ export interface DemoScene {
     typeLast?: boolean;
     planApproved?: boolean;
     view?: 'chat' | 'journey';
-    sidebar?: boolean;          // sidebar expanded
+    sidebar?: boolean;          // legacy no-op (the mission layout has no sidebar)
     emotion?: boolean;          // show the mood orb
     selectedWeek?: number | null; // open the week drawer for this week
     journeyTab?: 'overview' | 'archive';
@@ -77,6 +82,7 @@ export const DEMO_STREAK = {
     total_done: 23,
     last_checkin: null,
     days_this_week: [],
+    shields_left: 1,
 };
 
 export const DEMO_EMOTION = {
@@ -125,8 +131,8 @@ export const DEMO_STEPS: DemoStep[] = [
         target: 'chat-input',
         placement: 'top',
         showEnterHint: true,
-        title: 'Meet your AI mentor',
-        body: "Welcome to Feelivate! I'll give you a quick, hands-free tour. Use Next / Back (or Enter) to move around, and Skip anytime.",
+        title: 'Welcome to Feelivate',
+        body: "Quick hands-free tour of your new home base. Use Next / Back (or Enter) to move around, and Skip anytime.",
         scene: {},
     },
     {
@@ -134,25 +140,25 @@ export const DEMO_STEPS: DemoStep[] = [
         target: 'mic-button',
         placement: 'top',
         title: 'Type or just talk',
-        body: "This is where it all starts. Type what's on your mind — or tap the mic and say it out loud. Feelivate turns your voice into text.",
+        body: "Everything starts with one question: what do you want to change? Type it — or tap the mic and say it out loud.",
         scene: {},
     },
     {
         id: 'first-plan',
         target: 'chat-input',
         placement: 'top',
-        title: 'Tell Feelivate your goal',
-        body: "Watch — I'll send a goal and Feelivate builds a personalized week plan in seconds. No setup, no forms.",
+        title: 'Your mentor slides in',
+        body: "Watch — I'll send a goal. Your mentor opens in a side panel, and builds a personalized week plan in seconds.",
         scene: { messages: CHAT, typeLast: true },
-        scrollChat: 'top',     // keep the conversation (your message + reply) in view
-        mobileCard: 'bottom',  // card at the bottom so it never covers your message
+        scrollChat: 'top',
+        mobileCard: 'bottom',
     },
     {
         id: 'week-numbering',
         target: 'plan-actions',
         placement: 'top',
         title: 'This is your Week 1 plan',
-        body: "Day by day, built around your goal. Heads-up for your FIRST plan only: if you start it on a Thursday–Sunday, that short stretch becomes Week 0 (W0); start it Mon–Wed and it's Week 1 (W1).",
+        body: "Day by day, built around your goal. Heads-up for your FIRST plan only: start it Thu–Sun and that short stretch becomes Week 0 (W0); start Mon–Wed and it's Week 1 (W1).",
         scene: { messages: CHAT },
         scrollChat: 'bottom',
     },
@@ -161,7 +167,7 @@ export const DEMO_STEPS: DemoStep[] = [
         target: 'tweak',
         placement: 'top',
         title: 'Want changes? Just ask',
-        body: 'Not quite right? Tap “Tweak” and tell Feelivate what to change — more rest, easier start, anything. It rebuilds the plan for you.',
+        body: 'Not quite right? Tap “Tweak” and tell your mentor what to change — more rest, easier start, anything. It rebuilds the plan for you.',
         scene: { messages: CHAT },
         scrollChat: 'bottom',
     },
@@ -169,17 +175,52 @@ export const DEMO_STEPS: DemoStep[] = [
         id: 'lock-plan',
         target: 'lets-go',
         placement: 'top',
-        title: 'Lock it in',
-        body: "When you're happy, tap “Let's go” to commit. Once locked, the week stays fixed so you can focus on doing it.",
+        title: 'Commit to the week',
+        body: "Happy with it? Tap “Let's go” to commit. The week is set until Sunday — no mid-week renegotiation. That's what makes it work.",
         scene: { messages: CHAT },
         scrollChat: 'bottom',
+    },
+    {
+        id: 'today-home',
+        target: 'today-card',
+        placement: 'bottom',
+        title: 'Committed — this is home now',
+        body: "Every day you land here: ONE task, front and center, in your own plan's words. No scrolling, no thinking — just today.",
+        scene: { messages: CHAT, planApproved: true },
+        mobileCard: 'bottom',
+    },
+    {
+        id: 'done-tap',
+        target: 'done-button',
+        placement: 'bottom',
+        title: 'One tap when it’s done',
+        body: 'Did the thing? Tap Done — your streak grows, the path lights up, and tomorrow’s task is queued. Skipping honestly counts too.',
+        scene: { messages: CHAT, planApproved: true },
+        mobileCard: 'bottom',
+    },
+    {
+        id: 'streak',
+        target: 'streak',
+        placement: 'bottom',
+        title: 'Your streak & shields',
+        body: 'The flame is your streak; the shield protects it automatically when a day slips — you start with one, and every 7-day run earns another. Tap it anytime for the full picture.',
+        scene: { messages: CHAT, planApproved: true },
+    },
+    {
+        id: 'path',
+        target: 'week-panel',
+        placement: 'top',
+        title: 'Your week as a path',
+        body: 'Done days glow, shielded days show the shield, today pulses, and the gift at the end is your week report. Watch it fill up as you show up.',
+        scene: { messages: CHAT, planApproved: true },
+        mobileCard: 'top',
     },
     {
         id: 'week-button',
         target: 'week-pill',
         placement: 'left',
-        title: 'Your weeks live here',
-        body: 'Locked! Your plan is saved as a week button (W1). New weeks stack up next to it. Let me tap W1 to open it…',
+        title: 'Your locked weeks live here',
+        body: 'Each committed week is saved as a button (W1, W2…). Let me open W1 so you can see the full plan inside…',
         scene: { messages: CHAT, planApproved: true },
     },
     {
@@ -187,48 +228,33 @@ export const DEMO_STEPS: DemoStep[] = [
         target: 'week-drawer',
         placement: 'left',
         title: "What's inside W1",
-        body: 'Tapping a week opens its full plan — every day of your locked week, right here. This is what W1 holds.',
+        body: 'The complete locked week — every day, every task. This is the commitment you made, kept visible.',
         scene: { messages: CHAT, planApproved: true, selectedWeek: 1 },
+    },
+    {
+        id: 'voice-tile',
+        target: 'journey-nav',
+        placement: 'top',
+        title: 'Your evening ritual',
+        body: '60 seconds before bed: how did today actually go? Your mentor reads the mood behind your words and shapes next week around it.',
+        scene: { messages: CHAT, planApproved: true },
+        mobileCard: 'top',
     },
     {
         id: 'alerts',
         target: 'alerts-button',
         placement: 'bottom',
         title: 'Daily reminders',
-        body: "Turn on Alerts to get that day's task emailed to you every morning — so nothing slips through.",
+        body: "Turn on Alerts to get that day's task emailed to you every morning — with a one-tap Done button right in the email.",
         scene: { messages: CHAT, planApproved: true },
-    },
-    {
-        id: 'sidebar',
-        target: 'logo-toggle',
-        placement: 'right',
-        title: 'Your sidebar',
-        body: 'Tap the Feelivate logo any time to open or close your sidebar. Your chats, journey, and streak all live here.',
-        scene: { messages: CHAT, planApproved: true, sidebar: true },
-    },
-    {
-        id: 'streak',
-        target: 'streak',
-        placement: 'right',
-        title: 'Build your streak',
-        body: 'Show up every day to grow your streak — a daily voice entry counts too. “Best” is your longest run ever. Try to beat it!',
-        scene: { messages: CHAT, planApproved: true, sidebar: true },
-    },
-    {
-        id: 'journey-nav',
-        target: 'journey-nav',
-        placement: 'right',
-        title: 'Open My Journey',
-        body: 'Your private space to record each day. Tap “My Journey” to open it — let me show you.',
-        scene: { messages: CHAT, planApproved: true, sidebar: true },
     },
     {
         id: 'journey-mic',
         target: 'journey-mic',
         placement: 'bottom',
         title: 'Record your day by voice',
-        body: 'Tap the mic and just talk about your day. Feelivate listens and turns it into your weekly report — the more you share, the better.',
-        scene: { messages: CHAT, planApproved: true, view: 'journey', sidebar: false },
+        body: 'Tap the mic and just talk. Feelivate listens and turns your week of entries into an honest weekly report — the more you share, the sharper it gets.',
+        scene: { messages: CHAT, planApproved: true, view: 'journey' },
     },
     {
         id: 'archive',
@@ -259,7 +285,7 @@ export const DEMO_STEPS: DemoStep[] = [
         target: 'center',
         placement: 'center',
         title: "You're all set! 🎉",
-        body: 'Set a goal, lock a plan, show up daily, and watch your progress grow. Now it\'s your turn — what will you work on first?',
+        body: 'Say your goal, commit to a week, show up daily — and let the streak, shields, and reports carry you. What will you change first?',
         scene: { messages: CHAT, planApproved: true, view: 'chat', emotion: true },
     },
 ];

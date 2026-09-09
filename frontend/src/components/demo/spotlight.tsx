@@ -116,7 +116,8 @@ export function SpotlightOverlay({ rect, preferredPlacement = 'auto', cardRef, c
                 border: `2px solid ${ACCENT}`, borderRadius: '12px',
                 boxShadow: '0 0 0 4px rgba(217,119,87,0.25)', pointerEvents: 'none',
                 animation: 'demo-pulse 1.6s ease-in-out infinite',
-                transition: 'left 0.18s ease, top 0.18s ease, width 0.18s ease, height 0.18s ease',
+                // No position transition: the rect is tracked per-frame (rAF), so a
+                // CSS ease only adds trailing latency behind the moving element.
             }} />
         );
     } else {
