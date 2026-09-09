@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PanelLeft, AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock, Archive, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock, ShieldAlert } from 'lucide-react';
 import {
     chatWithMentor,
     approvePlan,
@@ -29,13 +29,11 @@ import GoalStart from '../components/mission/GoalStart';
 import { CommitStage, CeremonyOverlay } from '../components/mission/CommitStage';
 import { useStreak } from '../hooks/useStreak';
 import { satoshi as missionSatoshi } from '../components/mission/missionTheme';
-import RadiantPromptInput from '../components/chat/RadiantPromptInput';
 import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
 import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
 import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
-import ProfileMenu from '../components/workspace/ProfileMenu';
 import ConsentGate, { type ConsentStatus } from '../components/legal/ConsentGate';
 import GuidedDemo, { type DemoHandles } from '../components/demo/GuidedDemo';
 import { DEMO_PLAN, DEMO_EMOTION } from '../components/demo/demoScript';
@@ -56,8 +54,13 @@ export default function WorkspacePage() {
     const [isPlanApproved, setIsPlanApproved] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    // Setter-only now: the demo handles still drive it, but no sidebar reads it.
+    const [, setIsSidebarCollapsed] = useState(false);
     const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
+    // ── Mission layout state (declared early — derived values below read these) ──
+    const [mentorOpen, setMentorOpen] = useState(false);
+    const [showCeremony, setShowCeremony] = useState(false);
+    const [commitmentWhy, setCommitmentWhy] = useState<string | null>(null);
 
     // Auto-collapse sidebar on mobile
     useEffect(() => {
@@ -143,7 +146,6 @@ export default function WorkspacePage() {
     // Which mission stage fills the screen (demo mirrors respected).
     const uiMentorOpen = demoMode ? (demoView === 'chat' && demoMessages.length > 0) : mentorOpen;
     const isPlanningStage = !uiIsPlanApproved && !!uiActivePlan && !isEmptyState;
-    const isDiscoveryStage = !isEmptyState && !uiIsPlanApproved && !uiActivePlan;
 
     // Mic locked state — check localStorage for today's recording (PER SESSION, so a
     // recording in one session doesn't lock the mic in another fresh session).
@@ -171,13 +173,6 @@ export default function WorkspacePage() {
     const [showPlanInfo, setShowPlanInfo] = useState(false);
     // Set when the backend refuses a request outright (see app/guardrail.py).
     const [blockedNotice, setBlockedNotice] = useState<BlockedNotice | null>(null);
-    // ── Mission layout state ──
-    // The mentor is a summonable drawer now, not the whole room.
-    const [mentorOpen, setMentorOpen] = useState(false);
-    // 2.2s full-screen seal right after a plan is approved.
-    const [showCeremony, setShowCeremony] = useState(false);
-    // The user's stored "why" — quoted on the recovery card (from session detail).
-    const [commitmentWhy, setCommitmentWhy] = useState<string | null>(null);
     // Discovery questions for a brand-new goal — rendered as a popup form
     // instead of a one-at-a-time chat interrogation.
     const [setupQuestions, setSetupQuestions] = useState<SetupQuestion[] | null>(null);
