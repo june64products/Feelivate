@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { getUserSessions, type SessionPreview, type StreakData } from '../../api';
 import ProfileMenu from '../workspace/ProfileMenu';
+import { StreakPanel } from './StreakShowcase';
 import { clashDisplay, satoshi, FLAME_FROM, FLAME_TO, easeSilk } from './missionTheme';
 
 interface MissionTopBarProps {
@@ -15,6 +16,10 @@ interface MissionTopBarProps {
     currentWeek: number;
     streak: StreakData | null;
     isPlanActive: boolean;
+    /** Today already checked in — the panel celebrates instead of nudging. */
+    todayDone: boolean;
+    /** Local ISO date, for the panel's week dots. */
+    todayIso: string;
     demoMode: boolean;
     /** Bumps when the session list should re-fetch (same key the sidebar used). */
     refreshKey: number;
@@ -35,10 +40,11 @@ interface MissionTopBarProps {
  */
 export default function MissionTopBar({
     userId, activeSessionId, sessionFocus, currentWeek, streak, isPlanActive,
-    demoMode, refreshKey, onSelectSession, onNewGoal, onOpenArchive,
+    todayDone, todayIso, demoMode, refreshKey, onSelectSession, onNewGoal, onOpenArchive,
     onOpenAlerts, onOpenCalendar, onOpenPlanInfo, onStopSession, onLogout,
 }: MissionTopBarProps) {
     const [menuOpen, setMenuOpen] = useState(false);
+    const [streakOpen, setStreakOpen] = useState(false);
     const [sessions, setSessions] = useState<SessionPreview[]>([]);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -208,47 +214,59 @@ export default function MissionTopBar({
 
             <div style={{ flex: 1 }} />
 
-            {/* ── Streak cluster — always visible, on every screen ── */}
+            {/* ── Streak cluster — tap it and the flame takes the stage ── */}
             {isPlanActive && (
-                <motion.div
-                    data-tour="streak"
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                        padding: '6px 12px', borderRadius: '100px',
-                        border: '1px solid var(--border-subtle)', background: 'var(--card-bg)',
-                    }}
-                    title={`${currentStreak}-day streak · best ${streak?.longest_streak ?? 0}`}
-                >
-                    <motion.span
-                        animate={flameActive ? { scale: [1, 1.15, 1] } : {}}
-                        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                        style={{ display: 'flex' }}
+                <div style={{ position: 'relative' }}>
+                    <motion.button
+                        data-tour="streak"
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setStreakOpen(o => !o)}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '7px 13px', borderRadius: '100px',
+                            border: `1px solid ${flameActive ? `${FLAME_TO}55` : 'var(--border-subtle)'}`,
+                            background: flameActive
+                                ? `linear-gradient(90deg, ${FLAME_TO}18, transparent), var(--card-bg)`
+                                : 'var(--card-bg)',
+                            cursor: 'pointer',
+                        }}
+                        title="Your streak — tap for details"
                     >
-                        <Flame size={15} style={{ color: flameActive ? FLAME_TO : 'var(--text-muted)' }}
-                            fill={flameActive ? FLAME_FROM : 'none'} />
-                    </motion.span>
-                    <span style={{
-                        fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)',
-                        fontFamily: clashDisplay,
-                    }}>{currentStreak}</span>
-                    {typeof shields === 'number' && (
-                        <>
-                            <span style={{ width: '1px', height: '14px', background: 'var(--border-subtle)' }} />
-                            <span
-                                title="Streak shields — every 7-day run earns one (max 2)"
-                                style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                            >
-                                <Shield size={13} style={{ color: 'var(--accent-primary)' }} />
-                                <span style={{
-                                    fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)',
-                                    fontFamily: satoshi,
-                                }}>{shields}</span>
-                            </span>
-                        </>
-                    )}
-                </motion.div>
+                        <motion.span
+                            animate={flameActive ? { scale: [1, 1.18, 1], rotate: [0, -3, 3, 0] } : {}}
+                            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                            style={{ display: 'flex', filter: flameActive ? `drop-shadow(0 0 5px ${FLAME_TO}88)` : 'none' }}
+                        >
+                            <Flame size={15} style={{ color: flameActive ? FLAME_TO : 'var(--text-muted)' }}
+                                fill={flameActive ? FLAME_FROM : 'none'} />
+                        </motion.span>
+                        <span style={{
+                            fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)',
+                            fontFamily: clashDisplay,
+                        }}>{currentStreak}</span>
+                        {typeof shields === 'number' && (
+                            <>
+                                <span style={{ width: '1px', height: '14px', background: 'var(--border-subtle)' }} />
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Shield size={13} style={{ color: 'var(--accent-primary)' }} />
+                                    <span style={{
+                                        fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)',
+                                        fontFamily: satoshi,
+                                    }}>{shields}</span>
+                                </span>
+                            </>
+                        )}
+                    </motion.button>
+                    <StreakPanel
+                        open={streakOpen}
+                        onClose={() => setStreakOpen(false)}
+                        streak={streak}
+                        todayIso={todayIso}
+                        todayDone={todayDone}
+                    />
+                </div>
             )}
 
             {/* ── Utilities ── */}

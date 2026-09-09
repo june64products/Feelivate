@@ -883,6 +883,34 @@ export const getJournalsForSession = async (userId: string, sessionId?: string, 
  * Backfill: syncs existing voice journals into DailyCheckin table
  * and recalculates streak. Idempotent — safe to call on every mount.
  */
+/** Record why a day slipped (recovery card chips) — goes to the weekly
+ *  report via the check-in note, never to the mentor chat. */
+export const submitSlipReason = async (
+    date: string,
+    reason: string,
+    sessionId?: string | null,
+): Promise<{ saved: boolean }> => {
+    const response = await secureFetch(`${API_BASE_URL}/checkin/slip_reason`, {
+        method: 'POST',
+        body: JSON.stringify({ date, reason, session_id: sessionId ?? null }),
+    });
+    if (!response.ok) throw new Error('Failed to save reason');
+    return response.json();
+};
+
+/** One fresh motivational line for the recovery card (client caches per day). */
+export const getRecoveryMotivation = async (
+    missCount: number,
+    focus?: string,
+): Promise<{ line: string }> => {
+    const response = await secureFetch(`${API_BASE_URL}/recovery/motivation`, {
+        method: 'POST',
+        body: JSON.stringify({ miss_count: missCount, focus: focus ?? null }),
+    });
+    if (!response.ok) throw new Error('Failed to fetch motivation');
+    return response.json();
+};
+
 export const backfillStreak = async (): Promise<{
     checkins_created: number;
     current_streak: number;

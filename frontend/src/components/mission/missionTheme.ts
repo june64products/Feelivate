@@ -27,13 +27,13 @@ export function shortDay(iso: string): string {
 }
 
 /**
- * Find today's entry in the active plan, matching the same way the daily-email
- * engine does: the plan's `day` label contains the weekday name or short name.
+ * Find a given date's entry in the active plan, matching the same way the
+ * daily-email engine does: the plan's `day` label contains the weekday name.
  */
-export function todaysPlanEntry(activePlan: any, todayIso: string): { day: string; action: string } | null {
+export function planEntryFor(activePlan: any, iso: string): { day: string; action: string } | null {
     const days = activePlan?.days;
     if (!Array.isArray(days) || days.length === 0) return null;
-    const d = new Date(`${todayIso}T12:00:00`);
+    const d = new Date(`${iso}T12:00:00`);
     const longName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const shortName = d.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
     for (const entry of days) {
@@ -43,6 +43,21 @@ export function todaysPlanEntry(activePlan: any, todayIso: string): { day: strin
         }
     }
     return null;
+}
+
+export function todaysPlanEntry(activePlan: any, todayIso: string): { day: string; action: string } | null {
+    return planEntryFor(activePlan, todayIso);
+}
+
+/** Rest days never count as misses — same pattern the backend uses. */
+export function isRestAction(action: string): boolean {
+    return /^\s*(?:optional\s+)?(?:rest|recovery)\b/i.test(action || '');
+}
+
+export function isoDaysAgo(fromIso: string, days: number): string {
+    const d = new Date(`${fromIso}T12:00:00`);
+    d.setDate(d.getDate() - days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /** True when every date in the plan's window is behind today (week wrapped). */

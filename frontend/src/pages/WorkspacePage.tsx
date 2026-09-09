@@ -28,7 +28,9 @@ import MentorDrawer from '../components/mission/MentorDrawer';
 import GoalStart from '../components/mission/GoalStart';
 import { CommitStage, CeremonyOverlay } from '../components/mission/CommitStage';
 import { useStreak } from '../hooks/useStreak';
-import { satoshi as missionSatoshi } from '../components/mission/missionTheme';
+import { StreakStrip } from '../components/mission/StreakShowcase';
+import { satoshi as missionSatoshi, planEntryFor, isRestAction, isoDaysAgo } from '../components/mission/missionTheme';
+import { Mic, MessageCircle, ChevronRight } from 'lucide-react';
 import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
 import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
 import JourneyPage from './JourneyPage';
@@ -126,21 +128,45 @@ export default function WorkspacePage() {
         streak, todayStatus, checkinLoading, justCelebrated, checkin, today: todayIso,
     } = useStreak(userId, isPlanApproved && !demoMode, demoMode);
 
-    // Recovery: yesterday sits in days_this_week as missed (or shielded) and
-    // today hasn't been logged yet — the "don't miss twice" morning.
+    // Recovery: shows ONLY when yesterday was a real scheduled plan day that
+    // was missed (or shielded) and today is still unlogged. A freshly locked
+    // plan can never trigger it — yesterday wasn't a plan day yet. Rest days
+    // never count as misses either.
     const recoveryInfo = (() => {
         if (demoMode || !isPlanApproved || todayStatus !== 'pending') return null;
-        if (!streak?.days_this_week?.length) return null;
-        const y = new Date(`${todayIso}T12:00:00`);
-        y.setDate(y.getDate() - 1);
-        const yIso = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`;
+        if (!streak?.days_this_week?.length || !activePlan) return null;
         const planStart = String(activePlan?.start_date || '');
-        if (planStart && yIso < planStart) return null; // plan hadn't started yesterday
-        const yEntry = streak.days_this_week.find(d => d.date === yIso);
-        if (!yEntry) return null;
-        if (yEntry.status === 'shielded') return { wasShielded: true };
-        if (yEntry.status === 'skipped' || yEntry.status === 'pending') return { wasShielded: false };
-        return null;
+        if (!planStart) return null; // can't prove yesterday was in-plan — stay quiet
+
+        const missedOn = (iso: string): 'missed' | 'shielded' | null => {
+            if (iso < planStart) return null;          // before the week began
+            const entry = planEntryFor(activePlan, iso);
+            if (!entry || isRestAction(entry.action)) return null;  // not a scheduled work day
+            const row = streak.days_this_week.find(d => d.date === iso);
+            if (!row) return null;
+            if (row.status === 'shielded') return 'shielded';
+            if (row.status === 'skipped' || row.status === 'pending') return 'missed';
+            return null;                                // done — chain intact
+        };
+
+        const yIso = isoDaysAgo(todayIso, 1);
+        const yState = missedOn(yIso);
+        if (!yState) return null;
+
+        // Count consecutive scheduled misses walking back from yesterday
+        // (shielded still counts as a slipped day; rest days are skipped over).
+        let missCount = 0;
+        for (let back = 1; back <= 7; back++) {
+            const iso = isoDaysAgo(todayIso, back);
+            if (iso < planStart) break;
+            const entry = planEntryFor(activePlan, iso);
+            if (!entry || isRestAction(entry.action)) continue;  // rest day — look further back
+            const st = missedOn(iso);
+            if (st) missCount += 1;
+            else break;                                  // hit a done day — run ends
+        }
+
+        return { wasShielded: yState === 'shielded', missCount: Math.max(1, missCount), missedDateIso: yIso };
     })();
 
     // Which mission stage fills the screen (demo mirrors respected).
@@ -710,6 +736,8 @@ export default function WorkspacePage() {
                         currentWeek={uiActivePlan?.week_number ?? 0}
                         streak={streak}
                         isPlanActive={uiIsPlanApproved}
+                        todayDone={todayStatus === 'done'}
+                        todayIso={todayIso}
                         demoMode={demoMode}
                         refreshKey={sidebarRefreshKey}
                         onSelectSession={(id) => { handleSelectSession(id); }}
@@ -783,11 +811,15 @@ export default function WorkspacePage() {
                                 >
                                     {recoveryInfo && (
                                         <RecoveryCard
+                                            missCount={recoveryInfo.missCount}
+                                            missedDateIso={recoveryInfo.missedDateIso}
                                             commitmentWhy={commitmentWhy}
                                             wasShielded={recoveryInfo.wasShielded}
-                                            onAnswer={(msg) => handleSendMessage(msg)}
+                                            focus={sessionFocus}
+                                            sessionId={uiSessionId}
                                         />
                                     )}
+                                    <StreakStrip streak={streak} todayDone={todayStatus === 'done'} />
                                     <TodayCard
                                         activePlan={uiActivePlan}
                                         todayIso={todayIso}
@@ -814,46 +846,90 @@ export default function WorkspacePage() {
                                         <motion.button
                                             data-tour="journey-nav"
                                             whileTap={{ scale: 0.98 }}
+                                            whileHover={{ y: -2 }}
                                             onClick={() => setView('journey')}
                                             style={{
-                                                display: 'flex', alignItems: 'center', gap: '12px',
-                                                padding: '14px 18px', borderRadius: '16px',
+                                                display: 'flex', alignItems: 'center', gap: '14px',
+                                                padding: '16px 18px', borderRadius: '18px',
                                                 border: '1px solid var(--border-subtle)',
-                                                background: 'var(--card-bg)', cursor: 'pointer',
-                                                textAlign: 'left', fontFamily: missionSatoshi,
+                                                background: 'linear-gradient(135deg, rgba(168,85,247,0.08), transparent 60%), var(--card-bg)',
+                                                cursor: 'pointer', textAlign: 'left', fontFamily: missionSatoshi,
+                                                boxShadow: 'var(--shadow-sm)',
                                             }}
                                         >
-                                            <span style={{ fontSize: '18px' }}>🎙</span>
-                                            <span>
-                                                <span style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                            <span style={{
+                                                width: '42px', height: '42px', borderRadius: '13px', flexShrink: 0,
+                                                background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: '0 4px 14px rgba(124,58,237,0.35)',
+                                            }}>
+                                                <Mic size={19} color="#fff" />
+                                            </span>
+                                            <span style={{ flex: 1, minWidth: 0 }}>
+                                                <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
                                                     Evening voice note
                                                 </span>
-                                                <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                                                    {micLocked || uiTodayEmotion ? 'Logged for today ✓' : 'Not logged yet — 60 seconds'}
+                                                <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                                    {micLocked || uiTodayEmotion ? 'Logged for today' : 'How did today actually go? 60 seconds.'}
                                                 </span>
                                             </span>
+                                            {/* Waveform accent — alive until today is logged */}
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0, marginRight: '2px' }}>
+                                                {[10, 17, 12, 20, 9].map((h, i) => (
+                                                    <motion.span
+                                                        key={i}
+                                                        animate={(micLocked || uiTodayEmotion) ? { height: h * 0.6 } : { height: [h * 0.5, h, h * 0.5] }}
+                                                        transition={(micLocked || uiTodayEmotion) ? {} : { duration: 1.2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.13 }}
+                                                        style={{
+                                                            width: '3px', borderRadius: '100px',
+                                                            background: (micLocked || uiTodayEmotion) ? 'var(--border-medium)' : '#a855f7',
+                                                            height: h,
+                                                        }}
+                                                    />
+                                                ))}
+                                            </span>
+                                            <ChevronRight size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                                         </motion.button>
                                         <motion.button
                                             data-tour="mentor-chip"
                                             whileTap={{ scale: 0.98 }}
+                                            whileHover={{ y: -2 }}
                                             onClick={() => setMentorOpen(true)}
                                             style={{
-                                                display: 'flex', alignItems: 'center', gap: '12px',
-                                                padding: '14px 18px', borderRadius: '16px',
+                                                display: 'flex', alignItems: 'center', gap: '14px',
+                                                padding: '16px 18px', borderRadius: '18px',
                                                 border: '1px solid var(--border-subtle)',
-                                                background: 'var(--card-bg)', cursor: 'pointer',
-                                                textAlign: 'left', fontFamily: missionSatoshi,
+                                                background: 'linear-gradient(135deg, rgba(99,102,241,0.08), transparent 60%), var(--card-bg)',
+                                                cursor: 'pointer', textAlign: 'left', fontFamily: missionSatoshi,
+                                                boxShadow: 'var(--shadow-sm)',
                                             }}
                                         >
-                                            <span style={{ fontSize: '18px' }}>💬</span>
-                                            <span>
-                                                <span style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                            <span style={{
+                                                width: '42px', height: '42px', borderRadius: '13px', flexShrink: 0,
+                                                background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
+                                                position: 'relative',
+                                            }}>
+                                                <MessageCircle size={19} color="#fff" />
+                                                <motion.span
+                                                    animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
+                                                    transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
+                                                    style={{
+                                                        position: 'absolute', inset: 0, borderRadius: '13px',
+                                                        border: '1.5px solid #6366f1',
+                                                    }}
+                                                />
+                                            </span>
+                                            <span style={{ flex: 1, minWidth: 0 }}>
+                                                <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
                                                     Ask your mentor
                                                 </span>
-                                                <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                                                    Plans, slips, anything
+                                                <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                                    Stuck on today's task? Talk it out.
                                                 </span>
                                             </span>
+                                            <ChevronRight size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                                         </motion.button>
                                     </div>
                                 </motion.div>

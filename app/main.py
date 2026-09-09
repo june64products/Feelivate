@@ -2355,6 +2355,100 @@ async def daily_checkin(
     }
 
 
+class SlipReasonRequest(BaseModel):
+    date: str                    # ISO date of the missed day (usually yesterday)
+    reason: str                  # one of SLIP_REASONS
+    session_id: Optional[str] = None
+
+
+SLIP_REASONS = {"no time", "low energy", "forgot", "life happened"}
+
+
+@app.post("/checkin/slip_reason", tags=["streak"])
+async def save_slip_reason(
+    payload: SlipReasonRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_consented_user),
+):
+    """Record WHY a day slipped, from the recovery card's one-tap chips.
+
+    Deliberately NOT routed through the mentor chat: a slip reason is context
+    for the weekly report (which reads it from the check-in note), not a
+    conversation opener — sending it to the model mid-week caused it to start
+    renegotiating the locked plan.
+    """
+    from datetime import date as _slip_date
+    reason = payload.reason.strip().lower()
+    if reason not in SLIP_REASONS:
+        raise HTTPException(status_code=400, detail="Unknown reason")
+    try:
+        _slip_date.fromisoformat(payload.date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date")
+
+    row = (
+        db.query(DailyCheckin)
+        .filter(DailyCheckin.user_id == current_user.id, DailyCheckin.date == payload.date)
+        .first()
+    )
+    if row:
+        base = (row.note or "").split("| slip_reason:", 1)[0].strip()
+        row.note = f"{base} | slip_reason: {reason}".strip(" |") if base else f"slip_reason: {reason}"
+        if payload.session_id and not row.session_id:
+            row.session_id = payload.session_id
+    else:
+        db.add(DailyCheckin(
+            user_id=current_user.id,
+            session_id=payload.session_id,
+            date=payload.date,
+            status="skipped",
+            note=f"slip_reason: {reason}",
+        ))
+    db.commit()
+    return {"saved": True, "date": payload.date, "reason": reason}
+
+
+class RecoveryMotivationRequest(BaseModel):
+    miss_count: int = 1
+    focus: Optional[str] = None  # the goal, for a line that lands personally
+
+
+@app.post("/recovery/motivation", tags=["streak"])
+async def recovery_motivation(
+    payload: RecoveryMotivationRequest,
+    current_user: User = Depends(get_consented_user),
+):
+    """One fresh, short motivational line for the recovery card.
+
+    Generated per request (the client caches it per local day) so the card
+    never repeats itself. Falls back to a solid static line if the LLM is
+    unavailable — the recovery moment must never show an error.
+    """
+    miss_count = max(1, min(int(payload.miss_count or 1), 14))
+    fallbacks = [
+        "One missed day never broke a habit. Walking away did.",
+        "The chain isn't broken — it's waiting. One rep today re-links it.",
+        "Research says a single miss changes nothing. Two in a row writes a new habit. Choose today.",
+    ]
+    try:
+        from .llm import call_llm
+        goal_bit = f' Their goal: "{payload.focus.strip()[:120]}".' if payload.focus and payload.focus.strip() else ""
+        prompt = (
+            "Write ONE short motivational line (max 130 characters) for someone who just "
+            f"missed {miss_count} day{'s' if miss_count != 1 else ''} of their habit and opened the app today.{goal_bit} "
+            "Tone: warm, direct coach — zero shame, zero clichés, no exclamation spam, no emoji, no quotes around it. "
+            "Ground it in the truth that one lapse doesn't break a habit but today's action decides the trend. "
+            "Reply with the line only — no preamble, no quotation marks."
+        )
+        line = (call_llm(prompt, temperature=0.9, max_tokens=60) or "").strip().strip('"').strip()
+        if not line or len(line) > 200:
+            raise ValueError("bad line")
+        return {"line": line, "source": "llm"}
+    except Exception as e:
+        logger.warning(f"[Recovery] motivation line fallback: {e}")
+        return {"line": fallbacks[miss_count % len(fallbacks)], "source": "fallback"}
+
+
 @app.get("/streak/{user_id}", tags=["streak"])
 async def get_streak(
     user_id: str,
@@ -3244,6 +3338,7 @@ async def get_weekly_report(
     day_count_total = (we_date - ws_date).days + 1
     all_week_days = [(ws_date + _td(days=i)).isoformat() for i in range(day_count_total)]
     checkin_map: dict = {}
+    slip_reason_map: dict = {}
     for d in all_week_days:
         row = (
             db.query(DailyCheckin)
@@ -3251,6 +3346,11 @@ async def get_weekly_report(
             .first()
         )
         checkin_map[d] = row.status if row else ("pending" if d > today.isoformat() else "missed")
+        # The recovery card stores WHY a day slipped ("slip_reason: no time")
+        # on that day's check-in — surfaced to the report model so the review
+        # can name the real obstacle instead of guessing.
+        if row and row.note and "slip_reason:" in row.note:
+            slip_reason_map[d] = row.note.split("slip_reason:", 1)[1].strip()
 
     # ── 4. Fetch the approved week plan ─────────────────────────────────────
     week_plan_days: list = []
@@ -3401,7 +3501,8 @@ async def get_weekly_report(
             j_info = ""
             if d in journal_by_date:
                 j_info = f" | Voice Journal: {journal_by_date[d].emotion_label} ({journal_by_date[d].emotion_score}/10) - '{journal_by_date[d].one_liner}'"
-            lines.append(f"  Day {i+1} ({day_label or d}): Planned: '{task}' | Checkin: {s}{j_info}")
+            reason_info = f" | User's stated reason for the miss: {slip_reason_map[d]}" if d in slip_reason_map else ""
+            lines.append(f"  Day {i+1} ({day_label or d}): Planned: '{task}' | Checkin: {s}{j_info}{reason_info}")
         plan_vs_actual = "\nWEEK PLAN vs ACTUAL CHECK-INS & JOURNALS:\n" + "\n".join(lines)
 
     prompt = f"""You are a world-class performance coach and behavioral analyst. Your job is to write a deep, honest, insightful WEEK REVIEW for this user.
