@@ -1614,6 +1614,9 @@ async def get_session_detail(session_id: str, db: DBSession = Depends(get_db), c
         "phase": session.phase,
         "plan": plan,
         "plan_history": plan_history,
+        # The user's own "why" — the recovery screen quotes it back to them,
+        # exactly as the recovery email already does.
+        "commitment_why": getattr(session, "commitment_why", None),
         "messages": [{"role": m.role, "content": m.content, "created_at": m.created_at} for m in messages]
     }
 
@@ -2849,7 +2852,8 @@ async def _analyze_emotion(transcript: str) -> dict:
     # fallback chain, so any hiccup with that one model (rate-limit, outage,
     # decommission) would silently collapse every entry to neutral/5. Trying
     # multiple models means we only fall back to neutral if ALL of them fail.
-    models_to_try = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "gpt-4o-mini"]
+    # qwen/qwen3.6-27b replaced llama-3.3-70b-versatile (retired by Groq, Aug 2026).
+    models_to_try = ["qwen/qwen3.6-27b", "openai/gpt-oss-120b", "gpt-4o-mini"]
     last_err = None
     for model in models_to_try:
         try:

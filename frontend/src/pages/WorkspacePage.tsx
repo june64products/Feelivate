@@ -19,9 +19,16 @@ import {
     updateNotificationTime,
 } from '../api';
 import type { BlockedNotice, SetupQuestion } from '../api';
-import SessionSidebar from '../components/workspace/SessionSidebar';
-import ChatWindow from '../components/chat/ChatWindow';
 import SetupQuestionsModal from '../components/chat/SetupQuestionsModal';
+import MissionTopBar from '../components/mission/MissionTopBar';
+import TodayCard from '../components/mission/TodayCard';
+import PathRow from '../components/mission/PathRow';
+import RecoveryCard from '../components/mission/RecoveryCard';
+import MentorDrawer from '../components/mission/MentorDrawer';
+import GoalStart from '../components/mission/GoalStart';
+import { CommitStage, CeremonyOverlay } from '../components/mission/CommitStage';
+import { useStreak } from '../hooks/useStreak';
+import { satoshi as missionSatoshi } from '../components/mission/missionTheme';
 import RadiantPromptInput from '../components/chat/RadiantPromptInput';
 import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
 import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
@@ -111,6 +118,33 @@ export default function WorkspacePage() {
     // Derived: whether we're in the cinematic empty state
     const isEmptyState = uiMessages.length === 0 && !uiLoading;
 
+    // ── Streak data (the old StreakBar's logic, shared across the layout) ──
+    const {
+        streak, todayStatus, checkinLoading, justCelebrated, checkin, today: todayIso,
+    } = useStreak(userId, isPlanApproved && !demoMode, demoMode);
+
+    // Recovery: yesterday sits in days_this_week as missed (or shielded) and
+    // today hasn't been logged yet — the "don't miss twice" morning.
+    const recoveryInfo = (() => {
+        if (demoMode || !isPlanApproved || todayStatus !== 'pending') return null;
+        if (!streak?.days_this_week?.length) return null;
+        const y = new Date(`${todayIso}T12:00:00`);
+        y.setDate(y.getDate() - 1);
+        const yIso = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`;
+        const planStart = String(activePlan?.start_date || '');
+        if (planStart && yIso < planStart) return null; // plan hadn't started yesterday
+        const yEntry = streak.days_this_week.find(d => d.date === yIso);
+        if (!yEntry) return null;
+        if (yEntry.status === 'shielded') return { wasShielded: true };
+        if (yEntry.status === 'skipped' || yEntry.status === 'pending') return { wasShielded: false };
+        return null;
+    })();
+
+    // Which mission stage fills the screen (demo mirrors respected).
+    const uiMentorOpen = demoMode ? (demoView === 'chat' && demoMessages.length > 0) : mentorOpen;
+    const isPlanningStage = !uiIsPlanApproved && !!uiActivePlan && !isEmptyState;
+    const isDiscoveryStage = !isEmptyState && !uiIsPlanApproved && !uiActivePlan;
+
     // Mic locked state — check localStorage for today's recording (PER SESSION, so a
     // recording in one session doesn't lock the mic in another fresh session).
     // Use getLocalISODate (YYYY-MM-DD in local TZ) to match the client_date sent to backend
@@ -137,6 +171,13 @@ export default function WorkspacePage() {
     const [showPlanInfo, setShowPlanInfo] = useState(false);
     // Set when the backend refuses a request outright (see app/guardrail.py).
     const [blockedNotice, setBlockedNotice] = useState<BlockedNotice | null>(null);
+    // ── Mission layout state ──
+    // The mentor is a summonable drawer now, not the whole room.
+    const [mentorOpen, setMentorOpen] = useState(false);
+    // 2.2s full-screen seal right after a plan is approved.
+    const [showCeremony, setShowCeremony] = useState(false);
+    // The user's stored "why" — quoted on the recovery card (from session detail).
+    const [commitmentWhy, setCommitmentWhy] = useState<string | null>(null);
     // Discovery questions for a brand-new goal — rendered as a popup form
     // instead of a one-at-a-time chat interrogation.
     const [setupQuestions, setSetupQuestions] = useState<SetupQuestion[] | null>(null);
@@ -236,6 +277,7 @@ export default function WorkspacePage() {
                 setIsPlanApproved(phase === 'active');
                 setIsSessionCompleted(phase === 'completed');
                 setSessionFocus(data.focus || '');
+                setCommitmentWhy(data.commitment_why || null);
             } catch (err: any) {
                 console.error("Failed to load session details:", err);
                 // If session not found (404) or auth expired (401 throws), clear stale session
@@ -316,6 +358,9 @@ export default function WorkspacePage() {
         const userMsg = { role: 'user', content: text };
         setMessages(prev => [...prev, userMsg]);
         setIsLoading(true);
+        // The conversation lives in the drawer now — make sure it's visible
+        // whenever a message goes out, from wherever it was sent.
+        setMentorOpen(true);
 
         try {
             const res = await chatWithMentor(text, activeSessionId, userId);
@@ -369,6 +414,11 @@ export default function WorkspacePage() {
             const res = await approvePlan(activeSessionId);
             if (res.status === 'approved') {
                 setIsPlanApproved(true);
+                // Commitment gets a ceremony, not a toast. Drawer closes so the
+                // user lands on Today with the week sealed.
+                setMentorOpen(false);
+                setShowCeremony(true);
+                setTimeout(() => setShowCeremony(false), 2300);
                 const data = await getSessionDetail(activeSessionId);
                 setMessages(data.messages || []);
             }
@@ -587,6 +637,7 @@ export default function WorkspacePage() {
         <ConsentGate onStatusChange={setConsentStatus} />
         <div style={{
             display: 'flex',
+            flexDirection: 'column',
             height: '100dvh',
             width: '100vw',
             background: 'var(--bg-primary)',
@@ -597,31 +648,8 @@ export default function WorkspacePage() {
             {/* First-time self-playing guided demo (auto-opens for new accounts, or via Replay) */}
             <GuidedDemo active={demoMode} handles={demoHandles} onExit={exitDemo} />
 
-            {/* Sidebar Overlay Backdrop for Mobile */}
-            {!isSidebarCollapsed && (
-                <div
-                    className="drawer-backdrop show-on-mobile"
-                    onClick={() => setIsSidebarCollapsed(true)}
-                />
-            )}
-
-            {/* Sidebar */}
-            <div className={`sidebar-root ${!isSidebarCollapsed ? 'expanded' : 'collapsed'}`}>
-                <SessionSidebar
-                    userId={userId || ''}
-                    activeSessionId={activeSessionId}
-                    onSelectSession={(id) => { handleSelectSession(id); setView('chat'); setIsSidebarCollapsed(true); }}
-                    onNewChat={() => { handleNewChat(); setView('chat'); setIsSidebarCollapsed(true); }}
-                    onJourney={() => { setView('journey'); setIsSidebarCollapsed(true); }}
-                    isCollapsed={isSidebarCollapsed}
-                    onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                    refreshKey={sidebarRefreshKey}
-                    isPlanActive={uiIsPlanApproved}
-                    demoMode={demoMode}
-                />
-            </div>
-
-            {/* Chat Area */}
+            {/* Mission surface — no sidebar; the goal pill in the top bar
+                carries session switching, and the mentor lives in a drawer. */}
             <div style={{
                 flex: 1,
                 display: 'flex',
@@ -679,133 +707,25 @@ export default function WorkspacePage() {
                         />
                     )}
 
-                    {/* Header — Swiss minimal */}
-                    <div className="mobile-header" style={{
-                        minHeight: '56px',
-                        height: 'auto',
-                        padding: 'calc(env(safe-area-inset-top, 0px) + 8px) 20px 8px 20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexShrink: 0,
-                        zIndex: 15,
-                        position: 'relative',
-                        fontFamily: "'Satoshi', 'Inter', sans-serif",
-                        borderBottom: '1px solid var(--border-subtle)',
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {/* Mobile only: open the off-screen sidebar drawer (desktop
-                                uses the morphing logo toggle inside the sidebar itself). */}
-                            {isSidebarCollapsed && (
-                                <button
-                                    className="show-on-mobile"
-                                    onClick={() => setIsSidebarCollapsed(false)}
-                                    title="Open sidebar"
-                                    style={{
-                                        width: '32px', height: '32px', borderRadius: '8px',
-                                        border: 'none', background: 'transparent',
-                                        color: 'var(--text-secondary)', cursor: 'pointer',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        transition: 'color 0.15s',
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                                >
-                                    <PanelLeft size={18} />
-                                </button>
-                            )}
-                            {/* Mobile: Weeks button */}
-                            {uiIsPlanApproved && uiSessionId && (
-                                <button
-                                    id="mobile-weeks-btn"
-                                    data-tour="week-panel"
-                                    className="show-on-mobile"
-                                    onClick={() => window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'))}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '6px',
-                                        padding: '6px 12px', borderRadius: '20px',
-                                        border: '1px solid var(--border-medium)',
-                                        background: 'var(--bg-surface)',
-                                        color: 'var(--text-secondary)',
-                                        cursor: 'pointer', flexShrink: 0,
-                                        fontSize: '11px', fontWeight: 700,
-                                        letterSpacing: '0.05em',
-                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
-                                    }}
-                                    title="View Weeks"
-                                >
-                                    <Clock size={13} />
-                                    WEEKS
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="hdr-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                            {/* Archive — view past weekly reports anytime, including stopped sessions */}
-                            {!demoMode && activeSessionId && (isPlanApproved || isSessionCompleted) && (
-                                <button
-                                    className="hdr-btn"
-                                    onClick={() => { setJourneyInitialTab('archive'); setView('journey'); }}
-                                    title="View your weekly reports"
-                                >
-                                    <Archive size={14} />
-                                    <span className="hide-on-mobile">Archive</span>
-                                </button>
-                            )}
-
-                            {/* Calendar and Alerts — same shape as Archive, on every screen
-                                size. They used to be a desktop-only pill strip with a
-                                separate bell button standing in on mobile, which meant the
-                                header looked like two different designs depending on width. */}
-                            {uiIsPlanApproved && (
-                                <button
-                                    className="hdr-btn"
-                                    onClick={() => setShowCalendarMaintenance(true)}
-                                    title="Calendar sync"
-                                >
-                                    <Clock size={14} />
-                                    <span className="hide-on-mobile">Calendar</span>
-                                </button>
-                            )}
-
-                            {uiIsPlanApproved && (
-                                <button
-                                    className={'hdr-btn' + (isNotifEnabled ? ' is-active' : '')}
-                                    data-tour="alerts-button"
-                                    onClick={handleOpenEmailModal}
-                                    title="Daily alerts"
-                                >
-                                    <Bell size={14} />
-                                    <span className="hide-on-mobile">Alerts</span>
-                                </button>
-                            )}
-
-                            <button
-                                className="upgrade-btn hide-on-mobile"
-                                onClick={() => setShowPlanInfo(true)}
-                                title="Your plan"
-                            >
-                                Upgrade
-                            </button>
-
-                            {isPlanApproved && !isSessionCompleted && activeSessionId && (
-                                <button
-                                    className="hdr-btn is-running"
-                                    onClick={() => setShowCompleteModal(true)}
-                                    title="Stop plan"
-                                >
-                                    <div style={{
-                                        width: '6px', height: '6px', borderRadius: '50%',
-                                        background: '#ef4444', flexShrink: 0,
-                                        animation: 'pulse 1.5s ease-in-out infinite',
-                                    }} />
-                                    Running
-                                </button>
-                            )}
-
-                            <ProfileMenu onLogout={handleLogout} />
-                        </div>
-                    </div>
+                    {/* Mission top bar — goal pill (sessions), streak cluster, utilities */}
+                    <MissionTopBar
+                        userId={userId}
+                        activeSessionId={uiSessionId}
+                        sessionFocus={sessionFocus}
+                        currentWeek={uiActivePlan?.week_number ?? 0}
+                        streak={streak}
+                        isPlanActive={uiIsPlanApproved}
+                        demoMode={demoMode}
+                        refreshKey={sidebarRefreshKey}
+                        onSelectSession={(id) => { handleSelectSession(id); }}
+                        onNewGoal={handleNewChat}
+                        onOpenArchive={() => { setJourneyInitialTab('archive'); setView('journey'); }}
+                        onOpenAlerts={handleOpenEmailModal}
+                        onOpenCalendar={() => setShowCalendarMaintenance(true)}
+                        onOpenPlanInfo={() => setShowPlanInfo(true)}
+                        onStopSession={() => setShowCompleteModal(true)}
+                        onLogout={handleLogout}
+                    />
 
                     {/* Locked Weeks Panel (Desktop: Fixed Right / Mobile: Relative under Header)
                         Also shown once a session is finished, and for any session
@@ -825,135 +745,187 @@ export default function WorkspacePage() {
                         />
                     )}
 
-                    {/* ─── EMPTY STATE: Cinematic Hero ─── */}
-                    <AnimatePresence mode="wait">
-                        {isEmptyState ? (
-                            <motion.div
-                                key="empty-state"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.5, ease: 'easeOut' }}
-                                style={{
-                                    flex: 1,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '24px 20px 0',
-                                    position: 'relative',
-                                    zIndex: 5,
-                                    gap: '0px',
-                                }}
-                            >
-                                {/* Hero Text — Swiss Echo */}
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.65, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-                                    style={{ textAlign: 'center', marginBottom: '36px' }}
-                                >
-                                    {/* Logo + Name row */}
-                                    <div style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        gap: '14px', marginBottom: '22px'
-                                    }}>
-                                        <div style={{
-                                            width: '38px', height: '38px',
-                                            background: 'var(--accent-primary)', borderRadius: '8px',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            overflow: 'hidden', flexShrink: 0,
-                                        }}>
-                                            <img
-                                                src="/logo_2_backup.png"
-                                                alt="Feelivate"
-                                                style={{ width: '26px', height: '26px', objectFit: 'contain', filter: 'var(--logo-filter)' }}
-                                            />
-                                        </div>
-                                        <h1 style={{
-                                            fontSize: '28px', fontWeight: 700,
-                                            letterSpacing: '0.08em', color: 'var(--text-primary)', margin: 0,
-                                            fontFamily: "'Clash Display', 'Inter', sans-serif",
-                                            textTransform: 'uppercase',
-                                        }}>
-                                            Feelivate
-                                        </h1>
-                                    </div>
-
-                                    <h2 style={{
-                                        fontSize: '26px', fontWeight: 500,
-                                        color: 'var(--text-secondary)',
-                                        letterSpacing: '-0.01em',
-                                        margin: 0,
-                                        lineHeight: 1.3,
-                                        fontFamily: "'Satoshi', 'Inter', sans-serif",
-                                    }}>
-                                        Hi {localStorage.getItem('user_name')?.split(' ')[0] || 'there'}, what's on your mind?
-                                    </h2>
-                                </motion.div>
-
-                                {/* Radiant Input — centered hero position */}
-                                <motion.div
-                                    initial={{ opacity: 0, y: 32, scale: 0.97 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                                    style={{ width: '100%', maxWidth: '720px', padding: '0 16px', marginBottom: '48px' }}
-                                >
-                                    <RadiantPromptInput
-                                        onSubmit={demoMode ? () => {} : handleSendMessage}
-                                        disabled={isLoading || demoMode}
-                                        placeholder="Share what's on your mind..."
-                                    />
-                                </motion.div>
-
-                                {/* Capabilities Grid — removed to match Blackbox minimal */}
-                            </motion.div>
-                        ) : (
-                            /* ─── CHAT STATE ─── */
-                            <motion.div
-                                key="chat-state"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ duration: 0.4 }}
-                                style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 5 }}
-                            >
-                                <ChatWindow
-                                    messages={uiMessages}
-                                    isLoading={uiLoading}
-                                    onApprovePlan={demoMode ? () => demoHandles.setPlanApproved(true) : handleApprovePlan}
-                                    onRequestPlanChange={demoMode ? () => {} : handleRequestPlanChange}
-                                    isPlanApproved={uiIsPlanApproved}
-                                    isFirstPlan={!demoMode && planHistory.length === 0}
+                    {/* ─── MISSION CONTENT ─── */}
+                    <div style={{ flex: 1, overflowY: 'auto', position: 'relative', zIndex: 5 }}>
+                        <AnimatePresence mode="wait">
+                            {isEmptyState ? (
+                                /* No goal yet — one question, not a chat thread */
+                                <GoalStart
+                                    key="goal-start"
+                                    onSubmit={handleSendMessage}
+                                    disabled={isLoading || demoMode}
                                     demoMode={demoMode}
                                 />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            ) : isPlanningStage ? (
+                                /* A draft week exists — center stage, commit or tweak */
+                                <motion.div
+                                    key="commit-stage"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0, y: -16 }}
+                                    style={{ padding: '18px 20px 60px' }}
+                                >
+                                    <CommitStage
+                                        plan={uiActivePlan}
+                                        isFirstPlan={!demoMode && planHistory.length === 0}
+                                        onApprove={demoMode ? () => demoHandles.setPlanApproved(true) : handleApprovePlan}
+                                        onRequestChange={demoMode ? () => { } : handleRequestPlanChange}
+                                        onOpenMentor={() => setMentorOpen(true)}
+                                    />
+                                </motion.div>
+                            ) : uiIsPlanApproved ? (
+                                /* The daily loop — today's task, the path, the chips */
+                                <motion.div
+                                    key="today-stage"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0, y: -16 }}
+                                    style={{
+                                        maxWidth: '820px', margin: '0 auto',
+                                        padding: '14px 20px 60px', display: 'flex',
+                                        flexDirection: 'column', gap: '14px',
+                                    }}
+                                >
+                                    {recoveryInfo && (
+                                        <RecoveryCard
+                                            commitmentWhy={commitmentWhy}
+                                            wasShielded={recoveryInfo.wasShielded}
+                                            onAnswer={(msg) => handleSendMessage(msg)}
+                                        />
+                                    )}
+                                    <TodayCard
+                                        activePlan={uiActivePlan}
+                                        todayIso={todayIso}
+                                        todayStatus={todayStatus}
+                                        checkinLoading={checkinLoading}
+                                        justCelebrated={justCelebrated}
+                                        onCheckin={checkin}
+                                        onAskMentor={() => setMentorOpen(true)}
+                                        demoMode={demoMode}
+                                    />
+                                    <PathRow
+                                        streak={streak}
+                                        todayIso={todayIso}
+                                        currentWeek={uiActivePlan?.week_number ?? 1}
+                                        winCondition={uiActivePlan?.win_condition}
+                                        onOpenJourney={() => setView('journey')}
+                                    />
+                                    {/* Journal + mentor entry points */}
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                                        gap: '12px',
+                                    }}>
+                                        <motion.button
+                                            data-tour="journey-nav"
+                                            whileTap={{ scale: 0.98 }}
+                                            onClick={() => setView('journey')}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '12px',
+                                                padding: '14px 18px', borderRadius: '16px',
+                                                border: '1px solid var(--border-subtle)',
+                                                background: 'var(--card-bg)', cursor: 'pointer',
+                                                textAlign: 'left', fontFamily: missionSatoshi,
+                                            }}
+                                        >
+                                            <span style={{ fontSize: '18px' }}>🎙</span>
+                                            <span>
+                                                <span style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                    Evening voice note
+                                                </span>
+                                                <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                                                    {micLocked || uiTodayEmotion ? 'Logged for today ✓' : 'Not logged yet — 60 seconds'}
+                                                </span>
+                                            </span>
+                                        </motion.button>
+                                        <motion.button
+                                            data-tour="mentor-chip"
+                                            whileTap={{ scale: 0.98 }}
+                                            onClick={() => setMentorOpen(true)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '12px',
+                                                padding: '14px 18px', borderRadius: '16px',
+                                                border: '1px solid var(--border-subtle)',
+                                                background: 'var(--card-bg)', cursor: 'pointer',
+                                                textAlign: 'left', fontFamily: missionSatoshi,
+                                            }}
+                                        >
+                                            <span style={{ fontSize: '18px' }}>💬</span>
+                                            <span>
+                                                <span style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                    Ask your mentor
+                                                </span>
+                                                <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                                                    Plans, slips, anything
+                                                </span>
+                                            </span>
+                                        </motion.button>
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                /* Discovery — the mentor is asking / building; keep the
+                                   stage calm, the conversation lives in the drawer */
+                                <motion.div
+                                    key="discovery-stage"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    style={{
+                                        flex: 1, display: 'flex', flexDirection: 'column',
+                                        alignItems: 'center', justifyContent: 'center',
+                                        minHeight: '60vh', gap: '14px', padding: '20px',
+                                    }}
+                                >
+                                    <motion.div
+                                        animate={{ scale: [1, 1.06, 1], opacity: [0.85, 1, 0.85] }}
+                                        transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                                        style={{
+                                            width: '54px', height: '54px', borderRadius: '16px',
+                                            background: 'var(--accent-primary)', display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                                        }}
+                                    >
+                                        <img src="/logo_2_backup.png" alt="" style={{ width: '32px', height: '32px', objectFit: 'contain', filter: 'var(--logo-filter)' }} />
+                                    </motion.div>
+                                    <p style={{
+                                        fontSize: '15px', color: 'var(--text-secondary)', margin: 0,
+                                        fontFamily: missionSatoshi, textAlign: 'center', lineHeight: 1.6,
+                                    }}>
+                                        Your mentor is shaping the plan.
+                                    </p>
+                                    <button
+                                        onClick={() => setMentorOpen(true)}
+                                        style={{
+                                            padding: '10px 20px', borderRadius: '100px',
+                                            border: '1px solid var(--border-medium)', background: 'var(--card-bg)',
+                                            color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 700,
+                                            cursor: 'pointer', fontFamily: missionSatoshi,
+                                        }}
+                                    >
+                                        Open the conversation
+                                    </button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
-                    {/* Bottom Input (always visible in chat state, hidden in empty state since input is inline there) */}
-                    <AnimatePresence>
-                        {!isEmptyState && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 20 }}
-                                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                                style={{
-                                    padding: '0 20px max(env(safe-area-inset-bottom, 16px), 16px)',
-                                    background: 'linear-gradient(180deg, transparent, var(--bg-primary) 20%)',
-                                    flexShrink: 0,
-                                    position: 'relative',
-                                    zIndex: 10,
-                                }}
-                            >
-                                <RadiantPromptInput
-                                    onSubmit={demoMode ? () => {} : handleSendMessage}
-                                    disabled={isLoading || demoMode}
-                                    placeholder="Continue the conversation..."
-                                />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {/* Mentor drawer — the chat, summonable from anywhere */}
+                    <MentorDrawer
+                        open={uiMentorOpen}
+                        onClose={() => demoMode ? undefined : setMentorOpen(false)}
+                        messages={uiMessages}
+                        isLoading={uiLoading}
+                        onSend={demoMode ? () => { } : handleSendMessage}
+                        onApprovePlan={demoMode ? () => demoHandles.setPlanApproved(true) : handleApprovePlan}
+                        onRequestPlanChange={demoMode ? () => { } : handleRequestPlanChange}
+                        isPlanApproved={uiIsPlanApproved}
+                        isFirstPlan={!demoMode && planHistory.length === 0}
+                        demoMode={demoMode}
+                        inputDisabled={isLoading || demoMode}
+                    />
+
+                    {/* Commitment ceremony seal */}
+                    <CeremonyOverlay show={showCeremony} weekNumber={uiActivePlan?.week_number ?? 1} />
                 </>)} {/* end view === 'chat' */}
             </div>
 

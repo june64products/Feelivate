@@ -404,6 +404,8 @@ export interface SessionDetail {
     phase: string;
     plan: any | null;
     plan_history: any[];
+    /** The user's stored "why" — quoted back on the recovery screen. */
+    commitment_why?: string | null;
     messages: { role: string; content: string; created_at: string }[];
 }
 
