@@ -24,7 +24,7 @@ import MissionTopBar from '../components/mission/MissionTopBar';
 import TodayCard from '../components/mission/TodayCard';
 import PathRow from '../components/mission/PathRow';
 import RecoveryCard from '../components/mission/RecoveryCard';
-import MentorDrawer from '../components/mission/MentorDrawer';
+import MentorDrawer, { MENTOR_MORPH_ID } from '../components/mission/MentorDrawer';
 import GoalStart from '../components/mission/GoalStart';
 import { CommitStage, CeremonyOverlay } from '../components/mission/CommitStage';
 import { useStreak } from '../hooks/useStreak';
@@ -903,6 +903,7 @@ export default function WorkspacePage() {
                                         </motion.button>
                                         <motion.button
                                             data-tour="mentor-chip"
+                                            layoutId={uiMentorOpen ? undefined : MENTOR_MORPH_ID}
                                             whileTap={{ scale: 0.98 }}
                                             whileHover={{ y: -2 }}
                                             onClick={() => setMentorOpen(true)}
