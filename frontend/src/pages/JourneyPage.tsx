@@ -1404,37 +1404,53 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 maxWidth: '820px', margin: '0 auto', width: '100%',
                             }}
                         >
-                            {/* ── Voice recorder card — the hero of this page ── */}
+                            {/* ── Voice recorder — the hero of this page ── */}
                             <div style={{
-                                borderRadius: '22px', padding: '24px 26px',
+                                borderRadius: '24px', padding: '36px 28px 32px',
                                 background: 'var(--card-bg)',
                                 border: '1px solid var(--border-subtle)',
                                 boxShadow: 'var(--shadow-sm)',
+                                position: 'relative', overflow: 'hidden',
                             }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                    <div>
-                                        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: clashDisplay }}>
-                                            {todayEntry ? 'Today logged' : "Today's voice log"}
-                                        </p>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '3px 0 0', fontFamily: satoshi }}>
-                                            {todayEntry
-                                                ? `${todayEntry.emotion_label} — ${todayEntry.emotion_score}/10`
-                                                : 'Speak about your day. AI detects your emotion.'}
-                                        </p>
-                                    </div>
-                                    {todayEntry && (
+                                {/* Ambient glow behind the mic — same treatment as Goal Start */}
+                                <div style={{
+                                    position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)',
+                                    width: '520px', height: '300px', pointerEvents: 'none',
+                                    background: 'radial-gradient(closest-side, var(--glass-hover), transparent 72%)',
+                                }} />
+                                {todayEntry && (
+                                    <div style={{
+                                        position: 'absolute', top: '18px', right: '18px',
+                                        width: '36px', height: '36px', borderRadius: '50%',
+                                        background: `${emotionColor(todayEntry.emotion_label)}15`,
+                                        border: `2px solid ${emotionColor(todayEntry.emotion_label)}`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
                                         <div style={{
-                                            width: '36px', height: '36px', borderRadius: '50%',
-                                            background: `${emotionColor(todayEntry.emotion_label)}15`,
-                                            border: `2px solid ${emotionColor(todayEntry.emotion_label)}`,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}>
-                                            <div style={{
-                                                width: '12px', height: '12px', borderRadius: '50%',
-                                                background: emotionColor(todayEntry.emotion_label),
-                                            }} />
-                                        </div>
-                                    )}
+                                            width: '12px', height: '12px', borderRadius: '50%',
+                                            background: emotionColor(todayEntry.emotion_label),
+                                        }} />
+                                    </div>
+                                )}
+                                <div style={{ textAlign: 'center', marginBottom: '22px', position: 'relative' }}>
+                                    <p style={{
+                                        fontSize: '10px', fontWeight: 800, letterSpacing: '0.14em',
+                                        textTransform: 'uppercase', color: 'var(--accent-primary)',
+                                        margin: '0 0 8px', fontFamily: satoshi,
+                                    }}>
+                                        {todayEntry ? 'Today logged' : 'Tonight\'s ritual'}
+                                    </p>
+                                    <p style={{
+                                        fontSize: '21px', fontWeight: 600, color: 'var(--text-primary)',
+                                        margin: '0 0 6px', fontFamily: clashDisplay, letterSpacing: '-0.01em',
+                                    }}>
+                                        {todayEntry ? `Feeling ${todayEntry.emotion_label} — ${todayEntry.emotion_score}/10` : 'How did today actually go?'}
+                                    </p>
+                                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, fontFamily: satoshi, lineHeight: 1.6 }}>
+                                        {todayEntry
+                                            ? 'Captured. Your mentor folds this into your week report.'
+                                            : '60 honest seconds. Your mentor listens, reads the mood, and shapes next week around it.'}
+                                    </p>
                                 </div>
 
                                 <div data-tour="journey-mic" style={{ display: 'flex', justifyContent: 'center', marginBottom: justSaved ? '16px' : '0' }}>
@@ -1491,30 +1507,49 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 initial={{ scale: 0.8 }} animate={{ scale: 1 }} whileTap={{ scale: 0.95 }}
                                                 onClick={stopRecording}
                                                 style={{
-                                                    width: '60px', height: '60px', borderRadius: '50%',
+                                                    width: '88px', height: '88px', borderRadius: '50%',
                                                     border: '2px solid rgba(239,68,68,0.4)',
                                                     background: 'rgba(239,68,68,0.12)',
                                                     color: '#f87171', cursor: 'pointer',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     animation: 'pulse-rec 1.4s ease-in-out infinite',
                                                 }}>
-                                                <Square size={20} fill="#f87171" />
+                                                <Square size={28} fill="#f87171" />
                                             </motion.button>
                                         ) : (
-                                            <motion.button key="record"
-                                                initial={{ scale: 0.8 }} animate={{ scale: 1 }}
-                                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                                                onClick={startRecording}
-                                                style={{
-                                                    width: '60px', height: '60px', borderRadius: '50%',
-                                                    border: `2px solid ${todayEntry ? 'rgba(30,30,30,0.15)' : 'rgba(30,30,30,0.2)'}`,
-                                                    background: `${todayEntry ? 'var(--btn-primary-bg)' : 'var(--card-bg)'}`,
-                                                    color: 'var(--text-primary)', cursor: 'pointer',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    transition: 'all 0.2s',
-                                                }}>
-                                                <Mic size={22} />
-                                            </motion.button>
+                                            <motion.div key="record" style={{ position: 'relative', display: 'flex' }}>
+                                                {/* Breathing rings — pull the eye to the one action that matters */}
+                                                <motion.span
+                                                    animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
+                                                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut' }}
+                                                    style={{
+                                                        position: 'absolute', inset: 0, borderRadius: '50%',
+                                                        border: '1.5px solid var(--accent-primary)', pointerEvents: 'none',
+                                                    }}
+                                                />
+                                                <motion.span
+                                                    animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
+                                                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut', delay: 1.1 }}
+                                                    style={{
+                                                        position: 'absolute', inset: 0, borderRadius: '50%',
+                                                        border: '1.5px solid var(--accent-primary)', pointerEvents: 'none',
+                                                    }}
+                                                />
+                                                <motion.button
+                                                    initial={{ scale: 0.8 }} animate={{ scale: 1 }}
+                                                    whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+                                                    onClick={startRecording}
+                                                    style={{
+                                                        width: '88px', height: '88px', borderRadius: '50%',
+                                                        border: 'none',
+                                                        background: 'var(--btn-primary-bg)',
+                                                        color: 'var(--btn-primary-text)', cursor: 'pointer',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        boxShadow: 'var(--shadow-lg)',
+                                                    }}>
+                                                    <Mic size={32} />
+                                                </motion.button>
+                                            </motion.div>
                                         )}
                                     </AnimatePresence>
                                 </div>
@@ -1541,17 +1576,18 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             </div>
 
                             <div style={{
-                                borderRadius: '18px', padding: '18px 20px',
+                                borderRadius: '20px', padding: '20px 24px',
                                 background: 'var(--card-bg)',
                                 border: '1px solid var(--border-subtle)',
+                                boxShadow: 'var(--shadow-sm)',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                                     <p style={{
-                                        fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
-                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0,
+                                        fontSize: '10px', fontWeight: 800, color: 'var(--accent-primary)',
+                                        textTransform: 'uppercase', letterSpacing: '0.14em', margin: 0,
                                         fontFamily: satoshi,
                                     }}>
-                                        {weekInfo?.has_plan ? `Week ${weekInfo.current_week}` : 'This Week'}
+                                        {weekInfo?.has_plan ? `Your week · Week ${weekInfo.current_week}` : 'This week'}
                                     </p>
                                     {weekInfo?.has_plan && weekInfo.week_start && weekInfo.week_end && (
                                         <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500, fontFamily: satoshi }}>
