@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ArrowUp, Bell, Check, Calendar, Flame, Gift, Lock, Mail, Mic, Shield, Target, TrendingUp,
+    ArrowUp, Bell, Check, Calendar, Flame, Gift, Lock, Mail, MessageCircle, Mic, Shield, Target, TrendingUp,
 } from 'lucide-react';
 
 const clash = "'Clash Display', 'Inter', system-ui, sans-serif";
@@ -24,7 +24,7 @@ const GOAL = 'I want to start running again';
  * visitor's theme, weighs nothing, and can't drift out of date.
  */
 
-type Phase = 'greet' | 'type' | 'send' | 'plan' | 'lock' | 'email' | 'report' | 'reset';
+type Phase = 'greet' | 'type' | 'send' | 'plan' | 'lock' | 'seal' | 'today' | 'email' | 'report' | 'reset';
 type Target = 'input' | 'send' | 'letsgo' | 'plan' | null;
 
 interface Beat {
@@ -41,10 +41,14 @@ const BEATS: Beat[] = [
     { id: 'type', hold: 1900, step: 'Step 1', label: 'Say the goal, in your own words', target: 'input' },
     { id: 'send', hold: 1100, step: 'Step 1', label: 'Say the goal, in your own words', target: 'send', clickAt: 350 },
     { id: 'plan', hold: 2500, step: 'Step 2', label: 'Your mentor builds the week — and says why', target: 'plan' },
-    { id: 'lock', hold: 2600, step: 'Step 3', label: 'Commit. Today takes the stage', target: 'letsgo', clickAt: 650 },
+    { id: 'lock', hold: 1500, step: 'Step 3', label: 'Commit — no renegotiation mid-week', target: 'letsgo', clickAt: 700 },
+    { id: 'seal', hold: 1400, step: 'Step 3', label: 'Commit — no renegotiation mid-week', target: null },
+    { id: 'today', hold: 2200, step: 'Step 3', label: 'The mentor steps back. Today takes the stage', target: null },
     { id: 'email', hold: 2400, step: 'Step 4', label: "Each morning: today's task, one-tap done", target: null },
     { id: 'report', hold: 2800, step: 'Step 5', label: 'Week end: what you did versus what you promised', target: null },
-    { id: 'reset', hold: 450, step: '', label: '', target: null },
+    // Long enough for the report to fade out and the goal screen to fade in
+    // UNDER it — the loop lands on the exact frame it started from, no cut.
+    { id: 'reset', hold: 950, step: '', label: '', target: null },
 ];
 
 const ORDER: Phase[] = BEATS.map(b => b.id);
@@ -78,17 +82,23 @@ export default function AppWalkthrough() {
     const idx = at(phase);
 
     const hasPlan = idx >= at('plan');
-    const locked = (phase === 'lock' && clicked) || idx > at('lock');
-    const hasEmail = idx >= at('email');
-    const hasReport = idx >= at('report');
+    // The mentor panel stays up through the commit click, then closes — the
+    // seal beat is the ceremony, and Today reveals underneath. Same order as
+    // the real app: approve → panel closes → week seals → mission surface.
     const resetting = phase === 'reset';
+    const locked = idx >= at('seal') && !resetting;
+    const sealing = phase === 'seal';
+    const hasEmail = idx >= at('email') && !resetting;
+    const hasReport = idx >= at('report') && !resetting;
 
     useEffect(() => {
         if (reduced) return;
         const next = (i + 1) % BEATS.length;
         const t = setTimeout(() => {
             setClicked(false);
-            if (next === 0) setTyped(0);
+            // Typed text clears as the reset crossfade begins, so the loop's
+            // first frame (empty input) is already true before beat 0 starts.
+            if (next === 0 || BEATS[next].id === 'reset') setTyped(0);
             setI(next);
         }, beat.hold);
         const c = beat.clickAt != null ? setTimeout(() => setClicked(true), beat.clickAt) : undefined;
@@ -130,8 +140,8 @@ export default function AppWalkthrough() {
 
     const reg = (key: Exclude<Target, null>) => (el: HTMLElement | null) => { targets.current[key] = el; };
 
-    const showGoalScreen = !hasPlan;
-    const showMentorPanel = hasPlan && !locked;
+    const showGoalScreen = !hasPlan || resetting;
+    const showMentorPanel = hasPlan && !locked && !resetting;
 
     return (
         <div style={{
@@ -163,20 +173,22 @@ export default function AppWalkthrough() {
 
             {/* Stage — the mission workspace */}
             <div ref={stageRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
-                <motion.div
-                    animate={{ opacity: resetting ? 0 : 1 }}
-                    transition={{ duration: 0.35 }}
+                <div
                     style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}
                 >
                     <MissionBar locked={locked} compact={compact} />
 
-                    {/* ── Goal start (steps 1) ── */}
+                    {/* ── Goal start (step 1 — and the surface the loop resolves back to) ── */}
                     {showGoalScreen && (
-                        <div style={{
-                            flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-                            alignItems: 'center', justifyContent: 'center',
-                            padding: compact ? '10px 14px' : '12px 24px', gap: compact ? '10px' : '14px',
-                        }}>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.45, ease: 'easeOut' }}
+                            style={{
+                                flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', justifyContent: 'center',
+                                padding: compact ? '10px 14px' : '12px 24px', gap: compact ? '10px' : '14px',
+                            }}>
                             <div style={{ textAlign: 'center' }}>
                                 <div style={{
                                     fontSize: compact ? '15px' : '20px', fontWeight: 600, color: 'var(--text-primary)',
@@ -220,27 +232,53 @@ export default function AppWalkthrough() {
                                     }}>{s}</span>
                                 ))}
                             </div>
-                        </div>
+                        </motion.div>
                     )}
 
-                    {/* ── Mentor panel with the plan (step 2-3) ── */}
+                    {/* ── Mentor surface with the plan (steps 2-3) — closes on commit ── */}
+                    <AnimatePresence>
                     {showMentorPanel && (
                         <div style={{
-                            flex: 1, minHeight: 0, display: 'flex', alignItems: 'center',
+                            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
                             justifyContent: 'center', padding: compact ? '8px 12px' : '10px 24px',
+                            paddingTop: compact ? '34px' : '40px', zIndex: 20,
                         }}>
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.94, y: 12 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
                                 transition={{ type: 'spring', stiffness: 300, damping: 28 }}
                                 ref={reg('plan')}
                                 style={{
-                                    width: 'min(430px, 96%)', background: 'var(--card-bg)',
+                                    width: 'min(430px, 96%)', maxHeight: '100%', background: 'var(--card-bg)',
                                     border: '1px solid var(--border-medium)', borderRadius: '14px',
-                                    boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
+                                    boxShadow: 'var(--shadow-xl)', overflow: 'hidden',
                                 }}
                             >
-                                <div style={{ padding: compact ? '10px 14px 8px' : '12px 18px 10px' }}>
+                                {/* Mentor header + the user's own message — it's a conversation */}
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '7px',
+                                    padding: compact ? '8px 14px' : '9px 18px',
+                                    borderBottom: '1px solid var(--border-subtle)',
+                                }}>
+                                    <span style={{
+                                        width: '18px', height: '18px', borderRadius: '6px',
+                                        background: 'var(--btn-primary-bg)', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <MessageCircle size={9} style={{ color: 'var(--btn-primary-text)' }} />
+                                    </span>
+                                    <span style={{ fontSize: '9.5px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: clash }}>Your mentor</span>
+                                    <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--text-muted)' }}>✕</span>
+                                </div>
+                                <div style={{ padding: compact ? '8px 14px 0' : '9px 18px 0', display: 'flex', justifyContent: 'flex-end' }}>
+                                    <span style={{
+                                        background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                                        borderRadius: '10px 10px 3px 10px', padding: '5px 10px',
+                                        fontSize: compact ? '8.5px' : '9.5px', maxWidth: '85%',
+                                    }}>{GOAL}</span>
+                                </div>
+                                <div style={{ padding: compact ? '8px 14px 8px' : '10px 18px 10px' }}>
                                     <div style={{ ...kicker, color: 'var(--accent-primary)' }}>Week 1 · ready to commit</div>
                                     <div style={{
                                         fontSize: compact ? '12.5px' : '14px', fontWeight: 700, color: 'var(--text-primary)',
@@ -287,12 +325,59 @@ export default function AppWalkthrough() {
                             </motion.div>
                         </div>
                     )}
+                    </AnimatePresence>
+
+                    {/* ── Commit ceremony flash (seal beat) ── */}
+                    <AnimatePresence>
+                        {sealing && (
+                            <motion.div
+                                key="ceremony"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                style={{
+                                    position: 'absolute', inset: 0, zIndex: 25,
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                    justifyContent: 'center', gap: '10px',
+                                    background: 'color-mix(in srgb, var(--bg-primary) 72%, transparent)',
+                                    backdropFilter: 'blur(6px)',
+                                }}
+                            >
+                                <motion.span
+                                    initial={{ scale: 0, rotate: -18 }}
+                                    animate={{ scale: [0, 1.2, 1], rotate: 0 }}
+                                    transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                                    style={{
+                                        width: compact ? '40px' : '52px', height: compact ? '40px' : '52px',
+                                        borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, #ffb24d, #ff5a36)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: '0 0 34px rgba(255,90,54,0.4)',
+                                    }}
+                                >
+                                    <Check size={compact ? 20 : 26} color="#fff" strokeWidth={3} />
+                                </motion.span>
+                                <span style={{
+                                    fontSize: compact ? '13px' : '16px', fontWeight: 700,
+                                    color: 'var(--text-primary)', fontFamily: clash, letterSpacing: '-0.01em',
+                                }}>
+                                    Week 1 is set.
+                                </span>
+                                <span style={{ fontSize: compact ? '8.5px' : '9.5px', color: 'var(--text-secondary)' }}>
+                                    Commitment made — that's the hard part done.
+                                </span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* ── Today mission surface (after commit) ── */}
+                    <AnimatePresence>
                     {locked && (
                         <motion.div
+                            key="today-surface"
                             initial={{ opacity: 0, y: 14 }}
                             animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, transition: { duration: 0.4 } }}
                             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                             style={{
                                 flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
@@ -357,9 +442,49 @@ export default function AppWalkthrough() {
                                     </span>
                                 </div>
                             </div>
+
+                            {/* Voice journal + mentor tiles — same as the real Today stage */}
+                            <div style={{ display: 'flex', gap: compact ? '8px' : '10px' }}>
+                                <div style={{
+                                    flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
+                                    background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
+                                    borderRadius: '12px', padding: compact ? '8px 10px' : '9px 12px',
+                                }}>
+                                    <span style={{
+                                        width: compact ? '20px' : '24px', height: compact ? '20px' : '24px',
+                                        borderRadius: '8px', background: 'var(--btn-primary-bg)', flexShrink: 0,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <Mic size={compact ? 10 : 11} style={{ color: 'var(--btn-primary-text)' }} />
+                                    </span>
+                                    <span style={{ minWidth: 0 }}>
+                                        <span style={{ display: 'block', fontSize: compact ? '8.5px' : '9.5px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Evening voice note</span>
+                                        <span style={{ display: 'block', fontSize: '7.5px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>60 seconds, honest</span>
+                                    </span>
+                                </div>
+                                <div style={{
+                                    flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
+                                    background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
+                                    borderRadius: '12px', padding: compact ? '8px 10px' : '9px 12px',
+                                }}>
+                                    <span style={{
+                                        width: compact ? '20px' : '24px', height: compact ? '20px' : '24px',
+                                        borderRadius: '8px', background: 'var(--glass-hover)',
+                                        border: '1px solid var(--border-medium)', flexShrink: 0,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <MessageCircle size={compact ? 10 : 11} style={{ color: 'var(--accent-primary)' }} />
+                                    </span>
+                                    <span style={{ minWidth: 0 }}>
+                                        <span style={{ display: 'block', fontSize: compact ? '8.5px' : '9.5px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Ask your mentor</span>
+                                        <span style={{ display: 'block', fontSize: '7.5px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Plans, slips, anything</span>
+                                    </span>
+                                </div>
+                            </div>
                         </motion.div>
                     )}
-                </motion.div>
+                    </AnimatePresence>
+                </div>
 
                 {/* ── Email overlay (step 4) ── */}
                 <AnimatePresence>
