@@ -12,8 +12,8 @@ const SITE = 'https://feelivate.com';
 // Keep in sync with each page's <Seo> title/description.
 const ROUTES = {
   '/features': {
-    title: 'Features — Feelivate AI Accountability Mentor',
-    description: 'Explore every Feelivate feature across plan, execute, and reflect: goal-based weekly plans, the Lock-In Protocol, daily task emails, voice journaling, emotion tracking, streaks, calendar sync, and weekly reports.',
+    title: 'AI Accountability Coach for Daily Goals | Feelivate',
+    description: 'Stay on track with an AI accountability coach that turns goals into seven-day action plans, daily tasks, and progress tracking built for follow-through.',
   },
   '/pricing': {
     title: 'Pricing — Free for Founding Members | Feelivate',

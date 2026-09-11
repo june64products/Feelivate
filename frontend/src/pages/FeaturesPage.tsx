@@ -8,6 +8,8 @@ import { useWindowSize } from '../hooks/useWindowSize';
 type Feature = { title: string; desc: string; benefits: string[] };
 type Group = { act: string; title: string; blurb: string; features: Feature[] };
 
+// Copy follows the SEO content brief (Feelivate feature content doc) verbatim,
+// mapped into the existing three-act layout.
 const GROUPS: Group[] = [
   {
     act: 'Step 01',
@@ -15,19 +17,19 @@ const GROUPS: Group[] = [
     blurb: 'Turn a fuzzy ambition into a concrete, non-negotiable week.',
     features: [
       {
-        title: 'Goal-based plan generation',
-        desc: 'Tell your mentor what you want in plain words. Feelivate interviews you like a sharp friend, strips away the noise, and generates a hyper-specific 7-day plan — exact daily actions, sequenced, timed, and scaled to where you actually are today.',
-        benefits: ['No vague resolutions — a concrete daily what, when, and how', 'Plans tailored to your goal, schedule, and starting point', 'Built in a real conversation, not a blank template'],
+        title: 'Turn Your Goal Into a 7-Day Action Plan',
+        desc: 'Tell Feelivate what you want to accomplish in plain language, and it turns that goal into a specific seven-day plan with clear daily actions, timing, and priorities. Your plan is built around your goal, schedule, and current starting point, so you know exactly what to do next instead of relying on vague intentions.',
+        benefits: ['Clear daily actions: Know what to do, when to do it, and how to start.', 'Built around your reality: Plans account for your goal, schedule, and current starting point.', 'No blank templates: Get a structured action plan through a real conversation with your AI mentor.'],
       },
       {
-        title: 'Plan customization',
-        desc: "Nothing is locked until you say so. Shape the intensity, the days, and the focus in a natural back-and-forth until the week fits your real life — not an idealized version of it.",
-        benefits: ['Refine through chat, not rigid forms', 'Set the difficulty to your reality', 'Own the plan before you commit to it'],
+        title: 'Customize Your Plan Before You Commit',
+        desc: 'Adjust the intensity, schedule, and daily focus through a conversation with Feelivate before your seven-day plan is locked. Your AI accountability coach adapts the plan to your actual time, priorities, and starting point, so the actions are realistic enough to follow.',
+        benefits: ['Refine through conversation: Adjust your plan without rigid forms or fixed templates.', 'Match your reality: Set the difficulty and pace around your available time and current ability.', 'Commit with confidence: Review and shape the plan before making it your week.'],
       },
       {
-        title: 'The Lock-In Protocol',
-        desc: "The moment you approve a week, it locks. You can't quietly water it down on Thursday when it gets hard. You do the work, or the streak breaks — the way real commitment actually works.",
-        benefits: ['Removes the escape hatch that kills most goals', 'Turns intention into a promise you keep', "Protects future-you from present-you's excuses"],
+        title: 'Lock In Your Plan and Follow Through',
+        desc: 'Once you approve your seven-day plan, Feelivate locks it in. The actions you agreed to become your commitment for the week, giving you less room to quietly reduce the goal when motivation drops or the work gets difficult.',
+        benefits: ['No changing the goal midweek: Stay accountable to the plan you approved.', 'Turn intention into commitment: Move from deciding what to do to actually doing it.', 'Stay accountable when motivation drops: Keep the original commitment in view when excuses start to appear.'],
       },
     ],
   },
@@ -37,24 +39,24 @@ const GROUPS: Group[] = [
     blurb: 'Show up every day without relying on motivation.',
     features: [
       {
-        title: 'Daily task emails',
-        desc: "Every morning a personalized email lands with today's exact task and how-to tips — sent at the time you choose, in your timezone. No opening an app, no deciding what's next. Just do the one thing in front of you.",
-        benefits: ['Wake up knowing exactly what to do', 'Delivered at your time, in your timezone', 'Actionable tips, not just a reminder'],
+        title: 'Get Your Daily Task Without Opening an App',
+        desc: 'Feelivate sends your assigned task directly to your inbox at the time you choose. Each email tells you what to do that day and how to approach it, so you can act immediately instead of reopening a goal tracker and deciding what comes next.',
+        benefits: ["Know today's action: Get one clear task tied to your weekly goal.", 'Fits your routine: Receive the email at your chosen time and in your timezone.', 'Actionable guidance: Get practical tips with the task, not just another reminder.'],
       },
       {
-        title: 'Daily micro-actions',
-        desc: "Big goals are broken into the smallest actions that still move the needle — the kind you can't talk yourself out of. Momentum comes from finishing, not from planning.",
-        benefits: ['Small enough to actually start', 'Sequenced so each day builds on the last', 'Finishing daily builds unstoppable momentum'],
+        title: 'Break Big Goals Into Daily Micro-Actions',
+        desc: 'Feelivate breaks a larger goal into small, actionable steps that are easier to start and complete each day. Each action connects to the next, helping you build consistency through completed work rather than endless planning.',
+        benefits: ['Easy to start: Get a focused action that feels manageable enough to begin.', 'Builds day by day: Each task follows the previous one to keep your goal moving forward.', 'Create momentum through action: Consistent completion turns daily effort into lasting progress.'],
       },
       {
-        title: 'Streaks & daily check-ins',
-        desc: 'Mark the day done in seconds. Streaks turn consistency into something you can see and protect — and quietly make skipping feel expensive.',
-        benefits: ["Visible momentum you don't want to break", 'Frictionless, few-second check-ins', 'Consistency becomes its own reward'],
+        title: 'Track Daily Progress With Streaks and Check-Ins',
+        desc: 'Feelivate makes daily accountability simple: mark your task complete, keep your streak visible, and see whether you are following through on the plan you committed to. Quick check-ins keep progress easy to record without turning accountability into another chore.',
+        benefits: ['Keep your streak visible: See your consistency build from one completed day to the next.', 'Check in quickly: Mark daily progress in seconds without unnecessary tracking.', 'Make consistency tangible: A visible streak gives you a clear reason to keep showing up.'],
       },
       {
-        title: 'Google Calendar sync',
-        desc: 'Connect Google Calendar and your plan drops straight in with reminders. The work becomes a scheduled appointment with yourself — not a vague someday.',
-        benefits: ['Plans live where your day already lives', 'Reminders so nothing slips', 'Scheduled, not left to willpower'],
+        title: 'Sync Your Goals With Google Calendar',
+        desc: 'Connect Google Calendar so your Feelivate plan fits directly into your existing schedule. Turn planned actions into scheduled commitments with reminders, making it easier to protect time for the work instead of leaving it for an undefined "someday."',
+        benefits: ['Plan around your schedule: Put goal-related actions where your day already happens.', 'Keep commitments visible: Calendar reminders help keep planned work from slipping.', 'Schedule action, not intention: Give each task a place in your day so follow-through does not depend entirely on willpower.'],
       },
     ],
   },
@@ -64,30 +66,39 @@ const GROUPS: Group[] = [
     blurb: 'An honest feedback loop that makes every week smarter.',
     features: [
       {
-        title: 'Voice journaling',
-        desc: 'Had a rough day? Talk instead of type. Send a voice memo and Feelivate transcribes it, reads between the lines, and understands the real reason behind a slip.',
-        benefits: ['Faster and more honest than typing', "Captures the 'why', not just the 'what'", 'Turns a bad day into useful signal'],
+        title: 'Use Voice Check-Ins With Your AI Accountability Partner',
+        desc: 'Had a difficult day or missed a task? Send a voice memo instead of typing it out. Feelivate transcribes your check-in and helps identify why you slipped, giving your AI accountability partner useful context to guide the next step instead of simply marking the day as missed.',
+        benefits: ['Speak instead of type: Explain what happened naturally through a quick voice check-in.', 'Capture the reason: Go beyond task completion and identify what affected your follow-through.', 'Turn setbacks into feedback: Use each check-in to make your next actions more realistic and focused.'],
       },
       {
-        title: 'Emotion tracking',
-        desc: "Log how you feel each day. Feelivate factors your emotional state into the next plan — easing off when you're depleted, pushing when you're ready.",
-        benefits: ['Plans that respond to your real state', 'Spot the patterns behind wins and slips', 'A sustainable pace, not a blind grind'],
+        title: 'Adapt Your Routine With Emotion-Aware Tracking',
+        desc: "Feelivate lets you record how you feel each day and uses that context when shaping your next actions. Your AI routine coach can account for your current state, helping you maintain a sustainable pace instead of following the same rigid routine regardless of how you're doing.",
+        benefits: ['Track more than task completion: Record how you feel alongside your daily progress.', "Adapt to your real state: Adjust the pace when you're depleted and maintain momentum when you're ready.", 'Identify useful patterns: See what tends to support or disrupt your consistency over time.'],
       },
       {
-        title: 'Weekly reports',
-        desc: 'At the end of each week, an honest report card: what you actually did versus what you committed to. No sugar-coating — just the truth, and the next, slightly harder week.',
-        benefits: ['The honest feedback loop most tools skip', 'See real progress over time', 'Difficulty ramps as you grow'],
+        title: 'See What You Actually Accomplished Each Week',
+        desc: 'Feelivate turns your weekly activity into a clear progress report, showing what you committed to versus what you actually completed. For your weekly productivity goals, this creates an honest feedback loop that helps your AI accountability partner adjust the next plan based on real follow-through, not assumptions.',
+        benefits: ['See commitment vs. completion: Get a clear view of what you planned and what you actually did.', 'Track progress over time: Identify patterns in your consistency and see where your effort is moving.', 'Build on real performance: Use each weekly report to make the next set of actions more focused and challenging.'],
       },
       {
-        title: 'Multi-week memory',
-        desc: 'Feelivate remembers your history — your wins, your patterns, and your excuses. The longer you stay, the sharper and more personal the guidance becomes.',
-        benefits: ['Context compounds week over week', 'Guidance gets more personal over time', 'No repeating yourself every session'],
+        title: 'Your AI Accountability Partner Remembers Your Progress',
+        desc: 'Feelivate carries your wins, patterns, setbacks, and past actions from one week into the next. That ongoing context gives your AI accountability partner a clearer picture of how you work toward your goals, so guidance becomes increasingly relevant instead of resetting with every session.',
+        benefits: ['Keep your history connected: Your progress and patterns carry forward across weeks.', 'Get guidance with context: Future plans can account for previous actions and setbacks.', 'Stop repeating yourself: Your goal journey stays connected without re-explaining your history each session.'],
       },
     ],
   },
 ];
 
 const FEATURE_FAQS = [
+  // ── SEO brief FAQs — order and wording from the feature content doc ──
+  { q: 'What is an AI accountability coach?', a: 'An AI accountability coach helps turn a goal into specific actions and keeps you accountable for completing them. Feelivate creates a seven-day action plan, sends daily tasks, tracks your progress, and uses weekly feedback to guide your next steps.' },
+  { q: 'How does Feelivate help you stay accountable to your goals?', a: 'Feelivate turns your goal into a locked seven-day plan with specific daily actions. Daily task emails, quick check-ins, streak tracking, and weekly reports keep your commitment visible and show the difference between what you planned and what you actually completed.' },
+  { q: 'How is Feelivate different from a goal or habit tracking app?', a: 'A traditional tracker mainly records goals, habits, or completed tasks. Feelivate focuses on follow-through by creating the action plan for you, delivering the next task, tracking completion, and using your progress to shape future guidance.' },
+  { q: 'Can Feelivate create a personalized action plan from a goal?', a: 'Yes. You describe what you want to accomplish in plain language, and Feelivate creates a structured seven-day action plan around your goal, schedule, and starting point. You can refine the plan before approving and locking it in.' },
+  { q: 'How does Feelivate adapt when I miss a task or have a difficult day?', a: 'Feelivate uses check-ins, voice reflections, emotional context, and weekly reports to understand what affected your progress. This feedback helps make future actions more realistic instead of treating a missed task as simple failure.' },
+  { q: 'Does Feelivate track progress over multiple weeks?', a: 'Yes. Feelivate maintains multi-week context around your goals, including progress, patterns, wins, and setbacks. This gives your AI accountability partner a longer-term view of your behavior instead of starting each session without previous context.' },
+  { q: 'Can Feelivate fit goal-related tasks into my existing schedule?', a: 'Yes. Feelivate can connect with Google Calendar so planned actions can become scheduled commitments in your existing calendar. Daily tasks can also be delivered by email at your selected time and timezone.' },
+  // ── Original product FAQs, kept below the brief's set ──
   { q: 'Do I have to use every feature?', a: 'No. Start with a goal and a weekly plan — voice journaling, calendar sync, and the rest are there when you want them.' },
   { q: 'Can I change my plan after it locks?', a: "You can't quietly make a locked week easier, but you can talk to your mentor to shape future weeks. The lock protects your commitment; it doesn't trap you." },
   { q: 'How do the daily task emails work?', a: "Each morning you get a personalized email with that day's exact task and how-to tips, at the time and timezone you choose. Change the time or pause anytime." },
@@ -118,16 +129,16 @@ export default function FeaturesPage() {
   return (
     <PageShell
       seo={{
-        title: 'Features — Feelivate AI Accountability Mentor',
-        description: 'Explore every Feelivate feature across plan, execute, and reflect: goal-based weekly plans, the Lock-In Protocol, daily task emails, voice journaling, emotion tracking, streaks, calendar sync, and weekly reports.',
+        title: 'AI Accountability Coach for Daily Goals | Feelivate',
+        description: 'Stay on track with an AI accountability coach that turns goals into seven-day action plans, daily tasks, and progress tracking built for follow-through.',
         path: '/features',
         jsonLd,
       }}
     >
       <PageHero
         kicker="Features"
-        title="Everything Feelivate does"
-        subtitle="A complete accountability system in three acts — plan the week, execute every day, then reflect and adapt. Here's exactly how each piece drives you from a fuzzy goal to real, compounding progress."
+        title="AI Accountability Coach for Goal Follow-Through"
+        subtitle="Feelivate turns your goals into a structured seven-day action plan, then keeps you accountable through daily tasks and progress reviews. Unlike a basic goal tracker, it connects what you want to achieve with the actions you need to take next, helping you stay consistent and make measurable progress."
         isMobile={isMobile}
       />
 
