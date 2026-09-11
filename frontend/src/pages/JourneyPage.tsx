@@ -381,7 +381,7 @@ function MomentumScoreCard({ score, label }: { score: number; label: string }) {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             style={{
                 padding: '20px',
-                borderRadius: '16px',
+                borderRadius: '18px',
                 background: 'var(--card-bg)',
                 border: '1px solid var(--border-subtle)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
@@ -432,7 +432,7 @@ function WeekBadgeCard({ badge }: { badge: WeekBadge }) {
             transition={{ duration: 0.5, delay: 0.15 }}
             style={{
                 padding: '18px 20px',
-                borderRadius: '16px',
+                borderRadius: '18px',
                 background: 'var(--card-bg)',
                 border: '1px solid var(--border-subtle)',
                 display: 'flex', alignItems: 'center', gap: '14px',
@@ -473,7 +473,7 @@ function BestQuoteCard({ quote }: { quote: string }) {
             transition={{ duration: 0.5, delay: 0.2 }}
             style={{
                 padding: '20px 22px',
-                borderRadius: '16px',
+                borderRadius: '18px',
                 background: 'var(--card-bg)',
                 border: '1px solid var(--border-subtle)',
                 position: 'relative',
@@ -1307,69 +1307,90 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                     </motion.div>
                 )}
             </AnimatePresence>
-            {/* ── Header ── */}
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '14px 20px',
-                borderBottom: '1px solid var(--border-subtle)',
-                flexShrink: 0,
-                background: 'var(--card-bg)',
-            }}>
+            {/* ── Header — mission style ── */}
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: '14px',
+                    padding: '16px clamp(16px, 4vw, 28px)',
+                    borderBottom: '1px solid var(--border-subtle)',
+                    flexShrink: 0,
+                }}
+            >
                 {onClose && (
-                    <button
+                    <motion.button
+                        whileTap={{ scale: 0.94 }}
                         onClick={onClose}
+                        aria-label="Back to today"
                         style={{
-                            width: '32px', height: '32px', borderRadius: '8px',
-                            border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)',
+                            width: '36px', height: '36px', borderRadius: '12px',
+                            border: '1px solid var(--border-medium)', background: 'var(--card-bg)',
                             color: 'var(--text-secondary)', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s',
+                            transition: 'border-color 0.15s, color 0.15s', flexShrink: 0,
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--text-primary)'; e.currentTarget.style.color = 'var(--btn-primary-bg)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'var(--btn-primary-bg)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-medium)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                     >
                         <ArrowLeft size={16} />
-                    </button>
+                    </motion.button>
                 )}
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                        fontSize: '10px', fontWeight: 800, letterSpacing: '0.14em',
+                        textTransform: 'uppercase', color: 'var(--accent-primary)',
+                        margin: '0 0 2px', fontFamily: satoshi,
+                    }}>
+                        Your private space
+                    </p>
                     <h1 style={{
-                        fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)',
-                        letterSpacing: '-0.03em', margin: 0,
-                        fontFamily: clashDisplay,
+                        fontSize: '19px', fontWeight: 700, color: 'var(--text-primary)',
+                        letterSpacing: '-0.02em', margin: 0, fontFamily: clashDisplay,
+                        display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap',
                     }}>
                         My Journey
+                        {report?.week_start && (
+                            <span style={{
+                                fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)',
+                                fontFamily: satoshi, letterSpacing: 0,
+                            }}>
+                                Week of {report.week_start}
+                            </span>
+                        )}
                     </h1>
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, marginTop: '2px', fontFamily: satoshi }}>
-                        {report?.week_start && `Week of ${report.week_start}`}
-                    </p>
                 </div>
 
-                {/* Tabs */}
-                <div style={{ display: 'flex', gap: '0', background: 'var(--bg-surface)', borderRadius: '10px', padding: '3px', border: '1px solid var(--border-subtle)' }}>
+                {/* Tabs — pill segmented control */}
+                <div style={{
+                    display: 'flex', gap: '2px', background: 'var(--bg-surface)',
+                    borderRadius: '100px', padding: '4px', border: '1px solid var(--border-subtle)',
+                    flexShrink: 0,
+                }}>
                     {(['overview', 'archive'] as const).map(tab => (
                         <button
                             key={tab}
                             data-tour={tab === 'archive' ? 'archive-tab' : undefined}
                             onClick={() => tab === 'archive' ? handleArchiveTab() : setActiveTab('overview')}
                             style={{
-                                padding: '5px 14px', borderRadius: '7px', border: 'none',
-                                background: activeTab === tab ? 'var(--card-bg)' : 'transparent',
-                                color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-muted)',
-                                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                                transition: 'all 0.15s',
+                                padding: '7px 16px', borderRadius: '100px', border: 'none',
+                                background: activeTab === tab ? 'var(--btn-primary-bg)' : 'transparent',
+                                color: activeTab === tab ? 'var(--btn-primary-text)' : 'var(--text-muted)',
+                                fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                                transition: 'all 0.18s',
                                 fontFamily: satoshi,
                                 textTransform: 'capitalize',
-                                boxShadow: activeTab === tab ? '0 1px 3px rgba(30,30,30,0.06)' : 'none',
                             }}
                         >
                             {tab}
                         </button>
                     ))}
                 </div>
-            </div>
+            </motion.div>
 
             {/* ── Body ── */}
-            <div className="journey-body-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+            <div className="journey-body-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px clamp(16px, 4vw, 28px) 60px' }}>
                 <AnimatePresence mode="wait">
                     {activeTab === 'overview' ? (
                         <motion.div
@@ -1378,13 +1399,17 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
                             transition={{ duration: 0.2 }}
-                            style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+                            style={{
+                                display: 'flex', flexDirection: 'column', gap: '16px',
+                                maxWidth: '820px', margin: '0 auto', width: '100%',
+                            }}
                         >
-                            {/* ── Voice recorder card ── */}
+                            {/* ── Voice recorder card — the hero of this page ── */}
                             <div style={{
-                                borderRadius: '16px', padding: '20px',
+                                borderRadius: '22px', padding: '24px 26px',
                                 background: 'var(--card-bg)',
                                 border: '1px solid var(--border-subtle)',
+                                boxShadow: 'var(--shadow-sm)',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                                     <div>
@@ -1516,7 +1541,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             </div>
 
                             <div style={{
-                                borderRadius: '16px', padding: '18px 20px',
+                                borderRadius: '18px', padding: '18px 20px',
                                 background: 'var(--card-bg)',
                                 border: '1px solid var(--border-subtle)',
                             }}>
@@ -1594,7 +1619,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                     <>
                                         {!isWeekComplete && weekDays.some(d => d.has_journal) && (
                                             <div style={{
-                                                borderRadius: '16px', padding: '18px 20px',
+                                                borderRadius: '18px', padding: '18px 20px',
                                                 background: 'var(--card-bg)',
                                                 border: '1px solid var(--border-subtle)',
                                                 textAlign: 'center', lineHeight: 1.6,
@@ -1609,7 +1634,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         )}
                                         {loadingReport ? (
                                             <div style={{
-                                                borderRadius: '16px', padding: '32px', textAlign: 'center',
+                                                borderRadius: '18px', padding: '32px', textAlign: 'center',
                                                 background: 'var(--card-bg)',
                                                 border: '1px solid var(--border-subtle)',
                                                 color: 'var(--text-muted)', fontSize: '13px',
@@ -1620,7 +1645,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         ) : !isWeekComplete ? null
                                             : report?.status === 'no_data' ? (
                                                 <div style={{
-                                                    borderRadius: '16px', padding: '28px', textAlign: 'center',
+                                                    borderRadius: '18px', padding: '28px', textAlign: 'center',
                                                     background: 'var(--card-bg)',
                                                     border: '1px solid var(--border-subtle)',
                                                     color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6,
@@ -1631,7 +1656,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 </div>
                                             ) : (report?.status === 'in_progress' || report?.status === 'waiting_for_sunday_entry') ? (
                                                 <div style={{
-                                                    borderRadius: '16px', padding: '28px', textAlign: 'center',
+                                                    borderRadius: '18px', padding: '28px', textAlign: 'center',
                                                     background: 'var(--card-bg)',
                                                     border: '1px solid var(--border-subtle)',
                                                     lineHeight: 1.6,
@@ -1647,7 +1672,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 </div>
                                             ) : reportData ? (
                                                 <div style={{
-                                                    borderRadius: '16px',
+                                                    borderRadius: '18px',
                                                     border: '1px solid var(--border-subtle)',
                                                     background: 'var(--card-bg)',
                                                     overflow: 'hidden',
@@ -1878,6 +1903,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
                             transition={{ duration: 0.2 }}
+                            style={{ maxWidth: '820px', margin: '0 auto', width: '100%' }}
                         >
                             <p style={{
                                 fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
@@ -1913,7 +1939,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             <div
                                                 key={aw.week_number}
                                                 style={{
-                                                    borderRadius: '16px',
+                                                    borderRadius: '18px',
                                                     border: isExpanded ? '1px solid rgba(30,30,30,0.1)' : '1px solid rgba(30,30,30,0.06)',
                                                     background: 'var(--card-bg)',
                                                     overflow: 'hidden',
