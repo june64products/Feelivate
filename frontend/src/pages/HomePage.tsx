@@ -149,24 +149,9 @@ export default function HomePage() {
               style={{ fontSize: isMobile ? '37px' : '58px', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.0, margin: '16px 0 18px', fontFamily: clash }}
             />
             <Rise delay={HERO_T.body}>
-              <p style={{ fontSize: isMobile ? '14px' : '15.5px', color: 'var(--text-secondary)', lineHeight: 1.65, fontFamily: satoshi, fontWeight: 500, marginBottom: '18px', maxWidth: '540px' }}>
-                <strong style={{ color: 'var(--text-primary)' }}>How does an AI accountability mentor work?</strong>{' '}
-                An AI accountability mentor like Feelivate turns a single stated goal into a structured 7-day plan, then delivers one task at a time so you're never guessing what to do next. Feelivate tracks completion automatically and closes the week with a report that reflects what you actually did, not just what you checked off.
+              <p style={{ fontSize: isMobile ? '15px' : '17px', color: 'var(--text-secondary)', lineHeight: 1.65, fontFamily: satoshi, fontWeight: 500, marginBottom: '26px', maxWidth: '520px' }}>
+                Turn goals into a locked 7-day action plan with daily tasks, streak tracking, and honest weekly progress reports.
               </p>
-              <div style={{ marginBottom: '26px', maxWidth: '540px' }}>
-                <p style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: satoshi, margin: '0 0 8px' }}>
-                  Setup, in three steps
-                </p>
-                <ol style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {[
-                    'Tell Feelivate your goal, in plain language, no forms or templates',
-                    'Feelivate builds a locked 7-day action plan and emails you the first task',
-                    "You complete each day's task, Feelivate tracks the streak, and sends a full progress report at the end of the week",
-                  ].map((s) => (
-                    <li key={s} style={{ fontSize: isMobile ? '13px' : '13.5px', color: 'var(--text-secondary)', lineHeight: 1.55, fontFamily: satoshi, fontWeight: 500 }}>{s}</li>
-                  ))}
-                </ol>
-              </div>
             </Rise>
             <Rise delay={HERO_T.ctas}>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -190,6 +175,52 @@ export default function HomePage() {
           <TiltCard>
             <HeroPreviewCard isMobile={isMobile} />
           </TiltCard>
+        </div>
+
+        {/* SEO brief block — the how-it-works answer and the 3-step setup, moved
+            out of the hero column into a breathable two-column band so the hero
+            stays clean. Same content, same page, same SEO weight. */}
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: '1140px', margin: isMobile ? '36px auto 0' : '52px auto 0' }}>
+          <Rise inView y={22} amount={0.3}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.1fr 0.9fr',
+              gap: isMobile ? '22px' : '48px',
+              padding: isMobile ? '22px 20px' : '30px 36px',
+              border: '1px solid var(--border-subtle)', borderRadius: '4px',
+              background: 'var(--bg-surface)',
+            }}>
+              <div>
+                <h2 style={{ fontSize: isMobile ? '17px' : '19px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', margin: '0 0 10px' }}>
+                  How does an AI accountability mentor work?
+                </h2>
+                <p style={{ fontSize: isMobile ? '13.5px' : '14.5px', color: 'var(--text-secondary)', lineHeight: 1.7, fontFamily: satoshi, fontWeight: 500, margin: 0 }}>
+                  An AI accountability mentor like Feelivate turns a single stated goal into a structured 7-day plan, then delivers one task at a time so you're never guessing what to do next. Feelivate tracks completion automatically and closes the week with a report that reflects what you actually did, not just what you checked off.
+                </p>
+              </div>
+              <div>
+                <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: satoshi, margin: '0 0 12px' }}>
+                  Setup, in three steps
+                </p>
+                <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[
+                    'Tell Feelivate your goal, in plain language, no forms or templates',
+                    'Feelivate builds a locked 7-day action plan and emails you the first task',
+                    "You complete each day's task, Feelivate tracks the streak, and sends a full progress report at the end of the week",
+                  ].map((s, i) => (
+                    <li key={s} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <span style={{
+                        flexShrink: 0, width: '22px', height: '22px', borderRadius: '50%',
+                        border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: '11px', fontWeight: 700,
+                        fontFamily: satoshi, color: 'var(--text-primary)',
+                      }}>{i + 1}</span>
+                      <span style={{ fontSize: isMobile ? '13px' : '13.5px', color: 'var(--text-secondary)', lineHeight: 1.6, fontFamily: satoshi, fontWeight: 500 }}>{s}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          </Rise>
         </div>
 
         {/* Hero media — the product in use, then three still frames of what it hands you.
