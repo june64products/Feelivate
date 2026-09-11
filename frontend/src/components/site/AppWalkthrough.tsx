@@ -643,21 +643,37 @@ function MissionBar({ locked, compact }: { locked: boolean; compact: boolean }) 
 }
 
 function Overlay({ children }: { children: ReactNode }) {
+    // Flex-centered inside a dimmed backdrop. Centering must NOT use a CSS
+    // transform — framer's y/scale animation overwrites `transform`, which is
+    // exactly how these cards used to drift off-centre over the path row.
     return (
         <motion.div
-            initial={{ opacity: 0, y: 18, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -12, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
             style={{
-                position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-                width: 'min(400px, 88%)', zIndex: 30,
-                background: 'var(--card-bg)', border: '1px solid var(--border-medium)',
-                borderRadius: '14px', padding: '14px 16px', boxShadow: 'var(--shadow-xl)',
-                fontFamily: satoshi,
+                position: 'absolute', inset: 0, zIndex: 30,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '18px',
+                background: 'color-mix(in srgb, var(--bg-primary) 55%, transparent)',
+                backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)',
             }}
         >
-            {children}
+            <motion.div
+                initial={{ opacity: 0, y: 18, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+                style={{
+                    width: 'min(400px, 94%)', maxHeight: '100%', overflow: 'hidden',
+                    background: 'var(--card-bg)', border: '1px solid var(--border-medium)',
+                    borderRadius: '14px', padding: '14px 16px', boxShadow: 'var(--shadow-xl)',
+                    fontFamily: satoshi,
+                }}
+            >
+                {children}
+            </motion.div>
         </motion.div>
     );
 }
