@@ -198,6 +198,7 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         if (!step) return;
         const target = effectiveTarget(step.target, isMobile);
         let raf = 0;
+        let scrolled = false;
         const tick = () => {
             if (target === 'center') {
                 setRect(null);
@@ -206,6 +207,13 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
                 if (!el) {
                     setRect(prev => (prev === null ? prev : null));
                 } else {
+                    // First sighting of this step's target → bring it into view.
+                    // On phones/tablets the today card, path row or tiles can sit
+                    // below the fold, which used to strand the tour with no card.
+                    if (!scrolled) {
+                        scrolled = true;
+                        try { el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' }); } catch { /* older browsers */ }
+                    }
                     const r = el.getBoundingClientRect();
                     setRect(prev =>
                         prev &&

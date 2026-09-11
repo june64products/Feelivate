@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ArrowUp, BookOpen, Calendar, Check, Bell, Flame, Lock, Mail, MessageSquare, Mic, Plus, TrendingUp,
+    ArrowUp, Bell, Check, Calendar, Flame, Gift, Lock, Mail, Mic, Shield, Target, TrendingUp,
 } from 'lucide-react';
 
 const clash = "'Clash Display', 'Inter', system-ui, sans-serif";
@@ -11,14 +11,14 @@ const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
 const GOAL = 'I want to start running again';
 
 /**
- * Fourteen seconds of somebody using Feelivate.
+ * Fourteen seconds of somebody using Feelivate — the MISSION layout.
  *
- * Unlike a slideshow of scenes, this is ONE app screen — sidebar, chat, composer —
- * that stays put while a pointer types the goal, sends it, gets the week, locks it,
- * receives the morning email and reads the weekly report. The pointer is aimed at
- * the real elements (measured from the DOM), so every click lands on the thing it
- * changes. Same order as the first-run tutorial, cut down to the five beats that
- * carry the product.
+ * One app frame that stays put: the goal-start screen takes the typed goal,
+ * the mentor panel builds the week, committing seals it into the Today
+ * mission surface (task card, path row, streak + shield), then the morning
+ * email and the weekly report land on top. The pointer is aimed at real
+ * elements (measured from the DOM), so every click lands on the thing it
+ * changes. Same order as the first-run tutorial, cut to five beats.
  *
  * Built from markup rather than recorded: sharp at any density, follows the
  * visitor's theme, weighs nothing, and can't drift out of date.
@@ -37,12 +37,12 @@ interface Beat {
 }
 
 const BEATS: Beat[] = [
-    { id: 'greet', hold: 1300, step: 'Step 1', label: 'Tell it the goal, in your own words', target: 'input' },
-    { id: 'type', hold: 1900, step: 'Step 1', label: 'Tell it the goal, in your own words', target: 'input' },
-    { id: 'send', hold: 1100, step: 'Step 1', label: 'Tell it the goal, in your own words', target: 'send', clickAt: 350 },
-    { id: 'plan', hold: 2500, step: 'Step 2', label: 'It builds your week, and says why', target: 'plan' },
-    { id: 'lock', hold: 2300, step: 'Step 3', label: "Lock it in. It can't be softened later", target: 'letsgo', clickAt: 650 },
-    { id: 'email', hold: 2400, step: 'Step 4', label: "Each morning: today's exact task, in your inbox", target: null },
+    { id: 'greet', hold: 1300, step: 'Step 1', label: 'Say the goal, in your own words', target: 'input' },
+    { id: 'type', hold: 1900, step: 'Step 1', label: 'Say the goal, in your own words', target: 'input' },
+    { id: 'send', hold: 1100, step: 'Step 1', label: 'Say the goal, in your own words', target: 'send', clickAt: 350 },
+    { id: 'plan', hold: 2500, step: 'Step 2', label: 'Your mentor builds the week — and says why', target: 'plan' },
+    { id: 'lock', hold: 2600, step: 'Step 3', label: 'Commit. Today takes the stage', target: 'letsgo', clickAt: 650 },
+    { id: 'email', hold: 2400, step: 'Step 4', label: "Each morning: today's task, one-tap done", target: null },
     { id: 'report', hold: 2800, step: 'Step 5', label: 'Week end: what you did versus what you promised', target: null },
     { id: 'reset', hold: 450, step: '', label: '', target: null },
 ];
@@ -77,17 +77,12 @@ export default function AppWalkthrough() {
     const phase = beat.id;
     const idx = at(phase);
 
-    // Derived scene state. Everything that has "already happened" stays on screen,
-    // so the frame reads as a conversation rather than a series of slides.
-    const sent = idx >= at('send') && clicked || idx > at('send');
     const hasPlan = idx >= at('plan');
     const locked = (phase === 'lock' && clicked) || idx > at('lock');
     const hasEmail = idx >= at('email');
     const hasReport = idx >= at('report');
     const resetting = phase === 'reset';
 
-    // Advance the timeline. The click flag and the typed text are reset in the
-    // same tick the beat changes, so no frame shows a stale state.
     useEffect(() => {
         if (reduced) return;
         const next = (i + 1) % BEATS.length;
@@ -100,15 +95,12 @@ export default function AppWalkthrough() {
         return () => { clearTimeout(t); if (c) clearTimeout(c); };
     }, [i, beat, reduced]);
 
-    // Typewriter, only during the typing beat.
     useEffect(() => {
         if (reduced || phase !== 'type') return;
         const iv = setInterval(() => setTyped(v => (v >= GOAL.length ? v : v + 1)), 52);
         return () => clearInterval(iv);
     }, [phase, reduced]);
 
-    // Aim the pointer at the real element. Measured a few times after the beat
-    // starts so elements that slide in are caught at their resting position.
     useLayoutEffect(() => {
         if (reduced) return;
         const key = beat.target;
@@ -119,7 +111,6 @@ export default function AppWalkthrough() {
             if (!stage || !el) return;
             const s = stage.getBoundingClientRect();
             const r = el.getBoundingClientRect();
-            // Plan hover sits over the card's first row instead of dead centre.
             const y = key === 'plan' ? r.top + Math.min(r.height * 0.45, 70) : r.top + r.height / 2;
             setCursor({ x: r.left + r.width / 2 - s.left, y: y - s.top });
         };
@@ -129,7 +120,6 @@ export default function AppWalkthrough() {
         return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
     }, [i, beat, reduced, compact]);
 
-    // Layout responds to the frame's own width, not the viewport.
     useEffect(() => {
         const stage = stageRef.current;
         if (!stage || typeof ResizeObserver === 'undefined') return;
@@ -140,11 +130,13 @@ export default function AppWalkthrough() {
 
     const reg = (key: Exclude<Target, null>) => (el: HTMLElement | null) => { targets.current[key] = el; };
 
+    const showGoalScreen = !hasPlan;
+    const showMentorPanel = hasPlan && !locked;
+
     return (
         <div style={{
             width: '100%',
             position: 'relative',
-            // Square on a phone: the plan card needs the height to be read whole.
             aspectRatio: compact ? '1 / 1' : '16 / 9',
             background: 'var(--card-bg)',
             border: '1px solid var(--border-medium)',
@@ -169,506 +161,378 @@ export default function AppWalkthrough() {
                 <span style={{ ...kicker, marginLeft: 'auto' }}>feelivate.com/app</span>
             </div>
 
-            {/* Stage — the app */}
+            {/* Stage — the mission workspace */}
             <div ref={stageRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
                 <motion.div
                     animate={{ opacity: resetting ? 0 : 1 }}
                     transition={{ duration: 0.35 }}
-                    style={{ position: 'absolute', inset: 0, display: 'flex' }}
+                    style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}
                 >
-                    <Sidebar compact={compact} locked={locked} />
+                    <MissionBar locked={locked} compact={compact} />
 
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
-                        <TopBar locked={locked} compact={compact} />
-
-                        {/* Messages — newest at the bottom, older ones scroll off the top. */}
+                    {/* ── Goal start (steps 1) ── */}
+                    {showGoalScreen && (
                         <div style={{
-                            flex: 1, minHeight: 0, overflow: 'hidden',
-                            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                            gap: '8px', padding: compact ? '10px 12px' : '12px 18px',
+                            flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center',
+                            padding: compact ? '10px 14px' : '12px 24px', gap: compact ? '10px' : '14px',
                         }}>
-                            <Bubble>What do you want to change? Tell me in your own words.</Bubble>
-
-                            <AnimatePresence>
-                                {sent && (
-                                    <Enter key="user"><Bubble mine>{GOAL}</Bubble></Enter>
-                                )}
-                                {sent && !hasPlan && (
-                                    <Enter key="dots"><Thinking /></Enter>
-                                )}
-                                {hasPlan && (
-                                    <Enter key="why">
-                                        <Bubble>Two runs this week, not four. You said you burn out. Habit first.</Bubble>
-                                    </Enter>
-                                )}
-                                {hasPlan && !locked && (
-                                    <Enter key="plan" y={18}>
-                                        <div ref={reg('plan')}>
-                                            <PlanCard letsGoRef={reg('letsgo')} pressing={phase === 'lock' && clicked} />
-                                        </div>
-                                    </Enter>
-                                )}
-                                {locked && (
-                                    <Enter key="pill">
-                                        <ActivePill compact={compact} />
-                                    </Enter>
-                                )}
-                                {hasEmail && (
-                                    <Enter key="email" y={18}><EmailCard compact={compact} /></Enter>
-                                )}
-                                {hasReport && (
-                                    <Enter key="report" y={18}><ReportCard compact={compact} /></Enter>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        <Composer
-                            inputRef={reg('input')}
-                            sendRef={reg('send')}
-                            text={sent ? '' : GOAL.slice(0, typed)}
-                            focused={phase === 'greet' || phase === 'type' || phase === 'send'}
-                            compact={compact}
-                        />
-                    </div>
-
-                    {/* Lock toast */}
-                    <AnimatePresence>
-                        {locked && phase === 'lock' && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10, x: '-50%', scale: 0.96 }}
-                                animate={{ opacity: 1, y: 0, x: '-50%', scale: 1 }}
-                                exit={{ opacity: 0, x: '-50%' }}
-                                transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-                                style={{
-                                    // Drops in under the top bar, clear of the pill it just replaced.
-                                    position: 'absolute', top: compact ? '40px' : '44px',
-                                    left: compact ? 'calc(50% + 20px)' : 'calc(50% + 64px)',
-                                    display: 'flex', alignItems: 'center', gap: '8px',
-                                    padding: '8px 14px', borderRadius: '100px',
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{
+                                    fontSize: compact ? '15px' : '20px', fontWeight: 600, color: 'var(--text-primary)',
+                                    fontFamily: clash, letterSpacing: '-0.02em',
+                                }}>
+                                    What do you want to change?
+                                </div>
+                                <div style={{ fontSize: compact ? '9px' : '10.5px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                    Say it once. Your mentor turns it into a week you can keep.
+                                </div>
+                            </div>
+                            <div ref={reg('input')} style={{
+                                width: 'min(420px, 92%)', display: 'flex', alignItems: 'center', gap: '8px',
+                                background: 'var(--card-bg)', border: '1px solid var(--border-medium)',
+                                borderRadius: '100px', padding: compact ? '8px 8px 8px 14px' : '10px 10px 10px 16px',
+                                boxShadow: 'var(--shadow-sm)',
+                            }}>
+                                <span style={{
+                                    flex: 1, fontSize: compact ? '10px' : '11.5px', whiteSpace: 'nowrap', overflow: 'hidden',
+                                    color: typed > 0 ? 'var(--text-primary)' : 'var(--text-muted)',
+                                }}>
+                                    {typed > 0 ? GOAL.slice(0, typed) : 'I keep starting and quitting…'}
+                                    {phase === 'type' && <span style={{ opacity: 0.7 }}>▍</span>}
+                                </span>
+                                <Mic size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                <span ref={reg('send')} style={{
+                                    width: compact ? '22px' : '26px', height: compact ? '22px' : '26px', borderRadius: '50%',
                                     background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
-                                    boxShadow: 'var(--shadow-lg)', zIndex: 4, whiteSpace: 'nowrap',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                    transform: phase === 'send' && clicked ? 'scale(0.9)' : 'none',
+                                    transition: 'transform 0.15s',
+                                }}>
+                                    <ArrowUp size={13} />
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                {['Get fit', 'Quit smoking', 'Learn coding'].map(s => (
+                                    <span key={s} style={{
+                                        fontSize: '8.5px', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)',
+                                        borderRadius: '100px', padding: '4px 10px', background: 'var(--card-bg)',
+                                    }}>{s}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Mentor panel with the plan (step 2-3) ── */}
+                    {showMentorPanel && (
+                        <div style={{
+                            flex: 1, minHeight: 0, display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', padding: compact ? '8px 12px' : '10px 24px',
+                        }}>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                                ref={reg('plan')}
+                                style={{
+                                    width: 'min(430px, 96%)', background: 'var(--card-bg)',
+                                    border: '1px solid var(--border-medium)', borderRadius: '14px',
+                                    boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
                                 }}
                             >
-                                <Lock size={11} />
-                                <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                                    Week 1 locked
-                                </span>
+                                <div style={{ padding: compact ? '10px 14px 8px' : '12px 18px 10px' }}>
+                                    <div style={{ ...kicker, color: 'var(--accent-primary)' }}>Week 1 · ready to commit</div>
+                                    <div style={{
+                                        fontSize: compact ? '12.5px' : '14px', fontWeight: 700, color: 'var(--text-primary)',
+                                        fontFamily: clash, marginTop: '3px',
+                                    }}>
+                                        Running restart — built for you
+                                    </div>
+                                    <div style={{ fontSize: compact ? '8.5px' : '9.5px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.5 }}>
+                                        Two runs this week, not four — you said you burn out. Habit first, volume later.
+                                    </div>
+                                </div>
+                                <div style={{ borderTop: '1px solid var(--border-subtle)', padding: compact ? '8px 14px' : '10px 18px' }}>
+                                    {[
+                                        ['Tue', 'If 7 am — shoes on, out the door. Run 1 / walk 3 × 6'],
+                                        ['Thu', 'If 7 am — run 90s / walk 3 × 5'],
+                                        ['Sat', 'Longest effort yet — 20 min, any pace'],
+                                    ].map(([d, a]) => (
+                                        <div key={d} style={{ display: 'flex', gap: '10px', padding: '3.5px 0', alignItems: 'baseline' }}>
+                                            <span style={{ fontSize: '8.5px', fontWeight: 700, color: 'var(--text-muted)', width: '22px', flexShrink: 0 }}>{d}</span>
+                                            <span style={{ fontSize: compact ? '8.5px' : '9.5px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a}</span>
+                                        </div>
+                                    ))}
+                                    <div style={{ fontSize: '8.5px', color: 'var(--text-muted)', marginTop: '4px' }}>Win = 2 of 3 runs · Sun rest</div>
+                                </div>
+                                <div style={{ padding: compact ? '8px 14px 12px' : '10px 18px 14px', display: 'flex', gap: '8px' }}>
+                                    <span ref={reg('letsgo')} style={{
+                                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                        background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                                        borderRadius: '100px', padding: compact ? '7px 0' : '8px 0',
+                                        fontSize: compact ? '9px' : '10px', fontWeight: 800, letterSpacing: '0.05em',
+                                        textTransform: 'uppercase',
+                                        transform: phase === 'lock' && clicked ? 'scale(0.96)' : 'none',
+                                        transition: 'transform 0.15s',
+                                    }}>
+                                        <Lock size={10} />
+                                        I'm committing to this
+                                    </span>
+                                    <span style={{
+                                        padding: compact ? '7px 12px' : '8px 14px', borderRadius: '100px',
+                                        border: '1px solid var(--border-medium)', color: 'var(--text-secondary)',
+                                        fontSize: compact ? '9px' : '10px', fontWeight: 700,
+                                    }}>Tweak</span>
+                                </div>
                             </motion.div>
-                        )}
-                    </AnimatePresence>
-                </motion.div>
+                        </div>
+                    )}
 
-                <Pointer pos={cursor} click={clicked && beat.clickAt != null} clickKey={phase} />
-            </div>
-
-            {/* Caption + progress */}
-            <div style={{ flexShrink: 0, borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
-                <div style={{ display: 'flex', gap: '3px', padding: '0 14px', marginTop: '-1px' }}>
-                    {BEATS.filter(b => b.id !== 'reset').map((b, n) => {
-                        const done = n < Math.min(i, BEATS.length - 2) || resetting;
-                        const active = !resetting && n === i;
-                        return (
-                            <div key={b.id} style={{ flex: b.hold, height: '2px', background: 'var(--border-medium)', overflow: 'hidden' }}>
-                                <motion.div
-                                    initial={false}
-                                    animate={{ scaleX: done || active ? 1 : 0 }}
-                                    transition={{ duration: active ? b.hold / 1000 : 0, ease: 'linear' }}
-                                    style={{ height: '100%', background: 'var(--accent-warm)', transformOrigin: 'left' }}
-                                />
-                            </div>
-                        );
-                    })}
-                </div>
-                <div style={{ padding: '8px 14px 9px', display: 'flex', alignItems: 'baseline', gap: '10px', minHeight: '32px' }}>
-                    <AnimatePresence mode="wait">
+                    {/* ── Today mission surface (after commit) ── */}
+                    {locked && (
                         <motion.div
-                            key={beat.label || 'reset'}
-                            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                            transition={{ duration: 0.22 }}
-                            style={{ display: 'flex', alignItems: 'baseline', gap: '10px', minWidth: 0 }}
+                            initial={{ opacity: 0, y: 14 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                            style={{
+                                flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+                                gap: compact ? '8px' : '10px', padding: compact ? '10px 14px' : '12px 26px',
+                                maxWidth: '560px', width: '100%', margin: '0 auto',
+                            }}
                         >
-                            {beat.step && <span style={{ ...kicker, color: 'var(--accent-warm)', flexShrink: 0 }}>{beat.step}</span>}
-                            <span style={{
-                                fontSize: compact ? '11px' : '11.5px', fontWeight: 600,
-                                color: 'var(--text-secondary)', fontFamily: satoshi,
-                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            <div style={{
+                                background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
+                                borderRadius: '14px', padding: compact ? '10px 14px' : '12px 18px',
+                                boxShadow: 'var(--shadow-sm)',
                             }}>
-                                {beat.label}
-                            </span>
+                                <div style={{ ...kicker, color: 'var(--accent-primary)' }}>Today · Week 1</div>
+                                <div style={{
+                                    fontSize: compact ? '11px' : '13px', fontWeight: 600, color: 'var(--text-primary)',
+                                    fontFamily: clash, margin: '4px 0 8px', lineHeight: 1.45,
+                                }}>
+                                    If it's 7:00 am — shoes on, out the door
+                                </div>
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                    background: 'linear-gradient(135deg, #ffb24d, #ff5a36)', color: '#fff',
+                                    borderRadius: '100px', padding: compact ? '5px 12px' : '6px 14px',
+                                    fontSize: compact ? '8.5px' : '9.5px', fontWeight: 800,
+                                    letterSpacing: '0.05em', textTransform: 'uppercase',
+                                }}>
+                                    <Check size={10} strokeWidth={3} />
+                                    Done for today
+                                </span>
+                            </div>
+                            <div style={{
+                                background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
+                                borderRadius: '14px', padding: compact ? '9px 14px' : '10px 18px',
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <span style={kicker}>Your path · Week 1</span>
+                                    <span style={{ fontSize: '8.5px', color: 'var(--text-secondary)' }}>Win: 2 of 3 runs</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    {(['done', 'today', 'up', 'up', 'gift'] as const).map((k, n) => (
+                                        <div key={n} style={{ display: 'flex', alignItems: 'center' }}>
+                                            {n > 0 && <span style={{ width: compact ? '12px' : '18px', height: '2px', background: 'var(--border-subtle)' }} />}
+                                            <span style={{
+                                                width: k === 'today' ? (compact ? '24px' : '28px') : (compact ? '20px' : '24px'),
+                                                height: k === 'today' ? (compact ? '24px' : '28px') : (compact ? '20px' : '24px'),
+                                                borderRadius: k === 'gift' ? '8px' : '50%',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                background: k === 'done' ? 'rgba(245,158,11,0.16)' : k === 'today' ? 'var(--btn-primary-bg)' : 'var(--bg-surface)',
+                                                border: k === 'done' ? '1.5px solid #f59e0b' : k === 'today' ? 'none' : '1px solid var(--border-subtle)',
+                                                color: k === 'done' ? '#f59e0b' : k === 'today' ? 'var(--btn-primary-text)' : 'var(--text-muted)',
+                                                fontSize: '8px', fontWeight: 800,
+                                            }}>
+                                                {k === 'done' ? <Check size={10} strokeWidth={3} /> : k === 'today' ? 'T' : k === 'gift' ? <Gift size={10} /> : '·'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <Flame size={11} style={{ color: '#ff5a36' }} fill="#ffb24d" />
+                                        <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: clash }}>1</span>
+                                        <Shield size={10} style={{ color: 'var(--accent-primary)', marginLeft: '4px' }} />
+                                        <span style={{ fontSize: '8.5px', fontWeight: 700, color: 'var(--text-secondary)' }}>1</span>
+                                    </span>
+                                </div>
+                            </div>
                         </motion.div>
-                    </AnimatePresence>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-/* ── Pointer ─────────────────────────────────────────────────────────────── */
-
-function Pointer({ pos, click, clickKey }: { pos: { x: number; y: number } | null; click: boolean; clickKey: string }) {
-    return (
-        <AnimatePresence>
-            {pos && (
-                <motion.div
-                    aria-hidden="true"
-                    initial={{ opacity: 0, left: pos.x, top: pos.y }}
-                    animate={{ opacity: 1, left: pos.x, top: pos.y, scale: click ? 0.88 : 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{
-                        left: { type: 'spring', stiffness: 110, damping: 20, mass: 0.8 },
-                        top: { type: 'spring', stiffness: 110, damping: 20, mass: 0.8 },
-                        scale: { duration: 0.12 },
-                        opacity: { duration: 0.25 },
-                    }}
-                    style={{ position: 'absolute', zIndex: 8, pointerEvents: 'none', marginLeft: '-2px', marginTop: '-2px' }}
-                >
-                    <AnimatePresence>
-                        {click && (
-                            <motion.span
-                                key={clickKey}
-                                initial={{ scale: 0.2, opacity: 0.55 }}
-                                animate={{ scale: 2.8, opacity: 0 }}
-                                transition={{ duration: 0.65, ease: 'easeOut' }}
-                                style={{
-                                    position: 'absolute', left: '-10px', top: '-10px',
-                                    width: '24px', height: '24px', borderRadius: '50%',
-                                    background: 'var(--accent-warm)',
-                                }}
-                            />
-                        )}
-                    </AnimatePresence>
-                    <svg width="18" height="21" viewBox="0 0 17 20" fill="none" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.45))' }}>
-                        <path d="M1 1L1 15.5L4.8 12.2L7.4 18L10.2 16.8L7.6 11.2L12.5 11L1 1Z"
-                            fill="#fff" stroke="#111" strokeWidth="1.1" strokeLinejoin="round" />
-                    </svg>
+                    )}
                 </motion.div>
-            )}
-        </AnimatePresence>
-    );
-}
 
-/* ── App shell pieces ────────────────────────────────────────────────────── */
+                {/* ── Email overlay (step 4) ── */}
+                <AnimatePresence>
+                    {hasEmail && !hasReport && (
+                        <Overlay key="email">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <span style={{
+                                    width: '24px', height: '24px', borderRadius: '8px', background: 'var(--btn-primary-bg)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    <Mail size={12} style={{ color: 'var(--btn-primary-text)' }} />
+                                </span>
+                                <div>
+                                    <div style={{ fontSize: '9.5px', fontWeight: 700, color: 'var(--text-primary)' }}>Feelivate · 7:00 am</div>
+                                    <div style={{ fontSize: '8.5px', color: 'var(--text-muted)' }}>Week 1 · Thursday — your plan, your words</div>
+                                </div>
+                            </div>
+                            <div style={{ fontSize: compact ? '10px' : '11px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: clash, lineHeight: 1.5 }}>
+                                Shoes on? If it's 7 am — run 90s, walk 3 × 5.
+                            </div>
+                            <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '8px',
+                                background: '#059669', color: '#fff', borderRadius: '8px',
+                                padding: '5px 12px', fontSize: '8.5px', fontWeight: 800,
+                            }}>
+                                <Check size={9} strokeWidth={3} /> Mark today done — one tap, no login
+                            </span>
+                        </Overlay>
+                    )}
+                    {hasReport && (
+                        <Overlay key="report">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <span style={{
+                                    width: '24px', height: '24px', borderRadius: '8px', background: 'var(--btn-primary-bg)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    <TrendingUp size={12} style={{ color: 'var(--btn-primary-text)' }} />
+                                </span>
+                                <div style={{ fontSize: '9.5px', fontWeight: 700, color: 'var(--text-primary)' }}>Week 1 report</div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                {[['3/3', 'runs done'], ['86%', 'consistency'], ['+1', 'shield earned']].map(([v, l]) => (
+                                    <div key={l} style={{
+                                        flex: 1, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                                        borderRadius: '10px', padding: '7px 6px', textAlign: 'center',
+                                    }}>
+                                        <div style={{ fontSize: compact ? '11px' : '13px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: clash }}>{v}</div>
+                                        <div style={{ fontSize: '7.5px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{l}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div style={{ fontSize: compact ? '8.5px' : '9.5px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                                You never missed a morning. Next week's evening run moves to 7 am — your window.
+                            </div>
+                        </Overlay>
+                    )}
+                </AnimatePresence>
 
-function Sidebar({ compact, locked }: { compact: boolean; locked: boolean }) {
-    const w = compact ? 40 : 128;
-    const item = (Icon: typeof Plus, label: string, active = false) => (
-        <div key={label} style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: compact ? '7px 0' : '6px 8px', justifyContent: compact ? 'center' : 'flex-start',
-            borderRadius: '7px', background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
-            color: active ? '#fff' : 'rgba(255,255,255,0.55)',
-        }}>
-            <Icon size={12} />
-            {!compact && <span style={{ fontSize: '10px', fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span>}
+                {/* Pointer */}
+                {cursor && !reduced && (
+                    <motion.div
+                        animate={{ left: cursor.x, top: cursor.y, scale: clicked ? 0.82 : 1 }}
+                        transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                        style={{
+                            position: 'absolute', width: '18px', height: '18px', zIndex: 40,
+                            marginLeft: '-9px', marginTop: '-9px', pointerEvents: 'none',
+                            borderRadius: '50%', border: '2px solid var(--text-primary)',
+                            background: 'color-mix(in srgb, var(--text-primary) 14%, transparent)',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+                        }}
+                    />
+                )}
+            </div>
+
+            {/* Caption */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: compact ? '8px 14px' : '9px 16px',
+                borderTop: '1px solid var(--border-subtle)',
+                background: 'var(--bg-surface)', flexShrink: 0, minHeight: '34px',
+            }}>
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={beat.step + beat.label}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        transition={{ duration: 0.22 }}
+                        style={{ display: 'flex', alignItems: 'baseline', gap: '10px', minWidth: 0 }}
+                    >
+                        {beat.step && <span style={{ ...kicker, color: 'var(--accent-primary)', flexShrink: 0 }}>{beat.step}</span>}
+                        <span style={{
+                            fontSize: compact ? '10px' : '11.5px', fontWeight: 600, color: 'var(--text-primary)',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{beat.label}</span>
+                    </motion.div>
+                </AnimatePresence>
+                <span style={{ marginLeft: 'auto', display: 'flex', gap: '4px', flexShrink: 0 }}>
+                    {[1, 2, 3, 4, 5].map(n => (
+                        <span key={n} style={{
+                            width: '5px', height: '5px', borderRadius: '50%',
+                            background: beat.step === `Step ${n}` ? 'var(--accent-primary)' : 'var(--border-medium)',
+                            transition: 'background 0.3s',
+                        }} />
+                    ))}
+                </span>
+            </div>
         </div>
     );
-    return (
-        <aside style={{
-            width: `${w}px`, flexShrink: 0, background: '#111111',
-            borderRight: '1px solid rgba(255,255,255,0.06)',
-            display: 'flex', flexDirection: 'column', gap: '4px',
-            padding: compact ? '10px 6px' : '12px 10px',
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: compact ? 'center' : 'flex-start', marginBottom: '8px' }}>
-                <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#f2f2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <img src="/logo_2_backup.png" alt="" style={{ width: '14px', height: '14px', objectFit: 'contain' }} />
-                </div>
-                {!compact && <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff', fontFamily: clash, letterSpacing: '-0.01em' }}>Feelivate</span>}
-            </div>
-            {item(Plus, 'New chat')}
-            {item(MessageSquare, 'Running again', true)}
-            {item(BookOpen, 'My Journey')}
-            <div style={{ flex: 1 }} />
-            <AnimatePresence>
-                {locked && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '6px', justifyContent: compact ? 'center' : 'flex-start',
-                            padding: compact ? '6px 0' : '7px 8px', borderRadius: '7px',
-                            background: 'rgba(255,255,255,0.06)', color: 'var(--accent-warm)',
-                        }}
-                    >
-                        <Flame size={12} />
-                        {!compact && <span style={{ fontSize: '10px', fontWeight: 700, color: '#fff' }}>Day 1 streak</span>}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </aside>
-    );
 }
 
-function TopBar({ locked, compact }: { locked: boolean; compact: boolean }) {
-    const chip: CSSProperties = {
-        display: 'inline-flex', alignItems: 'center', gap: '5px',
-        padding: '4px 9px', borderRadius: '100px', fontSize: '9px', fontWeight: 700,
-        letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: satoshi,
-        border: '1px solid var(--border-medium)', color: 'var(--text-secondary)', background: 'var(--bg-surface)',
-    };
+/* ── Pieces ─────────────────────────────────────────────────────────────── */
+
+function MissionBar({ locked, compact }: { locked: boolean; compact: boolean }) {
     return (
         <div style={{
             display: 'flex', alignItems: 'center', gap: '6px',
-            padding: compact ? '7px 12px' : '8px 18px',
-            borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, minHeight: '32px',
+            padding: compact ? '7px 10px' : '8px 14px', flexShrink: 0,
         }}>
-            <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: clash, letterSpacing: '-0.01em' }}>Mentor</span>
-            <div style={{ flex: 1 }} />
-            <AnimatePresence>
-                {locked && (
-                    <motion.span
-                        initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                        style={{ ...chip, borderColor: 'var(--accent-warm)', color: 'var(--accent-warm)' }}
-                    >
-                        <Calendar size={9} /> Week 1
-                    </motion.span>
-                )}
-            </AnimatePresence>
-            <span style={chip}><Bell size={9} />{!compact && 'Alerts'}</span>
+            <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                background: 'var(--card-bg)', border: '1px solid var(--border-medium)',
+                borderRadius: '100px', padding: compact ? '4px 9px' : '5px 11px',
+                fontSize: compact ? '8px' : '9px', fontWeight: 700, color: 'var(--text-primary)',
+            }}>
+                <Target size={9} style={{ color: 'var(--accent-primary)' }} />
+                {locked ? 'Running again · Week 1' : 'New goal'}
+            </span>
+            <span style={{ flex: 1 }} />
+            {locked && (
+                <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
+                    borderRadius: '100px', padding: compact ? '4px 8px' : '4px 10px',
+                }}>
+                    <Flame size={10} style={{ color: '#ff5a36' }} fill="#ffb24d" />
+                    <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: clash }}>1</span>
+                </span>
+            )}
+            {[Bell, Calendar].map((I, n) => (
+                <span key={n} style={{
+                    width: compact ? '18px' : '20px', height: compact ? '18px' : '20px', borderRadius: '7px',
+                    border: '1px solid var(--border-subtle)', background: 'var(--card-bg)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
+                }}>
+                    <I size={9} />
+                </span>
+            ))}
+            <span style={{
+                width: compact ? '18px' : '20px', height: compact ? '18px' : '20px', borderRadius: '50%',
+                background: 'var(--accent-warm, #d97757)', color: '#fff', fontSize: '7.5px', fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>A</span>
         </div>
     );
 }
 
-function Composer({ inputRef, sendRef, text, focused, compact }: {
-    inputRef: (el: HTMLElement | null) => void;
-    sendRef: (el: HTMLElement | null) => void;
-    text: string; focused: boolean; compact: boolean;
-}) {
-    return (
-        <div style={{ padding: compact ? '8px 12px 10px' : '8px 18px 12px', flexShrink: 0 }}>
-            <div
-                ref={inputRef}
-                style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    border: `1px solid ${focused ? 'var(--input-border-focus)' : 'var(--input-border)'}`,
-                    boxShadow: focused ? 'var(--input-shadow-focus)' : 'none',
-                    borderRadius: '100px', padding: '5px 5px 5px 14px', background: 'var(--bg-surface)',
-                    transition: 'border-color 0.2s, box-shadow 0.2s',
-                }}
-            >
-                <div style={{ flex: 1, minWidth: 0, fontSize: '11px', color: text ? 'var(--text-primary)' : 'var(--text-placeholder)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                    {text || 'Message Feelivate...'}
-                    {focused && (
-                        <motion.span
-                            animate={{ opacity: [1, 0, 1] }}
-                            transition={{ duration: 0.8, repeat: Infinity }}
-                            style={{ display: 'inline-block', width: '1.5px', height: '11px', background: 'var(--accent-warm)', marginLeft: '2px', verticalAlign: 'middle' }}
-                        />
-                    )}
-                </div>
-                <span style={{ width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0 }}>
-                    <Mic size={12} />
-                </span>
-                <span
-                    ref={sendRef}
-                    style={{
-                        width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-                        background: text ? 'var(--btn-primary-bg)' : 'var(--btn-disabled-bg)',
-                        color: 'var(--btn-primary-text)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'background 0.2s',
-                    }}
-                >
-                    <ArrowUp size={12} strokeWidth={2.5} />
-                </span>
-            </div>
-        </div>
-    );
-}
-
-/* ── Message pieces ──────────────────────────────────────────────────────── */
-
-function Enter({ children, y = 10 }: { children: ReactNode; y?: number }) {
+function Overlay({ children }: { children: ReactNode }) {
     return (
         <motion.div
-            initial={{ opacity: 0, y }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.18 } }}
-            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-            style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}
+            initial={{ opacity: 0, y: 18, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+            style={{
+                position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+                width: 'min(400px, 88%)', zIndex: 30,
+                background: 'var(--card-bg)', border: '1px solid var(--border-medium)',
+                borderRadius: '14px', padding: '14px 16px', boxShadow: 'var(--shadow-xl)',
+                fontFamily: satoshi,
+            }}
         >
             {children}
         </motion.div>
-    );
-}
-
-function Bubble({ children, mine = false }: { children: ReactNode; mine?: boolean }) {
-    return (
-        <div style={{
-            alignSelf: mine ? 'flex-end' : 'flex-start',
-            maxWidth: '84%',
-            background: mine ? 'var(--btn-primary-bg)' : 'var(--bg-surface)',
-            color: mine ? 'var(--btn-primary-text)' : 'var(--text-secondary)',
-            border: mine ? 'none' : '1px solid var(--border-subtle)',
-            borderRadius: '12px', padding: '7px 11px',
-            fontSize: '10.5px', lineHeight: 1.5, fontWeight: 500, flexShrink: 0,
-        }}>
-            {children}
-        </div>
-    );
-}
-
-function Thinking() {
-    return (
-        <div style={{ alignSelf: 'flex-start', display: 'flex', gap: '4px', padding: '9px 12px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-            {[0, 1, 2].map(n => (
-                <motion.span
-                    key={n}
-                    animate={{ opacity: [0.25, 1, 0.25], y: [0, -2, 0] }}
-                    transition={{ duration: 0.9, repeat: Infinity, delay: n * 0.15 }}
-                    style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--text-muted)', display: 'block' }}
-                />
-            ))}
-        </div>
-    );
-}
-
-function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-    return (
-        <div style={{
-            border: '1px solid var(--border-medium)', borderRadius: '10px',
-            overflow: 'hidden', background: 'var(--card-bg)', boxShadow: 'var(--shadow-md)',
-            alignSelf: 'stretch', maxWidth: '420px', ...style,
-        }}>
-            {children}
-        </div>
-    );
-}
-
-function PlanCard({ letsGoRef, pressing }: { letsGoRef: (el: HTMLElement | null) => void; pressing: boolean }) {
-    return (
-        <Card>
-            <div style={{ padding: '9px 12px 7px', borderBottom: '1px solid var(--border-subtle)' }}>
-                <div style={{ ...kicker, marginBottom: '2px' }}>Week 1</div>
-                <div style={{ fontSize: '12.5px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                    Build the running habit
-                </div>
-            </div>
-            {[
-                ['Mon', 'Easy 20-minute walk + 5 min jog'],
-                ['Tue', 'Rest or gentle stretching'],
-                ['Wed', 'Intervals: 1 min jog, 2 min walk × 6'],
-            ].map(([d, a], n) => (
-                <div key={d} style={{
-                    display: 'flex', gap: '9px', padding: '5px 12px',
-                    borderTop: n === 0 ? 'none' : '1px solid var(--border-subtle)',
-                    background: n % 2 === 1 ? 'var(--glass-surface)' : 'transparent',
-                }}>
-                    <span style={{ ...kicker, color: 'var(--text-primary)', width: '26px', flexShrink: 0, paddingTop: '2px' }}>{d}</span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>{a}</span>
-                </div>
-            ))}
-            <div style={{ display: 'flex', gap: '6px', padding: '8px 12px', borderTop: '1px solid var(--border-subtle)' }}>
-                <motion.span
-                    ref={letsGoRef}
-                    animate={{ scale: pressing ? 0.95 : 1 }}
-                    transition={{ duration: 0.12 }}
-                    style={{
-                        flex: 1, textAlign: 'center', padding: '7px', borderRadius: '100px',
-                        background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
-                        fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-                        display: 'block',
-                    }}
-                >
-                    Let's go
-                </motion.span>
-                <span style={{
-                    padding: '7px 13px', borderRadius: '100px',
-                    border: '1px solid var(--accent-primary)', color: 'var(--text-primary)',
-                    fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-                }}>Tweak</span>
-            </div>
-        </Card>
-    );
-}
-
-function ActivePill({ compact }: { compact: boolean }) {
-    return (
-        <div style={{
-            alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '7px 13px', borderRadius: '100px', background: 'var(--btn-primary-bg)',
-        }}>
-            <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Calendar size={9} style={{ color: 'var(--btn-primary-text)' }} />
-            </span>
-            <span style={{ fontSize: '9.5px', fontWeight: 700, color: 'var(--btn-primary-text)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                {compact ? 'Week 1 Active' : 'Week 1 Active · Running'}
-            </span>
-            <Lock size={9} style={{ color: 'var(--btn-primary-text)', opacity: 0.7 }} />
-        </div>
-    );
-}
-
-function EmailCard({ compact }: { compact: boolean }) {
-    return (
-        <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
-                <div style={{ width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0, background: 'var(--glass-surface)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Mail size={11} style={{ color: 'var(--text-secondary)' }} />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: clash, letterSpacing: '-0.01em' }}>
-                        Wednesday · your task
-                    </div>
-                    <div style={{ ...kicker, marginTop: '1px' }}>7:00 AM · your timezone</div>
-                </div>
-                <span style={{ ...kicker, marginLeft: 'auto', color: 'var(--accent-warm)' }}>Inbox</span>
-            </div>
-            <div style={{ padding: compact ? '9px 12px' : '10px 12px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: '3px' }}>
-                    Intervals: 1 min jog, 2 min walk × 6
-                </div>
-                <p style={{ fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                    Easy pace. The goal is to show up, not to race. Lay your shoes out tonight.
-                </p>
-            </div>
-        </Card>
-    );
-}
-
-function ReportCard({ compact }: { compact: boolean }) {
-    return (
-        <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
-                <div style={kicker}>Week 1 · Report</div>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '9.5px', fontWeight: 700, color: 'var(--accent-warm)' }}>
-                    <Flame size={10} /> 5-day streak
-                </span>
-            </div>
-            <div style={{ padding: '9px 12px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                    {[['86%', 'Consistency', 'var(--text-primary)'], ['6', 'Done', '#10b981'], ['1', 'Missed', '#ef4444']].map(([v, l, c]) => (
-                        <div key={l} style={{ padding: '7px 8px', borderRadius: '7px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                            <div style={{ fontSize: '15px', fontWeight: 700, color: c, fontFamily: clash, letterSpacing: '-0.03em', lineHeight: 1 }}>{v}</div>
-                            <div style={{ ...kicker, marginTop: '2px', fontSize: '7.5px' }}>{l}</div>
-                        </div>
-                    ))}
-                </div>
-                <div style={{ display: 'flex', gap: '3px' }}>
-                    {[true, true, true, false, true, true, true].map((done, n) => (
-                        <motion.div
-                            key={n}
-                            initial={{ opacity: 0, scaleY: 0.4 }} animate={{ opacity: 1, scaleY: 1 }}
-                            transition={{ delay: 0.25 + n * 0.06 }}
-                            style={{
-                                flex: 1, height: '16px', borderRadius: '4px',
-                                background: done ? 'var(--accent-warm)' : 'var(--border-medium)',
-                                opacity: done ? 0.9 : 0.5,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}
-                        >
-                            {done && <Check size={9} style={{ color: '#fff' }} />}
-                        </motion.div>
-                    ))}
-                </div>
-                {!compact && (
-                    <div style={{ padding: '7px 9px', borderRadius: '7px', display: 'flex', gap: '7px', background: 'var(--glass-surface)', border: '1px solid var(--border-subtle)' }}>
-                        <TrendingUp size={12} style={{ color: 'var(--accent-warm)', flexShrink: 0, marginTop: '1px' }} />
-                        <p style={{ fontSize: '9.5px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                            You skipped Thursday, same as last week. Week 2 moves that run to the morning.
-                        </p>
-                    </div>
-                )}
-            </div>
-        </Card>
     );
 }
