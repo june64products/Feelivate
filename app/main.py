@@ -2627,6 +2627,7 @@ from .weeks import (  # noqa: E402
     _bounds_from_start,
     _projected_week_start,
     _week_bounds_for,
+    build_quiet_week_report,
 )
 
 
@@ -3356,44 +3357,7 @@ async def get_weekly_report(
             )
             .count()
         )
-        from datetime import date as _qd, timedelta as _qtd
-        _ws_d = _qd.fromisoformat(ws)
-        _we_d = _qd.fromisoformat(we)
-        total_days = (_we_d - _ws_d).days + 1
-        quiet_report = {
-            "quiet_week": done_days == 0,
-            "momentum_score": 0,
-            "avg_score": 0,
-            "consistency_score": round(done_days * 100 / total_days) if total_days else 0,
-            "days_done": 0,  # journal-count keyed (cache validation compares to journals)
-            "days_missed": total_days - done_days,
-            "past_days_count": total_days,
-            "entry_count": 0,
-            "week_number": wk_num,
-            "week_theme": "",
-            "dominant_emotion": "",
-            "headline": "This week went quiet." if done_days == 0 else "A quiet week — a few check-ins, no journals.",
-            "what_went_well": (
-                f"{done_days} day(s) still got checked off — that counted." if done_days else ""
-            ),
-            "where_you_slipped": (
-                "No check-ins and no journals landed this week — zero input, the whole week."
-                if done_days == 0 else
-                "No voice journals landed this week, so there's no read on how the days actually felt."
-            ),
-            "hidden_insight": (
-                "A silent week is data, not a verdict. The plan didn't fail — it just never got a first rep. "
-                "The next move is small: restart the same week and show up once."
-            ),
-            "next_week_focus": "Restart at the same level — do not advance difficulty. Win the first day back.",
-            "next_week_plan_context": (
-                "The previous week had ZERO user input (no journals"
-                + ("" if done_days else ", no completed check-ins")
-                + "). Rebuild the SAME week at the SAME level — do not advance or repeat-penalise. "
-                "Acknowledge the quiet week in one warm line and ask one short question about what got in the way."
-            ),
-            "days": [],
-        }
+        quiet_report = build_quiet_week_report(wk_num, ws, we, done_days)
         try:
             existing_wr = cache_q_early = db.query(WeeklyReport).filter(
                 WeeklyReport.user_id == user_id, WeeklyReport.week_start == ws,

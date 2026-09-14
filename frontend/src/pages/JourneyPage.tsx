@@ -1327,8 +1327,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         style={{
                                             flex: 1, padding: '11px', borderRadius: '100px',
                                             border: 'none',
-                                            background: 'var(--text-primary)',
-                                            color: 'var(--btn-primary-bg)', fontSize: '13px', fontWeight: 700,
+                                            background: 'var(--btn-primary-bg)',
+                                            color: 'var(--btn-primary-text)', fontSize: '13px', fontWeight: 700,
                                             cursor: 'pointer', fontFamily: satoshi,
                                         }}
                                     >
@@ -2013,8 +2013,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                                     style={{
                                                                         padding: '8px 16px', borderRadius: '100px',
                                                                         border: 'none',
-                                                                        background: 'var(--text-primary)',
-                                                                        color: 'var(--btn-primary-bg)', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                                                                        background: 'var(--btn-primary-bg)',
+                                                                        color: 'var(--btn-primary-text)', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                                                                         flexShrink: 0, fontFamily: satoshi,
                                                                         transition: 'opacity 0.2s',
                                                                     }}

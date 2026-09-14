@@ -157,3 +157,49 @@ def _week_bounds_for(session_rec, week_number: int):
     if sd:
         return _bounds_from_start(sd)
     return _get_week_bounds(session_rec.plan_start_date, week_number)
+
+
+def build_quiet_week_report(week_number: int, ws: str, we: str, done_days: int) -> dict:
+    """The deterministic report for a week that ENDED with zero voice journals.
+
+    Silence needs no LLM — it needs honesty and a warm restart. Shared by the
+    weekly-report endpoint and the backfill script so both write the identical
+    shape. `quiet_week` / zero counts also flip the mentor prompt from
+    "advance, never repeat" to "restart at the same level".
+    """
+    from datetime import date as _d
+    total_days = (_d.fromisoformat(we) - _d.fromisoformat(ws)).days + 1
+    return {
+        "quiet_week": done_days == 0,
+        "momentum_score": 0,
+        "avg_score": 0,
+        "consistency_score": round(done_days * 100 / total_days) if total_days else 0,
+        "days_done": 0,  # journal-count keyed (cache validation compares to journals)
+        "days_missed": total_days - done_days,
+        "past_days_count": total_days,
+        "entry_count": 0,
+        "week_number": week_number,
+        "week_theme": "",
+        "dominant_emotion": "",
+        "headline": "This week went quiet." if done_days == 0 else "A quiet week — a few check-ins, no journals.",
+        "what_went_well": (
+            f"{done_days} day(s) still got checked off — that counted." if done_days else ""
+        ),
+        "where_you_slipped": (
+            "No check-ins and no journals landed this week — zero input, the whole week."
+            if done_days == 0 else
+            "No voice journals landed this week, so there's no read on how the days actually felt."
+        ),
+        "hidden_insight": (
+            "A silent week is data, not a verdict. The plan didn't fail — it just never got a first rep. "
+            "The next move is small: restart the same week and show up once."
+        ),
+        "next_week_focus": "Restart at the same level — do not advance difficulty. Win the first day back.",
+        "next_week_plan_context": (
+            "The previous week had ZERO user input (no journals"
+            + ("" if done_days else ", no completed check-ins")
+            + "). Rebuild the SAME week at the SAME level — do not advance or repeat-penalise. "
+            "Acknowledge the quiet week in one warm line and ask one short question about what got in the way."
+        ),
+        "days": [],
+    }
