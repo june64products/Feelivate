@@ -253,7 +253,7 @@ export const DEMO_STEPS: DemoStep[] = [
         target: 'journey-mic',
         placement: 'bottom',
         title: 'Record your day by voice',
-        body: 'Tap the mic and just talk. Feelivate listens and turns your week of entries into an honest weekly report — the more you share, the sharper it gets.',
+        body: 'Tap the mic and just talk — Feelivate turns your week of entries into an honest report. Between weeks this journal locks, and a small mood-only mic appears beside it: quick mood check-ins, just for you, never in a report.',
         scene: { messages: CHAT, planApproved: true, view: 'journey' },
     },
     {

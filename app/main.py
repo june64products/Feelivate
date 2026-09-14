@@ -2992,6 +2992,56 @@ async def _analyze_emotion(transcript: str) -> dict:
     return {"label": "neutral", "score": 5, "one_liner": ""}
 
 
+@app.post("/mood/checkin", tags=["journal"])
+async def create_mood_checkin(
+    audio: UploadFile = File(...),
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_consented_user),
+):
+    """Mood-only voice check-in, for the gap BETWEEN weeks.
+
+    Deliberately connected to nothing: no VoiceJournal row, no daily check-in,
+    no streak recalc, no week report. Transcribe → read the mood → store a bare
+    EmotionalState point so the trend isn't lost — that's all. The main journal
+    mic stays locked while no week is active; this is the little mic beside it.
+    """
+    from .llm import call_groq_transcribe
+
+    audio_bytes = await audio.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Audio file is empty")
+
+    try:
+        transcript = await asyncio.to_thread(
+            call_groq_transcribe, audio_bytes, audio.filename or "recording.webm"
+        )
+    except Exception as e:
+        logger.error(f"Mood transcription failed: {e}")
+        raise HTTPException(status_code=500, detail="Transcription failed. Please try again.")
+    if not transcript.strip():
+        raise HTTPException(status_code=422, detail="Could not transcribe audio — too short or silent.")
+
+    emotion = await _analyze_emotion(transcript)
+
+    try:
+        db.add(EmotionalState(
+            user_id=current_user.id,
+            session_id=None,  # unattached on purpose — this joins no journey
+            sentiment_score=int(emotion.get("score") or 0),
+            dominant_emotion=emotion.get("label"),
+        ))
+        db.commit()
+    except Exception as e:
+        logger.warning(f"Mood point persist failed (non-fatal): {e}")
+
+    return {
+        "emotion_label": emotion["label"],
+        "emotion_score": emotion["score"],
+        "one_liner": emotion["one_liner"],
+        "mood_only": True,
+    }
+
+
 @app.post("/journal/voice", tags=["journal"])
 async def create_voice_journal(
     audio: UploadFile = File(...),
@@ -3285,7 +3335,83 @@ async def get_weekly_report(
     journals = journals_q.order_by(VoiceJournal.date.asc()).all()
 
     if not journals:
-        return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we, "week_number": wk_num}
+        today_str_early = today.isoformat()
+        if today_str_early <= we:
+            # Week still running — nothing to report yet.
+            return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we, "week_number": wk_num}
+
+        # ── Quiet week: the week ENDED with zero journals. Previously this
+        # returned no_data forever — no report in the Archive, no has_report,
+        # and the next-week flow had nothing to read. Instead, persist an
+        # honest deterministic report (no LLM needed for silence): plain about
+        # the zero input, warm about the restart. quiet_week=True also tells
+        # the mentor prompt to restart at the same level instead of advancing.
+        done_days = (
+            db.query(DailyCheckin)
+            .filter(
+                DailyCheckin.user_id == user_id,
+                DailyCheckin.date >= ws,
+                DailyCheckin.date <= we,
+                DailyCheckin.status == "done",
+            )
+            .count()
+        )
+        from datetime import date as _qd, timedelta as _qtd
+        _ws_d = _qd.fromisoformat(ws)
+        _we_d = _qd.fromisoformat(we)
+        total_days = (_we_d - _ws_d).days + 1
+        quiet_report = {
+            "quiet_week": done_days == 0,
+            "momentum_score": 0,
+            "avg_score": 0,
+            "consistency_score": round(done_days * 100 / total_days) if total_days else 0,
+            "days_done": 0,  # journal-count keyed (cache validation compares to journals)
+            "days_missed": total_days - done_days,
+            "past_days_count": total_days,
+            "entry_count": 0,
+            "week_number": wk_num,
+            "week_theme": "",
+            "dominant_emotion": "",
+            "headline": "This week went quiet." if done_days == 0 else "A quiet week — a few check-ins, no journals.",
+            "what_went_well": (
+                f"{done_days} day(s) still got checked off — that counted." if done_days else ""
+            ),
+            "where_you_slipped": (
+                "No check-ins and no journals landed this week — zero input, the whole week."
+                if done_days == 0 else
+                "No voice journals landed this week, so there's no read on how the days actually felt."
+            ),
+            "hidden_insight": (
+                "A silent week is data, not a verdict. The plan didn't fail — it just never got a first rep. "
+                "The next move is small: restart the same week and show up once."
+            ),
+            "next_week_focus": "Restart at the same level — do not advance difficulty. Win the first day back.",
+            "next_week_plan_context": (
+                "The previous week had ZERO user input (no journals"
+                + ("" if done_days else ", no completed check-ins")
+                + "). Rebuild the SAME week at the SAME level — do not advance or repeat-penalise. "
+                "Acknowledge the quiet week in one warm line and ask one short question about what got in the way."
+            ),
+            "days": [],
+        }
+        try:
+            existing_wr = cache_q_early = db.query(WeeklyReport).filter(
+                WeeklyReport.user_id == user_id, WeeklyReport.week_start == ws,
+            )
+            if session_id:
+                cache_q_early = cache_q_early.filter(WeeklyReport.session_id == session_id)
+            existing_wr = cache_q_early.first()
+            if existing_wr:
+                existing_wr.report_json = json.dumps(quiet_report)
+            else:
+                db.add(WeeklyReport(
+                    user_id=user_id, session_id=session_id, week_number=wk_num,
+                    week_start=ws, week_end=we, report_json=json.dumps(quiet_report),
+                ))
+            db.commit()
+        except Exception as _qe:
+            logger.warning(f"Quiet-week report persist failed (non-fatal): {_qe}")
+        return {"status": "generated", "week_start": ws, "week_end": we, "week_number": wk_num, "report": quiet_report}
 
     # ── 1b. Completion gate ─────────────────────────────────────────────────────
     # A weekly report is generated (and persisted) ONLY once the week is COMPLETE:

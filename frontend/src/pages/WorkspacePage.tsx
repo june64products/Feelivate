@@ -29,7 +29,7 @@ import GoalStart from '../components/mission/GoalStart';
 import { CommitStage, CeremonyOverlay } from '../components/mission/CommitStage';
 import { useStreak } from '../hooks/useStreak';
 import { StreakStrip } from '../components/mission/StreakShowcase';
-import { satoshi as missionSatoshi, planEntryFor, isRestAction, isoDaysAgo } from '../components/mission/missionTheme';
+import { satoshi as missionSatoshi, clashDisplay as missionClash, planEntryFor, isRestAction, isoDaysAgo, planWeekOver } from '../components/mission/missionTheme';
 import { Mic, MessageCircle, ChevronRight } from 'lucide-react';
 import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
 import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
@@ -168,6 +168,11 @@ export default function WorkspacePage() {
 
         return { wasShielded: yState === 'shielded', missCount: Math.max(1, missCount), missedDateIso: yIso };
     })();
+
+    // The locked week's window has fully ended (e.g. it's Monday after a
+    // Thu–Sun Week 0). Today has nothing to show from that plan — the honest
+    // state is "wrapped": read the report, commit the next week.
+    const weekOver = !demoMode && isPlanApproved && planWeekOver(activePlan, todayIso);
 
     // Which mission stage fills the screen (demo mirrors respected).
     // Demo drawer rule: open while the scripted conversation is being built,
@@ -818,7 +823,7 @@ export default function WorkspacePage() {
                                         flexDirection: 'column', gap: '14px',
                                     }}
                                 >
-                                    {recoveryInfo && (
+                                    {!weekOver && recoveryInfo && (
                                         <RecoveryCard
                                             missCount={recoveryInfo.missCount}
                                             missedDateIso={recoveryInfo.missedDateIso}
@@ -829,16 +834,79 @@ export default function WorkspacePage() {
                                         />
                                     )}
                                     <StreakStrip streak={streak} todayDone={todayStatus === 'done'} />
-                                    <TodayCard
-                                        activePlan={uiActivePlan}
-                                        todayIso={todayIso}
-                                        todayStatus={todayStatus}
-                                        checkinLoading={checkinLoading}
-                                        justCelebrated={justCelebrated}
-                                        onCheckin={checkin}
-                                        onAskMentor={() => setMentorOpen(true)}
-                                        demoMode={demoMode}
-                                    />
+                                    {weekOver ? (
+                                        /* The plan's window has ended — no misleading "rest day".
+                                           Report first, then commit the next week. */
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 22, scale: 0.98 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                                            style={{
+                                                background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
+                                                borderRadius: '22px', padding: '30px 28px',
+                                                boxShadow: 'var(--shadow-sm)', textAlign: 'center',
+                                            }}
+                                        >
+                                            <p style={{
+                                                fontSize: '11px', fontWeight: 800, letterSpacing: '0.13em',
+                                                textTransform: 'uppercase', color: 'var(--accent-primary)',
+                                                margin: '0 0 10px', fontFamily: missionSatoshi,
+                                            }}>
+                                                Week {uiActivePlan?.week_number ?? 1} wrapped
+                                            </p>
+                                            <p style={{
+                                                fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)',
+                                                margin: '0 0 8px', fontFamily: missionClash, letterSpacing: '-0.01em',
+                                            }}>
+                                                That's a wrap on Week {uiActivePlan?.week_number ?? 1}.
+                                            </p>
+                                            <p style={{
+                                                fontSize: '13.5px', color: 'var(--text-secondary)', margin: '0 auto 20px',
+                                                fontFamily: missionSatoshi, lineHeight: 1.65, maxWidth: '440px',
+                                            }}>
+                                                This week's window has closed — your honest report is waiting in the Journey. Read it, then commit the next week. Fresh start, same fire.
+                                            </p>
+                                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                                <motion.button
+                                                    whileTap={{ scale: 0.96 }}
+                                                    onClick={() => setView('journey')}
+                                                    style={{
+                                                        padding: '13px 26px', borderRadius: '100px', border: 'none',
+                                                        background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                                                        fontSize: '12.5px', fontWeight: 800, cursor: 'pointer',
+                                                        fontFamily: missionSatoshi, letterSpacing: '0.05em', textTransform: 'uppercase',
+                                                    }}
+                                                >
+                                                    See your week report
+                                                </motion.button>
+                                                <motion.button
+                                                    whileTap={{ scale: 0.96 }}
+                                                    onClick={() => handleSendMessage(
+                                                        `I've reviewed my week report. Please build me Week ${(uiActivePlan?.week_number ?? 1) + 1} plan based on my performance data and what I need to improve.`
+                                                    )}
+                                                    style={{
+                                                        padding: '13px 22px', borderRadius: '100px',
+                                                        border: '1px solid var(--border-medium)', background: 'transparent',
+                                                        color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: 700,
+                                                        cursor: 'pointer', fontFamily: missionSatoshi,
+                                                    }}
+                                                >
+                                                    Plan Week {(uiActivePlan?.week_number ?? 1) + 1}
+                                                </motion.button>
+                                            </div>
+                                        </motion.div>
+                                    ) : (
+                                        <TodayCard
+                                            activePlan={uiActivePlan}
+                                            todayIso={todayIso}
+                                            todayStatus={todayStatus}
+                                            checkinLoading={checkinLoading}
+                                            justCelebrated={justCelebrated}
+                                            onCheckin={checkin}
+                                            onAskMentor={() => setMentorOpen(true)}
+                                            demoMode={demoMode}
+                                        />
+                                    )}
                                     <PathRow
                                         streak={streak}
                                         todayIso={todayIso}

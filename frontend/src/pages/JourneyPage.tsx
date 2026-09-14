@@ -8,6 +8,8 @@ import {
     getSessionReports,
     getSessionDetail,
     uploadVoiceJournalForSession,
+    submitMoodCheckin,
+    type MoodCheckinResult,
     type JournalEntry,
     type WeeklyReport,
     type WeeklyReportDay,
@@ -890,10 +892,22 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     const [isRecording, setIsRecording] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [justSaved, setJustSaved] = useState<JournalEntry | null>(null);
+    // Mood-only mic (between weeks): records through the same recorder but
+    // uploads to /mood/checkin — joins no journal, no streak, no report.
+    const moodModeRef = useRef(false);
+    const [moodResult, setMoodResult] = useState<MoodCheckinResult | null>(null);
     const mediaRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
 
     const today = getLocalISODate();
+
+    // No week is running right now: either no plan was ever locked, or the
+    // last locked week's window has ended and the next one isn't committed.
+    // The main journal locks in this gap; the mood mic takes over.
+    const noActiveWeek = !demoMode && (
+        !weekInfo?.has_plan ||
+        (!!weekInfo?.week_end && today > weekInfo.week_end && !weekInfo?.has_next_plan)
+    );
 
     // In the guided demo we never hit the backend — show the empty Journey UI plus
     // canned archive reports so the mic / Overview / Archive can be spotlighted.
@@ -984,7 +998,26 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
         setIsRecording(false);
     };
 
+    // Two entry points, one recorder. The ref decides where the audio goes.
+    const beginJournal = () => { moodModeRef.current = false; startRecording(); };
+    const beginMood = () => { moodModeRef.current = true; startRecording(); };
+
     const handleUpload = async () => {
+        if (moodModeRef.current) {
+            // Mood-only path: detect and show, touch nothing else.
+            setIsUploading(true);
+            try {
+                const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+                const res = await submitMoodCheckin(blob);
+                setMoodResult(res);
+            } catch (e) {
+                console.error('Mood check-in failed:', e);
+            } finally {
+                setIsUploading(false);
+                moodModeRef.current = false;
+            }
+            return;
+        }
         setIsUploading(true);
         try {
             const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
@@ -1438,18 +1471,22 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                         textTransform: 'uppercase', color: 'var(--accent-primary)',
                                         margin: '0 0 8px', fontFamily: satoshi,
                                     }}>
-                                        {todayEntry ? 'Today logged' : 'Tonight\'s ritual'}
+                                        {noActiveWeek ? 'Between weeks' : todayEntry ? 'Today logged' : 'Tonight\'s ritual'}
                                     </p>
                                     <p style={{
                                         fontSize: '21px', fontWeight: 600, color: 'var(--text-primary)',
                                         margin: '0 0 6px', fontFamily: clashDisplay, letterSpacing: '-0.01em',
                                     }}>
-                                        {todayEntry ? `Feeling ${todayEntry.emotion_label} — ${todayEntry.emotion_score}/10` : 'How did today actually go?'}
+                                        {noActiveWeek
+                                            ? 'No active week right now'
+                                            : todayEntry ? `Feeling ${todayEntry.emotion_label} — ${todayEntry.emotion_score}/10` : 'How did today actually go?'}
                                     </p>
-                                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, fontFamily: satoshi, lineHeight: 1.6 }}>
-                                        {todayEntry
-                                            ? 'Captured. Your mentor folds this into your week report.'
-                                            : '60 honest seconds. Your mentor listens, reads the mood, and shapes next week around it.'}
+                                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, fontFamily: satoshi, lineHeight: 1.6, maxWidth: '460px', marginLeft: 'auto', marginRight: 'auto' }}>
+                                        {noActiveWeek
+                                            ? 'Your journal is locked because no week is committed — it unlocks the moment your next week starts. Meanwhile the small mic below logs a quick mood: just for you, it joins no report.'
+                                            : todayEntry
+                                                ? 'Captured. Your mentor folds this into your week report.'
+                                                : '60 honest seconds. Your mentor listens, reads the mood, and shapes next week around it.'}
                                     </p>
                                 </div>
 
@@ -1460,6 +1497,63 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '13px', fontFamily: satoshi }}>
                                                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
                                                 Analyzing your mood...
+                                            </motion.div>
+                                        ) : isRecording ? (
+                                            <motion.button key="stop-live"
+                                                initial={{ scale: 0.8 }} animate={{ scale: 1 }} whileTap={{ scale: 0.95 }}
+                                                onClick={stopRecording}
+                                                style={{
+                                                    width: '88px', height: '88px', borderRadius: '50%',
+                                                    border: '2px solid rgba(239,68,68,0.4)',
+                                                    background: 'rgba(239,68,68,0.12)',
+                                                    color: '#f87171', cursor: 'pointer',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    animation: 'pulse-rec 1.4s ease-in-out infinite',
+                                                }}>
+                                                <Square size={28} fill="#f87171" />
+                                            </motion.button>
+                                        ) : noActiveWeek ? (
+                                            // Between weeks: the journal is locked (and says why), and a
+                                            // separate mood-only mic takes over — connected to nothing.
+                                            <motion.div key="between-weeks"
+                                                initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
+                                                style={{
+                                                    display: 'flex', alignItems: 'flex-start', gap: '36px',
+                                                    justifyContent: 'center', flexWrap: 'wrap',
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '150px' }}>
+                                                    <div style={{
+                                                        width: '72px', height: '72px', borderRadius: '50%',
+                                                        border: '2px solid var(--border-subtle)',
+                                                        background: 'var(--bg-surface)',
+                                                        color: 'var(--text-muted)', cursor: 'not-allowed',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    }}>
+                                                        <Lock size={22} />
+                                                    </div>
+                                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, fontFamily: satoshi, textAlign: 'center', lineHeight: 1.5 }}>
+                                                        Journal locked — unlocks with your next week
+                                                    </span>
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '150px' }}>
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+                                                        onClick={beginMood}
+                                                        aria-label="Record a mood check-in"
+                                                        style={{
+                                                            width: '72px', height: '72px', borderRadius: '50%',
+                                                            border: '2px solid var(--accent-primary)',
+                                                            background: 'var(--glass-hover)',
+                                                            color: 'var(--accent-primary)', cursor: 'pointer',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        }}>
+                                                        <Mic size={26} />
+                                                    </motion.button>
+                                                    <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 700, fontFamily: satoshi, textAlign: 'center', lineHeight: 1.5 }}>
+                                                        Mood check-in — unlocked
+                                                    </span>
+                                                </div>
                                             </motion.div>
                                         ) : (weekInfo?.week_start && today < weekInfo.week_start) ? (
                                             // Week hasn't started yet (e.g. next week locked on Sunday, starts Monday).
@@ -1502,20 +1596,6 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                     Recorded today
                                                 </span>
                                             </motion.div>
-                                        ) : isRecording ? (
-                                            <motion.button key="stop"
-                                                initial={{ scale: 0.8 }} animate={{ scale: 1 }} whileTap={{ scale: 0.95 }}
-                                                onClick={stopRecording}
-                                                style={{
-                                                    width: '88px', height: '88px', borderRadius: '50%',
-                                                    border: '2px solid rgba(239,68,68,0.4)',
-                                                    background: 'rgba(239,68,68,0.12)',
-                                                    color: '#f87171', cursor: 'pointer',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    animation: 'pulse-rec 1.4s ease-in-out infinite',
-                                                }}>
-                                                <Square size={28} fill="#f87171" />
-                                            </motion.button>
                                         ) : (
                                             <motion.div key="record" style={{ position: 'relative', display: 'flex' }}>
                                                 {/* Breathing rings — pull the eye to the one action that matters */}
@@ -1538,7 +1618,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 <motion.button
                                                     initial={{ scale: 0.8 }} animate={{ scale: 1 }}
                                                     whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-                                                    onClick={startRecording}
+                                                    onClick={beginJournal}
                                                     style={{
                                                         width: '88px', height: '88px', borderRadius: '50%',
                                                         border: 'none',
@@ -1555,6 +1635,27 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                 </div>
 
                                 <AnimatePresence>
+                                    {moodResult && (
+                                        <motion.div
+                                            key="mood-result"
+                                            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                            style={{
+                                                marginTop: '16px',
+                                                padding: '12px 16px', borderRadius: '12px',
+                                                background: 'var(--glass-hover)',
+                                                border: '1px solid var(--border-subtle)',
+                                                fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.6,
+                                                fontFamily: satoshi,
+                                            }}>
+                                            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                Mood noted — {moodResult.emotion_label} ({moodResult.emotion_score}/10)
+                                            </span>
+                                            {' — '}{moodResult.one_liner}
+                                            <span style={{ display: 'block', marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                Just for you — this joins no report. Your journal unlocks when the next week is committed.
+                                            </span>
+                                        </motion.div>
+                                    )}
                                     {justSaved && (
                                         <motion.div
                                             initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}

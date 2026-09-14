@@ -634,6 +634,30 @@ export const uploadVoiceJournal = async (audioBlob: Blob): Promise<JournalEntry>
     return response.json();
 };
 
+/** Mood-only voice check-in for the gap between weeks — joins nothing. */
+export interface MoodCheckinResult {
+    emotion_label: string;
+    emotion_score: number;
+    one_liner: string;
+    mood_only: boolean;
+}
+
+export const submitMoodCheckin = async (audioBlob: Blob): Promise<MoodCheckinResult> => {
+    const formData = new FormData();
+    const ext = audioBlob.type.includes('mp4') ? 'mp4' : 'webm';
+    formData.append('audio', audioBlob, `mood.${ext}`);
+
+    const response = await secureFetch(`${API_BASE_URL}/mood/checkin`, {
+        method: 'POST',
+        body: formData,
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Mood check-in failed');
+    }
+    return response.json();
+};
+
 export const getJournals = async (userId: string, limit = 30): Promise<JournalEntry[]> => {
     const response = await secureFetch(`${API_BASE_URL}/journal/${userId}?limit=${limit}`);
     if (!response.ok) throw new Error('Failed to fetch journals');

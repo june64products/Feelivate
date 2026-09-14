@@ -889,6 +889,25 @@ def build_chat_prompt(
             if next_ctx:
                 system_content += f"\nNext week plan must account for:\n{next_ctx}"
 
+        # ── Quiet week: the report shows ZERO user input. The progression rules
+        # (advance, never repeat) are built on evidence of work — with none, they
+        # invert: advancing after silence buries the user. Restart instead.
+        _qw = bool(week_report_data.get("quiet_week")) or (
+            week_report_data.get("entry_count") == 0
+            and (week_report_data.get("days_done") or 0) == 0
+        )
+        if _qw:
+            system_content += (
+                f"\n\n🔇 QUIET WEEK — OVERRIDES RULE 5b's 'never repeat':"
+                f"\nWeek {wn} ended with ZERO input: no journals, no completed days."
+                f"\nWhen building Week {wn + 1}:"
+                f"\n  • Do NOT advance difficulty. Rebuild essentially the SAME week at the"
+                f" SAME level (small simplifications are fine; escalation is not)."
+                f"\n  • Acknowledge the quiet week in ONE warm, no-shame line — e.g."
+                f" \"Last week went quiet — that's data, not a verdict. Same plan, fresh start.\""
+                f"\n  • Ask ONE short question about what got in the way, then build."
+                f" Never lecture, never list what they missed."
+            )
         system_content += (
             f"\n\n⚠️ CRITICAL: Use the performance report above to build Week {wn + 1}."
             f"\n- Address friction points from the report's patterns/recurring_friction"
