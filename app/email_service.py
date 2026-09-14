@@ -81,7 +81,7 @@ _HEADER = f"""
 <table cellpadding="0" cellspacing="0" style="margin:0 auto 26px;">
   <tr>
     <td style="background:{INK};border-radius:12px;padding:9px 10px;line-height:0;">
-      <img src="{APP_URL}/logo_2_backup.png" alt="Feelivate" width="22" height="22" style="display:block;width:22px;height:22px;" />
+      <img src="{APP_URL}/logo-email-white.png" alt="Feelivate" width="22" height="22" style="display:block;width:22px;height:22px;" />
     </td>
     <td style="padding-left:12px;">
       <span style="font-size:19px;font-weight:800;color:{INK};letter-spacing:0.12em;font-family:{FONT};">FEELIVATE</span>
