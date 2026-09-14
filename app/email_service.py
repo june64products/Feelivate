@@ -55,18 +55,109 @@ def _mask_email(address: str) -> str:
     return f"{masked_local}@{domain}"
 
 
-# ── Feelivate Logo Block (inline, white rounded square) ──────────────────────
-LOGO_BLOCK = f"""
-<table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  Brand system — mirrors the website theme                    ║
+# ╚══════════════════════════════════════════════════════════════╝
+# Cream ground, ink text, warm accent, flame gradient for the one action that
+# matters. One shared shell (header / card / footer) so every email that leaves
+# the product looks like the same product. Fluid tables + a small media query
+# keep it aligned on phone, tablet and desktop clients alike.
+
+INK = "#141414"          # site text-primary / black pills
+SUB = "#5c5b56"          # secondary text
+MUTED = "#8f8e88"        # muted text
+CREAM = "#f4f2ee"        # page ground (site background)
+CARD = "#ffffff"         # card surface
+PANEL = "#faf9f6"        # inner panel surface
+BORDER = "#e7e4dd"       # hairline borders
+ACCENT = "#d97757"       # site accent-warm
+FLAME_A = "#ffb24d"      # streak flame gradient
+FLAME_B = "#ff5a36"
+
+FONT = "'Helvetica Neue',Helvetica,Arial,sans-serif"
+SERIF = "Georgia,'Times New Roman',serif"
+
+_HEADER = f"""
+<table cellpadding="0" cellspacing="0" style="margin:0 auto 26px;">
   <tr>
-    <td style="background:#ffffff;border-radius:14px;padding:10px 18px;box-shadow:0 1px 6px rgba(0,0,0,0.3);">
-      <span style="font-size:18px;font-weight:800;color:#09090b;letter-spacing:-0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-        <img src="{APP_URL}/logo_2_backup.png" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;margin-top:-2px;" />Feelivate
-      </span>
+    <td style="background:{INK};border-radius:12px;padding:9px 10px;line-height:0;">
+      <img src="{APP_URL}/logo_2_backup.png" alt="Feelivate" width="22" height="22" style="display:block;width:22px;height:22px;" />
+    </td>
+    <td style="padding-left:12px;">
+      <span style="font-size:19px;font-weight:800;color:{INK};letter-spacing:0.12em;font-family:{FONT};">FEELIVATE</span>
     </td>
   </tr>
 </table>
 """
+
+
+def _footer(manage_label: str = "Manage alerts") -> str:
+    return f"""
+<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;">
+  <tr><td align="center" style="padding:0 8px;">
+    <p style="margin:0 0 6px;color:{MUTED};font-size:11.5px;font-family:{FONT};line-height:1.6;">
+      &#169; 2026 Feelivate &middot; A JUNE64 product
+    </p>
+    <p style="margin:0;font-size:11.5px;font-family:{FONT};line-height:1.6;">
+      <a href="{APP_URL}" style="color:{SUB};text-decoration:none;">feelivate.com</a>
+      &nbsp;&middot;&nbsp;
+      <a href="{APP_URL}/privacy" style="color:{SUB};text-decoration:none;">Privacy</a>
+      &nbsp;&middot;&nbsp;
+      <a href="{APP_URL}/app" style="color:{SUB};text-decoration:none;">{manage_label}</a>
+    </p>
+  </td></tr>
+</table>"""
+
+
+def _shell(preheader: str, card_rows: str, manage_label: str = "Manage alerts") -> str:
+    """Wrap card rows in the shared page: cream ground, header, white card, footer."""
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  @media only screen and (max-width:480px) {{
+    .px {{ padding-left:20px !important; padding-right:20px !important; }}
+    .wrap {{ padding:24px 12px !important; }}
+    .h1 {{ font-size:24px !important; }}
+    .btn a {{ display:block !important; }}
+  }}
+</style>
+</head>
+<body style="margin:0;padding:0;background:{CREAM};font-family:{FONT};">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">{preheader}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{CREAM};">
+  <tr><td align="center" class="wrap" style="padding:44px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+      <tr><td align="center">{_HEADER}</td></tr>
+      <tr><td style="background:{CARD};border:1px solid {BORDER};border-radius:20px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          {card_rows}
+        </table>
+      </td></tr>
+      <tr><td>{_footer(manage_label)}</td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+
+def _eyebrow(text: str, color: str = ACCENT) -> str:
+    return (f'<p style="color:{color};font-size:11px;font-weight:800;text-transform:uppercase;'
+            f'letter-spacing:0.14em;margin:0 0 10px;font-family:{FONT};">{text}</p>')
+
+
+def _btn_dark(label: str, url: str) -> str:
+    return (f'<span class="btn"><a href="{url}" style="display:inline-block;background:{INK};color:#ffffff;'
+            f'text-decoration:none;font-size:13px;font-weight:800;padding:15px 34px;border-radius:100px;'
+            f'letter-spacing:0.06em;text-transform:uppercase;font-family:{FONT};">{label}</a></span>')
+
+
+def _btn_flame(label: str, url: str) -> str:
+    return (f'<span class="btn"><a href="{url}" style="display:inline-block;'
+            f'background:{FLAME_B};background-image:linear-gradient(135deg,{FLAME_A},{FLAME_B});color:#ffffff;'
+            f'text-decoration:none;font-size:13px;font-weight:800;padding:15px 34px;border-radius:100px;'
+            f'letter-spacing:0.06em;text-transform:uppercase;font-family:{FONT};">{label}</a></span>')
 
 
 # ╔══════════════════════════════════════════════════════════════╗
@@ -78,49 +169,30 @@ def send_verification_email(to_email: str, otp: str, user_name: str = "there") -
         logger.error("RESEND_API_KEY not set.")
         return False
 
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0f;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:48px 20px;">
-  <tr><td align="center">
-    <table width="520" cellpadding="0" cellspacing="0" style="max-width:520px;">
-      <tr><td align="center" style="padding-bottom:24px;">{LOGO_BLOCK}</td></tr>
-      <tr><td style="background:#13131a;border:1px solid rgba(168,85,247,0.15);border-radius:20px;overflow:hidden;">
-        <tr><td style="background:linear-gradient(135deg,#2d1060,#1a0a2e);padding:28px 36px 24px;">
-          <p style="color:#c084fc;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 8px;">Email Verification</p>
-          <h1 style="color:#f4f4f5;font-size:22px;font-weight:700;margin:0;line-height:1.3;">Your verification code &#128272;</h1>
+    rows = f"""
+        <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
+          {_eyebrow('Email verification')}
+          <h1 class="h1" style="color:{INK};font-size:26px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-0.02em;font-family:{FONT};">Your verification code</h1>
         </td></tr>
-        <tr><td style="padding:32px 36px;">
-          <p style="color:#a1a1aa;font-size:15px;margin:0 0 8px;">Hey <strong style="color:#e4e4e7;">{user_name}</strong>,</p>
-          <p style="color:#71717a;font-size:14px;margin:0 0 28px;line-height:1.7;">
-            You&#39;re one step away from receiving daily personalized task emails from Feelivate.
-            Enter the code below to activate your daily alerts.
+        <tr><td class="px" style="padding:26px 36px 30px;">
+          <p style="color:{SUB};font-size:15px;margin:0 0 8px;font-family:{FONT};">Hey <strong style="color:{INK};">{user_name}</strong>,</p>
+          <p style="color:{SUB};font-size:14px;margin:0 0 24px;line-height:1.7;font-family:{FONT};">
+            You&#39;re one step away from daily task emails from Feelivate.
+            Enter this code to switch on your alerts.
           </p>
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-            <tr><td style="background:#09090b;border:1px solid #3f3f46;border-radius:14px;padding:28px;text-align:center;">
-              <p style="color:#52525b;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 14px;">One-time code</p>
-              <p style="color:#c084fc;font-size:44px;font-weight:800;letter-spacing:14px;margin:0;font-family:'Courier New',Courier,monospace;">{otp}</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px;">
+            <tr><td style="background:{PANEL};border:1px solid {BORDER};border-radius:16px;padding:26px;text-align:center;">
+              <p style="color:{MUTED};font-size:11px;text-transform:uppercase;letter-spacing:0.14em;margin:0 0 12px;font-family:{FONT};">One-time code</p>
+              <p style="color:{INK};font-size:40px;font-weight:800;letter-spacing:12px;margin:0 0 0 12px;font-family:'Courier New',Courier,monospace;">{otp}</p>
             </td></tr>
           </table>
-          <p style="color:#3f3f46;font-size:12px;margin:0;line-height:1.6;">
-            Expires in <strong style="color:#71717a;">10 minutes</strong> &middot; Single use only.
-            If you didn&#39;t request this, you can safely ignore this email.
+          <p style="color:{MUTED};font-size:12px;margin:0;line-height:1.6;font-family:{FONT};">
+            Expires in <strong style="color:{SUB};">10 minutes</strong> &middot; single use.
+            Didn&#39;t request this? You can safely ignore this email.
           </p>
-        </td></tr>
-        <tr><td style="border-top:1px solid #1f1f2e;padding:18px 36px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="color:#3f3f46;font-size:11px;">&#169; 2026 Feelivate</td>
-              <td align="right" style="color:#3f3f46;font-size:11px;">Behavioral Architecture Engine</td>
-            </tr>
-          </table>
-        </td></tr>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-</body></html>"""
+        </td></tr>"""
+
+    html = _shell("Your Feelivate verification code", rows)
 
     try:
         res = resend.Emails.send({
@@ -184,7 +256,7 @@ Respond ONLY with valid JSON. No markdown fences. No extra text."""
         }
 
 
-def _bullets_to_html(text, color="#d4d4d8", icon="→", icon_color="#a855f7", font_size="14px"):
+def _bullets_to_html(text, color=SUB, icon="→", icon_color=ACCENT, font_size="14px"):
     """Convert newline/bullet separated text to styled HTML paragraphs."""
     lines = [l.strip().lstrip("•").lstrip("-").strip() for l in text.split("\n") if l.strip()]
     return "".join(
@@ -224,19 +296,19 @@ def send_daily_task_email(
     today_str = datetime.now(_disp_tz).strftime("%A, %B %d, %Y")
     ai = _generate_ai_daily_content(user_name, day_label, task_title, task_description, session_focus)
 
-    how_to_html = _bullets_to_html(ai["how_to"], "#d4d4d8", "&#8594;", "#a855f7", "14px")
-    avoid_html  = _bullets_to_html(ai["what_not_to_do"], "#fca5a5", "&#10007;", "#f87171", "13px")
+    how_to_html = _bullets_to_html(ai["how_to"], SUB, "&#8594;", ACCENT, "14px")
+    avoid_html  = _bullets_to_html(ai["what_not_to_do"], "#a3542f", "&#10007;", "#c2410c", "13px")
     week_sub    = week_label if week_label else week_theme
 
     # Streak shield banner — only when a shield silently covered yesterday.
     shield_html = ""
     if shield_note:
         shield_html = f"""
-        <tr><td style="padding:14px 36px 0;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.25);border-radius:12px;padding:14px 18px;">
-            <tr><td>
-              <p style="color:#60a5fa;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 6px;">&#128737;&#65039; Streak shield</p>
-              <p style="color:#bfdbfe;font-size:13px;margin:0;line-height:1.6;">{shield_note}</p>
+        <tr><td class="px" style="padding:16px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef4fb;border:1px solid #cfe0f2;border-radius:14px;">
+            <tr><td style="padding:14px 18px;">
+              <p style="color:#3b6ea5;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 6px;font-family:{FONT};">&#128737;&#65039; Streak shield</p>
+              <p style="color:#41597a;font-size:13px;margin:0;line-height:1.6;font-family:{FONT};">{shield_note}</p>
             </td></tr>
           </table>
         </td></tr>"""
@@ -244,117 +316,63 @@ def send_daily_task_email(
     # One-tap check-in — the email IS the daily loop, not just a reminder.
     if checkin_url:
         cta_html = f"""
-          <a href="{checkin_url}" style="display:inline-block;background:linear-gradient(135deg,#059669,#10b981);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">Mark today done &#10003;</a>
-          <p style="margin:12px 0 0;"><a href="{APP_URL}/app" style="color:#71717a;font-size:12px;text-decoration:none;">Open Feelivate &#8594;</a></p>"""
+          {_btn_flame('Mark today done &#10003;', checkin_url)}
+          <p style="margin:14px 0 0;font-family:{FONT};"><a href="{APP_URL}/app" style="color:{MUTED};font-size:12.5px;text-decoration:none;">Open Feelivate &#8594;</a></p>"""
     else:
-        cta_html = f"""
-          <a href="{APP_URL}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">
-            Open Feelivate &#8594;
-          </a>"""
+        cta_html = _btn_dark('Open Feelivate &#8594;', APP_URL)
 
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0f;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:48px 20px;">
-  <tr><td align="center">
-    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;">
-
-      <!-- Logo -->
-      <tr><td align="center" style="padding-bottom:20px;">{LOGO_BLOCK}</td></tr>
-
-      <!-- Card -->
-      <tr><td style="background:#13131a;border:1px solid rgba(168,85,247,0.15);border-radius:20px;overflow:hidden;">
-
-        <!-- ▸ Header: Week N · DayName -->
-        <tr><td style="background:linear-gradient(135deg,#1a0a2e 0%,#0f0f1a 100%);padding:28px 36px 22px;border-bottom:1px solid rgba(168,85,247,0.1);">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td>
-                <p style="color:#7c3aed;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 10px;">&#128236; Daily Alert</p>
-                <!-- Big title line: "Week 0 · Thursday" -->
-                <h1 style="color:#f4f4f5;font-size:30px;font-weight:800;margin:0 0 4px;line-height:1.1;letter-spacing:-0.5px;">
-                  Week {week_number} <span style="color:#7c3aed;">&#183;</span> {day_label}
-                </h1>
-                <p style="color:#71717a;font-size:12px;margin:6px 0 0;">{today_str}{(' &nbsp;&#183;&nbsp; ' + week_sub) if week_sub else ''}</p>
-              </td>
-              <td align="right" valign="top">
-                <span style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#c084fc;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;white-space:nowrap;">Daily Alert</span>
-              </td>
-            </tr>
-          </table>
+    rows = f"""
+        <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
+          {_eyebrow('Daily brief &middot; ' + today_str)}
+          <h1 class="h1" style="color:{INK};font-size:30px;font-weight:800;margin:0;line-height:1.15;letter-spacing:-0.02em;font-family:{FONT};">
+            Week {week_number} <span style="color:{ACCENT};">&#183;</span> {day_label}
+          </h1>
+          {f'<p style="color:{MUTED};font-size:12.5px;margin:8px 0 0;font-family:{FONT};">{week_sub}</p>' if week_sub else ''}
         </td></tr>
 
-        <!-- Greeting -->
-        <tr><td style="padding:24px 36px 0;">
-          <p style="color:#a1a1aa;font-size:15px;margin:0 0 4px;">Good morning, <strong style="color:#e4e4e7;">{user_name}</strong> &#128075;</p>
-          <p style="color:#52525b;font-size:13px;margin:0;">Your future self sent you today&#39;s mission. Let&#39;s make it count.</p>
+        <tr><td class="px" style="padding:22px 36px 0;">
+          <p style="color:{SUB};font-size:15px;margin:0;font-family:{FONT};">Good morning, <strong style="color:{INK};">{user_name}</strong> &#8212; one day, one task. Here&#39;s yours.</p>
         </td></tr>
         {shield_html}
 
-        <!-- Task Card -->
-        <tr><td style="padding:18px 36px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(109,40,217,0.12),rgba(99,102,241,0.06));border:1px solid rgba(168,85,247,0.2);border-radius:14px;overflow:hidden;">
-            <tr><td style="padding:6px 18px;background:rgba(168,85,247,0.12);">
-              <p style="color:#c084fc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin:0;">&#127919; Today&#39;s Task</p>
-            </td></tr>
-            <tr><td style="padding:16px 18px 18px;">
-              <p style="color:#f4f4f5;font-size:17px;font-weight:700;margin:0 0 8px;line-height:1.4;">{task_title}</p>
-              <p style="color:#a1a1aa;font-size:13px;margin:0;line-height:1.7;">{task_description}</p>
+        <tr><td class="px" style="padding:18px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{PANEL};border:1px solid {BORDER};border-left:3px solid {ACCENT};border-radius:14px;">
+            <tr><td style="padding:18px 20px;">
+              <p style="color:{ACCENT};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:0 0 8px;font-family:{FONT};">Today&#39;s task</p>
+              <p style="color:{INK};font-size:17px;font-weight:700;margin:0 0 8px;line-height:1.45;font-family:{FONT};">{task_title}</p>
+              <p style="color:{SUB};font-size:13.5px;margin:0;line-height:1.7;font-family:{FONT};">{task_description}</p>
             </td></tr>
           </table>
         </td></tr>
 
-        <!-- How To -->
-        <tr><td style="padding:0 36px 16px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f1a;border:1px solid #1f1f2e;border-radius:12px;padding:18px 20px;">
-            <tr><td>
-              <p style="color:#7c3aed;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 12px;">&#128161; How to do it well</p>
+        <tr><td class="px" style="padding:16px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{CARD};border:1px solid {BORDER};border-radius:14px;">
+            <tr><td style="padding:18px 20px;">
+              <p style="color:{INK};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 12px;font-family:{FONT};">How to do it well</p>
               {how_to_html}
             </td></tr>
           </table>
         </td></tr>
 
-        <!-- Avoid -->
-        <tr><td style="padding:0 36px 16px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(239,68,68,0.04);border:1px solid rgba(239,68,68,0.12);border-radius:12px;padding:16px 20px;">
-            <tr><td>
-              <p style="color:#f87171;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 10px;">&#9888; Avoid today</p>
+        <tr><td class="px" style="padding:14px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fdf1ec;border:1px solid #f3d5c8;border-radius:14px;">
+            <tr><td style="padding:16px 20px;">
+              <p style="color:#c2410c;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 10px;font-family:{FONT};">Avoid today</p>
               {avoid_html}
             </td></tr>
           </table>
         </td></tr>
 
-        <!-- Motivational Thought -->
-        <tr><td style="padding:0 36px 28px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(99,102,241,0.04));border-left:3px solid #7c3aed;border-radius:0 12px 12px 0;padding:18px 22px;">
-            <tr><td>
-              <p style="color:#7c3aed;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin:0 0 10px;">&#10022; Just for you, {user_name}</p>
-              <p style="color:#c4b5fd;font-size:14px;font-style:italic;line-height:1.8;margin:0;">&#8220;{ai["motivational_thought"]}&#8221;</p>
-            </td></tr>
-          </table>
+        <tr><td class="px" style="padding:18px 36px 0;">
+          <p style="color:{INK};font-size:15.5px;font-style:italic;line-height:1.75;margin:0;font-family:{SERIF};">&#8220;{ai["motivational_thought"]}&#8221;</p>
+          <p style="color:{MUTED};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:10px 0 0;font-family:{FONT};">For you, {user_name}</p>
         </td></tr>
 
-        <!-- CTA -->
-        <tr><td style="padding:0 36px 32px;text-align:center;">
+        <tr><td class="px" style="padding:26px 36px 32px;text-align:center;">
           {cta_html}
-        </td></tr>
+        </td></tr>"""
 
-        <!-- Footer -->
-        <tr><td style="border-top:1px solid #1f1f2e;padding:18px 36px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="color:#3f3f46;font-size:11px;">&#169; 2026 Feelivate &middot; Behavioral Architecture Engine</td>
-              <td align="right"><a href="{APP_URL}" style="color:#52525b;font-size:11px;text-decoration:none;">Unsubscribe</a></td>
-            </tr>
-          </table>
-        </td></tr>
-
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-</body></html>"""
+    html = _shell(f"Week {week_number} · {day_label} — {task_title[:80]}", rows, manage_label="Manage alerts")
 
     try:
         res = resend.Emails.send({
@@ -398,77 +416,50 @@ def send_recovery_email(
     why_html = ""
     if (commitment_why or "").strip():
         why_html = f"""
-        <tr><td style="padding:0 36px 16px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(99,102,241,0.04));border-left:3px solid #7c3aed;border-radius:0 12px 12px 0;padding:18px 22px;">
-            <tr><td>
-              <p style="color:#7c3aed;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin:0 0 10px;">Your own words, {name}</p>
-              <p style="color:#c4b5fd;font-size:14px;font-style:italic;line-height:1.8;margin:0;">&#8220;{commitment_why.strip()}&#8221;</p>
+        <tr><td class="px" style="padding:0 36px 18px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="border-left:3px solid {INK};padding:4px 0 4px 16px;">
+              <p style="color:{INK};font-size:15.5px;font-style:italic;line-height:1.75;margin:0 0 6px;font-family:{SERIF};">&#8220;{commitment_why.strip()}&#8221;</p>
+              <p style="color:{MUTED};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:0;font-family:{FONT};">You, when you started</p>
             </td></tr>
           </table>
         </td></tr>"""
 
     if checkin_url:
         cta_html = f"""
-          <a href="{checkin_url}" style="display:inline-block;background:linear-gradient(135deg,#059669,#10b981);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">Done &#8212; I&#39;m back &#10003;</a>
-          <p style="margin:12px 0 0;"><a href="{APP_URL}/app" style="color:#71717a;font-size:12px;text-decoration:none;">What got in the way? Tell your mentor &#8594;</a></p>"""
+          {_btn_flame('Done &#8212; I&#39;m back &#10003;', checkin_url)}
+          <p style="margin:14px 0 0;font-family:{FONT};"><a href="{APP_URL}/app" style="color:{MUTED};font-size:12.5px;text-decoration:none;">What got in the way? Tell your mentor &#8594;</a></p>"""
     else:
-        cta_html = f"""
-          <a href="{APP_URL}/app" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;letter-spacing:0.3px;">I&#39;m back &#8212; open Feelivate &#8594;</a>"""
+        cta_html = _btn_dark('I&#39;m back &#8212; open Feelivate &#8594;', f"{APP_URL}/app")
 
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0f;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:48px 20px;">
-  <tr><td align="center">
-    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;">
-
-      <tr><td align="center" style="padding-bottom:20px;">{LOGO_BLOCK}</td></tr>
-
-      <tr><td style="background:#13131a;border:1px solid rgba(168,85,247,0.15);border-radius:20px;overflow:hidden;">
-
-        <tr><td style="background:linear-gradient(135deg,#1a0a2e 0%,#0f0f1a 100%);padding:28px 36px 22px;border-bottom:1px solid rgba(168,85,247,0.1);">
-          <p style="color:#7c3aed;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 10px;">Recovery &middot; don&#39;t miss twice</p>
-          <h1 style="color:#f4f4f5;font-size:26px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-0.5px;">One missed day changes nothing</h1>
+    rows = f"""
+        <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
+          {_eyebrow('Recovery &middot; don&#39;t miss twice')}
+          <h1 class="h1" style="color:{INK};font-size:27px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-0.02em;font-family:{FONT};">One missed day changes nothing.</h1>
         </td></tr>
 
-        <tr><td style="padding:24px 36px 16px;">
-          <p style="color:#a1a1aa;font-size:15px;margin:0 0 12px;line-height:1.7;">Hey <strong style="color:#e4e4e7;">{name}</strong> — yesterday didn&#39;t happen. That&#39;s fine. Really.</p>
-          <p style="color:#a1a1aa;font-size:14px;margin:0 0 12px;line-height:1.7;">The research is clear: missing a <strong style="color:#e4e4e7;">single day does not break a habit</strong> (Lally et&nbsp;al., 2010). What starts a new, worse habit is missing <em>twice</em>. So there&#39;s exactly one day that matters now &#8212; today.</p>
+        <tr><td class="px" style="padding:24px 36px 18px;">
+          <p style="color:{SUB};font-size:15px;margin:0 0 12px;line-height:1.7;font-family:{FONT};">Hey <strong style="color:{INK};">{name}</strong> &#8212; yesterday didn&#39;t happen. That&#39;s fine. Really.</p>
+          <p style="color:{SUB};font-size:14px;margin:0;line-height:1.7;font-family:{FONT};">The research is clear: missing a <strong style="color:{INK};">single day does not break a habit</strong> (Lally et&nbsp;al., 2010). What starts a new, worse habit is missing <em>twice</em>. So there&#39;s exactly one day that matters now &#8212; today.</p>
         </td></tr>
 
         {why_html}
 
-        <tr><td style="padding:0 36px 16px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(109,40,217,0.12),rgba(99,102,241,0.06));border:1px solid rgba(168,85,247,0.2);border-radius:14px;overflow:hidden;">
-            <tr><td style="padding:6px 18px;background:rgba(168,85,247,0.12);">
-              <p style="color:#c084fc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin:0;">&#127919; Today&#39;s task &#8212; smaller counts too</p>
-            </td></tr>
-            <tr><td style="padding:16px 18px 18px;">
-              <p style="color:#f4f4f5;font-size:16px;font-weight:700;margin:0 0 6px;line-height:1.4;">{task_title}</p>
-              <p style="color:#a1a1aa;font-size:13px;margin:0;line-height:1.7;">Bad day? Do the 2-minute version. A small win keeps the chain alive &#8212; perfection was never the deal.</p>
+        <tr><td class="px" style="padding:0 36px 8px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{PANEL};border:1px solid {BORDER};border-left:3px solid {ACCENT};border-radius:14px;">
+            <tr><td style="padding:18px 20px;">
+              <p style="color:{ACCENT};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:0 0 8px;font-family:{FONT};">Today&#39;s task &#8212; smaller counts too</p>
+              <p style="color:{INK};font-size:16px;font-weight:700;margin:0 0 6px;line-height:1.45;font-family:{FONT};">{task_title}</p>
+              <p style="color:{SUB};font-size:13.5px;margin:0;line-height:1.7;font-family:{FONT};">Bad day? Do the 2-minute version. A small win keeps the chain alive &#8212; perfection was never the deal.</p>
             </td></tr>
           </table>
         </td></tr>
 
-        <tr><td style="padding:8px 36px 32px;text-align:center;">
+        <tr><td class="px" style="padding:22px 36px 32px;text-align:center;">
           {cta_html}
-        </td></tr>
+        </td></tr>"""
 
-        <tr><td style="border-top:1px solid #1f1f2e;padding:18px 36px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="color:#3f3f46;font-size:11px;">&#169; 2026 Feelivate &middot; Behavioral Architecture Engine</td>
-              <td align="right"><a href="{APP_URL}" style="color:#52525b;font-size:11px;text-decoration:none;">Unsubscribe</a></td>
-            </tr>
-          </table>
-        </td></tr>
-
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-</body></html>"""
+    html = _shell("One missed day changes nothing — today's the one that matters", rows)
 
     try:
         resend.Emails.send({
@@ -651,51 +642,31 @@ def _reminder_email(
         return False
 
     paragraphs = "".join(
-        f'<p style="margin:0 0 14px;color:#a1a1aa;font-size:15px;line-height:1.65;">{line}</p>'
+        f'<p style="margin:0 0 14px;color:{SUB};font-size:14.5px;line-height:1.7;font-family:{FONT};">{line}</p>'
         for line in body_lines
     )
 
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0f;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:48px 20px;">
-  <tr><td align="center">
-    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;">
+    note_html = ""
+    if footer_note:
+        note_html = (f'<p style="margin:18px 0 0;color:{MUTED};font-size:12px;'
+                     f'line-height:1.6;font-family:{FONT};">{footer_note}</p>')
 
-      <tr><td align="center" style="padding-bottom:20px;">{LOGO_BLOCK}</td></tr>
+    rows = f"""
+        <tr><td class="px" style="padding:32px 36px 34px;">
+          {_eyebrow(eyebrow, accent)}
+          <h1 class="h1" style="margin:0 0 16px;color:{INK};font-size:24px;line-height:1.25;
+                     font-weight:800;letter-spacing:-0.02em;font-family:{FONT};">{heading}</h1>
+          {paragraphs}
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 0;">
+            <tr><td>{_btn_dark(cta_label, f"{APP_URL}/app")}</td></tr>
+          </table>
+          {note_html}
+          <p style="margin:14px 0 0;color:{MUTED};font-size:12px;line-height:1.6;font-family:{FONT};">
+            You can turn these reminders off any time from Alerts in the app.
+          </p>
+        </td></tr>"""
 
-      <tr><td style="background:#13131a;border:1px solid rgba(168,85,247,0.15);border-radius:20px;padding:38px 34px;">
-
-        <p style="margin:0 0 10px;color:{accent};font-size:11px;font-weight:700;
-                  letter-spacing:0.14em;text-transform:uppercase;">{eyebrow}</p>
-
-        <h1 style="margin:0 0 18px;color:#fafafa;font-size:23px;line-height:1.25;
-                   font-weight:700;letter-spacing:-0.02em;">{heading}</h1>
-
-        {paragraphs}
-
-        <table cellpadding="0" cellspacing="0" style="margin:26px 0 0;">
-          <tr><td style="background:{accent};border-radius:100px;">
-            <a href="{APP_URL}/app" style="display:inline-block;padding:14px 30px;color:#0a0a0f;
-               font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
-               text-decoration:none;">{cta_label}</a>
-          </td></tr>
-        </table>
-
-      </td></tr>
-
-      <tr><td style="padding:22px 8px 0;">
-        <p style="margin:0;color:#52525b;font-size:12px;line-height:1.6;">
-          {footer_note}
-          You can turn these reminders off any time from Alerts in the app.
-        </p>
-      </td></tr>
-
-    </table>
-  </td></tr>
-</table>
-</body></html>"""
+    html = _shell(heading, rows, manage_label="Manage alerts")
 
     try:
         resend.Emails.send({
@@ -726,7 +697,7 @@ def send_journal_reminder_email(to_email: str, user_name: str) -> bool:
             "mentor is guessing.",
         ],
         cta_label="Log today",
-        accent="#a855f7",
+        accent=ACCENT,
     )
 
 
@@ -746,7 +717,7 @@ def send_streak_reminder_email(to_email: str, user_name: str, current_streak: in
             "journal.",
         ],
         cta_label="Keep the streak",
-        accent="#f59e0b",
+        accent="#b45309",
         footer_note="Streaks are a motivational feature, nothing more &mdash; nothing is lost if one breaks. ",
     )
 
