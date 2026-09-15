@@ -322,7 +322,7 @@ export default function MissionTopBar({
             {/* ── Utilities (desktop: inline icons; mobile: labeled second row) ── */}
             {!isMobile && (
                 <>
-                    <DeskTile icon={<Archive size={16} />} label="Reports" onClick={onOpenArchive} />
+                    <DeskTile tour="reports-button" icon={<Archive size={16} />} label="Reports" onClick={onOpenArchive} />
                     <DeskTile tour="alerts-button" icon={<Bell size={16} />} label="Alerts" onClick={onOpenAlerts} />
                     <DeskTile icon={<Calendar size={16} />} label="Calendar" onClick={onOpenCalendar} />
                     <button
@@ -352,7 +352,7 @@ export default function MissionTopBar({
                         onClick={() => window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'))}
                     />
                 )}
-                <LabeledTile icon={<Archive size={16} />} label="Reports" onClick={onOpenArchive} />
+                <LabeledTile tour="reports-button" icon={<Archive size={16} />} label="Reports" onClick={onOpenArchive} />
                 <LabeledTile tour="alerts-button" icon={<Bell size={16} />} label="Alerts" onClick={onOpenAlerts} />
                 <LabeledTile icon={<Calendar size={16} />} label="Calendar" onClick={onOpenCalendar} />
             </div>

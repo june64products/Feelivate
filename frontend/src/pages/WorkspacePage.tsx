@@ -111,6 +111,7 @@ export default function WorkspacePage() {
     const [demoEmotion, setDemoEmotion] = useState<any | null>(null);
     const [demoSelectedWeek, setDemoSelectedWeek] = useState<number | null>(null);
     const [demoJourneyTab, setDemoJourneyTab] = useState<'overview' | 'archive'>('overview');
+    const [demoBetweenWeeks, setDemoBetweenWeeks] = useState(false);
 
     const uiMessages = demoMode ? demoMessages : messages;
     const uiLoading = demoMode ? demoLoading : isLoading;
@@ -603,6 +604,7 @@ export default function WorkspacePage() {
         setDemoEmotion(null);
         setDemoSelectedWeek(null);
         setDemoJourneyTab('overview');
+        setDemoBetweenWeeks(false);
     };
 
     // Called when the user Skips/Stops or the demo finishes its last step.
@@ -627,6 +629,7 @@ export default function WorkspacePage() {
         setSidebar: (open) => setIsSidebarCollapsed(!open),
         setSelectedWeek: (w) => setDemoSelectedWeek(w),
         setJourneyTab: (t) => setDemoJourneyTab(t),
+        setBetweenWeeks: (v) => setDemoBetweenWeeks(v),
     }), []);
 
     // Auto-open the demo for newly signed-up users, and on "Replay tutorial".
@@ -695,6 +698,7 @@ export default function WorkspacePage() {
                         sessionId={uiSessionId ?? undefined}
                         demoMode={demoMode}
                         demoTab={demoJourneyTab}
+                        demoBetweenWeeks={demoBetweenWeeks}
                         initialTab={journeyInitialTab}
                         onJournalSaved={(entry) => {
                             // Directly update the orb with the saved entry — no refetch needed

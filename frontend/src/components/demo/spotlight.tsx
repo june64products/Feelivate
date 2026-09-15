@@ -55,7 +55,9 @@ export function resolvePlacement(rect: DOMRect, preferred: Placement, cardH: num
     for (const p of ['bottom', 'top', 'right', 'left'] as Placement[]) {
         if (fits(p)) return p;
     }
-    return 'bottom';
+    // Nothing fits cleanly (short laptop viewports, tall targets): take the
+    // vertical side with the most room so the card overlaps the target least.
+    return room.top > room.bottom ? 'top' : 'bottom';
 }
 
 export function cardPosition(rect: DOMRect, placement: Placement, cardH: number) {

@@ -20,7 +20,8 @@ export type DemoTarget =
     | 'chat-input' | 'mic-button' | 'plan-actions' | 'lets-go' | 'tweak'
     | 'week-pill' | 'week-panel' | 'week-drawer' | 'alerts-button'
     | 'today-card' | 'done-button' | 'goal-pill' | 'streak'
-    | 'journey-nav' | 'journey-mic' | 'archive-tab'
+    | 'journey-nav' | 'journey-mic' | 'mood-mic' | 'archive-tab'
+    | 'reports-button' | 'mentor-chip'
     | 'emotion-orb' | 'profile-menu' | 'center';
 
 export interface DemoSceneMessage {
@@ -41,6 +42,8 @@ export interface DemoScene {
     emotion?: boolean;          // show the mood orb
     selectedWeek?: number | null; // open the week drawer for this week
     journeyTab?: 'overview' | 'archive';
+    /** Journey shows the between-weeks state: journal locked + mood-only mic (demo only). */
+    betweenWeeks?: boolean;
 }
 
 export interface DemoStep {
@@ -151,7 +154,8 @@ export const DEMO_STEPS: DemoStep[] = [
         body: "Watch — I'll send a goal. Your mentor opens up right here and turns it into a personalized week plan in seconds.",
         scene: { messages: CHAT, typeLast: true },
         scrollChat: 'top',
-        mobileCard: 'bottom',
+        // No forced pin: on phones the mentor input sits at the bottom, so the
+        // sheet auto-pins to the top and never covers the highlighted input.
     },
     {
         id: 'week-numbering',
@@ -207,6 +211,14 @@ export const DEMO_STEPS: DemoStep[] = [
         scene: { messages: CHAT, planApproved: true },
     },
     {
+        id: 'goal-pill',
+        target: 'goal-pill',
+        placement: 'bottom',
+        title: 'Your goals live here',
+        body: 'This pill is your goal switcher. Tap it to jump between goals, start a brand-new one, or finish the current goal when you\'re done with it.',
+        scene: { messages: CHAT, planApproved: true },
+    },
+    {
         id: 'path',
         target: 'week-panel',
         placement: 'top',
@@ -241,11 +253,28 @@ export const DEMO_STEPS: DemoStep[] = [
         mobileCard: 'top',
     },
     {
+        id: 'mentor-chip',
+        target: 'mentor-chip',
+        placement: 'top',
+        title: 'Stuck? Ask your mentor',
+        body: 'Not sure how to do today\'s task? Tap here and your mentor opens right on top of this screen — talk it out, get unstuck, then get back to it.',
+        scene: { messages: CHAT, planApproved: true },
+        mobileCard: 'top',
+    },
+    {
         id: 'alerts',
         target: 'alerts-button',
         placement: 'bottom',
         title: 'Daily reminders',
         body: "Turn on Alerts to get that day's task emailed to you every morning — with a one-tap Done button right in the email.",
+        scene: { messages: CHAT, planApproved: true },
+    },
+    {
+        id: 'reports',
+        target: 'reports-button',
+        placement: 'bottom',
+        title: 'Your weekly reports',
+        body: 'Every finished week gets an honest report. Tap Reports to open the archive of all your past weeks — one tap, any time.',
         scene: { messages: CHAT, planApproved: true },
     },
     {
@@ -258,11 +287,11 @@ export const DEMO_STEPS: DemoStep[] = [
     },
     {
         id: 'mood-mic',
-        target: 'journey-mic',
+        target: 'mood-mic',
         placement: 'bottom',
         title: 'Between weeks: a mood-only mic',
-        body: "When no week is running (an old week ended, the next isn't committed yet), this journal mic locks — it needs an active week. A small mood-only mic appears beside it: it just captures how you feel, joining no report and no streak. Your journal unlocks the moment your next week starts.",
-        scene: { messages: CHAT, planApproved: true, view: 'journey' },
+        body: "When no week is running (an old week ended, the next isn't committed yet), the journal mic locks — it needs an active week. This mood-only mic takes over: it just captures how you feel, joining no report and no streak. Your journal unlocks the moment your next week starts.",
+        scene: { messages: CHAT, planApproved: true, view: 'journey', betweenWeeks: true },
     },
     {
         id: 'archive',

@@ -247,7 +247,7 @@ function WeekDrawer({
     const [showReport, setShowReport] = useState(false);
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth <= 768);
+        const check = () => setIsMobile(window.innerWidth < 768);
         check();
         window.addEventListener('resize', check);
         return () => window.removeEventListener('resize', check);

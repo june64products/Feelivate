@@ -7,7 +7,7 @@
  * typewriter; back/jump applies instantly. It never calls the backend.
  */
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DEMO_STEPS, DEMO_PLAN } from './demoScript';
 import { useWindowSize } from '../../hooks/useWindowSize';
 import {
@@ -25,6 +25,7 @@ export interface DemoHandles {
     setSidebar: (open: boolean) => void;
     setSelectedWeek: (w: number | null) => void;
     setJourneyTab: (t: 'overview' | 'archive') => void;
+    setBetweenWeeks: (v: boolean) => void;
 }
 
 interface GuidedDemoProps {
@@ -44,6 +45,9 @@ function effectiveTarget(target: string, _isMobile: boolean): string {
 export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps) {
     const [stepIndex, setStepIndex] = useState(0);
     const [rect, setRect] = useState<DOMRect | null>(null);
+    // Target missing for a while → show a centered card instead of nothing, so
+    // Next / Skip stay reachable (a touch user has no Enter key to escape).
+    const [fallback, setFallback] = useState(false);
     const [cardH, setCardH] = useState(180);
     const { isMobile } = useWindowSize();
 
@@ -114,6 +118,12 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         stepIndexRef.current = idx;
         setStepIndex(idx);
         setRect(null);
+        setFallback(false);
+        // The demo owns the keyboard: drop focus from any text field (the empty
+        // state and the mentor drawer autofocus their input) so a blinking caret
+        // isn't left inside a field the click-blocker already covers.
+        const ae = document.activeElement as HTMLElement | null;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) ae.blur();
         fastForwardRef.current = false;
         animatingRef.current = true;
 
@@ -126,6 +136,7 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         h.setEmotion(scene.emotion ?? false);
         h.setSelectedWeek(scene.selectedWeek ?? null);
         h.setJourneyTab(scene.journeyTab ?? 'overview');
+        h.setBetweenWeeks(scene.betweenWeeks ?? false);
 
         const built = (scene.messages ?? []).map(m => ({
             role: m.role, content: m.content, plan: m.withPlan ? DEMO_PLAN : undefined,
@@ -200,6 +211,7 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         const target = effectiveTarget(step.target, isMobile);
         let raf = 0;
         let scrolled = false;
+        let missingSince = 0;
         const tick = () => {
             if (target === 'center') {
                 setRect(null);
@@ -207,7 +219,14 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
                 const el = findVisible(target);
                 if (!el) {
                     setRect(prev => (prev === null ? prev : null));
+                    // Give the scene ~0.9s to render the target (framer enters,
+                    // view switches); if it still isn't on screen, fall back to
+                    // a centered card rather than stranding the tour.
+                    if (!missingSince) missingSince = performance.now();
+                    else if (performance.now() - missingSince > 900) setFallback(prev => (prev ? prev : true));
                 } else {
+                    missingSince = 0;
+                    setFallback(prev => (prev ? false : prev));
                     // First sighting of this step's target → bring it into view.
                     // On phones/tablets the today card, path row or tiles can sit
                     // below the fold, which used to strand the tour with no card.
@@ -235,32 +254,41 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         return () => cancelAnimationFrame(raf);
     }, [active, stepIndex, isMobile]);
 
-    // Keyboard: Enter / → advance, ← back, Esc exit — never while typing in a field.
+    // Measure the card before paint, so its very first frame is placed for its
+    // real height (the welcome card is taller than the default and used to
+    // overlap the input for a frame). The rAF tick keeps it fresh afterwards.
+    useLayoutEffect(() => {
+        const h = cardRef.current?.offsetHeight;
+        if (h && Math.abs(h - cardHRef.current) > 2) { cardHRef.current = h; setCardH(h); }
+    });
+
+    // Keyboard: Enter / → advance, ← back, Esc exit. Listened for in the capture
+    // phase so the tour sees the key before any autofocused chat field does —
+    // while the demo is active the real UI is click-blocked, so there's no
+    // legitimate typing to protect, and the welcome card promises Enter works.
     useEffect(() => {
         if (!active) return;
         const onKey = (e: KeyboardEvent) => {
-            const t = e.target as HTMLElement | null;
-            const tag = (t?.tagName || '').toLowerCase();
-            if (tag === 'input' || tag === 'textarea' || t?.isContentEditable) return;
-            if (e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); next(); }
-            else if (e.key === 'ArrowLeft') { e.preventDefault(); back(); }
-            else if (e.key === 'Escape') { e.preventDefault(); exit(); }
+            if (e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); next(); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); back(); }
+            else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); exit(); }
         };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
     }, [active, next, back, exit]);
 
     if (!active) return null;
     const step = DEMO_STEPS[stepIndex];
     if (!step) return null;
-    // Anchored step whose target isn't on screen yet → wait (don't flash a centered card).
-    if (step.target !== 'center' && !rect) return null;
+    // Anchored step whose target isn't on screen yet → wait briefly (don't flash a
+    // centered card); after the grace period `fallback` shows one so the user can move on.
+    if (step.target !== 'center' && !rect && !fallback) return null;
 
     const isLast = stepIndex === DEMO_STEPS.length - 1;
     const isFirst = stepIndex === 0;
 
     return (
-        <SpotlightOverlay rect={rect} preferredPlacement={step.placement} cardRef={cardRef} cardH={cardH} isMobile={isMobile} forcePin={isMobile ? step.mobileCard : undefined}>
+        <SpotlightOverlay rect={fallback ? null : rect} preferredPlacement={step.placement} cardRef={cardRef} cardH={cardH} isMobile={isMobile} forcePin={isMobile ? step.mobileCard : undefined}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={{ fontSize: '10px', fontWeight: 700, color: ACCENT, letterSpacing: '0.08em' }}>
                     {stepIndex + 1} / {DEMO_STEPS.length}

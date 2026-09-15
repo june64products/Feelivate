@@ -863,10 +863,12 @@ interface JourneyPageProps {
     onClose?: () => void;
     demoMode?: boolean;
     demoTab?: 'overview' | 'archive';
+    /** Guided demo: render the between-weeks state (journal locked + mood mic). */
+    demoBetweenWeeks?: boolean;
     initialTab?: 'overview' | 'archive';
 }
 
-export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose, demoMode = false, demoTab, initialTab }: JourneyPageProps) {
+export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose, demoMode = false, demoTab, demoBetweenWeeks = false, initialTab }: JourneyPageProps) {
     const [journals, setJournals] = useState<JournalEntry[]>([]);
     const [report, setReport] = useState<WeeklyReport | null>(null);
     const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
@@ -904,10 +906,14 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     // No week is running right now: either no plan was ever locked, or the
     // last locked week's window has ended and the next one isn't committed.
     // The main journal locks in this gap; the mood mic takes over.
-    const noActiveWeek = !demoMode && (
-        !weekInfo?.has_plan ||
-        (!!weekInfo?.week_end && today > weekInfo.week_end && !weekInfo?.has_next_plan)
-    );
+    // In the guided demo the scene decides (so the tour can show this state
+    // without touching the backend); the real rule is unchanged otherwise.
+    const noActiveWeek = demoMode
+        ? demoBetweenWeeks
+        : (
+            !weekInfo?.has_plan ||
+            (!!weekInfo?.week_end && today > weekInfo.week_end && !weekInfo?.has_next_plan)
+        );
 
     // In the guided demo we never hit the backend — show the empty Journey UI plus
     // canned archive reports so the mic / Overview / Archive can be spotlighted.
@@ -1536,7 +1542,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                         Journal locked — unlocks with your next week
                                                     </span>
                                                 </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '150px' }}>
+                                                <div data-tour="mood-mic" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '150px' }}>
                                                     <motion.button
                                                         whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
                                                         onClick={beginMood}
