@@ -712,6 +712,79 @@ def _fill_plan_gaps(plan: Optional[dict]) -> Optional[dict]:
     return plan
 
 
+_REST_DAY_ACTION = (
+    "Rest day — recover and reset, nothing scheduled.\n"
+    "Bare minimum: rest is the task today."
+)
+
+
+def _fit_plan_to_window(plan: Optional[dict], start_iso: str) -> Optional[dict]:
+    """Make a plan's `days` cover its week window exactly: start_iso → that Sunday.
+
+    A week always ends on Sunday, so once the start date is known the window's
+    length is fixed. The model is unreliable in BOTH directions, but only one
+    direction was handled: running past Sunday was trimmed, stopping early was
+    left alone. That gap shows up hardest on a quiet-week restart, where the
+    model is told to rebuild the same week and so reuses the previous week's day
+    count — a 4-day week (Thu–Sun) restarted on a Monday came back as Mon–Thu,
+    leaving Fri/Sat/Sun with no task at all while the Journey calendar, built
+    from the window, still showed all seven days.
+
+    Missing days become explicit rest days — the same convention the prompt uses
+    for a day the user doesn't train — and every label is re-stamped with its
+    real consecutive calendar date.
+    """
+    if not isinstance(plan, dict) or not isinstance(plan.get("days"), list):
+        return plan
+    from datetime import date as _d, timedelta as _td
+
+    ws, _we, day_count = _bounds_from_start(start_iso)
+    start = _d.fromisoformat(ws)
+    days = list(plan["days"])
+    original = len(days)
+    if original == 0:
+        # A plan with no days at all is broken upstream, not short — padding it
+        # would fabricate a week of pure rest. The caller discards these.
+        return plan
+
+    if original > day_count:
+        logger.info(
+            f"Trimming plan from {original} to {day_count} days "
+            f"(week {ws} must end on Sunday)"
+        )
+        days = days[:day_count]
+    elif original < day_count:
+        logger.info(
+            f"Padding plan from {original} to {day_count} days with rest days "
+            f"(model returned a short week for {ws})"
+        )
+        days += [{"action": _REST_DAY_ACTION} for _ in range(day_count - original)]
+
+    bad_labels = []
+    for i, day in enumerate(days):
+        if not isinstance(day, dict):
+            continue
+        correct = (start + _td(days=i)).strftime("%b %d (%a)")
+        current = str(day.get("day", "")).strip()
+        if current and current.lower() != correct.lower():
+            bad_labels.append(f"{current!r}→{correct!r}")
+        day["day"] = correct
+    if bad_labels:
+        logger.info(
+            f"Corrected {len(bad_labels)} mislabeled plan day(s) "
+            f"(start = {start.strftime('%a')}): {', '.join(bad_labels)}"
+        )
+
+    plan["days"] = days
+    # A label derived from the old span would now contradict the plan itself.
+    if original != day_count and days:
+        first = str(days[0].get("day", "")) if isinstance(days[0], dict) else ""
+        last = str(days[-1].get("day", "")) if isinstance(days[-1], dict) else ""
+        if first and last:
+            plan["week_label"] = first if first == last else f"{first} – {last}"
+    return plan
+
+
 def _generate_and_save_title(session_id: str, user_message: str, assistant_reply: str):
     """
     Background task: generate a short sidebar title for a session's first exchange
@@ -1162,11 +1235,11 @@ async def chat(
                 logger.warning(f"Plan missing valid 'days' array — discarding: {plan_data.keys()}")
                 plan_data = None
 
-        # 6c. A week's plan MUST end on Sunday, and its day labels MUST match the
-        #     real calendar. The model is unreliable at weekday math — it will label a
-        #     Wednesday start as "(MON)" and build a Mon–Fri plan. So we (1) figure out
-        #     this plan's true start date + length, (2) trim anything past the end, and
-        #     (3) overwrite every `day` string with the correct consecutive date.
+        # 6c. A week's plan MUST span its whole window (today → Sunday), and its day
+        #     labels MUST match the real calendar. The model is unreliable at weekday
+        #     math — it will label a Wednesday start as "(MON)", run past Sunday, or
+        #     stop days early. So we figure out this plan's true start date and hand it
+        #     to _fit_plan_to_window, which trims, pads and re-labels.
         if plan_data and isinstance(plan_data, dict) and isinstance(plan_data.get("days"), list):
             try:
                 import datetime as _dt2
@@ -1176,15 +1249,12 @@ async def chat(
                 except Exception:
                     _gen_today = _dt2.date.today()
 
-                # Determine the plan's true start date + day-count, assuming the user
-                # locks it now. This is only a projection — the week's real start is
-                # stamped on approve, because an unlocked plan may sit for weeks. If
-                # it does, approve re-trims and re-labels against the actual lock day.
+                # Determine the plan's true start date, assuming the user locks it
+                # now. This is only a projection — the week's real start is stamped
+                # on approve, because an unlocked plan may sit for weeks. If it
+                # does, approve re-fits against the actual lock day.
                 _plan_week = plan_data.get("week_number", 0)
                 _proj_start = _projected_week_start(session_rec, _plan_week, _gen_today.isoformat())
-                _ws, _we, _dc = _bounds_from_start(_proj_start)
-                _start_date = _dt2.date.fromisoformat(_ws)
-                _max_days = _dc
 
                 # Record when this plan was built so the client can warn before a
                 # long-stale plan gets locked into a brand new week. Only the build
@@ -1193,31 +1263,9 @@ async def chat(
                 # stored here would be stale by then.
                 plan_data["generated_date"] = _gen_today.isoformat()
 
-                _days = plan_data["days"]
-                if len(_days) > _max_days:
-                    logger.info(
-                        f"Trimming plan from {len(_days)} to {_max_days} days "
-                        f"(start {_start_date.strftime('%a %b %d')}, must end Sunday)"
-                    )
-                    _days = _days[:_max_days]
-                    plan_data["days"] = _days
-
-                # Re-stamp each day's label with the correct CONSECUTIVE calendar date.
-                _bad_labels = []
-                for _i, _day in enumerate(_days):
-                    if isinstance(_day, dict):
-                        _correct = (_start_date + _dt2.timedelta(days=_i)).strftime("%b %d (%a)")
-                        _model_label = str(_day.get("day", "")).strip()
-                        if _model_label and _model_label.lower() != _correct.lower():
-                            _bad_labels.append(f"{_model_label!r}→{_correct!r}")
-                        _day["day"] = _correct
-                if _bad_labels:
-                    logger.info(
-                        f"Corrected {len(_bad_labels)} mislabeled plan day(s) "
-                        f"(start = {_start_date.strftime('%a')}): {', '.join(_bad_labels)}"
-                    )
+                _fit_plan_to_window(plan_data, _proj_start)
             except Exception as e:
-                logger.warning(f"Plan day-label normalization failed (non-fatal): {e}")
+                logger.warning(f"Plan day normalization failed (non-fatal): {e}")
 
         # 7. Save messages to DB
         user_msg = ChatMessage(session_id=session_id, role="user", content=message)
@@ -1417,24 +1465,16 @@ async def approve_plan(
         # Stamp the computed start so the locked week spans the right calendar dates
         approved_plan["start_date"] = start_iso
 
-        # Authoritative day-label fix: the lock date is the definitive start, so
-        # re-stamp every day with the correct consecutive calendar date (a plan
-        # locked on Wednesday must read Wed→Sun, not the model's mislabeled
-        # Mon→Fri). This guarantees the locked plan's weekdays are always correct,
-        # even if it was generated on a different day than it was locked.
+        # Authoritative re-fit: the lock date is the definitive start, so the plan
+        # is trimmed/padded to the real window and every day re-stamped with the
+        # correct consecutive calendar date (a plan locked on Wednesday must read
+        # Wed→Sun, not the model's mislabeled Mon→Fri; a short plan locked on
+        # Monday must still cover through Sunday). This guarantees the locked week
+        # is complete and correctly dated even if it was generated on another day.
         try:
-            _ws, _we, _dc = _bounds_from_start(start_iso)
-            _lock_start = _date.fromisoformat(_ws)
-            _ap_days = approved_plan.get("days")
-            if isinstance(_ap_days, list):
-                if len(_ap_days) > _dc:
-                    _ap_days = _ap_days[:_dc]
-                    approved_plan["days"] = _ap_days
-                for _i, _d in enumerate(_ap_days):
-                    if isinstance(_d, dict):
-                        _d["day"] = (_lock_start + _timedelta(days=_i)).strftime("%b %d (%a)")
+            _fit_plan_to_window(approved_plan, start_iso)
         except Exception as _re:
-            logger.warning(f"Plan day-label re-stamp on approve failed (non-fatal): {_re}")
+            logger.warning(f"Plan day re-fit on approve failed (non-fatal): {_re}")
         # Save to history (replace if this week already exists, else append)
         existing_idx = next(
             (i for i, p in enumerate(plan_history)
