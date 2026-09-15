@@ -817,7 +817,9 @@ function WeekPill({
     return (
         <motion.button
             layout
-            data-tour="week-pill"
+            // Only the current week's pill is the tour target — the tour opens
+            // W1 next, so the ring must sit on that pill, not a past week's.
+            data-tour={isLocked ? undefined : 'week-pill'}
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.7, opacity: 0 }}

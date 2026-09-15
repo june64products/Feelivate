@@ -20,19 +20,47 @@ export const RING_PAD = 6;
 export const CARD_W = 320;
 export const Z = 99999;
 
-/** First visible element matching `[data-tour="key"]` (skips hidden/off-screen). */
+/**
+ * True when `el` is actually the thing the user sees at its centre — not sat
+ * under another layer (the mentor drawer over the mission surface, a modal…).
+ * The tour's own overlay is hidden for the hit-test; no paint happens in
+ * between, so nothing flickers.
+ */
+function isUncovered(el: HTMLElement, r: DOMRect): boolean {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const cx = Math.min(vw - 1, Math.max(0, r.left + r.width / 2));
+    const cy = Math.min(vh - 1, Math.max(0, r.top + r.height / 2));
+    const overlay = document.querySelector<HTMLElement>('[data-demo-overlay]');
+    const prev = overlay?.style.visibility;
+    if (overlay) overlay.style.visibility = 'hidden';
+    let hit: Element | null = null;
+    try { hit = document.elementFromPoint(cx, cy); }
+    finally { if (overlay) overlay.style.visibility = prev ?? ''; }
+    return !!hit && (hit === el || el.contains(hit));
+}
+
+/**
+ * The element to spotlight for `[data-tour="key"]`: the first on-screen match
+ * that isn't covered by another layer. The plan card, for instance, exists
+ * both on the mission surface and inside the mentor drawer that sits over it —
+ * only the drawer's copy is what the user is looking at.
+ */
 export function findVisible(key: string): HTMLElement | null {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const els = document.querySelectorAll<HTMLElement>(`[data-tour="${key}"]`);
+    let fallback: HTMLElement | null = null;
     for (const el of els) {
         const r = el.getBoundingClientRect();
         const onScreen =
             r.width > 0 && r.height > 0 &&
             r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw;
-        if (onScreen) return el;
+        if (!onScreen) continue;
+        if (isUncovered(el, r)) return el;
+        fallback ??= el; // every match is covered → keep the old behaviour
     }
-    return null;
+    return fallback;
 }
 
 /** Pick the side of the target with the most room for the card. */
@@ -150,7 +178,7 @@ export function SpotlightOverlay({ rect, preferredPlacement = 'auto', cardRef, c
     }
 
     return createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: Z, fontFamily: satoshi }}>
+        <div data-demo-overlay="" style={{ position: 'fixed', inset: 0, zIndex: Z, fontFamily: satoshi }}>
             {/* Click-blocker — the demo drives the UI, so block stray clicks on the real app. */}
             <div style={{ position: 'fixed', inset: 0, background: 'transparent', pointerEvents: 'auto' }} />
             {hole}
