@@ -21,7 +21,12 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 
 from .models import Session, VoiceJournal
-from .weeks import _bounds_from_start, _effective_lock_start, _week_bounds_for
+from .weeks import (
+    _bounds_from_start,
+    _effective_lock_start,
+    _fit_plan_to_window,
+    _week_bounds_for,
+)
 
 
 def _plan_for_week(session_rec, week_number: int) -> Optional[dict]:
@@ -162,6 +167,120 @@ def run(db, today_iso: str, apply: bool = False, session_id: Optional[str] = Non
     if apply and results:
         db.commit()
         logger.info(f"[Repair] repaired {len(results)} stranded week(s)")
+    return {
+        "today": today_iso,
+        "applied": apply,
+        "count": len(results),
+        "sessions": results,
+    }
+
+
+# ── Short weeks: a locked plan that stops before its window's Sunday ──────────
+#
+# Plans are now fitted to their window on generate and on approve, but weeks
+# locked before that fix kept whatever day count the model produced. A 4-day
+# plan locked on a Monday runs Mon–Thu while its window runs Mon–Sun, so
+# Fri/Sat/Sun show no task at all and count as missed.
+
+
+def find_short_weeks(db, today_iso: str, session_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Locked weeks, still running or yet to start, whose plan is shorter than its window.
+
+    Deliberately limited to weeks that have NOT ended. Padding only ever appends
+    to the tail — it cannot rewrite a day the user already lived — but a week
+    that is over is history the user can no longer act on, and its report already
+    counts days from the window rather than from the plan, so rewriting finished
+    weeks would change stored content to no effect.
+    """
+    q = db.query(Session).filter(Session.phase == "active")
+    if session_id:
+        q = q.filter(Session.id == session_id)
+
+    out: List[Dict[str, Any]] = []
+    for s in q.all():
+        week = s.current_week or 0
+        if week < 0:
+            continue
+        try:
+            ws, we, dc = _week_bounds_for(s, week)
+        except Exception as e:
+            logger.warning(f"[Repair] {s.id}: could not resolve week bounds ({e}) — skipping")
+            continue
+
+        if we < today_iso:
+            continue  # week is over — leave history alone
+
+        plan = _plan_for_week(s, week)
+        if not plan or not isinstance(plan.get("days"), list):
+            continue
+
+        have = len(plan["days"])
+        if have == 0 or have >= dc:
+            continue  # empty plans are broken upstream; full ones are fine
+
+        out.append({
+            "session": s,
+            "session_id": s.id,
+            "week": week,
+            "start": ws,
+            "end": we,
+            "window_days": dc,
+            "plan_days": have,
+            "plan": plan,
+        })
+    return out
+
+
+def repair_short_week(db, cand: Dict[str, Any], apply: bool) -> Dict[str, Any]:
+    """Pad one short week out to its window. Returns what changed (or would change)."""
+    s, week, plan = cand["session"], cand["week"], cand["plan"]
+
+    summary = {
+        "session_id": s.id,
+        "week": week,
+        "window": {"start": cand["start"], "end": cand["end"], "days": cand["window_days"]},
+        "plan_days": cand["plan_days"],
+        "rest_days_added": cand["window_days"] - cand["plan_days"],
+        "applied": apply,
+    }
+
+    if not apply:
+        return summary
+
+    # The stamped start is the week's real beginning; fall back to the computed
+    # bounds for weeks locked before start_date was stamped.
+    _fit_plan_to_window(plan, plan.get("start_date") or cand["start"])
+
+    if s.week_plan_json:
+        try:
+            active = json.loads(s.week_plan_json)
+            if active.get("week_number") == week:
+                s.week_plan_json = json.dumps(plan)
+        except Exception:
+            pass
+    if s.result_json:
+        try:
+            hist = json.loads(s.result_json)
+            if isinstance(hist, list):
+                for i, p in enumerate(hist):
+                    if isinstance(p, dict) and p.get("week_number") == week:
+                        hist[i] = plan
+                s.result_json = json.dumps(hist)
+        except Exception:
+            pass
+
+    return summary
+
+
+def run_short_weeks(
+    db, today_iso: str, apply: bool = False, session_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """Find and (optionally) pad short weeks. Commits only when `apply` is true."""
+    cands = find_short_weeks(db, today_iso, session_id)
+    results = [repair_short_week(db, c, apply) for c in cands]
+    if apply and results:
+        db.commit()
+        logger.info(f"[Repair] padded {len(results)} short week(s)")
     return {
         "today": today_iso,
         "applied": apply,

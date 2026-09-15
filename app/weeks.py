@@ -159,6 +159,82 @@ def _week_bounds_for(session_rec, week_number: int):
     return _get_week_bounds(session_rec.plan_start_date, week_number)
 
 
+REST_DAY_ACTION = (
+    "Rest day — recover and reset, nothing scheduled.\n"
+    "Bare minimum: rest is the task today."
+)
+
+
+def _fit_plan_to_window(plan, start_iso: str):
+    """Make a plan's `days` cover its week window exactly: start_iso → that Sunday.
+
+    A week always ends on Sunday, so once the start date is known the window's
+    length is fixed. The model is unreliable in BOTH directions, but only one
+    direction used to be handled: running past Sunday was trimmed, stopping
+    early was left alone. That gap shows up hardest on a quiet-week restart,
+    where the model is told to rebuild the same week and so reuses the previous
+    week's day count — a 4-day week (Thu–Sun) restarted on a Monday came back as
+    Mon–Thu, leaving Fri/Sat/Sun with no task at all while the Journey calendar,
+    built from the window, still showed all seven days.
+
+    Missing days become explicit rest days — the same convention the prompt uses
+    for a day the user doesn't train — and every label is re-stamped with its
+    real consecutive calendar date.
+
+    Lives here so the chat/approve paths and the backfill (app/repair.py) all
+    fit plans the same way.
+    """
+    if not isinstance(plan, dict) or not isinstance(plan.get("days"), list):
+        return plan
+    from datetime import date as _d, timedelta as _td
+
+    ws, _we, day_count = _bounds_from_start(start_iso)
+    start = _d.fromisoformat(ws)
+    days = list(plan["days"])
+    original = len(days)
+    if original == 0:
+        # A plan with no days at all is broken upstream, not short — padding it
+        # would fabricate a week of pure rest. The caller discards these.
+        return plan
+
+    if original > day_count:
+        logger.info(
+            f"Trimming plan from {original} to {day_count} days "
+            f"(week {ws} must end on Sunday)"
+        )
+        days = days[:day_count]
+    elif original < day_count:
+        logger.info(
+            f"Padding plan from {original} to {day_count} days with rest days "
+            f"(short week for {ws})"
+        )
+        days += [{"action": REST_DAY_ACTION} for _ in range(day_count - original)]
+
+    bad_labels = []
+    for i, day in enumerate(days):
+        if not isinstance(day, dict):
+            continue
+        correct = (start + _td(days=i)).strftime("%b %d (%a)")
+        current = str(day.get("day", "")).strip()
+        if current and current.lower() != correct.lower():
+            bad_labels.append(f"{current!r}→{correct!r}")
+        day["day"] = correct
+    if bad_labels:
+        logger.info(
+            f"Corrected {len(bad_labels)} mislabeled plan day(s) "
+            f"(start = {start.strftime('%a')}): {', '.join(bad_labels)}"
+        )
+
+    plan["days"] = days
+    # A label derived from the old span would now contradict the plan itself.
+    if original != day_count and days:
+        first = str(days[0].get("day", "")) if isinstance(days[0], dict) else ""
+        last = str(days[-1].get("day", "")) if isinstance(days[-1], dict) else ""
+        if first and last:
+            plan["week_label"] = first if first == last else f"{first} – {last}"
+    return plan
+
+
 def build_quiet_week_report(week_number: int, ws: str, we: str, done_days: int) -> dict:
     """The deterministic report for a week that ENDED with zero voice journals.
 

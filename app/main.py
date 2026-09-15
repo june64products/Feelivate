@@ -341,6 +341,52 @@ def repair_stranded_weeks_endpoint(
         raise HTTPException(status_code=500, detail="Repair failed. Check server logs.")
 
 
+@app.post("/admin/repair-short-weeks", tags=["admin"])
+def repair_short_weeks_endpoint(
+    apply: bool = False,
+    session_id: Optional[str] = None,
+    today: Optional[str] = None,
+    x_internal_token: Optional[str] = Header(None),
+    db: DBSession = Depends(get_db),
+):
+    """Pad locked weeks whose plan stops before its window's Sunday.
+
+    Same job as scripts/repair_short_weeks.py, over HTTP — a deployment without
+    an interactive shell still needs a way to run it.
+
+    Defaults to a dry run: it reports what it would change and writes nothing
+    until `apply=true`. Only weeks that are still running (or have not started)
+    are touched, and padding only ever appends rest days to the tail — it never
+    rewrites a day the user already lived.
+
+    Guarded by INTERNAL_ADMIN_TOKEN like /admin/migrate, and refuses outright
+    when no token is configured: this endpoint rewrites user content.
+    """
+    expected = os.environ.get("INTERNAL_ADMIN_TOKEN", "").strip()
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail="Admin endpoint disabled: INTERNAL_ADMIN_TOKEN is not configured.",
+        )
+    if not x_internal_token or not secrets.compare_digest(x_internal_token, expected):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    from datetime import date as _d
+    from . import repair as _repair
+
+    today_iso = today or _d.today().isoformat()
+    try:
+        _d.fromisoformat(today_iso)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="`today` must be YYYY-MM-DD.")
+
+    try:
+        return _repair.run_short_weeks(db, today_iso, apply=apply, session_id=session_id)
+    except Exception:
+        logger.exception("Short-week repair failed")
+        raise HTTPException(status_code=500, detail="Repair failed. Check server logs.")
+
+
 def _cors_headers_for(request: Request) -> Dict[str, str]:
     """CORS headers to attach to responses that bypass CORSMiddleware.
 
@@ -705,79 +751,6 @@ def _fill_plan_gaps(plan: Optional[dict]) -> Optional[dict]:
                 target = max(1, round(action_count * 0.8))
                 plan["win_condition"] = f"Complete {target} of {action_count} {unit}"
     if not str(plan.get("week_label") or "").strip() and days:
-        first = str(days[0].get("day", "")) if isinstance(days[0], dict) else ""
-        last = str(days[-1].get("day", "")) if isinstance(days[-1], dict) else ""
-        if first and last:
-            plan["week_label"] = first if first == last else f"{first} – {last}"
-    return plan
-
-
-_REST_DAY_ACTION = (
-    "Rest day — recover and reset, nothing scheduled.\n"
-    "Bare minimum: rest is the task today."
-)
-
-
-def _fit_plan_to_window(plan: Optional[dict], start_iso: str) -> Optional[dict]:
-    """Make a plan's `days` cover its week window exactly: start_iso → that Sunday.
-
-    A week always ends on Sunday, so once the start date is known the window's
-    length is fixed. The model is unreliable in BOTH directions, but only one
-    direction was handled: running past Sunday was trimmed, stopping early was
-    left alone. That gap shows up hardest on a quiet-week restart, where the
-    model is told to rebuild the same week and so reuses the previous week's day
-    count — a 4-day week (Thu–Sun) restarted on a Monday came back as Mon–Thu,
-    leaving Fri/Sat/Sun with no task at all while the Journey calendar, built
-    from the window, still showed all seven days.
-
-    Missing days become explicit rest days — the same convention the prompt uses
-    for a day the user doesn't train — and every label is re-stamped with its
-    real consecutive calendar date.
-    """
-    if not isinstance(plan, dict) or not isinstance(plan.get("days"), list):
-        return plan
-    from datetime import date as _d, timedelta as _td
-
-    ws, _we, day_count = _bounds_from_start(start_iso)
-    start = _d.fromisoformat(ws)
-    days = list(plan["days"])
-    original = len(days)
-    if original == 0:
-        # A plan with no days at all is broken upstream, not short — padding it
-        # would fabricate a week of pure rest. The caller discards these.
-        return plan
-
-    if original > day_count:
-        logger.info(
-            f"Trimming plan from {original} to {day_count} days "
-            f"(week {ws} must end on Sunday)"
-        )
-        days = days[:day_count]
-    elif original < day_count:
-        logger.info(
-            f"Padding plan from {original} to {day_count} days with rest days "
-            f"(model returned a short week for {ws})"
-        )
-        days += [{"action": _REST_DAY_ACTION} for _ in range(day_count - original)]
-
-    bad_labels = []
-    for i, day in enumerate(days):
-        if not isinstance(day, dict):
-            continue
-        correct = (start + _td(days=i)).strftime("%b %d (%a)")
-        current = str(day.get("day", "")).strip()
-        if current and current.lower() != correct.lower():
-            bad_labels.append(f"{current!r}→{correct!r}")
-        day["day"] = correct
-    if bad_labels:
-        logger.info(
-            f"Corrected {len(bad_labels)} mislabeled plan day(s) "
-            f"(start = {start.strftime('%a')}): {', '.join(bad_labels)}"
-        )
-
-    plan["days"] = days
-    # A label derived from the old span would now contradict the plan itself.
-    if original != day_count and days:
         first = str(days[0].get("day", "")) if isinstance(days[0], dict) else ""
         last = str(days[-1].get("day", "")) if isinstance(days[-1], dict) else ""
         if first and last:
@@ -2665,6 +2638,7 @@ async def submit_weekly_review(
 # calls them by their original names.
 from .weeks import (  # noqa: E402
     _bounds_from_start,
+    _fit_plan_to_window,
     _projected_week_start,
     _week_bounds_for,
     build_quiet_week_report,
