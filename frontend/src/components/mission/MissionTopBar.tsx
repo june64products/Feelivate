@@ -308,6 +308,9 @@ export default function MissionTopBar({
             {/* ── Utilities (desktop: inline icons; mobile: labeled second row) ── */}
             {!isMobile && (
                 <>
+                    <button title="Report archive" aria-label="Report archive" onClick={onOpenArchive} style={iconBtn}>
+                        <Archive size={15} />
+                    </button>
                     <button data-tour="alerts-button" title="Daily email alerts" onClick={onOpenAlerts} style={iconBtn}>
                         <Bell size={15} />
                     </button>
@@ -341,6 +344,7 @@ export default function MissionTopBar({
                         onClick={() => window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'))}
                     />
                 )}
+                <LabeledTile icon={<Archive size={16} />} label="Reports" onClick={onOpenArchive} />
                 <LabeledTile tour="alerts-button" icon={<Bell size={16} />} label="Alerts" onClick={onOpenAlerts} />
                 <LabeledTile icon={<Calendar size={16} />} label="Calendar" onClick={onOpenCalendar} />
             </div>
