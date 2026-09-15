@@ -1762,10 +1762,14 @@ export default function WorkspacePage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                                 <div style={{
                                     width: '40px', height: '40px', borderRadius: '12px',
-                                    background: 'var(--glass-surface)', display: 'flex',
+                                    background: 'var(--accent-primary)', display: 'flex',
                                     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                                 }}>
-                                    <Sparkles size={18} style={{ color: 'var(--accent-warm)' }} />
+                                    <img
+                                        src="/logo_2_backup.png"
+                                        alt=""
+                                        style={{ width: '22px', height: '22px', objectFit: 'contain', filter: 'var(--logo-filter)' }}
+                                    />
                                 </div>
                                 <span style={{
                                     padding: '4px 10px', borderRadius: '100px',

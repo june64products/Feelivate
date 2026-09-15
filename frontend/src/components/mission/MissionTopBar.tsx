@@ -74,14 +74,6 @@ export default function MissionTopBar({
     const shields = streak?.shields_left;
     const flameActive = currentStreak > 0;
 
-    const iconSz = isMobile ? 30 : 34;
-    const iconBtn: React.CSSProperties = {
-        width: `${iconSz}px`, height: `${iconSz}px`, borderRadius: '10px',
-        border: '1px solid var(--border-subtle)', background: 'var(--card-bg)',
-        color: 'var(--text-secondary)', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
-    };
-
     // Labeled utility tile for the mobile second row (icon over a small label).
     const LabeledTile = ({ icon, label, onClick, tour }: { icon: React.ReactNode; label: string; onClick: () => void; tour?: string }) => (
         <button
@@ -97,6 +89,28 @@ export default function MissionTopBar({
         >
             {icon}
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>{label}</span>
+        </button>
+    );
+
+    // Compact icon-over-label tile for the desktop utility cluster, so each
+    // action carries a readable name instead of a bare icon.
+    const DeskTile = ({ icon, label, onClick, tour }: { icon: React.ReactNode; label: string; onClick: () => void; tour?: string }) => (
+        <button
+            data-tour={tour}
+            onClick={onClick}
+            title={label}
+            aria-label={label}
+            style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+                padding: '6px 13px', borderRadius: '12px', flexShrink: 0,
+                border: '1px solid var(--border-subtle)', background: 'var(--card-bg)',
+                color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: satoshi,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-hover)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--card-bg)'; }}
+        >
+            {icon}
+            <span style={{ fontSize: '9.5px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.03em' }}>{label}</span>
         </button>
     );
 
@@ -308,15 +322,9 @@ export default function MissionTopBar({
             {/* ── Utilities (desktop: inline icons; mobile: labeled second row) ── */}
             {!isMobile && (
                 <>
-                    <button title="Report archive" aria-label="Report archive" onClick={onOpenArchive} style={iconBtn}>
-                        <Archive size={15} />
-                    </button>
-                    <button data-tour="alerts-button" title="Daily email alerts" onClick={onOpenAlerts} style={iconBtn}>
-                        <Bell size={15} />
-                    </button>
-                    <button title="Google Calendar sync" onClick={onOpenCalendar} style={iconBtn}>
-                        <Calendar size={15} />
-                    </button>
+                    <DeskTile icon={<Archive size={16} />} label="Reports" onClick={onOpenArchive} />
+                    <DeskTile tour="alerts-button" icon={<Bell size={16} />} label="Alerts" onClick={onOpenAlerts} />
+                    <DeskTile icon={<Calendar size={16} />} label="Calendar" onClick={onOpenCalendar} />
                     <button
                         onClick={onOpenPlanInfo}
                         style={{
