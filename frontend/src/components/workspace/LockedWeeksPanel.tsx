@@ -245,7 +245,7 @@ function WeekDrawer({
     const planToShow = isCurrentWeek ? activePlan : weekPlan;
 
     const [showReport, setShowReport] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     useEffect(() => {
         const check = () => setIsMobile(window.innerWidth <= 768);
         check();
@@ -547,7 +547,10 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
     const getPlanForWeek = (wn: number): any | null =>
         planHistory.find((p: any) => p.week_number === wn) ?? null;
 
-    const [isMobile, setIsMobile] = useState(false);
+    // Initialise from the real width so the mobile bottom-sheet's `initial`
+    // animation state is correct on the first render — otherwise the panel
+    // bakes the desktop `x:60` initial and the sheet lands 60px off to the right.
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     useEffect(() => {
         const checkMobile = () => {
@@ -582,8 +585,8 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                 className="locked-weeks-panel"
                 initial={isMobile ? { y: '100%', opacity: 0 } : { x: 60, opacity: 0 }}
                 animate={isMobile
-                    ? { y: isMobileMenuOpen ? 0 : '100%', opacity: isMobileMenuOpen ? 1 : 0 }
-                    : { x: 0, opacity: 1 }
+                    ? { x: 0, y: isMobileMenuOpen ? 0 : '100%', opacity: isMobileMenuOpen ? 1 : 0 }
+                    : { x: 0, y: 0, opacity: 1 }
                 }
                 transition={{ type: 'spring', damping: 28, stiffness: 320 }}
                 style={{
@@ -596,13 +599,13 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                     flexDirection: 'column',
                     gap: '4px',
                     padding: isMobile ? '0' : '8px 0',
-                    background: 'rgba(10,10,10,0.97)',
+                    background: isMobile ? 'var(--bg-surface)' : 'rgba(10,10,10,0.97)',
                     borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                    borderTop: '1px solid rgba(255,255,255,0.12)',
+                    borderTop: isMobile ? '1px solid var(--border-subtle)' : '1px solid rgba(255,255,255,0.12)',
                     borderBottom: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
                     borderRadius: isMobile ? '24px 24px 0 0' : '14px 0 0 14px',
-                    boxShadow: isMobile ? '0 -20px 60px rgba(0,0,0,0.7)' : '-4px 0 24px rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(24px)',
+                    boxShadow: isMobile ? '0 -18px 50px rgba(0,0,0,0.18)' : '-4px 0 24px rgba(0,0,0,0.4)',
+                    backdropFilter: isMobile ? undefined : 'blur(24px)',
                     zIndex: 450,
                     minWidth: isMobile ? '100%' : '52px',
                     width: isMobile ? '100%' : 'auto',
@@ -617,19 +620,19 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                     <div style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '16px 20px 12px',
-                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        borderBottom: '1px solid var(--border-subtle)',
                         flexShrink: 0,
                     }}>
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: "'Satoshi','Inter',sans-serif" }}>
                             Your Weeks
                         </span>
                         <button
                             onClick={() => setIsMobileMenuOpen(false)}
                             style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                width: '28px', height: '28px', borderRadius: '50%',
-                                background: 'rgba(255,255,255,0.08)', border: 'none',
-                                color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                                width: '30px', height: '30px', borderRadius: '50%',
+                                background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
+                                color: 'var(--text-secondary)', cursor: 'pointer',
                             }}
                         >
                             <X size={14} />
@@ -667,16 +670,16 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                                                     width: isMobile ? 'auto' : '44px',
                                                     padding: '7px 8px',
                                                     borderRadius: '9px',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
-                                                    background: isGroupExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-                                                    color: 'rgba(255,255,255,0.55)',
+                                                    border: isMobile ? '1px solid var(--border-subtle)' : '1px solid rgba(255,255,255,0.1)',
+                                                    background: isMobile
+                                                        ? (isGroupExpanded ? 'var(--glass-hover)' : 'var(--card-bg)')
+                                                        : (isGroupExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)'),
+                                                    color: isMobile ? 'var(--text-secondary)' : 'rgba(255,255,255,0.55)',
                                                     cursor: 'pointer',
                                                     display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: 'center', gap: '4px',
                                                     transition: 'all 0.15s',
                                                     fontFamily: "'Inter', sans-serif",
                                                 }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'white'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = isGroupExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; }}
                                             >
                                                 <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.1, textAlign: 'center' }}>
                                                     {group.startWeek}–{group.endWeek}
@@ -699,6 +702,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                                                                 item={w}
                                                                 isSelected={selectedWeek === w.weekNumber}
                                                                 onClick={(e) => handleWeekClick(w.weekNumber, e)}
+                                                                light={isMobile}
                                                             />
                                                         ))}
                                                     </motion.div>
@@ -720,6 +724,7 @@ export default function LockedWeeksPanel({ sessionId, currentWeek, micLocked, ac
                                                 item={w}
                                                 isSelected={selectedWeek === w.weekNumber}
                                                 onClick={(e) => handleWeekClick(w.weekNumber, e)}
+                                                light={isMobile}
                                             />
                                         ))}
                                         {gi < groups.length - 1 && !isMobile && (
@@ -771,10 +776,13 @@ function WeekPill({
     item,
     isSelected,
     onClick,
+    light = false,
 }: {
     item: WeekButtonItem;
     isSelected: boolean;
     onClick: (e: React.MouseEvent) => void;
+    /** Light theme (mobile sheet on the cream app) — darker text so it reads on white. */
+    light?: boolean;
 }) {
     const { weekNumber, isOngoing, isLocked } = item;
     // isOngoing = true → recorded today (indigo/sparkle)
@@ -783,16 +791,19 @@ function WeekPill({
     const isActiveCurrent = !isOngoing && !isLocked;
 
     const bgColor = isSelected
-        ? isOngoing ? 'rgba(99,102,241,0.3)' : isActiveCurrent ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.25)'
-        : isOngoing ? 'rgba(99,102,241,0.12)' : isActiveCurrent ? 'rgba(16,185,129,0.1)' : 'rgba(139,92,246,0.08)';
+        ? isOngoing ? 'rgba(99,102,241,0.16)' : isActiveCurrent ? 'rgba(16,185,129,0.16)' : 'rgba(139,92,246,0.16)'
+        : isOngoing ? 'rgba(99,102,241,0.08)' : isActiveCurrent ? 'rgba(16,185,129,0.07)' : 'rgba(139,92,246,0.06)';
 
     const borderColor = isSelected
-        ? isOngoing ? 'rgba(99,102,241,0.6)' : isActiveCurrent ? 'rgba(16,185,129,0.5)' : 'rgba(139,92,246,0.55)'
-        : isOngoing ? 'rgba(99,102,241,0.25)' : isActiveCurrent ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.22)';
+        ? isOngoing ? 'rgba(99,102,241,0.55)' : isActiveCurrent ? 'rgba(16,185,129,0.5)' : 'rgba(139,92,246,0.5)'
+        : isOngoing ? 'rgba(99,102,241,0.3)' : isActiveCurrent ? 'rgba(16,185,129,0.32)' : 'rgba(139,92,246,0.28)';
 
-    const textColor = isSelected
-        ? isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : '#c4b5fd'
-        : isOngoing ? '#818cf8' : isActiveCurrent ? '#10b981' : '#a78bfa';
+    // Darker, saturated text on the light sheet; the original brighter tones on dark.
+    const textColor = light
+        ? isOngoing ? '#4f46e5' : isActiveCurrent ? '#059669' : '#7c3aed'
+        : isSelected
+            ? isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : '#c4b5fd'
+            : isOngoing ? '#818cf8' : isActiveCurrent ? '#10b981' : '#a78bfa';
 
     const hoverBg = isOngoing ? 'rgba(99,102,241,0.2)' : isActiveCurrent ? 'rgba(16,185,129,0.18)' : 'rgba(139,92,246,0.16)';
     const hoverColor = isOngoing ? '#a5b4fc' : isActiveCurrent ? '#34d399' : '#c4b5fd';

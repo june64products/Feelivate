@@ -33,10 +33,11 @@ interface GuidedDemoProps {
     onExit: () => void;
 }
 
-/** On phones the W1 pill lives inside a bottom-sheet; point at the always-visible
- *  header WEEKS button instead so the spotlight has a stable, uncovered target. */
-function effectiveTarget(target: string, isMobile: boolean): string {
-    if (isMobile && target === 'week-pill') return 'week-panel';
+/** On phones the week pills live inside a bottom-sheet, but the mission top bar
+ *  now carries a labeled "Weeks" tile with data-tour="week-pill" — so the same
+ *  target resolves to a visible, uncovered element on both desktop and mobile.
+ *  No remap needed. */
+function effectiveTarget(target: string, _isMobile: boolean): string {
     return target;
 }
 

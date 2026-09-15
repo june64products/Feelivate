@@ -82,12 +82,32 @@ export default function MissionTopBar({
         justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
     };
 
+    // Labeled utility tile for the mobile second row (icon over a small label).
+    const LabeledTile = ({ icon, label, onClick, tour }: { icon: React.ReactNode; label: string; onClick: () => void; tour?: string }) => (
+        <button
+            data-tour={tour}
+            onClick={onClick}
+            aria-label={label}
+            style={{
+                flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', gap: '4px', padding: '9px 6px', borderRadius: '14px',
+                border: '1px solid var(--border-subtle)', background: 'var(--card-bg)',
+                color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: satoshi,
+            }}
+        >
+            {icon}
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>{label}</span>
+        </button>
+    );
+
     return (
         <div style={{
-            display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px',
+            display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '10px' : '8px',
             padding: isMobile ? '10px 12px' : '12px 16px', flexShrink: 0,
             position: 'relative', zIndex: 60,
         }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px', width: '100%' }}>
             {/* ── Goal pill + dropdown (the sidebar's replacement) ── */}
             <div ref={menuRef} style={{ position: 'relative' }}>
                 <motion.button
@@ -285,39 +305,46 @@ export default function MissionTopBar({
                 </div>
             )}
 
-            {/* ── Utilities ── */}
-            {/* Weeks — the desktop floating panel is always visible, so this
-                mobile-only button is the way in to the week sheet there. */}
-            {isPlanActive && (
-                <button
-                    className="show-on-mobile"
-                    title="Your weeks"
-                    aria-label="Your weeks"
-                    onClick={() => window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'))}
-                    style={iconBtn}
-                >
-                    <Layers size={15} />
-                </button>
+            {/* ── Utilities (desktop: inline icons; mobile: labeled second row) ── */}
+            {!isMobile && (
+                <>
+                    <button data-tour="alerts-button" title="Daily email alerts" onClick={onOpenAlerts} style={iconBtn}>
+                        <Bell size={15} />
+                    </button>
+                    <button title="Google Calendar sync" onClick={onOpenCalendar} style={iconBtn}>
+                        <Calendar size={15} />
+                    </button>
+                    <button
+                        onClick={onOpenPlanInfo}
+                        style={{
+                            padding: '8px 14px', borderRadius: '100px', border: 'none',
+                            background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                            fontSize: '11px', fontWeight: 800, cursor: 'pointer',
+                            fontFamily: satoshi, letterSpacing: '0.06em', textTransform: 'uppercase',
+                        }}
+                    >
+                        Upgrade
+                    </button>
+                </>
             )}
-            <button data-tour="alerts-button" title="Daily email alerts" onClick={onOpenAlerts} style={iconBtn}>
-                <Bell size={15} />
-            </button>
-            <button title="Google Calendar sync" onClick={onOpenCalendar} style={iconBtn} className="hide-on-mobile">
-                <Calendar size={15} />
-            </button>
-            <button
-                onClick={onOpenPlanInfo}
-                style={{
-                    padding: '8px 14px', borderRadius: '100px', border: 'none',
-                    background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
-                    fontSize: '11px', fontWeight: 800, cursor: 'pointer',
-                    fontFamily: satoshi, letterSpacing: '0.06em', textTransform: 'uppercase',
-                }}
-                className="hide-on-mobile"
-            >
-                Upgrade
-            </button>
             <ProfileMenu onLogout={onLogout} />
+        </div>
+
+        {/* Mobile second row — labeled utility tiles, evenly aligned */}
+        {isMobile && (
+            <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                {isPlanActive && (
+                    <LabeledTile
+                        tour="week-pill"
+                        icon={<Layers size={16} />}
+                        label="Weeks"
+                        onClick={() => window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'))}
+                    />
+                )}
+                <LabeledTile tour="alerts-button" icon={<Bell size={16} />} label="Alerts" onClick={onOpenAlerts} />
+                <LabeledTile icon={<Calendar size={16} />} label="Calendar" onClick={onOpenCalendar} />
+            </div>
+        )}
         </div>
     );
 }
