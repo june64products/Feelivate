@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Clock, MessageCircle } from 'lucide-react';
 import { clashDisplay, satoshi, FLAME_FROM, ACCENT_AMBER, easeSilk, todaysPlanEntry } from './missionTheme';
+import { useWindowSize } from '../../hooks/useWindowSize';
 import type { TodayStatus } from '../../hooks/useStreak';
 
 interface TodayCardProps {
@@ -22,6 +23,7 @@ export default function TodayCard({
     activePlan, todayIso, todayStatus, checkinLoading, justCelebrated,
     onCheckin, onAskMentor, demoMode = false,
 }: TodayCardProps) {
+    const { isMobile } = useWindowSize();
     const entry = todaysPlanEntry(activePlan, todayIso);
     const weekNum = activePlan?.week_number ?? 1;
     const dateLabel = new Date(`${todayIso}T12:00:00`).toLocaleDateString('en-US', {
@@ -39,7 +41,7 @@ export default function TodayCard({
             style={{
                 position: 'relative', overflow: 'hidden',
                 background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
-                borderRadius: '22px', padding: '26px 28px',
+                borderRadius: isMobile ? '18px' : '22px', padding: isMobile ? '18px 18px' : '26px 28px',
                 boxShadow: 'var(--shadow-sm)',
             }}
         >
@@ -68,9 +70,9 @@ export default function TodayCard({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.12, duration: 0.5, ease: easeSilk as any }}
                         style={{
-                            fontSize: '21px', fontWeight: 600, color: 'var(--text-primary)',
-                            lineHeight: 1.5, margin: '0 0 20px', fontFamily: clashDisplay,
-                            letterSpacing: '-0.01em', whiteSpace: 'pre-wrap',
+                            fontSize: isMobile ? '16px' : '21px', fontWeight: 600, color: 'var(--text-primary)',
+                            lineHeight: isMobile ? 1.55 : 1.5, margin: isMobile ? '0 0 16px' : '0 0 20px',
+                            fontFamily: clashDisplay, letterSpacing: '-0.01em', whiteSpace: 'pre-wrap',
                         }}
                     >
                         {entry.action}

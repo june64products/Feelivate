@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronDown, Plus, Flame, Shield, Bell, Calendar,
-    Archive, Check, StopCircle,
+    Archive, Check, StopCircle, Layers,
 } from 'lucide-react';
 import { getUserSessions, type SessionPreview, type StreakData } from '../../api';
 import ProfileMenu from '../workspace/ProfileMenu';
 import { StreakPanel } from './StreakShowcase';
+import { useWindowSize } from '../../hooks/useWindowSize';
 import { clashDisplay, satoshi, FLAME_FROM, FLAME_TO, easeSilk } from './missionTheme';
 
 interface MissionTopBarProps {
@@ -47,6 +48,7 @@ export default function MissionTopBar({
     const [streakOpen, setStreakOpen] = useState(false);
     const [sessions, setSessions] = useState<SessionPreview[]>([]);
     const menuRef = useRef<HTMLDivElement>(null);
+    const { isMobile } = useWindowSize();
 
     useEffect(() => {
         if (!userId || demoMode) return;
@@ -64,15 +66,17 @@ export default function MissionTopBar({
     const goalLabel = (() => {
         const active = sessions.find(s => s.id === activeSessionId);
         const raw = active?.title || sessionFocus || active?.focus_preview || 'New goal';
-        return raw.length > 26 ? `${raw.slice(0, 26)}…` : raw;
+        const cap = isMobile ? 16 : 26;
+        return raw.length > cap ? `${raw.slice(0, cap)}…` : raw;
     })();
 
     const currentStreak = streak?.current_streak ?? 0;
     const shields = streak?.shields_left;
     const flameActive = currentStreak > 0;
 
+    const iconSz = isMobile ? 30 : 34;
     const iconBtn: React.CSSProperties = {
-        width: '34px', height: '34px', borderRadius: '10px',
+        width: `${iconSz}px`, height: `${iconSz}px`, borderRadius: '10px',
         border: '1px solid var(--border-subtle)', background: 'var(--card-bg)',
         color: 'var(--text-secondary)', display: 'flex', alignItems: 'center',
         justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
@@ -80,8 +84,9 @@ export default function MissionTopBar({
 
     return (
         <div style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '12px 16px', flexShrink: 0, position: 'relative', zIndex: 60,
+            display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px',
+            padding: isMobile ? '10px 12px' : '12px 16px', flexShrink: 0,
+            position: 'relative', zIndex: 60,
         }}>
             {/* ── Goal pill + dropdown (the sidebar's replacement) ── */}
             <div ref={menuRef} style={{ position: 'relative' }}>
@@ -90,11 +95,12 @@ export default function MissionTopBar({
                     whileTap={{ scale: 0.97 }}
                     onClick={() => setMenuOpen(o => !o)}
                     style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '8px 14px', borderRadius: '100px',
+                        display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px',
+                        padding: isMobile ? '7px 11px' : '8px 14px', borderRadius: '100px',
                         border: '1px solid var(--border-medium)', background: 'var(--card-bg)',
-                        color: 'var(--text-primary)', fontSize: '13px', fontWeight: 700,
-                        cursor: 'pointer', fontFamily: satoshi, maxWidth: '260px',
+                        color: 'var(--text-primary)', fontSize: isMobile ? '12px' : '13px', fontWeight: 700,
+                        cursor: 'pointer', fontFamily: satoshi, maxWidth: isMobile ? '160px' : '260px',
+                        minWidth: 0,
                     }}
                 >
                     <span style={{
@@ -109,7 +115,7 @@ export default function MissionTopBar({
                         />
                     </span>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {goalLabel}{isPlanActive && currentWeek > 0 ? ` · Week ${currentWeek}` : ''}
+                        {goalLabel}{!isMobile && isPlanActive && currentWeek > 0 ? ` · Week ${currentWeek}` : ''}
                     </span>
                     <ChevronDown size={14} style={{
                         color: 'var(--text-muted)', flexShrink: 0,
@@ -280,10 +286,23 @@ export default function MissionTopBar({
             )}
 
             {/* ── Utilities ── */}
+            {/* Weeks — the desktop floating panel is always visible, so this
+                mobile-only button is the way in to the week sheet there. */}
+            {isPlanActive && (
+                <button
+                    className="show-on-mobile"
+                    title="Your weeks"
+                    aria-label="Your weeks"
+                    onClick={() => window.dispatchEvent(new CustomEvent('toggle-mobile-weeks'))}
+                    style={iconBtn}
+                >
+                    <Layers size={15} />
+                </button>
+            )}
             <button data-tour="alerts-button" title="Daily email alerts" onClick={onOpenAlerts} style={iconBtn}>
                 <Bell size={15} />
             </button>
-            <button title="Google Calendar sync" onClick={onOpenCalendar} style={iconBtn}>
+            <button title="Google Calendar sync" onClick={onOpenCalendar} style={iconBtn} className="hide-on-mobile">
                 <Calendar size={15} />
             </button>
             <button

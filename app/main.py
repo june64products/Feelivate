@@ -2118,7 +2118,7 @@ async def send_email_otp(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """User ke email par 6-digit OTP bhejta hai, DB me store karta hai."""
+    """Send a 6-digit OTP to the user's email and store it in the DB."""
     from datetime import datetime, timedelta
 
     if payload.user_id != current_user.id:
@@ -2158,7 +2158,7 @@ async def verify_email_otp(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """OTP verify karta hai, success par email notifications enable karta hai."""
+    """Verify the OTP; on success, enable email notifications."""
     from datetime import datetime
 
     if payload.user_id != current_user.id:
@@ -2215,7 +2215,7 @@ async def stop_email_notifications(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """User ke email notifications disable karta hai."""
+    """Disable the user's email notifications."""
     if payload.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
 

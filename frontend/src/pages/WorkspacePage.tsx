@@ -533,10 +533,10 @@ export default function WorkspacePage() {
         setNotifMessage('');
         try {
             await sendEmailOTP(userId, notifEmail.trim());
-            setNotifMessage('OTP bhej diya! Apna inbox check karein.');
+            setNotifMessage('Code sent — check your inbox.');
             setEmailModalStep('otp');
         } catch (err: any) {
-            setNotifError(err.message || 'OTP bhejne me error aaya.');
+            setNotifError(err.message || "Couldn't send the code. Please try again.");
         } finally {
             setNotifLoading(false);
         }
@@ -588,7 +588,7 @@ export default function WorkspacePage() {
             setNotifMessage('');
             setTimeout(() => setShowEmailModal(false), 800);
         } catch (err: any) {
-            setNotifError(err.message || 'Notifications stop nahi hui. Try again.');
+            setNotifError(err.message || "Couldn't turn off notifications. Please try again.");
         } finally {
             setNotifLoading(false);
         }
