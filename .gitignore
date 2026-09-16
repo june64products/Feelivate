@@ -33,3 +33,6 @@ VIDEO 1.mov
 VIDEO 2.mov
 SCREENSHOT OF VIDEO 1/
 scratch/
+
+# Build output — Vercel and Northflank both regenerate this from source.
+frontend/dist/
