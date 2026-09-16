@@ -502,6 +502,11 @@ def main():
                 policy_version=CONSENT_POLICY_VERSION,
                 created_at=now - timedelta(weeks=len(WEEKS)),
             ))
+        # Journals, check-ins and reports carry a raw session_id FK but no ORM
+        # relationship to Session, so SQLAlchemy cannot infer that sessions must
+        # be inserted first. Postgres enforces the constraint even though SQLite
+        # does not, so the parents are flushed explicitly before their children.
+        db.flush()
 
         db.add(Session(
             id=data["session_id"], user_id=data["user_id"],
@@ -512,6 +517,8 @@ def main():
             result_json=json.dumps(data["plans"]),
             created_at=now - timedelta(weeks=len(WEEKS)),
         ))
+        db.flush()
+
         for role, content in CHAT:
             db.add(ChatMessage(session_id=data["session_id"], role=role, content=content))
         for j in data["journals"]:

@@ -239,7 +239,10 @@ export default function WorkspacePage() {
             return s.find(p => p.type === 'timeZoneName')?.value || userTimezone;
         } catch { return userTimezone; }
     })();
-    const [notifTimezone, setNotifTimezone] = useState(userTimezone);
+    // Always the browser's zone: alerts are meant to arrive at the user's own
+    // local time, so their current device is the source of truth for it. Only
+    // the hour is theirs to pick; the zone is detected, never chosen.
+    const notifTimezone = userTimezone;
 
     // Auth validation — check both token AND user_id
     useEffect(() => {
@@ -265,8 +268,16 @@ export default function WorkspacePage() {
                         setSubscribedTime(res.preferred_time);
                         setNotifPreferredTime(res.preferred_time);
                     }
-                    if (res.preferred_timezone) {
-                        setNotifTimezone(res.preferred_timezone);
+                    // Keep the stored zone tracking the user's actual one. A
+                    // subscribed account can drift out of sync — they travelled,
+                    // or they subscribed while this screen was echoing back the
+                    // server's "UTC" default, which scheduled the mail hours
+                    // from the time they picked (10:05 chosen in IST fired at
+                    // 10:05 UTC). Re-sync silently, keeping their chosen hour
+                    // and moving only the zone.
+                    if (res.enabled && res.preferred_timezone !== userTimezone) {
+                        updateNotificationTime(userId, res.preferred_time || '08:00', userTimezone)
+                            .catch(() => { /* non-fatal: alerts still work, just on the old zone */ });
                     }
                     if (res.enabled) setEmailModalStep('subscribed');
                 })
