@@ -80,8 +80,13 @@ SERIF = "Georgia,'Times New Roman',serif"
 _HEADER = f"""
 <table cellpadding="0" cellspacing="0" style="margin:0 auto 26px;">
   <tr>
-    <td style="background:{INK};border-radius:12px;padding:9px 10px;line-height:0;">
-      <img src="{APP_URL}/logo-email-white.png" alt="Feelivate" width="22" height="22" style="display:block;width:22px;height:22px;" />
+    <td style="line-height:0;">
+      <!-- The dark tile is baked into the PNG rather than set as a CSS
+           background. Gmail's dark mode inverts CSS colours but never touches
+           images, so a white mark on a styled dark box turned into a white mark
+           on a white box — invisible. A self-contained badge cannot be broken
+           that way, whatever the client does to the surrounding markup. -->
+      <img src="{APP_URL}/logo-email-badge.png" alt="Feelivate" width="40" height="40" style="display:block;width:40px;height:40px;" />
     </td>
     <td style="padding-left:12px;">
       <span style="font-size:19px;font-weight:800;color:{INK};letter-spacing:0.12em;font-family:{FONT};">FEELIVATE</span>
@@ -115,6 +120,8 @@ def _shell(preheader: str, card_rows: str, manage_label: str = "Manage alerts") 
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
 <style>
   @media only screen and (max-width:480px) {{
     .px {{ padding-left:20px !important; padding-right:20px !important; }}
