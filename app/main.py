@@ -78,6 +78,21 @@ async def lifespan(app):
     had been created before the lifespan was introduced, and the first genuinely
     new table (user_consents) failed to appear, turning every signup into a 500.
     """
+    # Every slow step of a request (guardrail, embedding, memory search, the
+    # model call itself) runs through asyncio.to_thread, which uses the loop's
+    # default executor: min(32, cpu_count + 4) threads — 5–8 on the machines
+    # this runs on. A model call holds its thread for 5–20 s, so that capped
+    # the whole API at roughly six chats in flight; the rest queued, still
+    # holding their pooled DB connection, until the pool timed out into 500s.
+    # 32 threads sit idle almost entirely on network waits, so they are cheap.
+    from concurrent.futures import ThreadPoolExecutor
+    asyncio.get_running_loop().set_default_executor(
+        ThreadPoolExecutor(
+            max_workers=int(os.getenv("WORKER_THREADS", "32")),
+            thread_name_prefix="feelivate-worker",
+        )
+    )
+
     try:
         init_db()
         logger.info("Application startup: DB initialization done.")
@@ -813,8 +828,43 @@ async def _blocked_chat_response(db: DBSession, session_id: str, user_id: str,
     }
 
 
+# ── Chat concurrency gate ────────────────────────────────────────────────────
+# Backpressure for the one endpoint that does real work. Every chat holds a
+# worker thread and, for part of its life, a pooled DB connection, for 5–20 s.
+# Without a cap, a burst of 100 arrivals checks out every connection in the
+# pool and the rest block on the pool *from the event loop* (the DB calls in
+# this handler are synchronous), which freezes the whole API — health checks
+# included. Requests beyond the cap wait here instead: in the async layer,
+# holding nothing. Sized below the DB pool (10 + 20) so pool waits never
+# happen. Load-tested: 100 simultaneous chats went from a total stall to all
+# served, the last one ~45 s later.
+_CHAT_GATE: Optional[asyncio.Semaphore] = None  # created on first use, on the running loop
+_CHAT_GATE_WAIT_S = float(os.getenv("CHAT_QUEUE_TIMEOUT", "90"))
+
+
+async def _chat_gate():
+    global _CHAT_GATE
+    if _CHAT_GATE is None:
+        _CHAT_GATE = asyncio.Semaphore(int(os.getenv("CHAT_CONCURRENCY", "24")))
+    try:
+        await asyncio.wait_for(_CHAT_GATE.acquire(), timeout=_CHAT_GATE_WAIT_S)
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=503,
+            detail="The mentor is busy right now — please try again in a moment.",
+        )
+    try:
+        yield
+    finally:
+        _CHAT_GATE.release()
+
+
 @app.post("/chat", tags=["chat"])
 async def chat(
+    *,
+    # First on purpose: FastAPI resolves dependencies in signature order, and
+    # the gate must be taken before get_db checks a connection out of the pool.
+    _gate: None = Depends(_chat_gate),
     payload: ChatRequest,
     background_tasks: BackgroundTasks,
     db: DBSession = Depends(get_db),
@@ -1156,6 +1206,14 @@ async def chat(
         # chit-chat, drop them everywhere else.
         _presence = 0.4 if _is_casual else 0.1
         _frequency = 0.35 if _is_casual else 0.05
+
+        # Hand the DB connection back before the model call. The session
+        # autobegan a transaction on its first SELECT and would otherwise keep
+        # its pooled connection checked out for the 5–20 s the model takes;
+        # twenty concurrent chats were enough to drain the pool and turn the
+        # rest into 500s. Everything needed below is already loaded, and the
+        # session reacquires a connection on its next query.
+        db.commit()
 
         raw_response = await asyncio.to_thread(
             call_with_fallback_chain,
@@ -2961,8 +3019,10 @@ async def _analyze_emotion(transcript: str) -> dict:
     # fallback chain, so any hiccup with that one model (rate-limit, outage,
     # decommission) would silently collapse every entry to neutral/5. Trying
     # multiple models means we only fall back to neutral if ALL of them fail.
-    # qwen/qwen3.6-27b replaced llama-3.3-70b-versatile (retired by Groq, Aug 2026).
-    models_to_try = ["qwen/qwen3.6-27b", "openai/gpt-oss-120b", "gpt-4o-mini"]
+    # qwen/qwen3.8-27b replaced llama-3.3-70b-versatile (retired by Groq, Aug 2026);
+    # the 3.6 name it briefly carried now 404s. This prompt is ~300 tokens, well
+    # inside Groq's free-tier cap, so Groq is still the right first stop here.
+    models_to_try = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "gpt-4o-mini"]
     last_err = None
     for model in models_to_try:
         try:

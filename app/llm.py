@@ -10,6 +10,7 @@ from openai import OpenAI
 
 _groq_client: Optional[OpenAI] = None
 _openai_client: Optional[OpenAI] = None
+_openrouter_client: Optional[OpenAI] = None
 _gemini_configured = False
 
 # ─── Consistency System Prompt ───────────────────────────────────────────────
@@ -36,13 +37,21 @@ CONSISTENCY_INSTRUCTION = (
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ─── Fallback Chain Config ───────────────────────────────────────────────────
-# Models tried in order. All Groq-hosted models use Groq client.
-# Final fallback is OpenAI gpt-4o-mini (requires OPENAI_API_KEY).
+# Models tried in order. An entry whose provider has no API key configured is
+# skipped rather than failed, so the chain degrades gracefully.
+#
+# Groq is deliberately NOT in the chat chain any more. On the free tier its
+# per-minute token cap is 8,000 and the mentor prompt alone is ~10,200 tokens,
+# so every chat was rejected (413) by all three Groq models before reaching
+# OpenAI — three wasted round trips per message, and under a burst Groq queued
+# those doomed requests for 6–10 s first. Groq still serves Whisper (voice) and
+# the cheap title model, where the free tier is ample.
+#
+# OpenRouter hosts the same gpt-oss-120b weights across several fast upstreams
+# on a paid tier, so the prompts tuned for that model keep working unchanged.
 FALLBACK_CHAIN = [
-    ("openai/gpt-oss-120b",    "groq"),    # 1st — Groq OSS 120B   (primary reasoning)
-    ("openai/gpt-oss-20b",     "groq"),    # 2nd — Groq OSS 20B    (lighter MoE)
-    ("llama-3.3-70b-versatile","groq"),    # 3rd — Llama 70B       (reliable fallback)
-    ("gpt-4o-mini",            "openai"),  # 4th — OpenAI GPT-4o-mini (last resort)
+    ("openai/gpt-oss-120b",    "openrouter"),  # 1st — same model, paid host (needs OPENROUTER_API_KEY)
+    ("gpt-4o-mini",            "openai"),      # 2nd — OpenAI, last resort
 ]
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -140,6 +149,28 @@ def _get_llm_provider() -> str:
     if os.getenv("GROQ_API_KEY"):
         return "groq"
     elif os.getenv("GEMINI_API_KEY"):
+def _get_openrouter_client() -> Optional[OpenAI]:
+    """OpenRouter speaks the OpenAI wire protocol, so the same SDK is reused.
+
+    Returns None (rather than raising) when OPENROUTER_API_KEY is unset: the
+    chain treats that as "not available here" and moves on, so a deployment
+    without the key still works, just without this tier.
+    """
+    global _openrouter_client
+    if _openrouter_client is None:
+        load_dotenv()
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            return None
+        _openrouter_client = OpenAI(
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+            # OpenRouter attributes usage to the app on its dashboard by these.
+            default_headers={"HTTP-Referer": "https://feelivate.com", "X-Title": "Feelivate"},
+        )
+    return _openrouter_client
+
+
         return "gemini"
     elif os.getenv("OPENAI_API_KEY"):
         return "openai"
@@ -451,12 +482,20 @@ def call_llm_chat(
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _is_retryable_error(e: Exception) -> bool:
-    """Return True if this error means we should try the next model."""
+    """True for the failure kinds a fallback chain expects to see day to day.
+
+    The chain now moves on after *any* error; this only decides how loudly to
+    log it — an expected kind (rate limit, oversize prompt, dead model, outage)
+    is a warning, anything else is an error so misconfiguration gets noticed.
+    """
     err = str(e).lower()
     return any(kw in err for kw in [
         "429", "rate_limit", "rate limit", "too many requests",
-        "decommissioned", "model_not_found", "model not found",
-        "503", "service unavailable", "overloaded",
+        "413", "too large", "context length", "maximum context",
+        "402", "insufficient", "quota",
+        "404", "decommissioned", "model_not_found", "model not found", "does not exist",
+        "500", "502", "503", "504", "service unavailable", "overloaded",
+        "timeout", "timed out", "connection",
     ])
 
 
@@ -480,7 +519,22 @@ def _call_with_fallback_chain_raw(
             continue
         tried.append(model_name)
         try:
-            if provider == "groq":
+            if provider == "openrouter":
+                client = _get_openrouter_client()
+                if not client:
+                    # No key configured — not a failure, just not available here.
+                    logger.debug("[Fallback chain] openrouter skipped (OPENROUTER_API_KEY not set)")
+                    continue
+                resp = client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    # Send each call to whichever upstream host is fastest for
+                    # this model right now; OpenRouter fails over between them.
+                    extra_body={"provider": {"sort": "throughput"}},
+                )
+            elif provider == "groq":
                 client = _get_groq_client()
                 resp = client.chat.completions.create(
                     model=model_name,
@@ -512,12 +566,20 @@ def _call_with_fallback_chain_raw(
                     f"[Fallback chain] ⚠️  {provider}/{model_name} failed "
                     f"({type(e).__name__}: {str(e)[:120]}), trying next..."
                 )
-                continue
-            # Non-retryable (e.g. auth error) — bubble up immediately
-            logger.exception(f"[Fallback chain] ❌ {provider}/{model_name} non-retryable error")
-            raise RuntimeError(f"{provider}/{model_name} error: {e}")
+            else:
+                logger.error(
+                    f"[Fallback chain] ❌ {provider}/{model_name} unexpected error "
+                    f"({type(e).__name__}: {str(e)[:160]}), trying next..."
+                )
+            continue
 
-    logger.exception("[Fallback chain] ❌ All models in fallback chain failed")
+    logger.error(f"[Fallback chain] ❌ All models failed. Tried: {tried}. Last error: {last_error}")
+            # Whatever went wrong with this tier — rate limit, oversize prompt,
+            # dead model, bad key, outage — the user is better served by the
+            # next tier than by an error. Bubbling a "non-retryable" error up
+            # used to fail the whole chat when a *later* tier would have
+            # answered. Unexpected kinds are logged at error level so a bad
+            # key or misconfiguration still gets noticed.
     raise RuntimeError(
         f"All models in fallback chain failed. Tried: {tried}. Last error: {last_error}"
     )
@@ -533,11 +595,9 @@ def call_with_fallback_chain(
     """
     Public API: Call LLM with auto-fallback cascade ensuring seamless consistency.
 
-    Priority order (user never notices the switch):
-      1. openai/gpt-oss-120b    (Groq — primary MoE reasoning model)
-      2. openai/gpt-oss-20b     (Groq — lighter MoE, same quality style)
-      3. llama-3.3-70b-versatile (Groq — fast, reliable fallback)
-      4. gpt-4o-mini             (OpenAI — final safety net)
+    Priority order (user never notices the switch) — see FALLBACK_CHAIN:
+      1. openai/gpt-oss-120b    (OpenRouter — the model the prompts are tuned for)
+      2. gpt-4o-mini             (OpenAI — final safety net)
 
     Seamless because:
       - CONSISTENCY_INSTRUCTION is injected into every call

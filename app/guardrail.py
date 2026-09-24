@@ -205,7 +205,13 @@ Reply with ONLY this JSON, nothing else:
 # Must be a NON-reasoning model. The gpt-oss family spends its budget on hidden
 # reasoning tokens and returns an empty completion, which fails JSON validation
 # and makes the screen fail open — silently, which is the worst outcome here.
-GUARDRAIL_MODEL = os.getenv("GUARDRAIL_MODEL", "llama-3.3-70b-versatile")
+# llama-3.3-70b-versatile was retired by Groq in Aug 2026; its replacement here
+# is Qwen 3.6 27B with thinking switched off (reasoning_effort "none"), which
+# returns the JSON verdict in ~12 tokens. Verified against drug-sourcing and
+# benign messages before the switch.
+# qwen3.6 was retired by Groq (404); 3.8 is the current name. With the old
+# default every classifier call 404'd and the screen failed open silently.
+GUARDRAIL_MODEL = os.getenv("GUARDRAIL_MODEL", "qwen/qwen3.8-27b")
 
 
 def _classify(message: str) -> Optional[Verdict]:
