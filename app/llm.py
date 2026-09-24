@@ -143,12 +143,6 @@ def _get_openai_client() -> OpenAI:
     return _openai_client
 
 
-def _get_llm_provider() -> str:
-    """Determine which LLM provider to use based on environment variables."""
-    load_dotenv()
-    if os.getenv("GROQ_API_KEY"):
-        return "groq"
-    elif os.getenv("GEMINI_API_KEY"):
 def _get_openrouter_client() -> Optional[OpenAI]:
     """OpenRouter speaks the OpenAI wire protocol, so the same SDK is reused.
 
@@ -171,6 +165,12 @@ def _get_openrouter_client() -> Optional[OpenAI]:
     return _openrouter_client
 
 
+def _get_llm_provider() -> str:
+    """Determine which LLM provider to use based on environment variables."""
+    load_dotenv()
+    if os.getenv("GROQ_API_KEY"):
+        return "groq"
+    elif os.getenv("GEMINI_API_KEY"):
         return "gemini"
     elif os.getenv("OPENAI_API_KEY"):
         return "openai"
@@ -561,6 +561,12 @@ def _call_with_fallback_chain_raw(
             return content
         except Exception as e:
             last_error = e
+            # Whatever went wrong with this tier — rate limit, oversize prompt,
+            # dead model, bad key, outage — the user is better served by the
+            # next tier than by an error. Bubbling a "non-retryable" error up
+            # used to fail the whole chat when a *later* tier would have
+            # answered. Unexpected kinds are logged at error level so a bad
+            # key or misconfiguration still gets noticed.
             if _is_retryable_error(e):
                 logger.warning(
                     f"[Fallback chain] ⚠️  {provider}/{model_name} failed "
@@ -574,12 +580,6 @@ def _call_with_fallback_chain_raw(
             continue
 
     logger.error(f"[Fallback chain] ❌ All models failed. Tried: {tried}. Last error: {last_error}")
-            # Whatever went wrong with this tier — rate limit, oversize prompt,
-            # dead model, bad key, outage — the user is better served by the
-            # next tier than by an error. Bubbling a "non-retryable" error up
-            # used to fail the whole chat when a *later* tier would have
-            # answered. Unexpected kinds are logged at error level so a bad
-            # key or misconfiguration still gets noticed.
     raise RuntimeError(
         f"All models in fallback chain failed. Tried: {tried}. Last error: {last_error}"
     )
