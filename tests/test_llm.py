@@ -8,14 +8,16 @@ class TestLLMWrap(unittest.TestCase):
     def test_missing_api_key_raises(self, mock_load_dotenv):
         from app import llm
 
-        keys = ["OPENAI_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY"]
+        keys = ["OPENAI_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"]
         old_keys = {}
         try:
             for k in keys:
                 if k in os.environ:
                     old_keys[k] = os.environ[k]
                     del os.environ[k]
-            llm._client = None  # force reinit
+            # Force every provider client to rebuild without a key; a client
+            # cached by an earlier test would otherwise still have one.
+            llm._groq_client = llm._openai_client = llm._openrouter_client = None
             with self.assertRaises(RuntimeError):
                 llm.call_llm("hello", max_tokens=1)
         finally:

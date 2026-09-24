@@ -443,12 +443,26 @@ def delete_user_data(db: DBSession, user: User) -> Dict[str, Any]:
         counts["chat_messages"] = 0
         counts["roadmap_tasks"] = 0
 
+    # Session-scoped rows are matched by session as well as by user. A row
+    # attached to one of this user's sessions is this user's data whatever its
+    # user_id column holds, and Postgres enforces the session foreign key: one
+    # such row with a stale or missing user_id used to fail the entire erasure
+    # with a FK violation. SQLite, with FKs off by default, never showed it.
+    from sqlalchemy import or_
+
     for label, model in (
         ("weekly_reports", WeeklyReport),
         ("voice_journals", VoiceJournal),
         ("daily_checkins", DailyCheckin),
         ("emotional_states", EmotionalState),
         ("feedbacks", Feedback),
+    ):
+        owned = model.user_id == user_id
+        if session_ids:
+            owned = or_(owned, model.session_id.in_(session_ids))
+        counts[label] = db.query(model).filter(owned).delete(synchronize_session=False)
+
+    for label, model in (
         ("user_streaks", UserStreak),
         ("user_consents", UserConsent),
     ):
