@@ -22,7 +22,6 @@ requests
 loguru
 prometheus-client
 pytest
-streamlit
 groq
 python-dotenv
 aiosqlite

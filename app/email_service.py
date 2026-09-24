@@ -801,7 +801,13 @@ def run_evening_reminders():
                 hhmm = now_local.strftime("%H:%M")
                 today = now_local.strftime("%Y-%m-%d")
 
-                if hhmm not in (JOURNAL_REMINDER_TIME, STREAK_REMINDER_TIME):
+                # Same grace window as the daily email; the two reminders are
+                # an hour apart, so at most one window is open at a time.
+                sj = _minutes_since(now_local, JOURNAL_REMINDER_TIME)
+                ss = _minutes_since(now_local, STREAK_REMINDER_TIME)
+                in_journal = sj is not None and 0 <= sj < SEND_GRACE_MINUTES
+                in_streak = ss is not None and 0 <= ss < SEND_GRACE_MINUTES
+                if not (in_journal or in_streak):
                     continue
                 recipient = _recipient_for(user)
                 if not recipient:
@@ -810,7 +816,7 @@ def run_evening_reminders():
                     continue
 
                 # ── 20:00 — journal not logged ──
-                if hhmm == JOURNAL_REMINDER_TIME:
+                if in_journal:
                     if user.last_journal_reminder_date == today:
                         continue
                     if _has_journal_today(db, user.id, today):
@@ -820,7 +826,7 @@ def run_evening_reminders():
                         db.commit()
 
                 # ── 21:00 — streak alive but today still unchecked ──
-                elif hhmm == STREAK_REMINDER_TIME:
+                elif in_streak:
                     if user.last_streak_reminder_date == today:
                         continue
                     streak = (
@@ -872,6 +878,24 @@ def run_evening_reminders():
         db.close()
 
 
+# Send windows are a few minutes wide rather than one exact minute. The
+# scheduler ticks once a minute, and a deploy, restart or slow tick landing on
+# a user's chosen minute used to skip that user for the whole day — there was
+# no catch-up. The per-day "already sent" markers stop a wider window from
+# sending twice.
+SEND_GRACE_MINUTES = int(os.getenv("EMAIL_SEND_GRACE_MINUTES", "10"))
+
+
+def _minutes_since(now_local, hhmm):
+    """Minutes elapsed since HH:MM today in now_local's zone; None if malformed."""
+    try:
+        hh, mm = (int(x) for x in (hhmm or "").split(":"))
+        target = now_local.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    except (ValueError, TypeError, AttributeError):
+        return None
+    return (now_local - target).total_seconds() / 60.0
+
+
 def run_daily_email_scheduler():
     """
     Called every minute by APScheduler.
@@ -918,8 +942,10 @@ def run_daily_email_scheduler():
                 user_time_str  = now_local.strftime("%H:%M")
                 today_date_str = now_local.strftime("%Y-%m-%d")
 
-                # Does it match their preferred time?
-                if user_time_str != user.preferred_notification_time:
+                # Inside the send window for their chosen time? (See
+                # SEND_GRACE_MINUTES — an exact-minute match was fragile.)
+                since = _minutes_since(now_local, user.preferred_notification_time)
+                if since is None or not (0 <= since < SEND_GRACE_MINUTES):
                     continue
 
                 recipient = _recipient_for(user)

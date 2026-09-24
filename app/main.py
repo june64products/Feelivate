@@ -1740,6 +1740,12 @@ async def signup(req: SignupRequest, request: Request, db: DBSession = Depends(g
             },
         )
 
+    # A one-character password was accepted until now. Argon2 protects the
+    # stored hash, not a guessable secret; eight characters is the floor both
+    # NIST and the ICO cite.
+    if len(req.password or "") < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+
     user = db.query(User).filter(User.email == req.email).first()
     if user:
         raise HTTPException(status_code=400, detail="User already exists")
@@ -3972,6 +3978,21 @@ async def contact_form(req: ContactRequest, request: Request):
     except Exception as e:
         logger.error(f"Contact form failed: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail="Could not send your message right now. Please email info@june64.com directly.")
+
+
+@app.get("/health", tags=["observability"])
+def health(db: DBSession = Depends(get_db)):
+    """Liveness for the platform's health check: the process is up AND the
+    database answers. A bare port check keeps routing traffic to an API whose
+    DB is unreachable or whose pool is exhausted; this returns 503 instead so
+    the platform can restart or stop routing to it.
+    """
+    from sqlalchemy import text
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(status_code=503, detail="database unavailable")
+    return {"status": "ok"}
 
 
 @app.get("/metrics", tags=["observability"])
