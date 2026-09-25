@@ -15,7 +15,12 @@ rq
 qdrant-client==1.16.1   # unpinned, a newer client removed .search() and memory went dead in prod
 psycopg2-binary
 asyncpg
-sqlalchemy
+# app/database.py builds an async engine at import. SQLAlchemy 2.1 stopped
+# installing greenlet by default, so a fresh install failed with "requires
+# that the Python 'greenlet' library is installed" and the app never started.
+# The [asyncio] extra brings greenlet back; the ceiling keeps prod on the
+# 2.0 line it has run on until 2.1 is tested deliberately.
+sqlalchemy[asyncio]>=2.0,<2.1
 
 # Utilities
 requests
