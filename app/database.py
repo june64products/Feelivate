@@ -131,6 +131,7 @@ def init_db():
         from .models import (
             User, Session, ChatMessage, RoadmapTask, EmotionalState, Feedback,
             DailyCheckin, UserStreak, VoiceJournal, WeeklyReport, UserConsent,
+            UserFeedback,
         )
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created/verified (including new USP tables)")

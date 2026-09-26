@@ -34,6 +34,7 @@ from .models import (
     Session,
     User,
     UserConsent,
+    UserFeedback,
     UserStreak,
     VoiceJournal,
     WeeklyReport,
@@ -389,6 +390,23 @@ def build_user_export(db: DBSession, user: User) -> Dict[str, Any]:
             .order_by(Feedback.created_at.asc())
             .all()
         ],
+        "feedback_forms": [
+            {
+                "sequence_no": f.sequence_no,
+                "rating": f.rating,
+                "liked": f.liked,
+                "confusing": f.confusing,
+                "comment": f.comment,
+                "contact_ok": bool(f.contact_ok),
+                "trigger": f.trigger,
+                "page": f.page,
+                "created_at": _iso(f.created_at),
+            }
+            for f in db.query(UserFeedback)
+            .filter(UserFeedback.user_id == user.id)
+            .order_by(UserFeedback.created_at.asc())
+            .all()
+        ],
     }
 
     # Long-term memory stores are best-effort: if they are down we say so in the
@@ -465,6 +483,7 @@ def delete_user_data(db: DBSession, user: User) -> Dict[str, Any]:
     for label, model in (
         ("user_streaks", UserStreak),
         ("user_consents", UserConsent),
+        ("user_feedback", UserFeedback),
     ):
         counts[label] = db.query(model).filter(model.user_id == user_id).delete(synchronize_session=False)
 

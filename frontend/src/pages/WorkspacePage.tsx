@@ -38,6 +38,7 @@ import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
 import ConsentGate, { type ConsentStatus } from '../components/legal/ConsentGate';
 import GuidedDemo, { type DemoHandles } from '../components/demo/GuidedDemo';
+import { useFeedback } from '../components/feedback/FeedbackContext';
 import { DEMO_PLAN, DEMO_EMOTION } from '../components/demo/demoScript';
 import { isDemoQueued, startDemo, completeDemo } from '../lib/onboarding';
 
@@ -45,6 +46,7 @@ import { isDemoQueued, startDemo, completeDemo } from '../lib/onboarding';
 
 export default function WorkspacePage() {
     const navigate = useNavigate();
+    const feedback = useFeedback();
     const [userId] = useState<string | null>(localStorage.getItem('user_id'));
 
     const [activeSessionId, setActiveSessionId] = useState<string | null>(
@@ -378,6 +380,19 @@ export default function WorkspacePage() {
     };
 
 
+    // The feedback prompt must never interrupt: while the mentor is replying,
+    // the tutorial is running, or any other dialog is up, it stays quiet and
+    // retries once the screen is free.
+    const setFeedbackBusy = feedback.setBusy; // stable across renders, unlike the context object
+    useEffect(() => {
+        setFeedbackBusy(
+            'workspace',
+            isLoading || demoMode || showCeremony || !!setupQuestions || !!blockedNotice
+            || showEmailModal || showReviewModal || showCompleteModal || consentStatus !== 'clear',
+        );
+    }, [setFeedbackBusy, isLoading, demoMode, showCeremony, setupQuestions, blockedNotice, showEmailModal, showReviewModal, showCompleteModal, consentStatus]);
+    useEffect(() => () => setFeedbackBusy('workspace', false), [setFeedbackBusy]);
+
     // Start a new chat session
     const handleNewChat = () => {
         setActiveSessionId(null);
@@ -389,8 +404,12 @@ export default function WorkspacePage() {
 
     // Logout
     const handleLogout = () => {
-        localStorage.clear();
-        navigate('/login');
+        // A new user who has not been asked yet gets the feedback form first;
+        // "Skip & log out" still logs out.
+        feedback.requestLogout(() => {
+            localStorage.clear();
+            navigate('/login');
+        });
     };
 
     // Send a message
@@ -423,6 +442,11 @@ export default function WorkspacePage() {
                 blocked: res.blocked,
             };
             setMessages(prev => [...prev, assistantMsg]);
+
+            // Three exchanges in, a new user has a first impression worth asking for.
+            if (messages.filter(m => m.role === 'assistant').length + 1 >= 3) {
+                feedback.signal('first_chats');
+            }
 
             // Raise it as a dialog too — the refusal has to be impossible to
             // miss, and a card in the thread can scroll past unread.
@@ -461,6 +485,8 @@ export default function WorkspacePage() {
                 setMentorOpen(false);
                 setShowCeremony(true);
                 setTimeout(() => setShowCeremony(false), 2300);
+                // Asked only once the ceremony has cleared the screen.
+                feedback.signal('first_plan');
                 const data = await getSessionDetail(activeSessionId);
                 setMessages(data.messages || []);
             }

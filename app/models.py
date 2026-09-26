@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, BigInteger
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, BigInteger, Boolean
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -156,6 +156,32 @@ class Feedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="feedbacks")
+
+
+class UserFeedback(Base):
+    """A product-feedback form submission (the popup and the side tab).
+
+    Distinct from `Feedback`, which rates a session. One row per submission;
+    `sequence_no` counts submissions per user so a first impression can be told
+    apart from a second thought, and `trigger` records which moment asked.
+    Anonymous site visitors may submit too, so `user_id` is nullable.
+    """
+    __tablename__ = "user_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    sequence_no = Column(Integer, nullable=True)        # 1 = this user's first feedback
+    rating = Column(Integer, nullable=False)            # 1–5
+    liked = Column(Text, nullable=True)                 # JSON list of chips
+    confusing = Column(Text, nullable=True)             # JSON list of chips
+    comment = Column(Text, nullable=True)
+    contact_ok = Column(Boolean, default=False)
+    email = Column(String, nullable=True)               # anonymous visitors who want a reply
+    trigger = Column(String, nullable=False)            # exit_intent | first_plan | first_chats | timer | logout | side_tab | tab_return
+    page = Column(String, nullable=True)                # route the form was opened from
+    device = Column(String, nullable=True)              # trimmed user agent
+    account_age_days = Column(Integer, nullable=True)   # days since sign-up at submission
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 # ============================================================

@@ -93,6 +93,8 @@ LIMITERS: Dict[str, SlidingWindowLimiter] = {
     "otp_verify": SlidingWindowLimiter(_int_env("RL_OTP_VERIFY_MAX", 6), _int_env("RL_OTP_VERIFY_WINDOW", 3600)),
     # 3 contact-form submissions per IP per hour
     "contact": SlidingWindowLimiter(_int_env("RL_CONTACT_MAX", 3), _int_env("RL_CONTACT_WINDOW", 3600)),
+    # 10 feedback-form submissions per identity (or IP when anonymous) per hour
+    "feedback": SlidingWindowLimiter(_int_env("RL_FEEDBACK_MAX", 10), _int_env("RL_FEEDBACK_WINDOW", 3600)),
     # 3 account deletions per identity per hour (guards the confirm endpoint)
     "account_delete": SlidingWindowLimiter(_int_env("RL_DELETE_MAX", 3), _int_env("RL_DELETE_WINDOW", 3600)),
     # 5 full data exports per identity per day — each one is expensive

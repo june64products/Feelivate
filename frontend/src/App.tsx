@@ -17,6 +17,10 @@ import WorkspacePage from './pages/WorkspacePage';
 import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
+import FeedbackAdminPage from './pages/FeedbackAdminPage';
+import { FeedbackProvider } from './components/feedback/FeedbackContext';
+import FeedbackLayer from './components/feedback/FeedbackLayer';
+import { FEEDBACK_INBOX_PATH } from './components/feedback/inboxPath';
 import { useTheme } from './hooks/useTheme';
 
 function App() {
@@ -25,6 +29,8 @@ function App() {
 
   return (
     <Router>
+      {/* Feedback lives above every route: the side tab everywhere, the one-time prompt in the app. */}
+      <FeedbackProvider>
       <Routes>
         {/* Marketing home. Logged-in users are redirected to /app inside HomePage. */}
         <Route path="/" element={<HomePage />} />
@@ -42,8 +48,12 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth-callback" element={<AuthCallbackPage />} />
         <Route path="/google-callback" element={<GoogleCallbackPage />} />
+        {/* Unlisted: the feedback inbox, opened with a passphrase. */}
+        <Route path={FEEDBACK_INBOX_PATH} element={<FeedbackAdminPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <FeedbackLayer />
+      </FeedbackProvider>
     </Router>
   );
 }

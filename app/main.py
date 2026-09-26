@@ -3986,6 +3986,244 @@ async def contact_form(req: ContactRequest, request: Request):
         raise HTTPException(status_code=500, detail="Could not send your message right now. Please email info@june64.com directly.")
 
 
+# ============================================================
+# PRODUCT FEEDBACK
+# ============================================================
+
+from .models import UserFeedback
+
+# The moments that can open the form. Anything else is recorded as the side tab.
+FEEDBACK_TRIGGERS = {"exit_intent", "first_plan", "first_chats", "timer", "logout", "side_tab", "tab_return"}
+# The chips the form offers; unknown values are dropped rather than stored.
+FEEDBACK_CHIPS = {"signup", "tutorial", "plan", "mentor_chat", "alerts", "design", "speed", "other"}
+
+
+class FeedbackRequest(BaseModel):
+    rating: int
+    liked: List[str] = []
+    confusing: List[str] = []
+    comment: Optional[str] = None
+    contact_ok: bool = False
+    email: Optional[str] = None
+    trigger: str = "side_tab"
+    page: Optional[str] = None
+
+
+def _optional_user(request: Request, db: DBSession) -> Optional[User]:
+    """The signed-in user when a valid bearer token is present, else None.
+
+    Feedback is open to visitors who never signed up, so a missing or stale
+    token is not an error here — it only makes the submission anonymous.
+    """
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return None
+    payload = decode_access_token(auth[7:].strip())
+    user_id = (payload or {}).get("sub")
+    if not user_id:
+        return None
+    return db.query(User).filter(User.id == user_id).first()
+
+
+def _require_feedback_admin(token: Optional[str]) -> None:
+    """The inbox is read through a passphrase, never a user account."""
+    expected = (os.environ.get("FEEDBACK_ADMIN_TOKEN") or os.environ.get("INTERNAL_ADMIN_TOKEN") or "").strip()
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail="Feedback inbox disabled: FEEDBACK_ADMIN_TOKEN is not configured.",
+        )
+    if not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@app.post("/feedback", tags=["feedback"])
+async def submit_feedback(req: FeedbackRequest, request: Request, db: DBSession = Depends(get_db)):
+    """Store one feedback-form submission, signed in or anonymous."""
+    from datetime import datetime as _dt
+
+    user = _optional_user(request, db)
+    _enforce_rate_limit("feedback", request, identity=user.id if user else None)
+
+    try:
+        rating = int(req.rating)
+    except (TypeError, ValueError):
+        rating = 0
+    if not 1 <= rating <= 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
+
+    trigger = req.trigger if req.trigger in FEEDBACK_TRIGGERS else "side_tab"
+    liked = [c for c in dict.fromkeys(req.liked or []) if c in FEEDBACK_CHIPS]
+    confusing = [c for c in dict.fromkeys(req.confusing or []) if c in FEEDBACK_CHIPS]
+    comment = (req.comment or "").strip()[:1000] or None
+    # A signed-in user is reachable through the account; only visitors need to leave an address.
+    email = None if user else ((req.email or "").strip()[:160] or None)
+    page = (req.page or "").strip()[:200] or None
+    device = (request.headers.get("user-agent") or "").strip()[:200] or None
+
+    sequence_no = None
+    account_age_days = None
+    if user:
+        sequence_no = db.query(UserFeedback).filter(UserFeedback.user_id == user.id).count() + 1
+        if user.created_at:
+            account_age_days = max(0, (_dt.utcnow() - user.created_at).days)
+
+    row = UserFeedback(
+        user_id=user.id if user else None,
+        sequence_no=sequence_no,
+        rating=rating,
+        liked=json.dumps(liked),
+        confusing=json.dumps(confusing),
+        comment=comment,
+        contact_ok=bool(req.contact_ok),
+        email=email,
+        trigger=trigger,
+        page=page,
+        device=device,
+        account_age_days=account_age_days,
+    )
+    db.add(row)
+    db.commit()
+    logger.info(
+        f"[Feedback] rating={rating} trigger={trigger} seq={sequence_no} "
+        f"{'user' if user else 'anonymous'} page={page}"
+    )
+    return {"status": "ok", "id": row.id, "sequence_no": sequence_no}
+
+
+@app.get("/feedback/me", tags=["feedback"])
+def my_feedback_status(current_user: User = Depends(get_current_user), db: DBSession = Depends(get_db)):
+    """How often this account has already given feedback.
+
+    The client uses it to decide whether the one-time prompt is still due, so
+    the decision survives a new browser or a cleared cache.
+    """
+    rows = (
+        db.query(UserFeedback)
+        .filter(UserFeedback.user_id == current_user.id)
+        .order_by(UserFeedback.created_at.desc())
+        .all()
+    )
+    return {"count": len(rows), "last_at": rows[0].created_at.isoformat() if rows else None}
+
+
+def _feedback_items(db: DBSession, rows: List[UserFeedback]) -> List[Dict[str, Any]]:
+    user_ids = {r.user_id for r in rows if r.user_id}
+    users = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
+
+    def _chips(raw: Optional[str]) -> List[str]:
+        try:
+            value = json.loads(raw or "[]")
+        except (TypeError, ValueError):
+            return []
+        return [str(v) for v in value] if isinstance(value, list) else []
+
+    items = []
+    for r in rows:
+        u = users.get(r.user_id)
+        items.append({
+            "id": r.id,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "user_id": r.user_id,
+            "user_email": u.email if u else None,
+            "user_name": u.name if u else None,
+            "sequence_no": r.sequence_no,
+            "rating": r.rating,
+            "trigger": r.trigger,
+            "page": r.page,
+            "liked": _chips(r.liked),
+            "confusing": _chips(r.confusing),
+            "comment": r.comment,
+            "contact_ok": bool(r.contact_ok),
+            "email": r.email,
+            "account_age_days": r.account_age_days,
+            "device": r.device,
+        })
+    return items
+
+
+def _feedback_stats(items: List[Dict[str, Any]]) -> Dict[str, Any]:
+    from collections import Counter
+    from datetime import datetime as _dt, timedelta as _td
+
+    week_ago = (_dt.utcnow() - _td(days=7)).isoformat()
+    ratings = Counter(int(i["rating"]) for i in items)
+    liked = Counter(c for i in items for c in i["liked"])
+    confusing = Counter(c for i in items for c in i["confusing"])
+    triggers = Counter(i["trigger"] for i in items)
+    total = len(items)
+    return {
+        "total": total,
+        "average_rating": round(sum(int(i["rating"]) for i in items) / total, 2) if total else None,
+        "ratings": {str(n): ratings.get(n, 0) for n in range(1, 6)},
+        "liked": dict(liked.most_common()),
+        "confusing": dict(confusing.most_common()),
+        "triggers": dict(triggers.most_common()),
+        "last_7_days": sum(1 for i in items if (i["created_at"] or "") >= week_ago),
+        "unique_users": len({i["user_id"] for i in items if i["user_id"]}),
+        "anonymous": sum(1 for i in items if not i["user_id"]),
+        "want_contact": sum(1 for i in items if i["contact_ok"]),
+    }
+
+
+@app.get("/admin/feedback", tags=["admin"])
+def list_feedback(
+    trigger: Optional[str] = None,
+    min_rating: Optional[int] = None,
+    limit: int = 200,
+    offset: int = 0,
+    x_internal_token: Optional[str] = Header(None),
+    db: DBSession = Depends(get_db),
+):
+    """The feedback inbox: newest first, with totals over everything received."""
+    _require_feedback_admin(x_internal_token)
+    limit = max(1, min(int(limit), 1000))
+    offset = max(0, int(offset))
+
+    q = db.query(UserFeedback)
+    if trigger:
+        q = q.filter(UserFeedback.trigger == trigger)
+    if min_rating:
+        q = q.filter(UserFeedback.rating >= int(min_rating))
+    total = q.count()
+    rows = q.order_by(UserFeedback.created_at.desc(), UserFeedback.id.desc()).offset(offset).limit(limit).all()
+
+    everything = db.query(UserFeedback).order_by(UserFeedback.created_at.desc()).limit(5000).all()
+    return {
+        "total": total,
+        "stats": _feedback_stats(_feedback_items(db, everything)),
+        "items": _feedback_items(db, rows),
+    }
+
+
+@app.get("/admin/feedback.csv", tags=["admin"])
+def feedback_csv(x_internal_token: Optional[str] = Header(None), db: DBSession = Depends(get_db)):
+    """Every submission as a spreadsheet, oldest first."""
+    _require_feedback_admin(x_internal_token)
+    import csv
+    import io
+
+    rows = db.query(UserFeedback).order_by(UserFeedback.created_at.asc(), UserFeedback.id.asc()).all()
+    items = _feedback_items(db, rows)
+    fields = [
+        "id", "created_at", "user_email", "user_name", "user_id", "sequence_no", "rating", "trigger",
+        "page", "liked", "confusing", "comment", "contact_ok", "email", "account_age_days", "device",
+    ]
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
+    writer.writeheader()
+    for item in items:
+        writer.writerow({k: (", ".join(v) if isinstance(v, list) else v) for k, v in item.items()})
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=feelivate-feedback.csv",
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 @app.get("/health", tags=["observability"])
 def health(db: DBSession = Depends(get_db)):
     """Liveness for the platform's health check: the process is up AND the
