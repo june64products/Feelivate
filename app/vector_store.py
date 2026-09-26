@@ -25,6 +25,10 @@ load_dotenv()
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 COLLECTION_NAME = "user_memories"
+# Payload fields we filter on. Qdrant Cloud runs collections in strict mode,
+# which rejects any filter on an unindexed field (400 "Index required"), so
+# these must carry a keyword index or every per-user read and erasure fails.
+INDEXED_PAYLOAD_FIELDS = ("user_id", "session_id")
 
 # Must match the embedding model in app/llm.py (text-embedding-3-large → 3072).
 # The collection used to be created at 1536, the size of an older model, so
@@ -134,11 +138,33 @@ class VectorStore:
                     collection_name=COLLECTION_NAME,
                     vectors_config=models.VectorParams(size=EMBEDDING_DIM, distance=models.Distance.COSINE),
                 )
+            self._ensure_payload_indexes()
             self.collection_ok = True
             self._ok()
         except Exception as e:
             self.collection_ok = None
             self._fail("collection check", e)
+
+    def _ensure_payload_indexes(self) -> None:
+        """Index the payload fields we filter on; a no-op when they already are.
+
+        On a fresh Qdrant Cloud cluster (strict mode) the collection came up
+        fine and writes succeeded, but every filtered search, export and
+        delete was refused with "Index required but not found for user_id",
+        so memory looked alive while returning nothing and erasure failed.
+        """
+        info = self.client.get_collection(COLLECTION_NAME)
+        existing = set((info.payload_schema or {}).keys())
+        for field in INDEXED_PAYLOAD_FIELDS:
+            if field in existing:
+                continue
+            logger.info(f"Creating Qdrant payload index {COLLECTION_NAME}.{field} (keyword)")
+            self.client.create_payload_index(
+                collection_name=COLLECTION_NAME,
+                field_name=field,
+                field_schema=models.PayloadSchemaType.KEYWORD,
+                wait=True,
+            )
 
     # ── writes ──────────────────────────────────────────────────────────────
 

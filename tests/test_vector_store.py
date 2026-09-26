@@ -51,6 +51,37 @@ def test_write_search_export_delete_roundtrip():
     assert s.export_user_memories("u2"), "erasure must not touch other users"
 
 
+class _RecordingClient(QdrantClient):
+    """In-memory Qdrant that records which payload indexes were requested."""
+
+    def __init__(self):
+        super().__init__(":memory:")
+        self.indexed = []
+
+    def create_payload_index(self, collection_name, field_name, *args, **kwargs):
+        self.indexed.append(field_name)
+        return super().create_payload_index(collection_name, field_name, *args, **kwargs)
+
+
+def test_indexes_filtered_fields_on_a_fresh_collection():
+    # Qdrant Cloud strict mode refuses filters on unindexed fields, so the
+    # store must ask for the indexes itself rather than rely on the console.
+    c = _RecordingClient()
+    s = vs.VectorStore(client=c)
+    assert s.collection_ok is True
+    assert set(c.indexed) == set(vs.INDEXED_PAYLOAD_FIELDS)
+
+
+def test_indexes_filtered_fields_on_an_existing_unindexed_collection():
+    # The state a cluster is left in when the collection was created by an
+    # older build: right size, no indexes, every filtered read failing.
+    c = _RecordingClient()
+    c.create_collection(vs.COLLECTION_NAME, vectors_config=models.VectorParams(size=vs.EMBEDDING_DIM, distance=models.Distance.COSINE))
+    s = vs.VectorStore(client=c)
+    assert s.collection_ok is True
+    assert set(c.indexed) == set(vs.INDEXED_PAYLOAD_FIELDS)
+
+
 def test_rejects_embedding_of_wrong_dimension():
     s = _store()
     assert s.add_memory("u1", "x", [0.1] * (vs.EMBEDDING_DIM - 1), {}) is False
