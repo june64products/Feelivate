@@ -1,6 +1,18 @@
 {
   "rewrites": [
     {
+      "source": "/blog/feed.xml",
+      "destination": "https://p01--emotion-time-travel--gtj4tlnzj5vy.code.run/blog/feed.xml"
+    },
+    {
+      "source": "/sitemap-blog.xml",
+      "destination": "https://p01--emotion-time-travel--gtj4tlnzj5vy.code.run/blog/sitemap.xml"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "https://p01--emotion-time-travel--gtj4tlnzj5vy.code.run/blog/:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -184,6 +184,34 @@ class UserFeedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class BlogPost(Base):
+    """An article written from the unlisted blog admin page.
+
+    Markdown is the source of truth (`body_md`); the HTML is rendered once on
+    save so the public page is a plain read. `slug` is the public URL segment
+    and never changes on its own once set.
+    """
+    __tablename__ = "blog_posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String, unique=True, index=True, nullable=False)
+    title = Column(String, nullable=False)
+    seo_title = Column(String, nullable=True)           # optional <title> override
+    category = Column(String, nullable=False, default="Goal Setting")
+    excerpt = Column(Text, nullable=True)               # meta description + card text
+    cover_image_url = Column(String, nullable=True)
+    cover_alt = Column(String, nullable=True)
+    tags = Column(Text, nullable=True)                  # JSON list
+    author = Column(String, nullable=False, default="Feelivate Team")
+    body_md = Column(Text, nullable=False, default="")
+    body_html = Column(Text, nullable=False, default="")
+    reading_minutes = Column(Integer, nullable=False, default=1)
+    status = Column(String, nullable=False, default="draft", index=True)  # draft | published
+    published_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 # ============================================================
 # NEW TABLES — USP Features
 # ============================================================

@@ -18,6 +18,8 @@ import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
 import FeedbackAdminPage from './pages/FeedbackAdminPage';
+import BlogAdminPage from './pages/BlogAdminPage';
+import { BLOG_ADMIN_PATH } from './components/blog/adminPath';
 import { FeedbackProvider } from './components/feedback/FeedbackContext';
 import FeedbackLayer from './components/feedback/FeedbackLayer';
 import { FEEDBACK_INBOX_PATH } from './components/feedback/inboxPath';
@@ -50,6 +52,8 @@ function App() {
         <Route path="/google-callback" element={<GoogleCallbackPage />} />
         {/* Unlisted: the feedback inbox, opened with a passphrase. */}
         <Route path={FEEDBACK_INBOX_PATH} element={<FeedbackAdminPage />} />
+        {/* Unlisted: the blog editor. Articles themselves (/blog/<slug>) are served by the API as HTML. */}
+        <Route path={BLOG_ADMIN_PATH} element={<BlogAdminPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <FeedbackLayer />

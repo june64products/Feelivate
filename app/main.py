@@ -4224,6 +4224,15 @@ def feedback_csv(x_internal_token: Optional[str] = Header(None), db: DBSession =
     )
 
 
+# ============================================================
+# BLOG (see app/blog.py)
+# ============================================================
+
+from .blog import router as _blog_router
+
+app.include_router(_blog_router)
+
+
 @app.get("/health", tags=["observability"])
 def health(db: DBSession = Depends(get_db)):
     """Liveness for the platform's health check: the process is up AND the

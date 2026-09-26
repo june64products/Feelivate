@@ -24,6 +24,8 @@ sqlalchemy[asyncio]>=2.0,<2.1
 
 # Utilities
 requests
+# Blog: Markdown → HTML for the article pages (app/blog.py)
+markdown>=3.6,<4
 loguru
 prometheus-client
 pytest
