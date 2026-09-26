@@ -37,8 +37,12 @@ const EMPTY: Draft = {
     cover: '', coverAlt: '', tags: '', author: 'Feelivate Team', body: '', status: 'draft', publishedUrl: null,
 };
 
+// The site keeps <body> from scrolling and lets each page scroll inside its
+// own full-height wrapper (see PageShell); this page has to do the same or
+// nothing below the first screen is reachable.
 const page: CSSProperties = {
-    minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)',
+    height: '100vh', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
+    background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)',
 };
 const field: CSSProperties = {
     width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '10px',
@@ -97,13 +101,17 @@ export default function BlogAdminPage() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
-    const [narrow, setNarrow] = useState(() => window.innerWidth < 1100);
+    const [narrow, setNarrow] = useState(() => window.innerWidth < 1100);   // one column instead of three
+    const [mobile, setMobile] = useState(() => window.innerWidth < 640);    // phone: stack every pair of fields
     const [pane, setPane] = useState<'write' | 'preview'>('write');
     const previewTimer = useRef<number | null>(null);
 
     useEffect(() => {
         document.title = 'Write · Feelivate';
-        const onResize = () => setNarrow(window.innerWidth < 1100);
+        const onResize = () => {
+            setNarrow(window.innerWidth < 1100);
+            setMobile(window.innerWidth < 640);
+        };
         window.addEventListener('resize', onResize);
         return () => window.removeEventListener('resize', onResize);
     }, []);
@@ -251,17 +259,17 @@ export default function BlogAdminPage() {
     }
 
     const editor = (
-        <section style={card}>
+        <section style={{ ...card, padding: mobile ? '14px' : '18px', minWidth: 0 }}>
             <span style={{ ...label, marginTop: 0 }}>Title</span>
             <input value={draft.title} onChange={(e) => setTitle(e.target.value)} placeholder="Why goals die in week two" style={{ ...field, fontSize: '18px', fontWeight: 600 }} />
 
             <span style={label}>URL</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                 <span style={{ whiteSpace: 'nowrap' }}>{host}/blog/</span>
-                <input value={draft.slug} onChange={(e) => update({ slug: slugify(e.target.value) || e.target.value.toLowerCase(), slugTouched: true })} placeholder="auto-from-title" style={{ ...field, padding: '7px 10px', fontSize: '13px' }} />
+                <input value={draft.slug} onChange={(e) => update({ slug: slugify(e.target.value) || e.target.value.toLowerCase(), slugTouched: true })} placeholder="auto-from-title" style={{ ...field, flex: '1 1 160px', width: 'auto', padding: '7px 10px', fontSize: '13px' }} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: mobile ? '0' : '12px' }}>
                 <div>
                     <span style={label}>Category</span>
                     <select value={draft.category} onChange={(e) => update({ category: e.target.value })} style={field}>
@@ -302,9 +310,9 @@ export default function BlogAdminPage() {
                 placeholder={'Start with the point.\n\n## A heading for each section\n\nShort paragraphs. **Bold** the sentence that matters.\n\n- Lists for steps\n- One idea per line\n\n![Alt text](https://…/image.jpg)'}
                 style={{ ...field, fontFamily: 'var(--font-mono)', fontSize: '13.5px', lineHeight: 1.6, resize: 'vertical', minHeight: '360px' }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                <span># heading · **bold** · *italic* · [link](url) · ![alt](image-url) · - list · &gt; quote · ``` code</span>
-                <span>{preview.reading_minutes} min read</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '4px 12px', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}># heading · **bold** · *italic* · [link](url) · ![alt](image-url) · - list · &gt; quote · ``` code</span>
+                <span style={{ whiteSpace: 'nowrap' }}>{preview.reading_minutes} min read</span>
             </div>
 
             {error && <p role="alert" style={{ margin: '14px 0 0', fontSize: '13px', color: 'var(--color-error)' }}>{error}</p>}
@@ -337,7 +345,7 @@ export default function BlogAdminPage() {
     );
 
     const previewPane = (
-        <section style={{ ...card, position: narrow ? 'static' : 'sticky', top: '16px', maxHeight: narrow ? 'none' : 'calc(100vh - 32px)', overflowY: 'auto' }}>
+        <section style={{ ...card, padding: mobile ? '14px' : '18px', minWidth: 0, position: narrow ? 'static' : 'sticky', top: '16px', maxHeight: narrow ? 'none' : 'calc(100vh - 32px)', overflowY: 'auto', overflowWrap: 'anywhere' }}>
             <div style={{ ...label, marginTop: 0 }}>Google preview</div>
             <div style={{ padding: '12px 14px', borderRadius: '10px', background: 'var(--bg-secondary)', marginBottom: '18px' }}>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{host} › blog › {draft.slug || 'post-url'}</div>
@@ -375,8 +383,8 @@ export default function BlogAdminPage() {
                     </div>
                 </header>
 
-                <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '250px minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', alignItems: 'start' }}>
-                    <aside className="blog-admin-list" style={{ ...card, padding: '10px', position: narrow ? 'static' : 'sticky', top: '16px', maxHeight: narrow ? '220px' : 'calc(100vh - 32px)', overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'minmax(0, 1fr)' : '250px minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', alignItems: 'start' }}>
+                    <aside className="blog-admin-list" style={{ ...card, padding: '10px', minWidth: 0, position: narrow ? 'static' : 'sticky', top: '16px', maxHeight: narrow ? '220px' : 'calc(100vh - 32px)', overflowY: 'auto' }}>
                         {posts.length === 0 && <p style={{ margin: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>No posts yet. Write the first one.</p>}
                         {posts.map((p) => (
                             <button

@@ -22,8 +22,13 @@ const TRIGGER_LABELS: Record<string, string> = {
 
 const CHIP_LABELS: Record<string, string> = Object.fromEntries(FEEDBACK_CHIPS.map((c) => [c.key, c.label]));
 
+// <body> never scrolls on this site; each page scrolls inside its own
+// full-height wrapper (see PageShell), so this one must too.
 const page: CSSProperties = {
-    minHeight: '100vh',
+    height: '100vh',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    WebkitOverflowScrolling: 'touch',
     background: 'var(--bg-primary)',
     color: 'var(--text-primary)',
     fontFamily: 'var(--font-sans)',
