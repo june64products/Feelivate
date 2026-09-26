@@ -1005,13 +1005,19 @@ async def chat(
         try:
             embedding = await asyncio.to_thread(create_embedding, message)
             if embedding and _is_personal_query(message):
+                # Scope to THIS session inside Qdrant (session_id is indexed), so
+                # the five nearest hits are all usable instead of five global
+                # hits that mostly belong to other sessions.
                 hits = await asyncio.to_thread(
-                    vector_store.search_memories, user_id, embedding, 5
+                    vector_store.search_memories, user_id, embedding, 5, {"session_id": session_id}
                 )
-                # Filter: only include memories from THIS session
+                # Belt and braces: the store returns hits as {text, metadata,
+                # score}. This used to read a "payload" key that never existed,
+                # so every retrieved memory was discarded and the mentor never
+                # saw one.
                 session_memories = [
                     h["text"] for h in hits
-                    if h.get("payload", {}).get("session_id") == session_id
+                    if (h.get("metadata") or {}).get("session_id") == session_id
                 ]
                 if session_memories:
                     memory_text = "\n".join(session_memories)

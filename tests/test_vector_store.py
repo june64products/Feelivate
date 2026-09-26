@@ -43,8 +43,15 @@ def test_write_search_export_delete_roundtrip():
     assert all(h["metadata"]["user_id"] == "u1" for h in hits), "search must be scoped to the user"
     assert s.search_memories("u2", v, limit=5)[0]["text"] == "someone else's memory"
 
+    # The chat path scopes recall to the current session via extra_filter and
+    # reads the session back from "metadata"; both must line up.
+    s.add_memory("u1", "a memory from another session", _vec(7), {"session_id": "s2"})
+    scoped = s.search_memories("u1", v, limit=5, extra_filter={"session_id": "s1"})
+    assert [h["metadata"]["session_id"] for h in scoped] == ["s1"]
+    assert scoped[0]["text"].startswith("I practise")
+
     exported = s.export_user_memories("u1")
-    assert len(exported) == 1 and exported[0]["text"].startswith("I practise")
+    assert len(exported) == 2 and {e["session_id"] for e in exported} == {"s1", "s2"}
 
     assert s.delete_user_memories("u1") is True
     assert s.export_user_memories("u1") == []
