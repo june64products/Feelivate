@@ -184,6 +184,23 @@ class UserFeedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class TaskHowTo(Base):
+    """A step-by-step guide for one plan day, generated once and kept.
+
+    Keyed by the session and a hash of the day's action text, so an edited
+    plan gets a fresh guide while an unchanged day never pays for a second
+    model call. Not personal data in itself; erased with the session.
+    """
+    __tablename__ = "task_howtos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String, ForeignKey("sessions.id"), nullable=False, index=True)
+    action_hash = Column(String, nullable=False, index=True)
+    day_label = Column(String, nullable=True)
+    content_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class BlogPost(Base):
     """An article written from the unlisted blog admin page.
 

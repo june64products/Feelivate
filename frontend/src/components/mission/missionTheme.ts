@@ -33,6 +33,19 @@ export function shortDay(iso: string): string {
 export function planEntryFor(activePlan: any, iso: string): { day: string; action: string } | null {
     const days = activePlan?.days;
     if (!Array.isArray(days) || days.length === 0) return null;
+    // Labels are matched by weekday name, so a plan from a past week would
+    // otherwise resurface on the same weekday later (a Sunday-only Week 0
+    // showing up as "today" the following Sunday). A stamped start date
+    // pins the plan to its own window: start → that week's Sunday.
+    const start = String(activePlan?.start_date || '');
+    if (start) {
+        if (iso < start) return null;
+        const s = new Date(`${start}T12:00:00`);
+        const end = new Date(s);
+        end.setDate(s.getDate() + ((7 - s.getDay()) % 7));   // getDay(): 0 = Sunday
+        const endIso = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+        if (iso > endIso) return null;
+    }
     const d = new Date(`${iso}T12:00:00`);
     const longName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const shortName = d.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();

@@ -95,6 +95,8 @@ LIMITERS: Dict[str, SlidingWindowLimiter] = {
     "contact": SlidingWindowLimiter(_int_env("RL_CONTACT_MAX", 3), _int_env("RL_CONTACT_WINDOW", 3600)),
     # 10 feedback-form submissions per identity (or IP when anonymous) per hour
     "feedback": SlidingWindowLimiter(_int_env("RL_FEEDBACK_MAX", 10), _int_env("RL_FEEDBACK_WINDOW", 3600)),
+    # 40 "how do I do this?" guides per user per hour — each uncached one is a model call
+    "howto": SlidingWindowLimiter(_int_env("RL_HOWTO_MAX", 40), _int_env("RL_HOWTO_WINDOW", 3600)),
     # 3 account deletions per identity per hour (guards the confirm endpoint)
     "account_delete": SlidingWindowLimiter(_int_env("RL_DELETE_MAX", 3), _int_env("RL_DELETE_WINDOW", 3600)),
     # 5 full data exports per identity per day — each one is expensive

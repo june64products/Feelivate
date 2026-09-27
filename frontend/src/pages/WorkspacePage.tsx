@@ -17,7 +17,10 @@ import {
     stopEmailNotifications,
     getEmailNotificationStatus,
     updateNotificationTime,
+    getWeekInfo,
+    type WeekInfo,
 } from '../api';
+import HowToModal, { OPEN_HOWTO_EVENT, type HowToTarget } from '../components/mission/HowToModal';
 import type { BlockedNotice, SetupQuestion } from '../api';
 import SetupQuestionsModal from '../components/chat/SetupQuestionsModal';
 import MissionTopBar from '../components/mission/MissionTopBar';
@@ -176,6 +179,46 @@ export default function WorkspacePage() {
     // Thu–Sun Week 0). Today has nothing to show from that plan — the honest
     // state is "wrapped": read the report, commit the next week.
     const weekOver = !demoMode && isPlanApproved && planWeekOver(activePlan, todayIso);
+
+    // A week whose days are over is not closed until its Sunday voice note is
+    // in. That is what decides what the stage shows once the window has ended:
+    // "record the note" or "read the report, plan the next week".
+    const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
+    useEffect(() => {
+        if (!weekOver || !activeSessionId) { setWeekInfo(null); return; }
+        let active = true;
+        getWeekInfo(activeSessionId).then(wi => { if (active) setWeekInfo(wi); }).catch(() => { /* stage falls back to the report copy */ });
+        return () => { active = false; };
+    }, [weekOver, activeSessionId, view, todayEmotion]);
+    const needsClosingNote = weekOver && !!weekInfo && !weekInfo.is_week_complete;
+
+    // The one popup for it: once per day per session, dismissable, never over another dialog.
+    const [closingNudgeOpen, setClosingNudgeOpen] = useState(false);
+    useEffect(() => {
+        if (!needsClosingNote || !activeSessionId || view !== 'chat') { setClosingNudgeOpen(false); return; }
+        const key = `closing_nudge_${activeSessionId}`;
+        let seen: string | null = null;
+        try { seen = localStorage.getItem(key); } catch { /* ignore */ }
+        if (seen !== todayIso) setClosingNudgeOpen(true);
+    }, [needsClosingNote, activeSessionId, view, todayIso]);
+    const dismissClosingNudge = () => {
+        setClosingNudgeOpen(false);
+        try { if (activeSessionId) localStorage.setItem(`closing_nudge_${activeSessionId}`, todayIso); } catch { /* ignore */ }
+    };
+
+    // "How do I do this?" — the guide for one plan day. Opened from the Today
+    // card, or from any day of a plan card (which dispatches an event so the
+    // chat surfaces don't need to know about sessions).
+    const [howTo, setHowTo] = useState<HowToTarget | null>(null);
+    useEffect(() => {
+        const onOpen = (e: Event) => {
+            if (demoMode) return;
+            const detail = (e as CustomEvent<HowToTarget>).detail;
+            if (detail?.action) setHowTo({ day: detail.day || 'This day', action: detail.action });
+        };
+        window.addEventListener(OPEN_HOWTO_EVENT, onOpen);
+        return () => window.removeEventListener(OPEN_HOWTO_EVENT, onOpen);
+    }, [demoMode]);
 
     // Which mission stage fills the screen (demo mirrors respected).
     // Demo drawer rule: open while the scripted conversation is being built,
@@ -388,9 +431,10 @@ export default function WorkspacePage() {
         setFeedbackBusy(
             'workspace',
             isLoading || demoMode || showCeremony || !!setupQuestions || !!blockedNotice
-            || showEmailModal || showReviewModal || showCompleteModal || consentStatus !== 'clear',
+            || showEmailModal || showReviewModal || showCompleteModal || consentStatus !== 'clear'
+            || !!howTo || closingNudgeOpen,
         );
-    }, [setFeedbackBusy, isLoading, demoMode, showCeremony, setupQuestions, blockedNotice, showEmailModal, showReviewModal, showCompleteModal, consentStatus]);
+    }, [setFeedbackBusy, isLoading, demoMode, showCeremony, setupQuestions, blockedNotice, showEmailModal, showReviewModal, showCompleteModal, consentStatus, howTo, closingNudgeOpen]);
     useEffect(() => () => setFeedbackBusy('workspace', false), [setFeedbackBusy]);
 
     // Start a new chat session
@@ -899,13 +943,17 @@ export default function WorkspacePage() {
                                                 fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)',
                                                 margin: '0 0 8px', fontFamily: missionClash, letterSpacing: '-0.01em',
                                             }}>
-                                                That's a wrap on Week {uiActivePlan?.week_number ?? 1}.
+                                                {needsClosingNote
+                                                    ? `Week ${uiActivePlan?.week_number ?? 1}'s days are done. Close it with your voice.`
+                                                    : `That's a wrap on Week ${uiActivePlan?.week_number ?? 1}.`}
                                             </p>
                                             <p style={{
                                                 fontSize: '13.5px', color: 'var(--text-secondary)', margin: '0 auto 20px',
                                                 fontFamily: missionSatoshi, lineHeight: 1.65, maxWidth: '440px',
                                             }}>
-                                                This week's window has closed — your honest report is waiting in the Journey. Read it, then commit the next week. Fresh start, same fire.
+                                                {needsClosingNote
+                                                    ? "A week only closes with its Sunday voice note — 60 honest seconds on how it went. Your report and the next week unlock right after."
+                                                    : "This week's window has closed — your honest report is waiting in the Journey. Read it, then commit the next week. Fresh start, same fire."}
                                             </p>
                                             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
                                                 <motion.button
@@ -918,9 +966,9 @@ export default function WorkspacePage() {
                                                         fontFamily: missionSatoshi, letterSpacing: '0.05em', textTransform: 'uppercase',
                                                     }}
                                                 >
-                                                    See your week report
+                                                    {needsClosingNote ? "Record Sunday's voice note" : 'See your week report'}
                                                 </motion.button>
-                                                <motion.button
+                                                {!needsClosingNote && <motion.button
                                                     whileTap={{ scale: 0.96 }}
                                                     onClick={() => handleSendMessage(
                                                         `I've reviewed my week report. Please build me Week ${(uiActivePlan?.week_number ?? 1) + 1} plan based on my performance data and what I need to improve.`
@@ -933,7 +981,7 @@ export default function WorkspacePage() {
                                                     }}
                                                 >
                                                     Plan Week {(uiActivePlan?.week_number ?? 1) + 1}
-                                                </motion.button>
+                                                </motion.button>}
                                             </div>
                                         </motion.div>
                                     ) : (
@@ -945,6 +993,7 @@ export default function WorkspacePage() {
                                             justCelebrated={justCelebrated}
                                             onCheckin={checkin}
                                             onAskMentor={() => setMentorOpen(true)}
+                                            onHowTo={(entry) => setHowTo(entry)}
                                             demoMode={demoMode}
                                         />
                                     )}
@@ -1869,6 +1918,88 @@ export default function WorkspacePage() {
                             </div>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
+            {/* "How do I do this?" — the guide for one plan day */}
+            <HowToModal
+                target={howTo}
+                sessionId={activeSessionId}
+                onClose={() => setHowTo(null)}
+                onAskMentor={(t) => {
+                    // The question goes out already written; the user types nothing.
+                    setHowTo(null);
+                    setMentorOpen(true);
+                    handleSendMessage(
+                        `I read the quick guide for ${t.day}'s task but I'm still not sure how to do it: "${t.action}". ` +
+                        `Please explain it step by step, simpler — no new plan, just help me do this one.`
+                    );
+                }}
+            />
+
+            {/* The week's days are over, its Sunday voice note is not: ask once a day. */}
+            <AnimatePresence>
+                {closingNudgeOpen && (
+                    <motion.div
+                        key="closing-nudge"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        onMouseDown={(e) => { if (e.target === e.currentTarget) dismissClosingNudge(); }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 1050, background: 'rgba(0,0,0,0.5)',
+                            backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+                        }}
+                    >
+                        <motion.div
+                            role="dialog" aria-modal="true" aria-labelledby="closing-nudge-title"
+                            initial={{ scale: 0.94, opacity: 0, y: 14 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.94, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+                            style={{
+                                width: '100%', maxWidth: '420px', background: 'var(--bg-surface)',
+                                border: '1px solid var(--border-medium)', borderRadius: '22px', padding: '26px',
+                                boxShadow: 'var(--shadow-xl)', textAlign: 'center', fontFamily: missionSatoshi,
+                            }}
+                        >
+                            <span style={{
+                                width: '52px', height: '52px', borderRadius: '16px', margin: '0 auto 14px',
+                                background: 'var(--btn-primary-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                <Mic size={22} style={{ color: 'var(--btn-primary-text)' }} />
+                            </span>
+                            <h2 id="closing-nudge-title" style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: 600, fontFamily: missionClash, letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>
+                                Week {uiActivePlan?.week_number ?? 1} is waiting for your voice note
+                            </h2>
+                            <p style={{ margin: '0 0 20px', fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                                Its days are done, but a week only closes with the Sunday voice note. 60 honest seconds on how it went — then your report and the next week unlock.
+                            </p>
+                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                <button
+                                    type="button"
+                                    onClick={dismissClosingNudge}
+                                    style={{
+                                        padding: '12px 18px', borderRadius: '100px', border: '1px solid var(--border-medium)',
+                                        background: 'transparent', color: 'var(--text-secondary)', fontSize: '12.5px', fontWeight: 600,
+                                        cursor: 'pointer', fontFamily: missionSatoshi,
+                                    }}
+                                >
+                                    Later today
+                                </button>
+                                <motion.button
+                                    type="button"
+                                    whileTap={{ scale: 0.96 }}
+                                    onClick={() => { dismissClosingNudge(); setView('journey'); }}
+                                    style={{
+                                        padding: '12px 22px', borderRadius: '100px', border: 'none',
+                                        background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                                        fontSize: '12.5px', fontWeight: 800, cursor: 'pointer', fontFamily: missionSatoshi,
+                                        letterSpacing: '0.05em', textTransform: 'uppercase',
+                                    }}
+                                >
+                                    Record now
+                                </motion.button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
                 )}
             </AnimatePresence>
 

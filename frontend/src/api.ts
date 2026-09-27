@@ -811,11 +811,48 @@ export interface WeekInfo {
     week_start?: string;
     week_end?: string;
     day_count?: number;
+    /** The week is CLOSED: its Sunday voice note is in (or its report exists). */
     is_week_complete?: boolean;
+    /** The week's days have passed. Over but not closed = the Sunday note is missing. */
+    week_over?: boolean;
+    closing_journal_recorded?: boolean;
     is_completed?: boolean;
     has_report?: boolean;
     has_next_plan?: boolean;
 }
+
+// ============================================================
+// "HOW DO I DO THIS?" — a step-by-step guide for one plan day
+// ============================================================
+
+export interface HowToItem {
+    name: string;
+    steps: string[];
+    mistakes: string[];
+    easier: string | null;
+}
+
+export interface TaskHowTo {
+    summary: string;
+    items: HowToItem[];
+    bare_minimum: string | null;
+    time_minutes: number | null;
+    action: string;
+    day_label?: string | null;
+    cached: boolean;
+}
+
+export const getTaskHowTo = async (sessionId: string, action: string, dayLabel?: string): Promise<TaskHowTo> => {
+    const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/howto`, {
+        method: 'POST',
+        body: JSON.stringify({ action, day_label: dayLabel }),
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Could not build the guide right now.');
+    }
+    return response.json();
+};
 
 export const getWeekInfo = async (sessionId: string): Promise<WeekInfo> => {
     // Pass client local date so backend uses IST (or user's TZ) instead of UTC server date.
@@ -873,7 +910,16 @@ export const getSessionReports = async (sessionId: string): Promise<ArchivedWeek
 // VOICE JOURNAL (session-scoped)
 // ============================================================
 
-export const uploadVoiceJournalForSession = async (audioBlob: Blob, sessionId?: string): Promise<JournalEntry & { recorded_today?: boolean }> => {
+/**
+ * Upload a voice note for a session. `journalDate` files it as the closing
+ * (Sunday) note of a week whose days have already passed — a week does not
+ * close without that note. The server accepts it only for the week's last day.
+ */
+export const uploadVoiceJournalForSession = async (
+    audioBlob: Blob,
+    sessionId?: string,
+    journalDate?: string,
+): Promise<JournalEntry & { recorded_today?: boolean; closing_note?: boolean }> => {
     const formData = new FormData();
     const ext = audioBlob.type.includes('mp4') ? 'mp4' : 'webm';
     formData.append('audio', audioBlob, `journal.${ext}`);
@@ -883,6 +929,7 @@ export const uploadVoiceJournalForSession = async (audioBlob: Blob, sessionId?: 
     const params = new URLSearchParams();
     if (sessionId) params.set('session_id', sessionId);
     params.set('client_date', clientDate);
+    if (journalDate) params.set('journal_date', journalDate);
     const qs = `?${params.toString()}`;
 
     const response = await secureFetch(`${API_BASE_URL}/journal/voice${qs}`, {

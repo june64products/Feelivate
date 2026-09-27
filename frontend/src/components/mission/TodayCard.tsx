@@ -12,6 +12,8 @@ interface TodayCardProps {
     justCelebrated: boolean;
     onCheckin: (status: 'done' | 'skipped') => void;
     onAskMentor: () => void;
+    /** Opens the step-by-step guide for today's task; falls back to the mentor when absent. */
+    onHowTo?: (entry: { day: string; action: string }) => void;
     demoMode?: boolean;
 }
 
@@ -21,7 +23,7 @@ interface TodayCardProps {
  */
 export default function TodayCard({
     activePlan, todayIso, todayStatus, checkinLoading, justCelebrated,
-    onCheckin, onAskMentor, demoMode = false,
+    onCheckin, onAskMentor, onHowTo, demoMode = false,
 }: TodayCardProps) {
     const { isMobile } = useWindowSize();
     const entry = todaysPlanEntry(activePlan, todayIso);
@@ -114,7 +116,8 @@ export default function TodayCard({
                             </button>
                             <span style={{ flex: 1 }} />
                             <button
-                                onClick={onAskMentor}
+                                data-tour="howto-button"
+                                onClick={() => (onHowTo && !demoMode ? onHowTo(entry) : onAskMentor())}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '6px',
                                     padding: '11px 16px', borderRadius: '100px',

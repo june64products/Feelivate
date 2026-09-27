@@ -32,6 +32,7 @@ from .models import (
     Feedback,
     RoadmapTask,
     Session,
+    TaskHowTo,
     User,
     UserConsent,
     UserFeedback,
@@ -457,9 +458,15 @@ def delete_user_data(db: DBSession, user: User) -> Dict[str, Any]:
             .filter(RoadmapTask.session_id.in_(session_ids))
             .delete(synchronize_session=False)
         )
+        counts["task_howtos"] = (
+            db.query(TaskHowTo)
+            .filter(TaskHowTo.session_id.in_(session_ids))
+            .delete(synchronize_session=False)
+        )
     else:
         counts["chat_messages"] = 0
         counts["roadmap_tasks"] = 0
+        counts["task_howtos"] = 0
 
     # Session-scoped rows are matched by session as well as by user. A row
     # attached to one of this user's sessions is this user's data whatever its

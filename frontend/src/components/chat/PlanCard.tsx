@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Calendar, ChevronDown, ChevronUp, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Check, Calendar, ChevronDown, ChevronUp, ArrowRight, AlertTriangle, CircleHelp } from 'lucide-react';
 import { useWindowSize } from '../../hooks/useWindowSize';
 import ConfirmDialog from '../workspace/ConfirmDialog';
+import { requestHowTo } from '../mission/HowToModal';
+import { isRestAction } from '../mission/missionTheme';
 import { projectedWeekWindow, daysBetween, formatDay, localISODate } from '../../lib/weekWindow';
 import { useExpandableDay, CLAMP_CHARS } from '../../lib/useExpandableDay';
 
@@ -231,16 +233,39 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
                                 {action}
                             </motion.div>
 
-                            {isLong && (
-                                <motion.div layout="position" style={{
-                                    fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-                                    textTransform: 'uppercase', fontFamily: satoshi,
-                                    color: 'var(--accent-warm)', flexShrink: 0,
-                                    alignSelf: 'flex-start', whiteSpace: 'nowrap',
-                                }}>
-                                    {isOpen ? 'Show less' : 'See more'}
-                                </motion.div>
-                            )}
+                            <motion.div layout="position" style={{
+                                display: 'flex', flexDirection: (isMobile || isOpen) ? 'row' : 'column',
+                                alignItems: (isMobile || isOpen) ? 'center' : 'flex-end', gap: (isMobile || isOpen) ? '14px' : '6px',
+                                flexShrink: 0, alignSelf: 'flex-start',
+                            }}>
+                                {isLong && (
+                                    <span style={{
+                                        fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
+                                        textTransform: 'uppercase', fontFamily: satoshi,
+                                        color: 'var(--accent-warm)', whiteSpace: 'nowrap',
+                                    }}>
+                                        {isOpen ? 'Show less' : 'See more'}
+                                    </span>
+                                )}
+                                {/* A guide for this day. Stops the row from toggling open underneath. */}
+                                {!isRestAction(action) && action.length >= 8 && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); requestHowTo({ day: String(day.day ?? ''), action }); }}
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                            fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em',
+                                            textTransform: 'uppercase', fontFamily: satoshi,
+                                            color: 'var(--text-secondary)', background: 'transparent',
+                                            border: '1px solid var(--border-subtle)', borderRadius: '100px',
+                                            padding: '5px 9px', cursor: 'pointer', whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        <CircleHelp size={11} />
+                                        How do I do this?
+                                    </button>
+                                )}
+                            </motion.div>
                         </motion.div>
                     );
                 })}
