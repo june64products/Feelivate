@@ -46,7 +46,10 @@ from .models import (
 # Bump this whenever the privacy policy or terms change in a way that affects
 # what the user agreed to. Users whose latest consent predates the current
 # version are re-prompted rather than assumed to still agree.
-CONSENT_POLICY_VERSION = os.getenv("CONSENT_POLICY_VERSION", "2026-07-30")
+# The date of the last material change to the Privacy Policy / Terms. Must
+# match POLICY_VERSION in frontend/src/pages/PrivacyPage.tsx. Changing it
+# asks every existing user to accept the new documents on their next sign-in.
+CONSENT_POLICY_VERSION = os.getenv("CONSENT_POLICY_VERSION", "2026-09-28")
 
 # Every consent here must be granted before the account can be used.
 # `explicit` marks the Art 9 consent, which the UI must present as its own
@@ -55,8 +58,13 @@ REQUIRED_CONSENTS: Dict[str, Dict[str, Any]] = {
     # Contract acceptance, the Art 13 notice and the age statement are not
     # GDPR "consent" at all, so bundling them into one tick is lawful — and
     # fewer boxes means the one that matters actually gets read.
+    # The "not a health or crisis service" acknowledgement lives in this same
+    # tick, on counsel's advice, rather than in a separate popup at login.
     "terms_privacy_age": {
-        "label": "I'm 18 or older, and I agree to the Terms of Service and Privacy Policy.",
+        "label": (
+            "I'm 18 or older, I agree to the Terms of Service and Privacy Policy, "
+            "and I understand Feelivate is not a health or crisis service."
+        ),
         "explicit": False,
     },
     # This one can never be merged into the tick above. Art 7(2) requires a
