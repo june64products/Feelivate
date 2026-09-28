@@ -137,13 +137,14 @@ const SECTIONS: LegalSection[] = [
   ] },
 
   { id: 'liability', h: 'Limits on liability', blocks: [
-    { t: 'p', text: 'Nothing in these Terms limits or excludes our liability for fraud or fraudulent misrepresentation; for breach of terms implied by the Consumer Rights Act 2015 (UK) or the Digital Content Directive (EU) 2019/770; for other statutory liabilities including breach of data protection laws; or for any liability which cannot be limited or excluded under the law of your country.' },
+    { t: 'note', text: '**You use Feelivate at your own risk.** To the fullest extent permitted by law, we exclude all liability for any loss, damage, injury, cost or expense of any kind arising from your use of Feelivate or your inability to use it; from anything it produces – plans, tasks, reports, emotion scores, guides, emails and chat replies; from your reliance on any of it; or from anything you do or do not do as a result. Feelivate is a free motivational tool, and you accept it on that basis.' },
+    { t: 'p', text: 'The law does not allow us to exclude everything, and we do not try to. Nothing in these Terms limits or excludes our liability for fraud or fraudulent misrepresentation; for death or personal injury caused by our negligence; for breach of terms implied by the Consumer Rights Act 2015 (UK) or the Digital Content Directive (EU) 2019/770; for other statutory liabilities including breach of data protection laws; or for any liability which cannot be limited or excluded under the law of your country. Where the law does not allow an exclusion, our liability is limited to the fullest extent it does allow.' },
     { t: 'p', text: 'Subject to the above, and to the fullest extent permitted by law:' },
     { t: 'ul', items: [
-      'We provide Feelivate "as is" and "as available" for users outside the EU, EEA and UK. For EU, EEA and UK consumers, we provide it with reasonable care and skill.',
-      'We are not liable for any loss or damage that was not reasonably foreseeable by both parties; any indirect or consequential loss, including loss of profits, business, goodwill or data; any loss arising from your acts or omissions, including inaccurate information or failure to secure your account; or interruptions caused by factors outside our control, including connectivity issues or third-party failures.',
-      'To the extent the law allows, our total liability to you in any 12-month period is limited to the greater of the amount you paid us in that period (if any) or €250.',
-      'We are not liable for any third-party services you connect to Feelivate.',
+      'We provide Feelivate "as is" and "as available", without warranties of any kind, for users outside the EU, EEA and UK. For EU, EEA and UK consumers, we provide it with reasonable care and skill and nothing more is promised.',
+      'We are not liable for any loss or damage that was not reasonably foreseeable by both parties; any indirect or consequential loss, including loss of profits, business, goodwill, opportunity or data; any loss arising from your acts or omissions, including inaccurate information, decisions you take, or failure to secure your account; or interruptions, errors or data loss caused by factors outside our control, including connectivity issues, our hosting and AI providers, or other third-party failures.',
+      'To the extent the law allows, our total liability to you for all claims in any 12-month period is limited to the greater of the amount you paid us in that period (if any) or €250.',
+      'We are not liable for any third-party services you connect to Feelivate, or for the acts or omissions of our AI providers.',
       'You remain responsible for the decisions you make about your own health, finances, work and life, whatever the app suggests.',
     ] },
     { t: 'h3', text: 'No duty of care' },
