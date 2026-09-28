@@ -1088,15 +1088,13 @@ async def chat(
                     if week_report_data:
                         break  # Use the most recent valid report found
 
-        # 4e. Is the CURRENT (locked) week closed? A week closes only when its
-        #     last day's voice journal is in (or its report already exists) — never
-        #     just because the calendar moved on. Until then the model must not
-        #     build the next week; once its days are over it should ask for the
-        #     Sunday voice note instead. A week approved on a Sunday used to count
-        #     as complete the moment it was locked (today >= end), and the model
-        #     answered a confused "I don't know how to do this" with Week 1.
+        # 4e. Is the CURRENT (locked) week finished? Next-week plans are only allowed
+        #     once the current week is complete — its end date has passed OR its weekly
+        #     report exists — so the model can analyze that week before building the next.
+        #     While the week is still ongoing, the model must NOT build the next week;
+        #     it should help the user with their CURRENT plan instead. (Even once it is
+        #     complete, the next week is built only when the user asks — see 6a-0.)
         current_week_complete = False
-        week_window_over = False
         if session_rec.phase == "active" and session_rec.plan_start_date:
             try:
                 # `or 1` would treat a valid Week 0 as Week 1 (0 is falsy), making the
@@ -1111,13 +1109,13 @@ async def chat(
                     _today_cur = _dt.datetime.now(_tz).date().isoformat()
                 except Exception:
                     _today_cur = _dt.date.today().isoformat()
-                week_window_over = _today_cur > we_cur
+                week_ended = _today_cur >= we_cur
                 report_exists = db.query(WeeklyReport).filter(
                     WeeklyReport.user_id == user_id,
                     WeeklyReport.session_id == session_id,
                     WeeklyReport.week_start == ws_cur,
                 ).first() is not None
-                current_week_complete = report_exists or _closing_journal_exists(db, user_id, session_id, we_cur)
+                current_week_complete = week_ended or report_exists
             except Exception as e:
                 logger.warning(f"current_week_complete calc failed: {e}")
 
@@ -1165,7 +1163,6 @@ async def chat(
             week_report_data=week_report_data,
             client_timezone=payload.timezone,
             current_week_complete=current_week_complete,
-            week_window_over=week_window_over,
         )
 
         # 5a. Crisis override. If the message indicates suicide or self-harm
@@ -1364,21 +1361,13 @@ async def chat(
                     f"(current_week_complete=False) — discarding plan."
                 )
                 plan_data = None
-                if week_window_over:
-                    reply_text = (
-                        f"Week {cur_wk}'s days are done, but a week only closes with your Sunday voice note 🎙️ "
-                        f"— that's what I read to build the next one properly. Tap 'Evening voice note', "
-                        f"talk for 60 seconds about how the week went, and I'll have your report and "
-                        f"Week {cur_wk + 1} ready right after."
-                    )
-                else:
-                    reply_text = (
-                        f"Week {cur_wk} is still in progress 💪 — let's finish this one first. "
-                        f"I'll build the next week only once this week wraps up and its report is ready, "
-                        f"so I can study your full week and make the next plan actually fit you. "
-                        f"In the meantime, tell me exactly where you're getting stuck and I'll give you "
-                        f"specific fixes and tips within this week's plan (without changing the locked plan)."
-                    )
+                reply_text = (
+                    f"Week {cur_wk} is still in progress 💪 — let's finish this one first. "
+                    f"I'll build the next week only once this week wraps up and its report is ready, "
+                    f"so I can study your full week and make the next plan actually fit you. "
+                    f"In the meantime, tell me exactly where you're getting stuck and I'll give you "
+                    f"specific fixes and tips within this week's plan (without changing the locked plan)."
+                )
                 assistant_msg.content = reply_text  # keep the saved message consistent
 
             else:
@@ -2547,18 +2536,9 @@ async def task_howto(
     return {**content, "cached": False, "day_label": day_label}
 
 
-# ── Week closure ──────────────────────────────────────────────────────────────
-# A week closes only when its last day's voice journal is recorded (or a report
-# for it already exists). The date passing is not enough: without that closing
-# note there is nothing honest to build the next week from.
-
-def _closing_journal_exists(db: DBSession, user_id: str, session_id: Optional[str], week_end: str) -> bool:
-    q = db.query(VoiceJournal.id).filter(VoiceJournal.user_id == user_id, VoiceJournal.date == week_end)
-    if session_id:
-        # Entries recorded before journals were session-scoped have no session.
-        q = q.filter((VoiceJournal.session_id == session_id) | (VoiceJournal.session_id.is_(None)))
-    return q.first() is not None
-
+# ── Asking for the next week ──────────────────────────────────────────────────
+# Once a week is complete the model may build the next one, but only when the
+# user actually asks. A confused "I don't know how to do this" is not a request.
 
 # What counts as asking for the next week. Deliberately needs a plan/week noun
 # next to an intent word, so "I don't understand this plan" or "how do I build
@@ -2971,11 +2951,8 @@ async def get_week_info(
 ):
     """Return the current week's date bounds and completion status for the session.
     Pass client_date (YYYY-MM-DD) from user's local timezone to avoid UTC vs IST mismatch.
-
-    is_week_complete means the week is CLOSED: its last day's voice journal is
-    recorded (or its report exists). week_over means its days have passed. A
-    week whose days are over but whose closing note is missing is neither
-    finished nor open — the client asks for the Sunday voice note.
+    is_week_complete is True on the LAST day itself (>=) so the report and Plan Week N+1
+    button both appear on Sunday rather than the day after.
     """
     from datetime import date
     session_rec = db.query(Session).filter(Session.id == session_id).first()
@@ -3000,18 +2977,18 @@ async def get_week_info(
     else:
         today = date.today().isoformat()
 
+    # >= so the last day of the week (Sunday/plan-end day) itself counts as "complete".
+    # This allows the weekly report and "Plan Week N+1" button to appear on the final day
+    # after the user records their voice journal, rather than requiring them to wait until
+    # the following day.
+    is_week_complete = today >= we
+
     # Check if a weekly report exists for this week
     has_report = db.query(WeeklyReport).filter(
         WeeklyReport.user_id == current_user.id,
         WeeklyReport.session_id == session_id,
         WeeklyReport.week_start == ws,
     ).first() is not None
-
-    closing_journal_recorded = _closing_journal_exists(db, current_user.id, session_id, we)
-    week_over = today > we
-    # Closed by the Sunday voice note (recordable on Sunday itself, or late), or
-    # by a report that already exists for it. Never by the calendar alone.
-    is_week_complete = closing_journal_recorded or has_report
 
     # Check if next week's plan already exists
     # When user generates "Plan Week N+1", session.current_week increments to N+1
@@ -3032,8 +3009,6 @@ async def get_week_info(
         "week_end": we,
         "day_count": day_count,
         "is_week_complete": is_week_complete,
-        "week_over": week_over,
-        "closing_journal_recorded": closing_journal_recorded,
         "is_completed": bool(session_rec.is_completed),
         "has_report": has_report,
         "has_next_plan": has_next_plan,
@@ -3362,7 +3337,6 @@ async def create_voice_journal(
     audio: UploadFile = File(...),
     session_id: Optional[str] = None,
     client_date: Optional[str] = None,  # ISO date from client local timezone
-    journal_date: Optional[str] = None,  # a late closing note: the week's last day, recorded after it
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_consented_user),
 ):
@@ -3371,11 +3345,6 @@ async def create_voice_journal(
     Session-scoped: pass session_id query param to tag entry to a session.
     One entry per user per day; calling again updates the existing entry.
     Pass client_date (ISO string) to use local timezone instead of UTC.
-
-    journal_date lets the closing (Sunday) note of a week be recorded after
-    that day has passed — a week does not close without it. It is accepted
-    only for the session's current week end, and only once that day is over;
-    anything else is ignored and the note is filed under today.
     """
     from .llm import call_groq_transcribe
     from datetime import date
@@ -3388,18 +3357,6 @@ async def create_voice_journal(
     # Use client's local date if provided to avoid UTC vs IST timezone mismatch
     today = client_date if client_date else date.today().isoformat()
     user_id = current_user.id
-
-    late_closing = False
-    if journal_date and session_id and journal_date < today:
-        session_rec = db.query(Session).filter(Session.id == session_id, Session.user_id == user_id).first()
-        if session_rec and session_rec.plan_start_date:
-            try:
-                _, week_end, _ = _week_bounds_for(session_rec, _latest_approved_week(session_rec))
-                late_closing = journal_date == week_end
-            except Exception as e:
-                logger.warning(f"journal_date check failed (non-fatal): {e}")
-    if late_closing:
-        today = journal_date
 
     # 1. Transcribe
     try:
@@ -3446,31 +3403,28 @@ async def create_voice_journal(
 
     # 4. Auto-mark today's daily checkin as "done" so the streak updates automatically
     #    when a voice journal is recorded (user doesn't need to press Done separately).
-    #    A late closing note reflects on the week; it does not retroactively mark
-    #    that day's task as done.
-    if not late_closing:
-        existing_checkin = (
-            db.query(DailyCheckin)
-            .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == today)
-            .first()
-        )
-        if existing_checkin:
-            # Only upgrade to 'done' — never downgrade a done checkin
-            if existing_checkin.status != "done":
-                existing_checkin.status = "done"
-            # Always update session_id to the latest active session
-            if session_id:
-                existing_checkin.session_id = session_id
-        else:
-            db.add(DailyCheckin(
-                user_id=user_id,
-                session_id=session_id,
-                date=today,
-                status="done",
-            ))
-        db.commit()
-        # Pass today (client date) so streak boundary uses user's local timezone
-        _recalculate_streak(db, user_id, client_date=today)
+    existing_checkin = (
+        db.query(DailyCheckin)
+        .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == today)
+        .first()
+    )
+    if existing_checkin:
+        # Only upgrade to 'done' — never downgrade a done checkin
+        if existing_checkin.status != "done":
+            existing_checkin.status = "done"
+        # Always update session_id to the latest active session
+        if session_id:
+            existing_checkin.session_id = session_id
+    else:
+        db.add(DailyCheckin(
+            user_id=user_id,
+            session_id=session_id,
+            date=today,
+            status="done",
+        ))
+    db.commit()
+    # Pass today (client date) so streak boundary uses user's local timezone
+    _recalculate_streak(db, user_id, client_date=today)
 
     response: Dict[str, Any] = {
         "date": today,
@@ -3478,8 +3432,7 @@ async def create_voice_journal(
         "emotion_label": emotion["label"],
         "emotion_score": emotion["score"],
         "one_liner": emotion["one_liner"],
-        "recorded_today": not late_closing,
-        "closing_note": late_closing,
+        "recorded_today": True,
     }
     # A voice note is often where someone says the thing they wouldn't type.
     # Same screen as the chat endpoint, applied to the transcript.
@@ -3677,26 +3630,12 @@ async def get_weekly_report(
             # Week still running — nothing to report yet.
             return {"status": "no_data", "message": "No journal entries this week yet.", "week_start": ws, "week_end": we, "week_number": wk_num}
 
-        # The days are over but nothing was recorded. A week closes only with
-        # its last day's voice note, so it stays open until that note exists —
-        # the client asks for it; the mentor does too. (Once the closing note
-        # is in, a week with no other entries still gets a quiet report below.)
-        return {
-            "status": "in_progress",
-            "message": f"Week {wk_num} closes with your Sunday voice note — record it and the review unlocks.",
-            "week_start": ws, "week_end": we, "week_number": wk_num,
-            "needs_closing_note": True,
-        }
-
-    if len(journals) == 1 and journals[0].date == we and not (journals[0].transcript or "").strip():
-        # Defensive: a blank closing note is treated like silence.
-        journals = []
-
-    if not journals:
-        # ── Quiet week: closed with zero content. Persist an honest deterministic
-        # report (no LLM needed for silence): plain about the zero input, warm
-        # about the restart. quiet_week=True also tells the mentor prompt to
-        # restart at the same level instead of advancing.
+        # ── Quiet week: the week ENDED with zero journals. Previously this
+        # returned no_data forever — no report in the Archive, no has_report,
+        # and the next-week flow had nothing to read. Instead, persist an
+        # honest deterministic report (no LLM needed for silence): plain about
+        # the zero input, warm about the restart. quiet_week=True also tells
+        # the mentor prompt to restart at the same level instead of advancing.
         done_days = (
             db.query(DailyCheckin)
             .filter(
@@ -3728,23 +3667,19 @@ async def get_weekly_report(
         return {"status": "generated", "week_start": ws, "week_end": we, "week_number": wk_num, "report": quiet_report}
 
     # ── 1b. Completion gate ─────────────────────────────────────────────────────
-    # A weekly report is generated (and persisted) ONLY once the week is CLOSED,
-    # which means its last day's (Sunday's) voice entry has been recorded — on
-    # that day or later. The calendar passing does not close a week. While the
-    # week is open we never generate or cache a report, so it never shows up in
-    # the Archive early.
+    # A weekly report is generated (and persisted) ONLY once the week is COMPLETE:
+    #   • Sunday's voice entry has been recorded, OR
+    #   • Sunday has already passed (today is after week_end).
+    # While the week is still in progress we never generate or cache a report, so it
+    # never shows up in the Archive before the week is actually over.
     today_str = today.isoformat()
     sunday_entry_exists = any(j.date == we for j in journals)
-    if not sunday_entry_exists:
+    week_complete = (today_str > we) or sunday_entry_exists
+    if not week_complete:
         return {
             "status": "in_progress",
-            "message": (
-                f"Week {wk_num} closes with your Sunday voice note — record it and the review unlocks."
-                if today_str > we
-                else "Your weekly review unlocks when this week wraps up — record Sunday's voice note to close it."
-            ),
+            "message": "Your weekly review unlocks when this week wraps up — record Sunday's entry, or once Sunday passes.",
             "week_start": ws, "week_end": we, "week_number": wk_num,
-            "needs_closing_note": today_str > we,
         }
 
     # ── 2. Check cache (session + week keyed) ──────────────────────────────────

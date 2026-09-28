@@ -915,15 +915,6 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             (!!weekInfo?.week_end && today > weekInfo.week_end && !weekInfo?.has_next_plan)
         );
 
-    // The week's days have passed but its Sunday voice note was never
-    // recorded: the week is not closed. The journal stays open for exactly
-    // that one note, filed under the week's last day, and the report and the
-    // next week wait for it.
-    const needsClosingNote = !demoMode
-        && !!weekInfo?.has_plan && !!weekInfo?.week_over && !!weekInfo?.week_end
-        && !weekInfo?.closing_journal_recorded && !weekInfo?.is_week_complete;
-    const closingRef = useRef(false);
-
     // In the guided demo we never hit the backend — show the empty Journey UI plus
     // canned archive reports so the mic / Overview / Archive can be spotlighted.
     useEffect(() => {
@@ -1013,10 +1004,9 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
         setIsRecording(false);
     };
 
-    // Three entry points, one recorder. The refs decide where the audio goes.
-    const beginJournal = () => { moodModeRef.current = false; closingRef.current = false; startRecording(); };
-    const beginMood = () => { moodModeRef.current = true; closingRef.current = false; startRecording(); };
-    const beginClosingNote = () => { moodModeRef.current = false; closingRef.current = true; startRecording(); };
+    // Two entry points, one recorder. The ref decides where the audio goes.
+    const beginJournal = () => { moodModeRef.current = false; startRecording(); };
+    const beginMood = () => { moodModeRef.current = true; startRecording(); };
 
     const handleUpload = async () => {
         if (moodModeRef.current) {
@@ -1035,25 +1025,19 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
             return;
         }
         setIsUploading(true);
-        const isClosing = closingRef.current;
-        closingRef.current = false;
         try {
             const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-            const entry = await uploadVoiceJournalForSession(blob, sessionId, isClosing ? weekInfo?.week_end : undefined);
+            const entry = await uploadVoiceJournalForSession(blob, sessionId);
             setJustSaved(entry);
+            onJournalSaved?.(entry);
             setJournals(prev => {
                 const filtered = prev.filter(j => j.date !== entry.date);
                 return [entry, ...filtered];
             });
-            if (!isClosing) {
-                // A late closing note belongs to the week's last day, not to today:
-                // it neither locks today's mic nor becomes today's mood.
-                onJournalSaved?.(entry);
-                const uid = localStorage.getItem('user_id');
-                const key = `last_journal_date_${uid}_${sessionId ?? 'none'}`;
-                localStorage.setItem(key, getLocalISODate());
-                setMicLocked(true);
-            }
+            const uid = localStorage.getItem('user_id');
+            const key = `last_journal_date_${uid}_${sessionId ?? 'none'}`;
+            localStorage.setItem(key, getLocalISODate());
+            setMicLocked(true);
 
             // Refresh the weekly report
             setLoadingReport(true);
@@ -1504,9 +1488,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                             : todayEntry ? `Feeling ${todayEntry.emotion_label} — ${todayEntry.emotion_score}/10` : 'How did today actually go?'}
                                     </p>
                                     <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, fontFamily: satoshi, lineHeight: 1.6, maxWidth: '460px', marginLeft: 'auto', marginRight: 'auto' }}>
-                                        {needsClosingNote
-                                            ? `Week ${weekInfo?.current_week ?? 1}'s days are done, but a week only closes with its Sunday voice note. 60 honest seconds on how the week went — your report and the next week unlock right after.`
-                                            : noActiveWeek
+                                        {noActiveWeek
                                             ? 'Your journal is locked because no week is committed — it unlocks the moment your next week starts. Meanwhile the small mic below logs a quick mood: just for you, it joins no report.'
                                             : todayEntry
                                                 ? 'Captured. Your mentor folds this into your week report.'
@@ -1536,32 +1518,6 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
                                                 }}>
                                                 <Square size={28} fill="#f87171" />
                                             </motion.button>
-                                        ) : needsClosingNote ? (
-                                            // Over but not closed: the one mic that matters is the closing
-                                            // note, filed under the week's last day.
-                                            <motion.div key="closing-note"
-                                                initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
-                                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}
-                                            >
-                                                <motion.button
-                                                    data-tour="closing-mic"
-                                                    whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-                                                    onClick={beginClosingNote}
-                                                    aria-label="Record the Sunday voice note that closes this week"
-                                                    style={{
-                                                        width: '88px', height: '88px', borderRadius: '50%',
-                                                        border: '2px solid var(--accent-primary)',
-                                                        background: 'var(--btn-primary-bg)',
-                                                        color: 'var(--btn-primary-text)', cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        boxShadow: '0 10px 30px var(--accent-glow)',
-                                                    }}>
-                                                    <Mic size={30} />
-                                                </motion.button>
-                                                <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 700, fontFamily: satoshi, textAlign: 'center', lineHeight: 1.5 }}>
-                                                    Record Sunday's note · closes Week {weekInfo?.current_week ?? 1}
-                                                </span>
-                                            </motion.div>
                                         ) : noActiveWeek ? (
                                             // Between weeks: the journal is locked (and says why), and a
                                             // separate mood-only mic takes over — connected to nothing.

@@ -676,7 +676,6 @@ def build_chat_prompt(
     week_report_data: Optional[dict] = None,
     client_timezone: str = "UTC",
     current_week_complete: bool = False,
-    week_window_over: bool = False,
 ) -> List[Dict[str, str]]:
     """
     Build the messages array for the LLM call.
@@ -717,27 +716,7 @@ def build_chat_prompt(
             f"\n"
             f"\nNEVER output a plan JSON for Week {current_week} (it is locked)."
         )
-        if not current_week_complete and week_window_over:
-            # The days are over but the closing voice note isn't in: the week is
-            # not closed. Ask for the note when they want to move on; otherwise
-            # just help.
-            system_content += (
-                f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                f"\n⚠️ WEEK {current_week}'S DAYS ARE OVER BUT THE WEEK IS NOT CLOSED"
-                f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                f"\nA week closes only with the user's Sunday (last-day) voice note, and it has not been"
-                f" recorded. Without it there is no report and Week {current_week + 1} cannot be built."
-                f"\n"
-                f"\n✅ If the user asks for the next week / a new plan / to move on: warmly tell them to record"
-                f" the Sunday voice note first — the 'Evening voice note' button, 60 seconds on how the week"
-                f" went — and that their report and Week {current_week + 1} unlock right after. Keep it to 2–3"
-                f" sentences. plan MUST be null."
-                f"\n✅ For ANY other message (a question, a struggle, an exercise they don't understand, casual"
-                f" talk): answer it normally and specifically. Do NOT bring up the voice note unless it fits."
-                f" plan MUST be null."
-                f"\n🚫 NEVER output a plan JSON for Week {current_week + 1} in this state, even if they insist."
-            )
-        elif not current_week_complete:
+        if not current_week_complete:
             # The current week is still in progress — the next week must NOT be built yet.
             system_content += (
                 f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -763,16 +742,16 @@ def build_chat_prompt(
                 f"\n  4. plan MUST be null."
             )
         else:
-            # Current week is closed (its Sunday voice note is in). The next week
-            # may be built — but only when the user actually asks for it. A
-            # question, a slip, "done", "I don't get this" are not requests for
-            # a plan; they are answered as themselves.
+            # Current week is complete. The next week may be built — but only
+            # when the user actually asks for it. A question, a slip, "done",
+            # "I don't get this" are not requests for a plan; they are answered
+            # as themselves.
             report_line = (
                 f" Its performance report is available below." if week_report_data
                 else " Its report is not generated yet; work from the plan history and what the user tells you."
             )
             system_content += (
-                f"\n\n✅ WEEK {current_week} IS CLOSED — the Sunday voice note is recorded.{report_line}"
+                f"\n\n✅ WEEK {current_week} IS COMPLETE.{report_line}"
                 f"\nBuild Week {current_week + 1} ONLY when the user explicitly asks for it (\"build week"
                 f" {current_week + 1}\", \"next week\", \"plan next week\", \"agle hafte ka plan\", or agreeing"
                 f" to your offer). When you do, FIRST analyze Week {current_week} (consistency, emotional arc,"
