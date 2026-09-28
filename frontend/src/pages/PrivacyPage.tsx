@@ -8,9 +8,10 @@ import LegalDoc, { type LegalSection } from '../components/legal/LegalDoc';
  *
  * Text finalised with counsel's draft of 30 July 2026, corrected against the
  * application as built (see the alignment brief of 19 September 2026) and
- * updated for the changes since: OpenRouter as the primary AI route, the
- * Qdrant cluster in Frankfurt, the feedback form, long-term memory of every
- * chat exchange, and the 8-character password floor.
+ * updated for the changes since (AI routing, memory store location, the
+ * feedback form, long-term memory of every chat exchange, the password
+ * floor). Processors are named by category, with the named list available
+ * on request — a business decision of 28 September 2026.
  *
  * POLICY_VERSION must match CONSENT_POLICY_VERSION in the backend. Bumping it
  * asks every user to accept the new policy on their next sign-in, so change
@@ -84,7 +85,7 @@ const SECTIONS: LegalSection[] = [
       ['Your timezone (read from your browser)', 'Sending your daily email at the right local time', 'Art 6(1)(b) – contract performance'],
       ['Service logs (timestamps, endpoints, error traces)', 'Keeping the service running', 'Art 6(1)(f) – legitimate interests (service reliability)'],
     ] },
-    { t: 'p', text: '**About our logs.** We redact known identifiers (such as email addresses) from our logs, and we do not write your chat messages or journal text into them. Logs are held on our hosting platforms (Northflank for the API, Vercel for the website) for a limited period set by those platforms and then deleted.' },
+    { t: 'p', text: '**About our logs.** We redact known identifiers (such as email addresses) from our logs, and we do not write your chat messages or journal text into them. Logs are held on our hosting platforms for a limited period set by those platforms and then deleted.' },
     { t: 'h3', text: 'What we do not collect' },
     { t: 'ul', items: [
       '**Voice recordings.** We do not store your voice recordings. The audio is transcribed and discarded in the same request; only the transcript is saved.',
@@ -140,11 +141,11 @@ const SECTIONS: LegalSection[] = [
     { t: 'h3', text: 'Your data is sent to AI providers outside the EU and UK' },
     { t: 'p', text: 'When you chat, record a voice note, or we generate your plan, report or daily email, your content is sent to our AI providers for processing:' },
     { t: 'ul', items: [
-      '**OpenRouter, Inc. (United States)** – our primary route for chat replies, plans, weekly reports and daily-email text. OpenRouter forwards each request to the model host it selects for that request (currently providers in the United States running the open-weight gpt-oss-120b model); OpenRouter and the selected host see the content of the request.',
-      '**Groq, Inc. (United States)** – speech-to-text transcription of your voice notes, the emotion analysis of your transcripts, the safety screening of your messages, and the short titles shown in your session list.',
-      '**OpenAI, L.L.C. (United States)** – the fallback for chat, plans and reports when OpenRouter is unavailable; the "embeddings" that let the mentor remember your conversations across weeks, created for every chat message; and a fallback for emotion analysis.',
+      '**Our AI model providers (United States)** – generate the mentor\'s chat replies, your plans, your weekly reports and the text of your daily emails. Each request is routed to the provider best placed to serve it at that moment, and the provider handling a request sees its content.',
+      '**Our speech-to-text and analysis provider (United States)** – transcribes your voice notes, analyses the transcripts for emotion, screens your messages for safety, and generates the short titles shown in your session list.',
+      '**Our embedding provider (United States)** – creates the numerical representations ("embeddings") that let the mentor remember your conversations across weeks. One is created for every chat message.',
     ] },
-    { t: 'p', text: 'Switching between providers is automatic and seamless. See "Who else sees your data" for what each receives and where.' },
+    { t: 'p', text: 'Switching between providers is automatic and seamless. See "Who else sees your data" for what each category of provider receives and where it processes it; the named list is available on request.' },
     { t: 'h3', text: 'How we protect your data with AI providers' },
     { t: 'p', text: 'Each provider\'s API terms state that content sent through their API is not used to train or improve their models. We are in the process of finalising formal data processing agreements with these providers that include the same prohibition in contractual form, and we will update this policy once they are executed. If you have any concerns about this interim arrangement, please contact us at [info@june64.com](mailto:info@june64.com) before using the service.' },
     { t: 'h3', text: 'Safety screening' },
@@ -157,16 +158,16 @@ const SECTIONS: LegalSection[] = [
 
   { id: 'who-else-sees-your-data', h: 'Who else sees your data', blocks: [
     { t: 'p', text: 'We use a small number of service providers ("processors") to run Feelivate. Each processor acts only on our instructions and may not use your data for its own purposes. They are bound either by a data processing agreement or, where noted above for AI providers, by their published API and data processing terms while formal agreements are finalised.' },
-    { t: 'h3', text: 'Sub-processor list' },
-    { t: 'p', text: 'This is the full, current list — what each processor receives and where it processes it. We update it whenever a processor changes.' },
+    { t: 'h3', text: 'Our processors' },
+    { t: 'p', text: 'These are the categories of processor we use, what each receives and where it processes your data. We update this whenever a processor changes. The named list of our current processors is available on request – email [info@june64.com](mailto:info@june64.com).' },
     { t: 'table', head: ['Processor', 'What it receives', 'Where'], rows: [
-      ['Northflank Ltd (UK)', 'Hosts our API and database: all account data listed above. Also serves the one-tap "Done" page linked from daily emails.', 'Singapore (Google Cloud)'],
-      ['Vercel, Inc.', 'Hosts the website and app front end; receives visitor IP addresses and request logs.', 'United States (global edge network)'],
-      ['OpenRouter, Inc., and the model hosts it routes to', 'Chat messages and context, plan and report generation, daily-email text.', 'United States'],
-      ['Groq, Inc.', 'Voice audio for speech-to-text (discarded after transcription); transcripts for emotion analysis; messages for safety screening; first messages for session titles.', 'United States'],
-      ['OpenAI, L.L.C.', 'Fallback for chat, plans and reports; every chat message for memory embeddings; fallback emotion analysis.', 'United States'],
-      ['Qdrant Solutions GmbH (Qdrant Cloud)', 'Long-term memory: the text of each chat exchange with its embedding, keyed to your account.', 'Frankfurt, Germany (Google Cloud europe-west3)'],
-      ['Resend, Inc.', 'Email address, name, today\'s task text, verification codes, reminder and recovery emails, contact-form forwards.', 'United States company; messages are dispatched via Amazon SES from Tokyo, Japan'],
+      ['Hosting and database provider', 'Hosts our API and database: all account data listed above. Also serves the one-tap "Done" page linked from daily emails.', 'Singapore'],
+      ['Website hosting provider', 'Hosts the website and app front end; receives visitor IP addresses and request logs.', 'United States (global edge network)'],
+      ['AI model providers', 'Chat messages and context, plan and report generation, daily-email text.', 'United States'],
+      ['Speech-to-text and analysis provider', 'Voice audio for speech-to-text (discarded after transcription); transcripts for emotion analysis; messages for safety screening; first messages for session titles.', 'United States'],
+      ['Embedding provider', 'Every chat message, to create the embeddings used for long-term memory.', 'United States'],
+      ['Vector-memory provider', 'Long-term memory: the text of each chat exchange with its embedding, keyed to your account.', 'Frankfurt, Germany'],
+      ['Email delivery provider', 'Email address, name, today\'s task text, verification codes, reminder and recovery emails, contact-form forwards.', 'United States company; messages are dispatched from Tokyo, Japan'],
       ['Google LLC', 'Only if you sign in with Google or connect Google Calendar: identity data; calendar events created from your plan.', 'United States'],
     ] },
     { t: 'h3', text: 'When we share your data' },
@@ -194,7 +195,7 @@ const SECTIONS: LegalSection[] = [
       ['Consent records', 'For the life of your account, then deleted with it'],
       ['Email verification codes', '10 minutes, then cleared automatically'],
       ['Feedback you send us', 'For as long as it is useful for improving the service; you can ask us to delete yours at any time'],
-      ['Service logs', 'A limited period set by our hosting platforms (Northflank, Vercel), then deleted'],
+      ['Service logs', 'A limited period set by our hosting platforms, then deleted'],
       ['Inactive accounts', 'Not deleted automatically. Your account and data stay until you delete them (Profile → Delete account). If we introduce automatic deletion of inactive accounts, we will update this policy and email you first'],
       ['Records we must keep by law (e.g. tax)', 'For the statutory period'],
     ] },

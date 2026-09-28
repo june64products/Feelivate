@@ -94,7 +94,7 @@ const SECTIONS: LegalSection[] = [
     { t: 'h3', text: 'Our intellectual property' },
     { t: 'p', text: 'All rights to the Feelivate platform, software, prompts, trademarks and underlying technology remain ours. You may use the service only for your personal, non-commercial purposes. You may not copy, modify, reverse-engineer or resell any part of it.' },
     { t: 'h3', text: 'AI provider processing' },
-    { t: 'p', text: 'Your Content is processed by our AI providers – currently OpenRouter, Inc. and the model hosts it routes to, Groq, Inc. and OpenAI, L.L.C. – as described in our [Privacy Policy](https://feelivate.com/privacy#ai-processing). Their API terms prohibit the use of your data to train their models; we are in the process of putting formal contractual arrangements in place to the same effect.' },
+    { t: 'p', text: 'Your Content is processed by our AI providers as described in our [Privacy Policy](https://feelivate.com/privacy#ai-processing). Their API terms prohibit the use of your data to train their models; we are in the process of putting formal contractual arrangements in place to the same effect.' },
     { t: 'h3', text: 'Feedback' },
     { t: 'p', text: 'Any feedback or suggestions you provide may be used by us without compensation to you.' },
   ] },
