@@ -316,9 +316,17 @@ const PillNav: React.FC<PillNavProps> = ({
         ))}
       </div>
 
-      {/* Responsive CSS */}
+      {/* Responsive CSS. Below 768px the site nav (BrandNav) swaps this whole
+          component for its own menu, so this fallback only matters if PillNav
+          is ever used on its own. It used to kick in at 860px, which left
+          tablets with a hamburger next to an empty bar where the links fit. */}
       <style>{`
-        @media (max-width: 860px) {
+        /* Tablets: the five pills plus the brand and the CTA only just fit at
+           820px, so the pills lose some side padding there. */
+        @media (max-width: 960px) {
+          .pn-pill { padding: 0 12px !important; }
+        }
+        @media (max-width: 767px) {
           .pn-desktop { display: none !important; }
           .pn-hamburger { display: flex !important; }
         }

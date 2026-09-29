@@ -32,7 +32,7 @@ type Props = {
  * to the device's light/dark mode via the `data-theme` attribute.
  */
 export default function BrandNav({ variant = 'sticky' }: Props) {
-  const { isMobile } = useWindowSize();
+  const { isMobile, isTablet } = useWindowSize();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
@@ -44,7 +44,8 @@ export default function BrandNav({ variant = 'sticky' }: Props) {
   const ctaStyle: React.CSSProperties = {
     background: 'var(--btn-primary-bg)',
     color: 'var(--btn-primary-text)',
-    padding: '9px 18px',
+    padding: isTablet ? '9px 14px' : '9px 18px',
+    whiteSpace: 'nowrap',
     borderRadius: '100px',
     fontSize: '13px',
     fontWeight: 700,
@@ -67,7 +68,7 @@ export default function BrandNav({ variant = 'sticky' }: Props) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: isMobile ? '0 20px' : '0 40px',
+        padding: isMobile ? '0 20px' : isTablet ? '0 24px' : '0 40px',
         height: isMobile ? '60px' : '76px',
         background: floating ? 'transparent' : 'color-mix(in srgb, var(--bg-primary) 82%, transparent)',
         backdropFilter: floating ? 'none' : 'blur(12px)',
@@ -102,7 +103,7 @@ export default function BrandNav({ variant = 'sticky' }: Props) {
       </Link>
 
       {/* Right cluster */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '18px', pointerEvents: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : isTablet ? '12px' : '18px', marginLeft: '16px', pointerEvents: 'auto' }}>
         {!isMobile && (
           <PillNav
             items={NAV_LINKS.map((l) => ({ label: l.label, onClick: () => navigate(l.to) }))}

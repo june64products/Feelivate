@@ -85,7 +85,11 @@ const labelStyle: React.CSSProperties = {
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { isMobile } = useWindowSize();
+  const { isMobile, width } = useWindowSize();
+  // Tablets (768–960): too narrow for the side-by-side split, so the brand
+  // panel stacks under the form instead of being hidden. Phones keep the
+  // form-only layout.
+  const stackPanel = !isMobile && width < 960;
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -200,16 +204,16 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN SPLIT — Login left, Marketing right
           ══════════════════════════════════════════════════════════════════════ */}
-      <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row', paddingTop: isMobile ? '60px' : '76px' }}>
+      <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: (isMobile || stackPanel) ? 'column' : 'row', paddingTop: isMobile ? '60px' : '76px' }}>
 
         {/* ── LEFT: Sign-In Form ────────────────────────────────────────────── */}
         <div style={{
-          flex: isMobile ? '1 1 auto' : '0 0 48%',
-          width: isMobile ? '100%' : 'auto',
+          flex: (isMobile || stackPanel) ? '1 1 auto' : '0 0 48%',
+          width: (isMobile || stackPanel) ? '100%' : 'auto',
           display: 'flex',
           alignItems: isMobile ? 'flex-start' : 'center',
           justifyContent: 'center',
-          padding: isMobile ? '32px 24px 40px' : '60px 48px',
+          padding: isMobile ? '32px 24px 40px' : stackPanel ? '48px 32px 44px' : '60px 48px',
           background: 'var(--bg-primary)',
         }}>
           <div ref={formRef} style={{ width: '100%', maxWidth: '380px' }}>
@@ -494,14 +498,17 @@ export default function LoginPage() {
         {/* ── RIGHT: Marketing / Brand Panel ──────────────────────────────── */}
         {!isMobile && (
           <div className="brand-panel-swiss" style={{
-            flex: '0 0 52%',
+            flex: stackPanel ? '1 1 auto' : '0 0 52%',
+            width: stackPanel ? '100%' : 'auto',
             background: 'var(--bg-secondary)',
-            borderLeft: '1px solid var(--border-subtle)',
+            borderLeft: stackPanel ? 'none' : '1px solid var(--border-subtle)',
+            borderTop: stackPanel ? '1px solid var(--border-subtle)' : 'none',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
+            alignItems: stackPanel ? 'center' : 'stretch',
             gap: 'clamp(22px, 3vh, 36px)',
-            padding: 'clamp(36px, 5vw, 64px)',
+            padding: stackPanel ? '44px 32px 56px' : 'clamp(36px, 5vw, 64px)',
             position: 'relative',
             overflow: 'hidden',
           }}>
@@ -509,7 +516,7 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.2, ease: [0.77, 0, 0.175, 1] }}
-              style={{ maxWidth: '520px', flexShrink: 0 }}
+              style={{ width: stackPanel ? '100%' : undefined, maxWidth: stackPanel ? '600px' : '520px', flexShrink: 0 }}
             >
               <h2 style={{
                 fontSize: 'clamp(26px, 3.2vw, 44px)', fontWeight: 700,
@@ -1226,9 +1233,9 @@ export default function LoginPage() {
         input::placeholder { color: var(--text-placeholder) !important; }
         input { box-sizing: border-box; }
 
-        /* Responsive */
+        /* Responsive. The brand panel is handled in the component: it stacks
+           under the form on tablets and is omitted on phones. */
         @media (max-width: 960px) {
-          .brand-panel-swiss { display: none !important; }
           .nav-links-swiss { display: none !important; }
           footer > div:first-child {
             grid-template-columns: 1fr 1fr !important;
