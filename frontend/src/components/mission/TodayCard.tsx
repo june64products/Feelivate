@@ -102,18 +102,11 @@ export default function TodayCard({
                                 <Check size={15} />
                                 Done for today
                             </motion.button>
-                            <button
-                                onClick={() => !demoMode && onCheckin('skipped')}
-                                disabled={checkinLoading}
-                                style={{
-                                    padding: '12px 18px', borderRadius: '100px',
-                                    border: '1px solid var(--border-medium)', background: 'transparent',
-                                    color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer',
-                                    fontFamily: satoshi,
-                                }}
-                            >
-                                Skip today
-                            </button>
+                            {/* No "Skip" button on purpose: a day is either done or it
+                                isn't, and an unlogged day already counts as missed. A
+                                skip beside the evening voice note (which marks the day
+                                done) read as two contradicting answers. Older "skipped"
+                                rows still render as misses. */}
                             <span style={{ flex: 1 }} />
                             <button
                                 data-tour="howto-button"

@@ -53,7 +53,7 @@ const SECTIONS: LegalSection[] = [
       ['Your goals, focus and vision', 'Chat with the mentor', 'Art 6(1)(b) – contract performance'],
       ['Chat messages with the AI mentor', 'Chat', 'Art 6(1)(b) – contract performance'],
       ['Weekly plans, tasks and completion status', 'Generated from your chat, updated by you', 'Art 6(1)(b) – contract performance'],
-      ['Daily check-ins (done / skipped) and any note you add; the reason you choose when a day is missed', 'Check-in; the recovery card after a missed day', 'Art 6(1)(a) – consent'],
+      ['Daily check-ins (which days you marked done; a day you did not mark counts as missed) and any note you add; the reason you choose when a day is missed', 'Check-in; the recovery card after a missed day', 'Art 6(1)(a) – consent'],
       ['The reason you give for your goal (your "why"), which the mentor may quote back to you at weak moments', 'Chat with the mentor', 'Art 6(1)(a) + Art 9(2)(a) – explicit consent'],
       ['Voice notes and the text transcripts made from them; mood check-ins recorded between weeks', 'Voice journal', 'Art 6(1)(a) + Art 9(2)(a) – explicit consent'],
       ['Notification email address, preferred send time and timezone', 'Notification settings', 'Art 6(1)(a) – consent'],
