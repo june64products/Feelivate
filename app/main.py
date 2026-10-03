@@ -1529,6 +1529,10 @@ def _resolve_start_date(session_rec, today_iso: str, requested: Optional[str]) -
         raise HTTPException(status_code=400, detail="The start date can't be in the past.")
     if (chosen - today).days > MAX_START_LEAD_DAYS:
         raise HTTPException(status_code=400, detail=f"Pick a start within the next {MAX_START_LEAD_DAYS} days.")
+    # A week runs to its Sunday, so a Saturday or Sunday start would be a 1–2
+    # day stub. The same rule that rolls a weekend LOCK to Monday applies to a
+    # chosen weekend start (the client shows the roll before they commit).
+    chosen = _d.fromisoformat(_effective_lock_start(chosen.isoformat()))
     # A later week can never begin before the running one has ended.
     if session_rec.plan_start_date and _cur_wk and _cur_wk > 1:
         try:
@@ -3013,6 +3017,7 @@ async def submit_weekly_review(
 # calls them by their original names.
 from .weeks import (  # noqa: E402
     _bounds_from_start,
+    _effective_lock_start,
     _fit_plan_to_window,
     _projected_week_start,
     _week_bounds_for,

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { satoshi } from './missionTheme';
-import { addDays, daysBetween, formatDay, localISODate, nextMonday, projectedWeekWindow, windowFrom } from '../../lib/weekWindow';
+import { addDays, daysBetween, formatDay, localISODate, nextMonday, projectedWeekWindow, rollWeekendStart, windowFrom } from '../../lib/weekWindow';
 
 /** Mirrors MAX_START_LEAD_DAYS on the server. */
 export const MAX_START_LEAD_DAYS = 14;
@@ -24,11 +24,16 @@ interface StartDatePickerProps {
 export default function StartDatePicker({ isFirstPlan, value, onChange }: StartDatePickerProps) {
     const today = localISODate();
     const defaultWindow = useMemo(() => projectedWeekWindow(today, isFirstPlan), [today, isFirstPlan]);
-    const tomorrow = addDays(today, 1);
+    // A week runs to its Sunday, so a weekend start would be a 1–2 day stub:
+    // "tomorrow" on a Friday or Saturday means next Monday, and a picked
+    // Saturday or Sunday rolls to the Monday after it — shown before committing.
+    const tomorrow = rollWeekendStart(addDays(today, 1));
     const monday = nextMonday(today);
     const maxDate = addDays(today, MAX_START_LEAD_DAYS);
 
     const [customOpen, setCustomOpen] = useState(false);
+    const [pickedRaw, setPickedRaw] = useState<string>('');   // what the date input holds
+    const pickedRolled = pickedRaw && rollWeekendStart(pickedRaw) !== pickedRaw;
 
     const choice: StartChoice =
         value === defaultWindow.start ? 'today'
@@ -46,7 +51,7 @@ export default function StartDatePicker({ isFirstPlan, value, onChange }: StartD
             sub: defaultWindow.startsLater ? 'the default' : 'start right now',
             iso: defaultWindow.start,
         },
-        { key: 'tomorrow', label: 'Tomorrow', sub: formatDay(tomorrow), iso: tomorrow },
+        { key: 'tomorrow', label: 'Tomorrow', sub: tomorrow === addDays(today, 1) ? formatDay(tomorrow) : `weekend → ${formatDay(tomorrow)}`, iso: tomorrow },
         { key: 'monday', label: 'Next Monday', sub: formatDay(monday), iso: monday },
     ];
     // Collapse duplicates (e.g. the default already is tomorrow or next Monday).
@@ -105,12 +110,14 @@ export default function StartDatePicker({ isFirstPlan, value, onChange }: StartD
                 <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <input
                         type="date"
-                        value={value}
+                        value={pickedRaw || value}
                         min={today}
                         max={maxDate}
                         onChange={(e) => {
                             const v = e.target.value;
-                            if (v && v >= today && v <= maxDate) onChange(v);
+                            if (!v || v < today || v > maxDate) return;
+                            setPickedRaw(v);
+                            onChange(rollWeekendStart(v));
                         }}
                         aria-label="Start date"
                         style={{
@@ -118,8 +125,10 @@ export default function StartDatePicker({ isFirstPlan, value, onChange }: StartD
                             background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: '13px', fontFamily: satoshi,
                         }}
                     />
-                    <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontFamily: satoshi }}>
-                        Up to {formatDay(maxDate)}.
+                    <span style={{ fontSize: '11.5px', color: pickedRolled ? 'var(--accent-warm)' : 'var(--text-muted)', fontFamily: satoshi }}>
+                        {pickedRolled
+                            ? `Weeks run to Sunday, so a weekend start becomes Monday ${formatDay(value)}.`
+                            : `Up to ${formatDay(maxDate)}. Weekend dates move to the next Monday.`}
                     </span>
                 </div>
             )}

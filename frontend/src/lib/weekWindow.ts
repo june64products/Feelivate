@@ -76,6 +76,17 @@ export function addDays(iso: string, n: number): string {
     return localISODate(new Date(parseISO(iso).getTime() + n * DAY_MS));
 }
 
+/**
+ * A chosen start that falls on a Saturday or Sunday moves to the Monday
+ * after it — a week runs to its Sunday, and a 1–2 day week is a stub, not a
+ * week. Mirrors `_effective_lock_start` on the server.
+ */
+export function rollWeekendStart(iso: string): string {
+    const d = parseISO(iso);
+    const daysLeft = 7 - weekdayMon0(d); // Mon → 7 … Sun → 1
+    return daysLeft < MIN_WEEK_DAYS ? localISODate(new Date(d.getTime() + daysLeft * DAY_MS)) : iso;
+}
+
 /** The next Monday strictly after `iso` (a Monday itself gives the following one). */
 export function nextMonday(iso: string): string {
     const d = parseISO(iso);

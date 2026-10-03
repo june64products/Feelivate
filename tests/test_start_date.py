@@ -138,6 +138,22 @@ def test_a_short_runway_only_keeps_the_notes_that_fit(client):
     assert [n["days_before"] for n in load_session("s-tomorrow")["countdown"]] == [1]
 
 
+@pytest.mark.parametrize("picked,expected", [
+    (date(2026, 10, 10), "2026-10-12"),   # Saturday → the Monday after
+    (date(2026, 10, 11), "2026-10-12"),   # Sunday → the Monday after
+    (date(2026, 10, 9), "2026-10-09"),    # Friday stays (3-day week is allowed)
+])
+def test_a_weekend_start_rolls_to_monday(client, picked, expected):
+    """A week runs to its Sunday; a weekend start would be a 1–2 day stub."""
+    headers, uid = register(client, f"weekend{picked.day}@example.com")
+    today = date(2026, 10, 5)  # a Monday
+    sid = f"s-weekend{picked.day}"
+    drafted_session(uid, sid, today)
+    out = approve(client, headers, sid, today, picked).json()
+    assert out["starts_on"] == expected
+    assert load_session(sid)["plan"]["days"][0]["day"].startswith(date.fromisoformat(expected).strftime("%b %d"))
+
+
 @pytest.mark.parametrize("offset,detail", [
     (-1, "past"),
     (15, "within the next 14 days"),
