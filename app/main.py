@@ -1165,6 +1165,31 @@ async def chat(
             current_week_complete=current_week_complete,
         )
 
+        # 4h. A locked week that hasn't started yet: the mentor must know, so
+        # "what do I do tomorrow?" gets "nothing until Monday", not a task.
+        if session_rec.phase == "active" and session_rec.plan_starts_on:
+            try:
+                import datetime as _sdt
+                import zoneinfo as _pzi
+                try:
+                    _today_s = _sdt.datetime.now(_pzi.ZoneInfo(payload.timezone or "UTC")).date()
+                except Exception:
+                    _today_s = _sdt.date.today()
+                _starts = _sdt.date.fromisoformat(session_rec.plan_starts_on)
+                if _starts > _today_s:
+                    _gap = (_starts - _today_s).days
+                    prompt_messages.append({
+                        "role": "system",
+                        "content": (
+                            f"PLAN TIMING: Week {session_rec.current_week} is locked but STARTS ON {_starts.strftime('%A %d %B')} "
+                            f"({'tomorrow' if _gap == 1 else f'in {_gap} days'}). Nothing is due before then and no day is missed "
+                            f"before then. If asked what to do today or tomorrow, say the week starts on that date and suggest "
+                            f"light preparation only (gear, time slot, mindset). Do not build a new plan."
+                        ),
+                    })
+            except Exception as _pt_err:
+                logger.warning(f"Plan-timing context failed (non-fatal): {_pt_err}")
+
         # 5a. Crisis override. If the message indicates suicide or self-harm
         # risk, the mentor persona is suspended for this turn: no plan, no
         # streak pressure, just an honest handoff to real help.
@@ -1474,23 +1499,71 @@ async def chat(
         return fallback
 
 
+# How far ahead a week may be scheduled to start. Long enough to say "from
+# next Monday" on any weekday with a buffer; short enough that the plan is
+# still about the person who approved it.
+MAX_START_LEAD_DAYS = 14
+
+
+def _resolve_start_date(session_rec, today_iso: str, requested: Optional[str]) -> str:
+    """The date the week being approved will begin.
+
+    Without a request the week starts the day it is locked (the behaviour the
+    product always had, including the Sat/Sun roll-forward). With one, the
+    user has said when they are ready — tomorrow, next Monday, a chosen date —
+    and that wins, within limits: not in the past, not more than
+    MAX_START_LEAD_DAYS ahead, and never inside a week that is still running.
+    """
+    from datetime import date as _d, timedelta as _td
+
+    _cur_wk = session_rec.current_week if session_rec.current_week is not None else 1
+    default_start = _projected_week_start(session_rec, _cur_wk, today_iso)
+    if not requested:
+        return default_start
+    try:
+        chosen = _d.fromisoformat(requested)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="start_date must be a date like 2026-10-06.")
+    today = _d.fromisoformat(today_iso)
+    if chosen < today:
+        raise HTTPException(status_code=400, detail="The start date can't be in the past.")
+    if (chosen - today).days > MAX_START_LEAD_DAYS:
+        raise HTTPException(status_code=400, detail=f"Pick a start within the next {MAX_START_LEAD_DAYS} days.")
+    # A later week can never begin before the running one has ended.
+    if session_rec.plan_start_date and _cur_wk and _cur_wk > 1:
+        try:
+            _, prev_end, _ = _week_bounds_for(session_rec, _cur_wk - 1)
+            floor = _d.fromisoformat(prev_end) + _td(days=1)
+            if chosen < floor:
+                raise HTTPException(status_code=400, detail=f"Week {_cur_wk - 1} runs until {prev_end}; start on or after {floor.isoformat()}.")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Previous-week floor lookup failed: {e}")
+    return chosen.isoformat()
+
+
 @app.post("/chat/{session_id}/approve_plan", tags=["chat"])
 async def approve_plan(
     session_id: str,
     client_date: Optional[str] = None,  # YYYY-MM-DD from user's local timezone
+    start_date: Optional[str] = None,   # YYYY-MM-DD: when the user wants the week to begin
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Approve the current week plan — marks it active and enables calendar sync.
-    Stamps the lock date onto the plan so this week starts exactly when the user
-    locked it (a plan locked on Wednesday shows Wed→Sun, not Mon→Sun)."""
+
+    The week starts on `start_date` when given (tomorrow, next Monday, a date
+    the user picked — see _resolve_start_date), else the day it is locked. The
+    plan's days are re-fitted to that window, and until the start arrives the
+    daily emails become a short countdown instead of tasks."""
     session_rec = db.query(Session).filter(Session.id == session_id).first()
     if not session_rec:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     if session_rec.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
-    
+
     if not session_rec.week_plan_json:
         raise HTTPException(status_code=400, detail="No plan to approve")
     
@@ -1514,14 +1587,14 @@ async def approve_plan(
     else:
         today_iso = _date.today().isoformat()
 
-    # EVERY week starts the day it is locked — not the day after the previous week
-    # ended. A plan generated weeks ago and locked today must run from today,
-    # otherwise its whole window sits in the past and every day is marked missed
-    # the moment it is locked. _projected_week_start keeps the previous week's end
-    # as a floor so an early lock can't overlap it, and rolls a Sat/Sun lock
-    # forward to Monday so the week is never a 1–2 day stub.
-    _cur_wk = session_rec.current_week if session_rec.current_week is not None else 1
-    start_iso = _projected_week_start(session_rec, _cur_wk, today_iso)
+    # By default a week starts the day it is locked — not the day after the
+    # previous week ended. A plan generated weeks ago and locked today must run
+    # from today, otherwise its whole window sits in the past and every day is
+    # marked missed the moment it is locked. The user may instead name the day
+    # they will actually be ready (people routinely want a couple of days to get
+    # set, or a clean Monday); that date wins within _resolve_start_date's limits.
+    start_iso = _resolve_start_date(session_rec, today_iso, start_date)
+    starts_later = start_iso > today_iso
 
     try:
         approved_plan = json.loads(session_rec.week_plan_json)
@@ -1561,13 +1634,37 @@ async def approve_plan(
     # Monday, and the legacy fallback must agree with the stamp.
     if not session_rec.plan_start_date:
         session_rec.plan_start_date = start_iso
+    # The day this locked week begins. Read by the daily email job (countdown
+    # until then, tasks from then on) and by the workspace ("starts in N days").
+    session_rec.plan_starts_on = start_iso
     db.commit()
-    
+
+    # The build-up emails are written once, now, so each countdown day costs no
+    # model call later and the three notes read as one arc.
+    if starts_later:
+        try:
+            from .email_service import build_countdown_notes
+            notes = await asyncio.to_thread(build_countdown_notes, approved_plan, session_rec.focus or "", start_iso, today_iso)
+            session_rec.countdown_json = json.dumps(notes)
+            db.commit()
+        except Exception as e:
+            logger.warning(f"Countdown notes not generated (non-fatal): {e}")
+
     # Add a system message to the chat. First-ever approval gets the endowed-
     # progress framing: the user has already banked something (setup + a real
     # plan + a commitment), so they never start from zero.
     _is_first_approval = len(plan_history) <= 1
-    if _is_first_approval:
+    from datetime import date as _sd
+    _start_label = _sd.fromisoformat(start_iso).strftime("%A %-d %B")
+    if starts_later:
+        _days_away = (_sd.fromisoformat(start_iso) - _sd.fromisoformat(today_iso)).days
+        _approve_msg = (
+            f"Week {session_rec.current_week} is set and starts {_start_label} — "
+            f"{'tomorrow' if _days_away == 1 else f'{_days_away} days from now'}. "
+            f"Good call giving yourself a runway. Until then nothing is due: I'll send a short note each day "
+            f"to get you ready, and on {_start_label} your first task lands. I'm here in chat whenever you need me."
+        )
+    elif _is_first_approval:
         _approve_msg = (
             f"Week {session_rec.current_week} is set — and here's the thing: you're not starting from zero. "
             f"Goal defined ✓, plan built ✓, commitment made ✓ — that's the setup week done, and it's already banked. "
@@ -1590,6 +1687,8 @@ async def approve_plan(
         "status": "approved",
         "week": session_rec.current_week,
         "plan_start_date": session_rec.plan_start_date,
+        "starts_on": start_iso,
+        "starts_later": starts_later,
         "message": f"Week {session_rec.current_week} plan is now active!"
     }
 
@@ -1717,6 +1816,9 @@ async def get_session_detail(session_id: str, db: DBSession = Depends(get_db), c
         "phase": session.phase,
         "plan": plan,
         "plan_history": plan_history,
+        # The day the locked week begins; in the future when the user chose a
+        # later start. The workspace shows a countdown until then.
+        "plan_starts_on": getattr(session, "plan_starts_on", None),
         # The user's own "why" — the recovery screen quotes it back to them,
         # exactly as the recovery email already does.
         "commitment_why": getattr(session, "commitment_why", None),

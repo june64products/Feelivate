@@ -144,15 +144,26 @@ export const chatWithMentor = async (
     return response.json();
 };
 
-export const approvePlan = async (sessionId: string): Promise<any> => {
+/**
+ * Lock the drafted week. `startDate` (YYYY-MM-DD) is when the user wants it to
+ * begin — tomorrow, next Monday, a date they picked. Left out, the week starts
+ * the day it is locked, as before.
+ */
+export const approvePlan = async (
+    sessionId: string,
+    startDate?: string,
+): Promise<{ status: string; week: number; plan_start_date: string | null; starts_on: string; starts_later: boolean; message: string }> => {
     // Send the user's local date so the week starts exactly when they locked it
     const clientDate = getLocalISODate();
-    const response = await secureFetch(`${API_BASE_URL}/chat/${sessionId}/approve_plan?client_date=${clientDate}`, {
+    const params = new URLSearchParams({ client_date: clientDate });
+    if (startDate) params.set('start_date', startDate);
+    const response = await secureFetch(`${API_BASE_URL}/chat/${sessionId}/approve_plan?${params.toString()}`, {
         method: 'POST',
     });
 
     if (!response.ok) {
-        throw new Error(`Plan approval failed: ${response.statusText}`);
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Plan approval failed: ${response.statusText}`);
     }
 
     return response.json();
@@ -404,6 +415,8 @@ export interface SessionDetail {
     phase: string;
     plan: any | null;
     plan_history: any[];
+    /** The day the locked week begins — in the future when a later start was chosen. */
+    plan_starts_on?: string | null;
     /** The user's stored "why" — quoted back on the recovery screen. */
     commitment_why?: string | null;
     messages: { role: string; content: string; created_at: string }[];

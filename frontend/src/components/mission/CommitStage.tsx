@@ -6,7 +6,7 @@ import { clashDisplay, satoshi, FLAME_FROM, FLAME_TO, easeSilk } from './mission
 interface CommitStageProps {
     plan: any;
     isFirstPlan: boolean;
-    onApprove: () => void;
+    onApprove: (startDate: string) => void;
     onRequestChange: (feedback: string) => void;
     /** Opens the mentor drawer so the tweak conversation happens there. */
     onOpenMentor: () => void;

@@ -5,8 +5,9 @@ import { useWindowSize } from '../../hooks/useWindowSize';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 import { requestHowTo } from '../mission/HowToModal';
 import { isRestAction } from '../mission/missionTheme';
-import { projectedWeekWindow, daysBetween, formatDay, localISODate } from '../../lib/weekWindow';
+import { projectedWeekWindow, daysBetween, formatDay, localISODate, windowFrom } from '../../lib/weekWindow';
 import { useExpandableDay, CLAMP_CHARS } from '../../lib/useExpandableDay';
+import StartDatePicker from '../mission/StartDatePicker';
 
 const clashDisplay = "'Clash Display', 'Inter', sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -31,7 +32,8 @@ interface PlanData {
 
 interface PlanCardProps {
     plan: PlanData;
-    onApprove: () => void;
+    /** `startDate` is the ISO day the user chose for the week to begin. */
+    onApprove: (startDate: string) => void;
     onRequestChange: (feedback: string) => void;
     isApproved: boolean;
     /** First plan of the session — it may start short on purpose (see Week 0). */
@@ -49,12 +51,18 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
     // sitting unlocked. The week starts on the lock day, so a plan built weeks
     // ago is about to be stretched over a completely different set of dates.
     const today = localISODate();
-    const window_ = projectedWeekWindow(today, isFirstPlan);
+    const defaultWindow = projectedWeekWindow(today, isFirstPlan);
     const planAge = plan.generated_date ? daysBetween(plan.generated_date, today) : 0;
     const isStale = planAge >= STALE_AFTER_DAYS;
 
-    const windowLine = window_.startsLater
-        ? `This week starts ${formatDay(window_.start)} and runs to ${formatDay(window_.end)} — ${window_.dayCount} days. Locking today reserves it; the journal opens on ${formatDay(window_.start)}.`
+    // When the week begins. Defaults to the lock day (or the roll-forward
+    // Monday); the user may push it out so they can get ready first.
+    const [startDate, setStartDate] = useState<string>(defaultWindow.start);
+    const window_ = windowFrom(startDate);
+    const lead = daysBetween(today, startDate);
+
+    const windowLine = lead > 0
+        ? `This week starts ${formatDay(window_.start)} (${lead === 1 ? 'tomorrow' : `in ${lead} days`}) and runs to ${formatDay(window_.end)} — ${window_.dayCount} days. Nothing is due before then; the journal opens on ${formatDay(window_.start)}.`
         : `This week runs ${formatDay(window_.start)} → ${formatDay(window_.end)} — ${window_.dayCount} days. Days before today won't appear in your journal.`;
 
     const handleRebuild = () => {
@@ -68,7 +76,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
         setApproveAnimation(true);
         setTimeout(() => {
             setIsCollapsed(true);
-            onApprove();
+            onApprove(startDate);
         }, 600);
     };
 
@@ -271,9 +279,13 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
                 })}
             </div>
 
+            {/* When the week begins — the one choice that keeps people from
+                never locking at all because "from today" felt too soon. */}
+            <StartDatePicker isFirstPlan={isFirstPlan} value={startDate} onChange={setStartDate} />
+
             {/* Actions — Swiss pill buttons */}
             <div data-tour="plan-actions" style={{
-                padding: '16px 24px 20px',
+                padding: '12px 24px 20px',
                 borderTop: '1px solid var(--border-subtle)',
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
@@ -305,7 +317,7 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
                     onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
                 >
                     <ArrowRight size={14} />
-                    Let's go
+                    {lead > 0 ? `Lock it — start ${formatDay(startDate).split(',')[0]}` : "Let's go"}
                 </button>
                 <button
                     data-tour="tweak"

@@ -59,6 +59,30 @@ export function projectedWeekWindow(lockDateISO: string = localISODate(), isFirs
     };
 }
 
+/** The window a week covers when it begins on `startISO`: that day through its Sunday. */
+export function windowFrom(startISO: string): WeekWindow {
+    const start = parseISO(startISO);
+    const end = new Date(start.getTime() + (6 - weekdayMon0(start)) * DAY_MS);
+    return {
+        start: localISODate(start),
+        end: localISODate(end),
+        dayCount: Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1,
+        startsLater: startISO > localISODate(),
+    };
+}
+
+/** ISO date `n` days after `iso`. */
+export function addDays(iso: string, n: number): string {
+    return localISODate(new Date(parseISO(iso).getTime() + n * DAY_MS));
+}
+
+/** The next Monday strictly after `iso` (a Monday itself gives the following one). */
+export function nextMonday(iso: string): string {
+    const d = parseISO(iso);
+    const ahead = 7 - weekdayMon0(d); // Mon → 7 … Sun → 1
+    return localISODate(new Date(d.getTime() + ahead * DAY_MS));
+}
+
 /** Whole days between two ISO dates (b - a). */
 export function daysBetween(aISO: string, bISO: string): number {
     return Math.round((parseISO(bISO).getTime() - parseISO(aISO).getTime()) / DAY_MS);

@@ -57,6 +57,9 @@ export default function WorkspacePage() {
     const [activePlan, setActivePlan] = useState<any | null>(null);
     const [planHistory, setPlanHistory] = useState<any[]>([]);
     const [isPlanApproved, setIsPlanApproved] = useState(false);
+    // The day the locked week begins; later than today when the user chose a
+    // runway. Until then the stage shows a countdown instead of a task.
+    const [planStartsOn, setPlanStartsOn] = useState<string | null>(null);
 
     const [isLoading, setIsLoading] = useState(false);
     // Setter-only now: the demo handles still drive it, but no sidebar reads it.
@@ -177,6 +180,11 @@ export default function WorkspacePage() {
     // Thu–Sun Week 0). Today has nothing to show from that plan — the honest
     // state is "wrapped": read the report, commit the next week.
     const weekOver = !demoMode && isPlanApproved && planWeekOver(activePlan, todayIso);
+    // Locked, but the chosen start is still ahead: nothing is due yet.
+    const notStartedYet = !demoMode && isPlanApproved && !!planStartsOn && planStartsOn > todayIso;
+    const daysUntilStart = notStartedYet && planStartsOn
+        ? Math.round((new Date(`${planStartsOn}T12:00:00`).getTime() - new Date(`${todayIso}T12:00:00`).getTime()) / 86400000)
+        : 0;
 
     // "How do I do this?" — the guide for one plan day. Opened from the Today
     // card, or from any day of a plan card (which dispatches an event so the
@@ -334,6 +342,7 @@ export default function WorkspacePage() {
                 setActivePlan(data.plan || null);
                 setPlanHistory(data.plan_history || []);
                 setIsPlanApproved(phase === 'active');
+                setPlanStartsOn(data.plan_starts_on || null);
                 setIsSessionCompleted(phase === 'completed');
                 setSessionFocus(data.focus || '');
                 setCommitmentWhy(data.commitment_why || null);
@@ -490,12 +499,13 @@ export default function WorkspacePage() {
     };
 
     // Approve the plan
-    const handleApprovePlan = async () => {
+    const handleApprovePlan = async (startDate?: string) => {
         if (!activeSessionId) return;
         try {
-            const res = await approvePlan(activeSessionId);
+            const res = await approvePlan(activeSessionId, startDate);
             if (res.status === 'approved') {
                 setIsPlanApproved(true);
+                setPlanStartsOn(res.starts_on || null);
                 // Commitment gets a ceremony, not a toast. Drawer closes so the
                 // user lands on Today with the week sealed.
                 setMentorOpen(false);
@@ -505,9 +515,13 @@ export default function WorkspacePage() {
                 feedback.signal('first_plan');
                 const data = await getSessionDetail(activeSessionId);
                 setMessages(data.messages || []);
+                // The re-fitted plan carries the chosen start and its real dates.
+                if (data.plan) setActivePlan(data.plan);
             }
         } catch (err) {
             console.error("Failed to approve plan:", err);
+            setBlockedNotice(null);
+            window.alert(err instanceof Error ? err.message : 'Could not lock the plan. Please try again.');
         }
     };
 
@@ -891,7 +905,85 @@ export default function WorkspacePage() {
                                         />
                                     )}
                                     <StreakStrip streak={streak} todayDone={todayStatus === 'done'} />
-                                    {weekOver ? (
+                                    {notStartedYet ? (
+                                        /* Locked for a later start: a runway, not a task. */
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 22, scale: 0.98 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                                            style={{
+                                                background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
+                                                borderRadius: '22px', padding: '30px 28px',
+                                                boxShadow: 'var(--shadow-sm)', textAlign: 'center',
+                                            }}
+                                        >
+                                            <p style={{
+                                                fontSize: '11px', fontWeight: 800, letterSpacing: '0.13em',
+                                                textTransform: 'uppercase', color: 'var(--accent-primary)',
+                                                margin: '0 0 10px', fontFamily: missionSatoshi,
+                                            }}>
+                                                Week {uiActivePlan?.week_number ?? 1} · locked
+                                            </p>
+                                            <p style={{
+                                                fontSize: '22px', fontWeight: 600, color: 'var(--text-primary)',
+                                                margin: '0 0 8px', fontFamily: missionClash, letterSpacing: '-0.01em',
+                                            }}>
+                                                {daysUntilStart === 1
+                                                    ? 'Starts tomorrow.'
+                                                    : `Starts in ${daysUntilStart} days.`}
+                                            </p>
+                                            <p style={{
+                                                fontSize: '13.5px', color: 'var(--text-secondary)', margin: '0 auto 18px',
+                                                fontFamily: missionSatoshi, lineHeight: 1.65, maxWidth: '440px',
+                                            }}>
+                                                Your first task lands on {new Date(`${planStartsOn}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}.
+                                                Nothing is due before then — use the runway to get set: the time slot, the gear, the headspace.
+                                                {daysUntilStart <= 3 ? ' A short note arrives each day until then.' : ''}
+                                            </p>
+                                            {(() => {
+                                                const first = uiActivePlan?.days?.[0];
+                                                return first ? (
+                                                    <div style={{
+                                                        textAlign: 'left', padding: '14px 16px', borderRadius: '14px',
+                                                        background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                                                        maxWidth: '520px', margin: '0 auto 18px',
+                                                    }}>
+                                                        <p style={{ margin: '0 0 4px', fontSize: '10.5px', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: missionSatoshi }}>
+                                                            Day 1 · {String(first.day || '')}
+                                                        </p>
+                                                        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary)', fontFamily: missionSatoshi, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                                                            {String(first.action || '')}
+                                                        </p>
+                                                    </div>
+                                                ) : null;
+                                            })()}
+                                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                                <motion.button
+                                                    whileTap={{ scale: 0.96 }}
+                                                    onClick={() => setView('journey')}
+                                                    style={{
+                                                        padding: '13px 26px', borderRadius: '100px', border: '1px solid var(--border-medium)',
+                                                        background: 'transparent', color: 'var(--text-primary)',
+                                                        fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', fontFamily: missionSatoshi,
+                                                    }}
+                                                >
+                                                    See the whole week
+                                                </motion.button>
+                                                <motion.button
+                                                    whileTap={{ scale: 0.96 }}
+                                                    onClick={() => setMentorOpen(true)}
+                                                    style={{
+                                                        padding: '13px 22px', borderRadius: '100px', border: 'none',
+                                                        background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                                                        fontSize: '12.5px', fontWeight: 800, cursor: 'pointer',
+                                                        fontFamily: missionSatoshi, letterSpacing: '0.05em', textTransform: 'uppercase',
+                                                    }}
+                                                >
+                                                    Ask your mentor
+                                                </motion.button>
+                                            </div>
+                                        </motion.div>
+                                    ) : weekOver ? (
                                         /* The plan's window has ended — no misleading "rest day".
                                            Report first, then commit the next week. */
                                         <motion.div

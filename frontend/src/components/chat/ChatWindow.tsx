@@ -21,7 +21,7 @@ interface Message {
 interface ChatWindowProps {
     messages: Message[];
     isLoading: boolean;
-    onApprovePlan: () => void;
+    onApprovePlan: (startDate: string) => void;
     onRequestPlanChange: (feedback: string) => void;
     isPlanApproved: boolean;
     /** No plan has ever been locked in this session — the week may start short on purpose. */

@@ -486,6 +486,175 @@ def send_recovery_email(
 # ║  Plan Date Parser (helper)                                   ║
 # ╚══════════════════════════════════════════════════════════════╝
 
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  Countdown emails — the days between locking a week and      ║
+# ║  its start. Nothing is due yet; these build up to Day 1.     ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+# At most this many build-up emails before a start; a longer runway stays
+# quiet until the last three days so the channel isn't spent before Day 1.
+COUNTDOWN_DAYS = 3
+
+
+def _countdown_fallback(plan, start_iso):
+    """Three honest notes when the model is unavailable."""
+    days = (plan or {}).get("days") or []
+    first = (days[0].get("action") if days else "") or "your first task"
+    return [
+        {"days_before": 3, "subject": "3 days to go — here's what Day 1 looks like",
+         "intro": "Your week is locked. Nothing is due yet — today is just a look ahead.",
+         "focus": f"Day 1 will be: {first[:220]}",
+         "prep": ["Read Day 1 once, so there are no surprises.", "Decide the time of day you'll do it."]},
+        {"days_before": 2, "subject": "2 days to go — one thing to set up today",
+         "intro": "Still nothing to do. One small bit of setup today makes Day 1 easy.",
+         "focus": "Clear the space, gear or time slot your first task needs.",
+         "prep": ["Put the first task in your calendar.", "Tell one person when you start."]},
+        {"days_before": 1, "subject": "Tomorrow it starts",
+         "intro": "Last quiet day. Tomorrow your first task lands at this time.",
+         "focus": f"Tomorrow: {first[:220]}",
+         "prep": ["Set the alarm tonight.", "Lay out whatever Day 1 needs before you sleep."]},
+    ]
+
+
+def build_countdown_notes(plan, session_focus, start_iso, today_iso):
+    """Write the build-up notes once, at approval, so the countdown days cost
+    no model calls later and read as one arc. Returns a list of
+    {days_before, subject, intro, focus, prep[]}; only the entries whose
+    days_before fits the runway are kept."""
+    from datetime import date as _d
+    runway = (_d.fromisoformat(start_iso) - _d.fromisoformat(today_iso)).days
+    wanted = [n for n in (3, 2, 1) if n <= runway]
+    if not wanted:
+        return []
+    notes = None
+    try:
+        from .llm import call_llm
+        days = (plan or {}).get("days") or []
+        day_lines = "\n".join(f"- {d.get('day', '')}: {str(d.get('action', ''))[:220]}" for d in days[:7])
+        prompt = f"""You are a warm, practical behavioural coach. A user has locked their first weekly plan but chose to START it on {start_iso}, {runway} days from now, so they can get ready.
+
+Their goal: {session_focus or 'not stated'}
+Week theme: {(plan or {}).get('theme', '')}
+The week's tasks:
+{day_lines}
+
+Write the short build-up emails for the days before the start. Return ONLY a JSON array with one object for each of these days_before values: {wanted}. Each object:
+{{"days_before": N, "subject": "under 60 chars, plain, no emoji", "intro": "1-2 sentences: nothing is due yet; what today's note is for", "focus": "1-2 sentences: the single most useful thing to know or prepare for Day 1, specific to THESE tasks", "prep": ["2-3 concrete 5-minute preparation steps, each under 90 chars"]}}
+
+Rules: never ask them to do a task early; never mention streaks or missing days; be specific to their tasks (gear, space, time, mindset); the days_before=1 note must mention that the first task arrives tomorrow. No markdown, no text outside the JSON."""
+        raw = call_llm(prompt, temperature=0.6, max_tokens=900)
+        raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
+        parsed = json.loads(raw[raw.find("["):raw.rfind("]") + 1])
+        notes = []
+        for item in parsed:
+            if not isinstance(item, dict):
+                continue
+            try:
+                n = int(item.get("days_before"))
+            except (TypeError, ValueError):
+                continue
+            if n not in wanted:
+                continue
+            prep = [str(p).strip() for p in (item.get("prep") or []) if str(p).strip()][:3]
+            notes.append({
+                "days_before": n,
+                "subject": str(item.get("subject") or "").strip()[:80] or f"{n} day{'s' if n != 1 else ''} to go",
+                "intro": str(item.get("intro") or "").strip()[:400],
+                "focus": str(item.get("focus") or "").strip()[:400],
+                "prep": prep,
+            })
+        if not notes:
+            raise ValueError("model returned no usable notes")
+    except Exception as e:
+        logger.warning(f"Countdown notes fallback: {e}")
+        notes = [n for n in _countdown_fallback(plan, start_iso) if n["days_before"] in wanted]
+    return sorted(notes, key=lambda n: -n["days_before"])
+
+
+def send_countdown_email(to_email, user_name, note, start_iso, week_number, session_focus, user_timezone="UTC"):
+    """One build-up email for a day before the week starts."""
+    if not resend.api_key:
+        logger.error("RESEND_API_KEY not set.")
+        return False
+    from datetime import date as _d
+    n = int(note.get("days_before", 1))
+    start_label = _d.fromisoformat(start_iso).strftime("%A %d %B")
+    eyebrow = "Tomorrow it starts" if n == 1 else f"{n} days to go"
+    prep_html = _bullets_to_html("\n".join(note.get("prep") or []), SUB, "&#8594;", ACCENT, "14px")
+    rows = f"""
+        <tr><td class="px" style="padding:34px 36px 8px;">
+          {_eyebrow(f'Week {week_number} &middot; starts {start_label}')}
+          <h1 class="h1" style="color:{INK};font-size:28px;font-weight:800;line-height:1.15;letter-spacing:-0.03em;margin:0 0 12px;font-family:{FONT};">{eyebrow}</h1>
+          <p style="color:{SUB};font-size:15px;line-height:1.65;margin:0;font-family:{FONT};">Hi {user_name}. {note.get('intro', '')}</p>
+        </td></tr>
+        <tr><td class="px" style="padding:18px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{CREAM};border-radius:14px;">
+            <tr><td style="padding:16px 18px;">
+              {_eyebrow('Get ready for Day 1', INK)}
+              <p style="color:{INK};font-size:14.5px;line-height:1.6;margin:0;font-family:{FONT};">{note.get('focus', '')}</p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td class="px" style="padding:18px 36px 0;">
+          {_eyebrow('Five minutes today')}
+          {prep_html}
+        </td></tr>
+        <tr><td class="px" align="center" style="padding:26px 36px 34px;">
+          {_btn_dark('See your week &#8594;', APP_URL + '/app')}
+          <p style="margin:14px 0 0;color:{MUTED};font-size:12.5px;line-height:1.6;font-family:{FONT};">Nothing is due until {start_label}. Your first task arrives then, at this time.</p>
+        </td></tr>"""
+    html = _shell(f"{eyebrow} — your week starts {start_label}.", rows)
+    try:
+        resend.Emails.send({
+            "from": f"Feelivate <{FROM_EMAIL}>",
+            "to": [to_email],
+            "subject": note.get("subject") or eyebrow,
+            "html": html,
+        })
+        logger.info(f"[Countdown] sent ({n} days before) to {_mask_email(to_email)}")
+        return True
+    except Exception as e:
+        logger.error(f"[Countdown] send failed for {_mask_email(to_email)}: {type(e).__name__}: {e}")
+        return False
+
+
+def get_countdown_for_user(user, db, today_iso):
+    """The countdown note due today, if the user's locked week hasn't started.
+
+    Returns (note, session) or None. Only the last COUNTDOWN_DAYS before the
+    start send anything; a longer runway stays quiet before that."""
+    from .models import Session as SessionModel
+    from datetime import date as _d
+    session = (
+        db.query(SessionModel)
+        .filter(
+            SessionModel.user_id == user.id,
+            SessionModel.is_completed == 0,
+            SessionModel.phase == "active",
+            SessionModel.plan_starts_on.isnot(None),
+        )
+        .order_by(SessionModel.created_at.desc())
+        .first()
+    )
+    if not session or not session.plan_starts_on or session.plan_starts_on <= today_iso:
+        return None
+    days_before = (_d.fromisoformat(session.plan_starts_on) - _d.fromisoformat(today_iso)).days
+    if days_before > COUNTDOWN_DAYS:
+        return None
+    try:
+        notes = json.loads(session.countdown_json or "[]")
+    except ValueError:
+        notes = []
+    note = next((n for n in notes if int(n.get("days_before", -1)) == days_before), None)
+    if note is None:
+        try:
+            plan = json.loads(session.week_plan_json or "{}")
+        except ValueError:
+            plan = {}
+        note = next((n for n in _countdown_fallback(plan, session.plan_starts_on) if n["days_before"] == days_before), None)
+    return (note, session) if note else None
+
+
 def _parse_plan_date(day_str, reference_year):
     """
     Parse a date from plan day strings like 'Jun 5 (Thu)', 'May 28 (Wed)'.
@@ -565,6 +734,12 @@ def get_today_task_for_user(user, db):
         # ── PAUSE logic: check if today is within plan date range ────────────
         first_date = _parse_plan_date(days[0].get("day", ""), ref_year)
         last_date  = _parse_plan_date(days[-1].get("day", ""), ref_year)
+
+        # A week scheduled to start later: no task until that day, whatever the
+        # day labels say. (Labels are also checked below for older plans.)
+        if session.plan_starts_on and today.isoformat() < session.plan_starts_on:
+            logger.info(f"[Task] Week starts {session.plan_starts_on} for user {user.id}. Skipping.")
+            return None
 
         if first_date and last_date:
             if today < first_date:
@@ -757,12 +932,19 @@ def _has_active_plan(db, user_id: str) -> bool:
     them anyway is the fastest way to get the whole channel muted.
     """
     from .models import Session as SessionModel
-    return (
+    from datetime import date as _d
+    session = (
         db.query(SessionModel)
         .filter(SessionModel.user_id == user_id, SessionModel.phase == "active")
+        .order_by(SessionModel.created_at.desc())
         .first()
-        is not None
     )
+    if session is None:
+        return False
+    # A week scheduled for later is locked but not running: no journal or
+    # streak reminders until it begins.
+    starts_on = getattr(session, "plan_starts_on", None)
+    return not (starts_on and starts_on > _d.today().isoformat())
 
 
 def run_evening_reminders():
@@ -962,9 +1144,28 @@ def run_daily_email_scheduler():
                     f"at {user_time_str} {tz_str}"
                 )
 
+                # A locked week that hasn't started yet: a short build-up note
+                # in place of a task, on the last few days before the start.
+                countdown = get_countdown_for_user(user, db, today_date_str)
+                if countdown:
+                    note, cd_session = countdown
+                    if send_countdown_email(
+                        to_email=recipient,
+                        user_name=user.name or "there",
+                        note=note,
+                        start_iso=cd_session.plan_starts_on,
+                        week_number=cd_session.current_week or 1,
+                        session_focus=cd_session.focus or "",
+                        user_timezone=tz_str,
+                    ):
+                        user.last_daily_email_date = today_date_str
+                        db.commit()
+                        sent_count += 1
+                    continue
+
                 task_info = get_today_task_for_user(user, db)
                 if not task_info:
-                    continue  # week finished or no active plan
+                    continue  # week finished, not started, or no active plan
 
                 # ── Accountability layer ─────────────────────────────────────
                 # 1) Shield first: a miss that can be covered is covered

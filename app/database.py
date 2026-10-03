@@ -176,6 +176,9 @@ def init_db():
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_report_json TEXT;",
                 # ── NEW: the user's own "why" (voice commitment) ──
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS commitment_why TEXT;",
+                # ── NEW: a locked week may start later than it was locked ──
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS plan_starts_on VARCHAR;",
+                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS countdown_json TEXT;",
                 # ── NEW: session-scoped journals & reports ──
                 "ALTER TABLE voice_journals ADD COLUMN IF NOT EXISTS session_id VARCHAR REFERENCES sessions(id);",
                 "ALTER TABLE weekly_reports ADD COLUMN IF NOT EXISTS session_id VARCHAR REFERENCES sessions(id);",
@@ -225,6 +228,8 @@ def init_db():
                 "ALTER TABLE sessions ADD COLUMN is_completed INTEGER DEFAULT 0;",
                 "ALTER TABLE sessions ADD COLUMN session_report_json TEXT;",
                 "ALTER TABLE sessions ADD COLUMN commitment_why TEXT;",
+                "ALTER TABLE sessions ADD COLUMN plan_starts_on VARCHAR;",
+                "ALTER TABLE sessions ADD COLUMN countdown_json TEXT;",
                 # NEW: session-scoped journals & reports
                 "ALTER TABLE voice_journals ADD COLUMN session_id VARCHAR REFERENCES sessions(id);",
                 "ALTER TABLE weekly_reports ADD COLUMN session_id VARCHAR REFERENCES sessions(id);",

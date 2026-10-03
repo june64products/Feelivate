@@ -14,7 +14,7 @@ interface MentorDrawerProps {
     messages: any[];
     isLoading: boolean;
     onSend: (text: string) => void;
-    onApprovePlan: () => void;
+    onApprovePlan: (startDate: string) => void;
     onRequestPlanChange: (feedback: string) => void;
     isPlanApproved: boolean;
     isFirstPlan: boolean;

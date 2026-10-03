@@ -97,6 +97,8 @@ class Session(Base):
 
     # Plan lifecycle
     plan_start_date = Column(String, nullable=True)    # ISO date when first plan was approved
+    plan_starts_on = Column(String, nullable=True)     # ISO date the CURRENT locked week begins (may be in the future)
+    countdown_json = Column(Text, nullable=True)       # build-up email notes for the days before plan_starts_on
     is_completed = Column(Integer, default=0)          # 0 = active, 1 = user stopped the session
     session_report_json = Column(Text, nullable=True)  # final aggregated session report
 
