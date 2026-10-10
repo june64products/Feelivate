@@ -59,9 +59,29 @@ function saveState(userId: string | null, state: PromptState) {
 
 type Milestone = Extract<FeedbackTrigger, 'first_plan' | 'first_chats'>;
 
+/**
+ * Moment questions: a tiny form tied to one event, asked once per event
+ * (not once per account like the general prompt). Each asks only what that
+ * moment can answer — "does this plan feel right?" right after a plan is
+ * built, "how was today's task?" right after the evening voice note, "why
+ * isn't it landing?" after a second tweak, and the fuller form on the first
+ * weekly report. They never stack: one open form at a time, and none while
+ * the screen is busy.
+ */
+export type MomentTrigger = Extract<FeedbackTrigger, 'after_journal' | 'second_tweak' | 'weekly_report'> | 'first_plan';
+
+/** Extra facts a moment hands to the form (shown back to the user, stored with the answer). */
+export interface MomentDetails {
+    sessionId?: string | null;
+    taskLabel?: string;     // after_journal: today's task text
+    tweakCount?: number;    // second_tweak
+    weekNumber?: number;    // weekly_report / first_plan
+}
+
 interface FeedbackContextValue {
     isOpen: boolean;
     trigger: FeedbackTrigger;
+    details: MomentDetails;
     isLoggedIn: boolean;
     /** Open the form deliberately (side tab). Always allowed. */
     open: (trigger?: FeedbackTrigger) => void;
@@ -69,6 +89,13 @@ interface FeedbackContextValue {
     close: (submitted: boolean) => void;
     /** Report a moment the engine may use (first plan approved, first chats done). */
     signal: (milestone: Milestone) => void;
+    /**
+     * Ask a moment question. `key` makes it once-only: the same key never asks
+     * twice (e.g. `after_journal:2026-10-06`, `second_tweak:<sessionId>`,
+     * `weekly_report:<sessionId>:1`). Returns false when it was already asked
+     * or the screen is busy (then it retries once the screen is free).
+     */
+    askMoment: (trigger: MomentTrigger, key: string, details?: MomentDetails) => boolean;
     /** While any key is busy (a modal, the mentor typing, the tutorial) nothing opens on its own. */
     setBusy: (key: string, busy: boolean) => void;
     /** Ask before logging out when the prompt is still due; otherwise log out straight away. */
@@ -92,8 +119,11 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
     const [isOpen, setIsOpen] = useState(false);
     const [trigger, setTrigger] = useState<FeedbackTrigger>('side_tab');
+    const [details, setDetails] = useState<MomentDetails>({});
     const [busyKeys, setBusyKeys] = useState<Set<string>>(() => new Set());
     const [authTick, setAuthTick] = useState(0);
+    // A moment that found the screen busy waits here for it to clear.
+    const pendingMomentRef = useRef<{ trigger: MomentTrigger; key: string; details: MomentDetails } | null>(null);
 
     const userIdRef = useRef<string | null>(null);
     const accountAgeDaysRef = useRef<number | null>(null);
@@ -157,13 +187,63 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         return age !== null && age <= NEW_ACCOUNT_DAYS;
     }, []);
 
-    const openNow = useCallback((t: FeedbackTrigger) => {
+    const openNow = useCallback((t: FeedbackTrigger, d: MomentDetails = {}) => {
         triggerRef.current = t;
         openRef.current = true;
         pendingRef.current = null;
         setTrigger(t);
+        setDetails(d);
         setIsOpen(true);
     }, []);
+
+    // Once-only bookkeeping for moment questions, per account, in the browser.
+    const momentKey = (userId: string | null) => `feelivate-feedback-moments:${userId ?? 'anon'}`;
+    const momentAsked = (userId: string | null, key: string): boolean => {
+        try {
+            const raw = localStorage.getItem(momentKey(userId));
+            return raw ? (JSON.parse(raw) as string[]).includes(key) : false;
+        } catch {
+            return false;
+        }
+    };
+    const markMoment = (userId: string | null, key: string) => {
+        try {
+            const raw = localStorage.getItem(momentKey(userId));
+            const list = raw ? (JSON.parse(raw) as string[]) : [];
+            if (!list.includes(key)) localStorage.setItem(momentKey(userId), JSON.stringify([...list, key].slice(-200)));
+        } catch {
+            /* ignore */
+        }
+    };
+
+    const askMoment = useCallback(
+        (t: MomentTrigger, key: string, d: MomentDetails = {}): boolean => {
+            const userId = userIdRef.current;
+            if (!userId || !inWorkspace) return false;
+            if (momentAsked(userId, key)) return false;
+            if (openRef.current || busyRef.current.size > 0 || isTypingSomewhere()) {
+                pendingMomentRef.current = { trigger: t, key, details: d };
+                return false;
+            }
+            markMoment(userId, key);
+            openNow(t, d);
+            return true;
+        },
+        [inWorkspace, openNow],
+    );
+
+    // A queued moment fires once the screen is quiet again.
+    useEffect(() => {
+        if (busyKeys.size > 0 || isOpen || !pendingMomentRef.current) return;
+        const p = pendingMomentRef.current;
+        const id = window.setTimeout(() => {
+            if (pendingMomentRef.current === p) {
+                pendingMomentRef.current = null;
+                askMoment(p.trigger, p.key, p.details);
+            }
+        }, RETRY_AFTER_BUSY_MS);
+        return () => window.clearTimeout(id);
+    }, [busyKeys, isOpen, askMoment]);
 
     /** Try an automatic trigger. Returns false (and may queue a retry) when the moment is wrong. */
     const tryOpen = useCallback(
@@ -228,6 +308,9 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
     const signal = useCallback(
         (milestone: Milestone) => {
+            // The first plan now gets its own one-question form (plan_fit)
+            // instead of the general prompt; see askMoment.
+            if (milestone === 'first_plan') return;
             tryOpen(milestone, MILESTONE_MIN_MS, true);
         },
         [tryOpen],
@@ -251,10 +334,14 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
     const close = useCallback((submitted: boolean) => {
         const userId = userIdRef.current;
-        const wasAutomatic = triggerRef.current !== 'side_tab';
+        const t = triggerRef.current;
+        const wasMoment = t === 'first_plan' || t === 'after_journal' || t === 'second_tweak' || t === 'weekly_report';
+        const wasAutomatic = t !== 'side_tab' && !wasMoment;
         const state = { ...stateRef.current };
         if (submitted) {
-            state.submitted = true;
+            // Only the fuller forms count as "they've given feedback"; a one-tap
+            // moment answer shouldn't silence the general prompt for good.
+            if (!wasMoment || t === 'weekly_report') state.submitted = true;
             serverCountRef.current = (serverCountRef.current ?? 0) + 1;
         } else if (wasAutomatic) {
             state.dismissed += 1;
@@ -292,15 +379,17 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         () => ({
             isOpen,
             trigger,
+            details,
             isLoggedIn,
             open,
             close,
             signal,
+            askMoment,
             setBusy,
             requestLogout,
             tabVisible: !isOpen && busyKeys.size === 0,
         }),
-        [isOpen, trigger, isLoggedIn, open, close, signal, setBusy, requestLogout, busyKeys],
+        [isOpen, trigger, details, isLoggedIn, open, close, signal, askMoment, setBusy, requestLogout, busyKeys],
     );
 
     return <FeedbackContext.Provider value={value}>{children}</FeedbackContext.Provider>;

@@ -402,6 +402,8 @@ def build_user_export(db: DBSession, user: User) -> Dict[str, Any]:
         "feedback_forms": [
             {
                 "sequence_no": f.sequence_no,
+                "kind": f.kind,
+                "answers": f.answers,
                 "rating": f.rating,
                 "liked": f.liked,
                 "confusing": f.confusing,
@@ -409,6 +411,11 @@ def build_user_export(db: DBSession, user: User) -> Dict[str, Any]:
                 "contact_ok": bool(f.contact_ok),
                 "trigger": f.trigger,
                 "page": f.page,
+                "goal": f.goal,
+                "week_number": f.week_number,
+                "plan_day": f.plan_day,
+                "current_streak": f.current_streak,
+                "days_active": f.days_active,
                 "created_at": _iso(f.created_at),
             }
             for f in db.query(UserFeedback)

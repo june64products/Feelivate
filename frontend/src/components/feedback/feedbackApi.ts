@@ -2,13 +2,23 @@ import { API_BASE_URL } from '../../api';
 
 /** The moment that opened the form. Stored with every submission. */
 export type FeedbackTrigger =
-    | 'exit_intent'   // desktop: the pointer headed for the tab bar / close button
-    | 'tab_return'    // mobile: came back after leaving the tab for a while
-    | 'first_plan'    // right after the first weekly plan was approved
-    | 'first_chats'   // after the first few exchanges with the mentor
-    | 'timer'         // a few minutes into the first session
-    | 'logout'        // the user pressed log out
-    | 'side_tab';     // opened deliberately from the side tab
+    | 'exit_intent'    // desktop: the pointer headed for the tab bar / close button
+    | 'tab_return'     // mobile: came back after leaving the tab for a while
+    | 'first_plan'     // right after the first weekly plan was built (plan_fit)
+    | 'first_chats'    // after the first few exchanges with the mentor
+    | 'timer'          // a few minutes into the first session
+    | 'logout'         // the user pressed log out
+    | 'side_tab'       // opened deliberately from the side tab
+    | 'after_journal'  // right after the evening voice note was saved (task_day)
+    | 'second_tweak'   // the draft was tweaked a second time (tweaks)
+    | 'weekly_report'  // the first weekly report was opened (full form)
+    | 'task_email';    // 👍/👎 from the morning email
+
+/**
+ * Which questions a form asks. Each moment gets its own few questions
+ * instead of one long form for everything.
+ */
+export type FeedbackKind = 'full' | 'plan_fit' | 'task_day' | 'tweaks' | 'task_email';
 
 export const FEEDBACK_CHIPS = [
     { key: 'signup', label: 'Sign-up' },
@@ -23,15 +33,56 @@ export const FEEDBACK_CHIPS = [
 
 export type FeedbackChip = (typeof FEEDBACK_CHIPS)[number]['key'];
 
+/** Answer values per form, as the server stores them. */
+export const UPSET_OPTIONS = [
+    { key: 'very', label: 'Very upset', hint: "I'd miss it" },
+    { key: 'a_bit', label: 'A bit', hint: 'nice to have' },
+    { key: 'not_really', label: 'Not really', hint: "wouldn't notice" },
+] as const;
+
+export const PLAN_FIT_OPTIONS = [
+    { key: 'too_hard', label: 'Too hard' },
+    { key: 'about_right', label: 'About right' },
+    { key: 'too_easy', label: 'Too easy' },
+] as const;
+
+export const TASK_QUALITY_OPTIONS = [
+    { key: 'great', label: 'Spot on', hint: 'exactly what I needed' },
+    { key: 'fine', label: 'Fine', hint: 'did it, nothing special' },
+    { key: 'off', label: 'A bit off', hint: 'not quite right for me' },
+    { key: 'didnt_fit', label: "Didn't fit my day", hint: 'wrong time or place' },
+] as const;
+
+export const TASK_CLARITY_OPTIONS = [
+    { key: 'clear', label: 'Clear' },
+    { key: 'somewhat', label: 'Somewhat' },
+    { key: 'unclear', label: 'Unclear' },
+] as const;
+
+export const TASK_TIME_OPTIONS = [
+    { key: 'shorter', label: 'Took less' },
+    { key: 'right', label: 'As planned' },
+    { key: 'longer', label: 'Took longer' },
+] as const;
+
+export const TWEAK_REASON_OPTIONS = [
+    { key: 'too_hard', label: 'Too hard for where I am' },
+    { key: 'too_easy', label: 'Too easy, not worth it' },
+    { key: 'wrong_time', label: 'Wrong time of day / week' },
+    { key: 'not_my_goal', label: "Doesn't match my goal" },
+    { key: 'misunderstood', label: 'The mentor misunderstood me' },
+    { key: 'other', label: 'Something else' },
+] as const;
+
 export interface FeedbackPayload {
-    rating: number;
-    liked: FeedbackChip[];
-    confusing: FeedbackChip[];
+    kind: FeedbackKind;
+    answers: Record<string, unknown>;
     comment?: string;
     contact_ok?: boolean;
     email?: string;
     trigger: FeedbackTrigger;
     page?: string;
+    session_id?: string | null;
 }
 
 const authHeaders = (): Record<string, string> => {
@@ -81,7 +132,9 @@ export interface FeedbackAdminItem {
     user_email: string | null;
     user_name: string | null;
     sequence_no: number | null;
-    rating: number;
+    kind: FeedbackKind;
+    answers: Record<string, unknown>;
+    rating: number | null;
     trigger: FeedbackTrigger;
     page: string | null;
     liked: string[];
@@ -91,24 +144,50 @@ export interface FeedbackAdminItem {
     email: string | null;
     account_age_days: number | null;
     device: string | null;
+    session_id: string | null;
+    goal: string | null;
+    week_number: number | null;
+    plan_day: string | null;
+    current_streak: number | null;
+    days_active: number | null;
 }
 
 export interface FeedbackAdminStats {
     total: number;
-    average_rating: number | null;
-    ratings: Record<string, number>;
-    liked: Record<string, number>;
+    kinds: Record<string, number>;
+    upset: Record<string, number>;
+    liked_most: Record<string, number>;
     confusing: Record<string, number>;
+    plan_fit: Record<string, number>;
+    task_quality: Record<string, number>;
+    task_clear: Record<string, number>;
+    tweak_reasons: Record<string, number>;
+    broke_reports: number;
+    quit_notes: number;
     triggers: Record<string, number>;
     last_7_days: number;
     unique_users: number;
     anonymous: number;
     want_contact: number;
+    legacy_average_rating: number | null;
+    legacy_count: number;
+}
+
+export interface ProductMetrics {
+    cohort_days: number;
+    signups: number;
+    built_plan?: number; built_plan_pct?: number | null;
+    locked_plan?: number; locked_plan_pct?: number | null;
+    day3_eligible?: number; back_on_day3?: number; day3_pct?: number | null;
+    week2_eligible?: number; active_week2?: number; week2_pct?: number | null;
+    plan_days_elapsed?: number; days_done?: number; completion_pct?: number | null;
+    error?: string;
 }
 
 export interface FeedbackAdminResponse {
     total: number;
     stats: FeedbackAdminStats;
+    metrics: ProductMetrics;
     items: FeedbackAdminItem[];
 }
 
@@ -120,11 +199,11 @@ const inboxError = (status: number): Error => {
 
 export async function fetchFeedbackInbox(
     token: string,
-    params: { trigger?: string; min_rating?: number; limit?: number; offset?: number } = {},
+    params: { trigger?: string; kind?: string; limit?: number; offset?: number } = {},
 ): Promise<FeedbackAdminResponse> {
     const qs = new URLSearchParams();
     if (params.trigger) qs.set('trigger', params.trigger);
-    if (params.min_rating) qs.set('min_rating', String(params.min_rating));
+    if (params.kind) qs.set('kind', params.kind);
     if (params.limit) qs.set('limit', String(params.limit));
     if (params.offset) qs.set('offset', String(params.offset));
     const response = await fetch(`${API_BASE_URL}/admin/feedback?${qs.toString()}`, {

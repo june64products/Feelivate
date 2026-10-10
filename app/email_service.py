@@ -11,6 +11,7 @@ import re
 import secrets
 import string
 from datetime import datetime, timedelta
+from typing import Optional, Tuple
 import pytz
 
 import resend
@@ -23,6 +24,10 @@ APP_URL = os.getenv("APP_URL", "https://emotion-time-travel-brlz.vercel.app")
 # The API's own public URL (Northflank) — one-tap check-in links point HERE,
 # not at the frontend. Left empty, emails simply ship without the button.
 API_BASE_URL = os.getenv("API_BASE_URL", "").rstrip("/")
+# Where a reply to the daily email goes. The sending address is a no-reply
+# mailbox; replies are the lowest-friction feedback there is, so they are
+# pointed at a person. Empty disables the reply line.
+FEEDBACK_REPLY_TO = os.getenv("FEEDBACK_REPLY_TO", "info@june64.com").strip()
 
 # Monday=0 ... Sunday=6
 DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -290,6 +295,8 @@ def send_daily_task_email(
     user_timezone: str = "UTC",
     checkin_url: str = "",   # signed one-tap "Done" link (empty = no button)
     shield_note: str = "",   # set when a streak shield auto-covered yesterday
+    rating_urls: Optional[Tuple[str, str]] = None,  # signed (👍, 👎) links: "was today's task clear?"
+    reply_to: str = "",      # where a plain reply to this email lands
 ) -> bool:
     if not resend.api_key:
         logger.error("RESEND_API_KEY not set.")
@@ -375,20 +382,47 @@ def send_daily_task_email(
           <p style="color:{MUTED};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:10px 0 0;font-family:{FONT};">For you, {user_name}</p>
         </td></tr>
 
-        <tr><td class="px" style="padding:26px 36px 32px;text-align:center;">
+        <tr><td class="px" style="padding:26px 36px 24px;text-align:center;">
           {cta_html}
         </td></tr>"""
 
-    html = _shell(f"Week {week_number} · {day_label} — {task_title[:80]}", rows, manage_label="Manage alerts")
+    # One tap, no form: was today's task clear? Plus the lowest-friction
+    # channel there is: reply to the email and it lands in our inbox.
+    feedback_rows = ""
+    if rating_urls or reply_to:
+        thumbs = ""
+        if rating_urls:
+            up, down = rating_urls
+            thumbs = (
+                f'<p style="margin:0 0 8px;color:{SUB};font-size:13px;font-family:{FONT};">Was today&#8217;s task clear?</p>'
+                f'<a href="{up}" style="display:inline-block;padding:9px 16px;margin:0 4px;border:1px solid {BORDER};border-radius:100px;'
+                f'color:{INK};text-decoration:none;font-size:13px;font-weight:700;font-family:{FONT};">&#128077; Yes</a>'
+                f'<a href="{down}" style="display:inline-block;padding:9px 16px;margin:0 4px;border:1px solid {BORDER};border-radius:100px;'
+                f'color:{INK};text-decoration:none;font-size:13px;font-weight:700;font-family:{FONT};">&#128078; Not really</a>'
+            )
+        reply_line = (
+            f'<p style="margin:{"12px" if thumbs else "0"} 0 0;color:{MUTED};font-size:12.5px;line-height:1.6;font-family:{FONT};">'
+            f'Too hard, too easy, or something in the way? Just reply to this email &#8212; a person reads every one.</p>'
+            if reply_to else ""
+        )
+        feedback_rows = f"""
+        <tr><td class="px" style="padding:0 36px 30px;text-align:center;">
+          <div style="border-top:1px solid {BORDER};padding-top:18px;">{thumbs}{reply_line}</div>
+        </td></tr>"""
+
+    html = _shell(f"Week {week_number} · {day_label} — {task_title[:80]}", rows + feedback_rows, manage_label="Manage alerts")
 
     try:
-        res = resend.Emails.send({
+        payload = {
             "from": f"Feelivate <{FROM_EMAIL}>",
             "to": [to_email],
             # Subject: "Week 0 · Thursday — Your Task Title"
             "subject": f"Week {week_number} \u00b7 {day_label} \u2014 {task_title[:55]}{'...' if len(task_title) > 55 else ''}",
             "html": html,
-        })
+        }
+        if reply_to:
+            payload["reply_to"] = reply_to
+        res = resend.Emails.send(payload)
         logger.info(f"Daily email sent → {_mask_email(to_email)} (Week {week_number} · {day_label}) | id={res}")
         return True
     except Exception as e:
@@ -1187,11 +1221,17 @@ def run_daily_email_scheduler():
                     )
 
                 checkin_url = ""
+                rating_urls = None
                 if API_BASE_URL:
                     try:
                         from .security import create_email_action_token
                         _tok = create_email_action_token(user.id, "checkin", today_date_str)
                         checkin_url = f"{API_BASE_URL}/checkin/email?token={_tok}"
+                        _rtok = create_email_action_token(user.id, "task_rating", today_date_str)
+                        rating_urls = (
+                            f"{API_BASE_URL}/feedback/email?token={_rtok}&clear=yes",
+                            f"{API_BASE_URL}/feedback/email?token={_rtok}&clear=no",
+                        )
                     except Exception as _tok_err:
                         logger.warning(f"[Scheduler] one-tap token failed (non-fatal): {_tok_err}")
 
@@ -1227,6 +1267,8 @@ def run_daily_email_scheduler():
                     user_timezone=tz_str,
                     checkin_url=checkin_url,
                     shield_note=shield_note,
+                    rating_urls=rating_urls,
+                    reply_to=FEEDBACK_REPLY_TO,
                 )
 
                 if success:

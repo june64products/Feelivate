@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock, ShieldAlert } from 'lucide-react';
@@ -511,8 +511,9 @@ export default function WorkspacePage() {
                 setMentorOpen(false);
                 setShowCeremony(true);
                 setTimeout(() => setShowCeremony(false), 2300);
-                // Asked only once the ceremony has cleared the screen.
-                feedback.signal('first_plan');
+                // Asked only once the ceremony has cleared the screen: one tap,
+                // "does this plan feel right?" — once per locked week.
+                feedback.askMoment('first_plan', `plan_fit:${activeSessionId}:${res.week}`, { sessionId: activeSessionId, weekNumber: res.week });
                 const data = await getSessionDetail(activeSessionId);
                 setMessages(data.messages || []);
                 // The re-fitted plan carries the chosen start and its real dates.
@@ -525,8 +526,20 @@ export default function WorkspacePage() {
         }
     };
 
-    const handleRequestPlanChange = (feedback: string) => {
-        handleSendMessage(`I'd like to change some parts of this plan: ${feedback}`);
+    // Tweaks of the current draft, per session. On the second one the mentor
+    // clearly hasn't landed it: a small "what's off?" question, asked once.
+    const tweakCountRef = useRef<Record<string, number>>({});
+    const handleRequestPlanChange = (text: string) => {
+        handleSendMessage(`I'd like to change some parts of this plan: ${text}`);
+        if (!activeSessionId || demoMode) return;
+        const n = (tweakCountRef.current[activeSessionId] ?? 0) + 1;
+        tweakCountRef.current[activeSessionId] = n;
+        if (n === 2) {
+            // Let the mentor's revised draft arrive first; askMoment waits while the reply is loading.
+            window.setTimeout(() => {
+                feedback.askMoment('second_tweak', `second_tweak:${activeSessionId}:${uiActivePlan?.week_number ?? 0}`, { sessionId: activeSessionId, tweakCount: n, weekNumber: uiActivePlan?.week_number ?? undefined });
+            }, 1500);
+        }
     };
 
     // Trigger Calendar Sync
@@ -777,6 +790,20 @@ export default function WorkspacePage() {
                             if (uid) {
                                 localStorage.setItem(`last_journal_date_${uid}_${activeSessionId ?? 'none'}`, getLocalISODate());
                             }
+                            // The note is in; while today is fresh, three taps on how the
+                            // task itself was. Once per day.
+                            const todayTask = planEntryFor(activePlan, todayIso);
+                            window.setTimeout(() => {
+                                feedback.askMoment('after_journal', `after_journal:${activeSessionId}:${todayIso}`, {
+                                    sessionId: activeSessionId,
+                                    taskLabel: todayTask ? `${todayTask.day}: ${todayTask.action}` : undefined,
+                                    weekNumber: activePlan?.week_number ?? undefined,
+                                });
+                            }, 1800);
+                        }}
+                        onReportSeen={(weekNumber) => {
+                            // The first full week they can actually judge: the fuller form, once.
+                            feedback.askMoment('weekly_report', `weekly_report:${activeSessionId}:${weekNumber}`, { sessionId: activeSessionId, weekNumber });
                         }}
                         onClose={() => { setView('chat'); setJourneyInitialTab('overview'); }}
                     />

@@ -860,6 +860,8 @@ interface JourneyPageProps {
     userId: string;
     sessionId?: string;
     onJournalSaved?: (entry: JournalEntry) => void;
+    /** A completed week's report is on screen — the moment for the fuller feedback form. */
+    onReportSeen?: (weekNumber: number) => void;
     onClose?: () => void;
     demoMode?: boolean;
     demoTab?: 'overview' | 'archive';
@@ -868,7 +870,7 @@ interface JourneyPageProps {
     initialTab?: 'overview' | 'archive';
 }
 
-export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose, demoMode = false, demoTab, demoBetweenWeeks = false, initialTab }: JourneyPageProps) {
+export default function JourneyPage({ userId, sessionId, onJournalSaved, onReportSeen, onClose, demoMode = false, demoTab, demoBetweenWeeks = false, initialTab }: JourneyPageProps) {
     const [journals, setJournals] = useState<JournalEntry[]>([]);
     const [report, setReport] = useState<WeeklyReport | null>(null);
     const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
@@ -1078,6 +1080,23 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onClose
     };
 
     const reportData = report?.report;
+
+    // A finished week's review is on screen: the one moment the fuller feedback
+    // form is worth asking (the parent decides whether it has been asked before).
+    const reportSeenRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (demoMode || !reportData || !onReportSeen) return;
+        if (report?.status === 'no_data' || report?.status === 'in_progress' || report?.status === 'waiting_for_sunday_entry') return;
+        const complete = weekInfo?.week_end ? today >= weekInfo.week_end : (weekInfo?.is_week_complete ?? false);
+        const wk = reportData.week_number ?? 0;
+        if (!complete || wk < 1) return;
+        const key = `${sessionId ?? ''}:${wk}`;
+        if (reportSeenRef.current === key) return;
+        reportSeenRef.current = key;
+        const t = window.setTimeout(() => onReportSeen(wk), 4000);
+        return () => window.clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [reportData, report?.status, weekInfo?.week_end, weekInfo?.is_week_complete, demoMode, sessionId]);
 
     // Build weekDays — the calendar for the current week (respects plan start date)
     const weekDays: WeeklyReportDay[] = (() => {

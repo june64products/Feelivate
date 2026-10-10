@@ -179,6 +179,16 @@ def init_db():
                 # ── NEW: a locked week may start later than it was locked ──
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS plan_starts_on VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS countdown_json TEXT;",
+                # ── feedback: moment-specific forms + captured context ──
+                "ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS kind VARCHAR DEFAULT 'full';",
+                "ALTER TABLE user_feedback ALTER COLUMN rating DROP NOT NULL;",
+                "ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS answers TEXT;",
+                "ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS session_id VARCHAR;",
+                "ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS goal VARCHAR;",
+                "ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS week_number INTEGER;",
+                "ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS plan_day VARCHAR;",
+                "ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS current_streak INTEGER;",
+                "ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS days_active INTEGER;",
                 # ── NEW: session-scoped journals & reports ──
                 "ALTER TABLE voice_journals ADD COLUMN IF NOT EXISTS session_id VARCHAR REFERENCES sessions(id);",
                 "ALTER TABLE weekly_reports ADD COLUMN IF NOT EXISTS session_id VARCHAR REFERENCES sessions(id);",
@@ -230,6 +240,14 @@ def init_db():
                 "ALTER TABLE sessions ADD COLUMN commitment_why TEXT;",
                 "ALTER TABLE sessions ADD COLUMN plan_starts_on VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN countdown_json TEXT;",
+                "ALTER TABLE user_feedback ADD COLUMN kind VARCHAR DEFAULT 'full';",
+                "ALTER TABLE user_feedback ADD COLUMN answers TEXT;",
+                "ALTER TABLE user_feedback ADD COLUMN session_id VARCHAR;",
+                "ALTER TABLE user_feedback ADD COLUMN goal VARCHAR;",
+                "ALTER TABLE user_feedback ADD COLUMN week_number INTEGER;",
+                "ALTER TABLE user_feedback ADD COLUMN plan_day VARCHAR;",
+                "ALTER TABLE user_feedback ADD COLUMN current_streak INTEGER;",
+                "ALTER TABLE user_feedback ADD COLUMN days_active INTEGER;",
                 # NEW: session-scoped journals & reports
                 "ALTER TABLE voice_journals ADD COLUMN session_id VARCHAR REFERENCES sessions(id);",
                 "ALTER TABLE weekly_reports ADD COLUMN session_id VARCHAR REFERENCES sessions(id);",

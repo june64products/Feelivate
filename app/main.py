@@ -4302,14 +4302,66 @@ async def contact_form(req: ContactRequest, request: Request):
 
 from .models import UserFeedback
 
-# The moments that can open the form. Anything else is recorded as the side tab.
-FEEDBACK_TRIGGERS = {"exit_intent", "first_plan", "first_chats", "timer", "logout", "side_tab", "tab_return"}
+# The moments that can open a form. Anything else is recorded as the side tab.
+FEEDBACK_TRIGGERS = {
+    "exit_intent", "first_plan", "first_chats", "timer", "logout", "side_tab", "tab_return",
+    "after_journal", "second_tweak", "weekly_report", "task_email",
+}
 # The chips the form offers; unknown values are dropped rather than stored.
 FEEDBACK_CHIPS = {"signup", "tutorial", "plan", "mentor_chat", "alerts", "design", "speed", "other"}
 
+# Each form's questions and the answers it accepts. A submission is only
+# stored with answers from this table, so the inbox can count on the values.
+FEEDBACK_FORMS: Dict[str, Dict[str, Any]] = {
+    # The side tab / weekly form. "upset" is the one required question: it
+    # predicts whether they come back better than any star rating.
+    "full": {
+        "required": ["upset"],
+        "choices": {
+            "upset": {"very", "a_bit", "not_really"},
+            "liked_most": FEEDBACK_CHIPS,
+            "confusing": FEEDBACK_CHIPS,            # multi
+        },
+        "text": {"upset_reason": 400, "quit_reason": 600, "broke": 600},
+        "text_map": {"confusing_notes": 300},     # {chip: note}
+    },
+    # Right after a plan is built, before locking it.
+    "plan_fit": {
+        "required": ["fit"],
+        "choices": {"fit": {"too_hard", "about_right", "too_easy"}},
+        "text": {"note": 400},
+    },
+    # After the evening voice note: how today's task actually was.
+    "task_day": {
+        "required": ["quality"],
+        "choices": {
+            "quality": {"great", "fine", "off", "didnt_fit"},
+            "clarity": {"clear", "somewhat", "unclear"},
+            "time": {"shorter", "right", "longer"},
+        },
+        "text": {"note": 400},
+    },
+    # After the second tweak of a draft: why isn't it landing.
+    "tweaks": {
+        "required": ["reason"],
+        "choices": {"reason": {"too_hard", "too_easy", "wrong_time", "not_my_goal", "misunderstood", "other"}},
+        "text": {"note": 400},
+        "ints": {"tweak_count"},
+    },
+    # 👍/👎 from the morning email (one tap, no login).
+    "task_email": {
+        "required": ["clear"],
+        "choices": {"clear": {"yes", "no"}},
+        "text": {},
+    },
+}
+
 
 class FeedbackRequest(BaseModel):
-    rating: int
+    kind: str = "full"
+    answers: Dict[str, Any] = {}
+    # Legacy fields, still accepted from older clients.
+    rating: Optional[int] = None
     liked: List[str] = []
     confusing: List[str] = []
     comment: Optional[str] = None
@@ -4317,6 +4369,86 @@ class FeedbackRequest(BaseModel):
     email: Optional[str] = None
     trigger: str = "side_tab"
     page: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+def _clean_answers(kind: str, raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep only the answers the form defines, in the shapes it defines."""
+    spec = FEEDBACK_FORMS[kind]
+    out: Dict[str, Any] = {}
+    for key, allowed in spec["choices"].items():
+        value = raw.get(key)
+        if key == "confusing":
+            picks = value if isinstance(value, list) else []
+            out[key] = [str(p) for p in dict.fromkeys(picks) if str(p) in allowed]
+        elif value is not None and str(value) in allowed:
+            out[key] = str(value)
+    for key, limit in spec.get("text", {}).items():
+        value = (str(raw.get(key) or "")).strip()[:limit]
+        if value:
+            out[key] = value
+    for key, limit in spec.get("text_map", {}).items():
+        value = raw.get(key)
+        if isinstance(value, dict):
+            notes = {str(k): str(v).strip()[:limit] for k, v in value.items() if str(k) in FEEDBACK_CHIPS and str(v).strip()}
+            if notes:
+                out[key] = notes
+    for key in spec.get("ints", set()):
+        try:
+            out[key] = int(raw.get(key))
+        except (TypeError, ValueError):
+            pass
+    missing = [k for k in spec["required"] if k not in out]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Please answer: {', '.join(missing)}.")
+    # The one follow-up that must not be skipped: someone who wouldn't miss us
+    # is asked why, and that answer is the whole point.
+    if kind == "full" and out.get("upset") in ("a_bit", "not_really") and not out.get("upset_reason"):
+        raise HTTPException(status_code=400, detail="Please tell us the main reason.")
+    return out
+
+
+def _feedback_context(db: DBSession, user: Optional[User], session_id: Optional[str]) -> Dict[str, Any]:
+    """What the person was doing when they answered: goal, week, today's
+    plan day, streak, days active. Without it a note like "the plan felt
+    off" cannot be placed; with it, it came from day 2 of a fitness goal."""
+    from datetime import datetime as _dt
+
+    ctx: Dict[str, Any] = {"session_id": None, "goal": None, "week_number": None, "plan_day": None, "current_streak": None, "days_active": None}
+    if not user:
+        return ctx
+    try:
+        q = db.query(Session).filter(Session.user_id == user.id)
+        session_rec = q.filter(Session.id == session_id).first() if session_id else None
+        if session_rec is None:
+            session_rec = q.filter(Session.phase.in_(["active", "planning"])).order_by(Session.updated_at.desc()).first()
+        if session_rec is not None:
+            ctx["session_id"] = session_rec.id
+            ctx["goal"] = (session_rec.focus or "").strip()[:160] or None
+            try:
+                plan = json.loads(session_rec.week_plan_json or "{}")
+            except ValueError:
+                plan = {}
+            days = plan.get("days", []) if isinstance(plan, dict) else []
+            if days:
+                # Only a session with a plan is "in" a week.
+                ctx["week_number"] = plan.get("week_number", session_rec.current_week)
+                now = _dt.utcnow()
+                today_label = now.strftime("%b %d").lower()   # plan days are stamped "Oct 10 (Sat)"
+                today_name = now.strftime("%a").lower()
+                match = next((d for d in days if today_label in str(d.get("day", "")).lower()), None)
+                if match is None:
+                    match = next((d for d in days if today_name in str(d.get("day", "")).lower()), None)
+                if match is not None:
+                    ctx["plan_day"] = str(match.get("day"))[:40]
+        streak = db.query(UserStreak).filter(UserStreak.user_id == user.id).first()
+        ctx["current_streak"] = int(streak.current_streak or 0) if streak is not None else 0
+        checkin_days = {r[0] for r in db.query(DailyCheckin.date).filter(DailyCheckin.user_id == user.id).all()}
+        journal_days = {r[0] for r in db.query(VoiceJournal.date).filter(VoiceJournal.user_id == user.id).all()}
+        ctx["days_active"] = len(checkin_days | journal_days)
+    except Exception as e:
+        logger.warning(f"[Feedback] context capture failed (non-fatal): {e}")
+    return ctx
 
 
 def _optional_user(request: Request, db: DBSession) -> Optional[User]:
@@ -4355,12 +4487,25 @@ async def submit_feedback(req: FeedbackRequest, request: Request, db: DBSession 
     user = _optional_user(request, db)
     _enforce_rate_limit("feedback", request, identity=user.id if user else None)
 
-    try:
-        rating = int(req.rating)
-    except (TypeError, ValueError):
-        rating = 0
-    if not 1 <= rating <= 5:
-        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
+    kind = req.kind if req.kind in FEEDBACK_FORMS else "full"
+    if kind == "task_email":
+        raise HTTPException(status_code=400, detail="Task ratings come from the email link.")
+    # The moment-specific forms only make sense for someone using the app.
+    if kind != "full" and not user:
+        raise HTTPException(status_code=401, detail="Sign in to answer this one.")
+
+    answers: Dict[str, Any] = {}
+    rating: Optional[int] = None
+    if kind == "full" and not req.answers and req.rating is not None:
+        # An older client: stars + chips. Kept so nothing it sends is lost.
+        try:
+            rating = int(req.rating)
+        except (TypeError, ValueError):
+            rating = 0
+        if not 1 <= rating <= 5:
+            raise HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
+    else:
+        answers = _clean_answers(kind, req.answers or {})
 
     trigger = req.trigger if req.trigger in FEEDBACK_TRIGGERS else "side_tab"
     liked = [c for c in dict.fromkeys(req.liked or []) if c in FEEDBACK_CHIPS]
@@ -4377,11 +4522,14 @@ async def submit_feedback(req: FeedbackRequest, request: Request, db: DBSession 
         sequence_no = db.query(UserFeedback).filter(UserFeedback.user_id == user.id).count() + 1
         if user.created_at:
             account_age_days = max(0, (_dt.utcnow() - user.created_at).days)
+    ctx = _feedback_context(db, user, req.session_id)
 
     row = UserFeedback(
         user_id=user.id if user else None,
         sequence_no=sequence_no,
+        kind=kind,
         rating=rating,
+        answers=json.dumps(answers) if answers else None,
         liked=json.dumps(liked),
         confusing=json.dumps(confusing),
         comment=comment,
@@ -4391,14 +4539,70 @@ async def submit_feedback(req: FeedbackRequest, request: Request, db: DBSession 
         page=page,
         device=device,
         account_age_days=account_age_days,
+        **ctx,
     )
     db.add(row)
     db.commit()
     logger.info(
-        f"[Feedback] rating={rating} trigger={trigger} seq={sequence_no} "
-        f"{'user' if user else 'anonymous'} page={page}"
+        f"[Feedback] kind={kind} trigger={trigger} seq={sequence_no} "
+        f"{'user' if user else 'anonymous'} page={page} week={ctx.get('week_number')}"
     )
     return {"status": "ok", "id": row.id, "sequence_no": sequence_no}
+
+
+@app.get("/feedback/email", response_class=HTMLResponse, tags=["feedback"])
+async def feedback_from_email(token: str, clear: str, db: DBSession = Depends(get_db)):
+    """👍/👎 on today's task straight from the morning email — no login.
+
+    The signed token (user + date + action 'task_rating', 48h) is the
+    authorisation, exactly like the one-tap Done link. One answer per day:
+    tapping again just updates it."""
+    from datetime import datetime as _dt
+
+    data = verify_email_action_token(token, "task_rating")
+    if not data:
+        return HTMLResponse(
+            _email_checkin_page("This link has expired", "Rating links live for 48 hours. Thanks for trying — tomorrow's email will have a fresh one.", accent="#f87171"),
+            status_code=400,
+        )
+    if clear not in ("yes", "no"):
+        return HTMLResponse(_email_checkin_page("Hmm", "That link is incomplete.", accent="#f87171"), status_code=400)
+    user_id, date_iso = data["sub"], data["d"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return HTMLResponse(_email_checkin_page("Account not found", "This link doesn't match an active account.", accent="#f87171"), status_code=404)
+
+    existing = (
+        db.query(UserFeedback)
+        .filter(UserFeedback.user_id == user_id, UserFeedback.kind == "task_email", UserFeedback.page == f"email:{date_iso}")
+        .first()
+    )
+    answers = {"clear": clear, "date": date_iso}
+    if existing:
+        existing.answers = json.dumps(answers)
+    else:
+        ctx = _feedback_context(db, user, None)
+        db.add(UserFeedback(
+            user_id=user_id,
+            sequence_no=db.query(UserFeedback).filter(UserFeedback.user_id == user_id).count() + 1,
+            kind="task_email",
+            answers=json.dumps(answers),
+            liked="[]", confusing="[]",
+            trigger="task_email",
+            page=f"email:{date_iso}",
+            device="email",
+            account_age_days=max(0, (_dt.utcnow() - user.created_at).days) if user.created_at else None,
+            **ctx,
+        ))
+    db.commit()
+    if clear == "yes":
+        return HTMLResponse(_email_checkin_page("Thanks — noted 👍", "Good to know today's task read clearly. Go do it.", accent="#22c55e"))
+    return HTMLResponse(_email_checkin_page(
+        "Thanks — noted 👎",
+        f"Sorry today's task wasn't clear. Open the app and tap <strong>How do I do this?</strong> for a step-by-step guide, or ask your mentor. "
+        f"<a href='{os.getenv('APP_URL', 'https://feelivate.com')}/app' style='color:#111'>Open Feelivate →</a>",
+        accent="#f59e0b",
+    ))
 
 
 @app.get("/feedback/me", tags=["feedback"])
@@ -4428,9 +4632,20 @@ def _feedback_items(db: DBSession, rows: List[UserFeedback]) -> List[Dict[str, A
             return []
         return [str(v) for v in value] if isinstance(value, list) else []
 
+    def _answers(raw: Optional[str]) -> Dict[str, Any]:
+        try:
+            value = json.loads(raw or "{}")
+        except (TypeError, ValueError):
+            return {}
+        return value if isinstance(value, dict) else {}
+
     items = []
     for r in rows:
         u = users.get(r.user_id)
+        answers = _answers(r.answers)
+        # Legacy stars+chips rows read like a "full" form so the inbox is one list.
+        if not answers and r.rating:
+            answers = {"legacy_rating": r.rating, "liked_most": None}
         items.append({
             "id": r.id,
             "created_at": r.created_at.isoformat() if r.created_at else None,
@@ -4438,16 +4653,24 @@ def _feedback_items(db: DBSession, rows: List[UserFeedback]) -> List[Dict[str, A
             "user_email": u.email if u else None,
             "user_name": u.name if u else None,
             "sequence_no": r.sequence_no,
+            "kind": r.kind or "full",
+            "answers": answers,
             "rating": r.rating,
             "trigger": r.trigger,
             "page": r.page,
             "liked": _chips(r.liked),
-            "confusing": _chips(r.confusing),
+            "confusing": _chips(r.confusing) or (answers.get("confusing") if isinstance(answers.get("confusing"), list) else []),
             "comment": r.comment,
             "contact_ok": bool(r.contact_ok),
             "email": r.email,
             "account_age_days": r.account_age_days,
             "device": r.device,
+            "session_id": r.session_id,
+            "goal": r.goal,
+            "week_number": r.week_number,
+            "plan_day": r.plan_day,
+            "current_streak": r.current_streak,
+            "days_active": r.days_active,
         })
     return items
 
@@ -4457,28 +4680,122 @@ def _feedback_stats(items: List[Dict[str, Any]]) -> Dict[str, Any]:
     from datetime import datetime as _dt, timedelta as _td
 
     week_ago = (_dt.utcnow() - _td(days=7)).isoformat()
-    ratings = Counter(int(i["rating"]) for i in items)
-    liked = Counter(c for i in items for c in i["liked"])
-    confusing = Counter(c for i in items for c in i["confusing"])
+    full = [i for i in items if i["kind"] == "full"]
+    upset = Counter(i["answers"].get("upset") for i in full if i["answers"].get("upset"))
+    liked_most = Counter(i["answers"].get("liked_most") for i in full if i["answers"].get("liked_most"))
+    confusing = Counter(c for i in full for c in (i["answers"].get("confusing") or i["confusing"] or []))
+    plan_fit = Counter(i["answers"].get("fit") for i in items if i["kind"] == "plan_fit" and i["answers"].get("fit"))
+    task_quality = Counter(i["answers"].get("quality") for i in items if i["kind"] == "task_day" and i["answers"].get("quality"))
+    task_clear = Counter(i["answers"].get("clear") for i in items if i["kind"] == "task_email" and i["answers"].get("clear"))
+    tweak_reasons = Counter(i["answers"].get("reason") for i in items if i["kind"] == "tweaks" and i["answers"].get("reason"))
+    kinds = Counter(i["kind"] for i in items)
     triggers = Counter(i["trigger"] for i in items)
+    legacy = [int(i["rating"]) for i in items if i.get("rating")]
     total = len(items)
     return {
         "total": total,
-        "average_rating": round(sum(int(i["rating"]) for i in items) / total, 2) if total else None,
-        "ratings": {str(n): ratings.get(n, 0) for n in range(1, 6)},
-        "liked": dict(liked.most_common()),
+        "kinds": dict(kinds.most_common()),
+        "upset": {k: upset.get(k, 0) for k in ("very", "a_bit", "not_really")},
+        "liked_most": dict(liked_most.most_common()),
         "confusing": dict(confusing.most_common()),
+        "plan_fit": {k: plan_fit.get(k, 0) for k in ("too_hard", "about_right", "too_easy")},
+        "task_quality": {k: task_quality.get(k, 0) for k in ("great", "fine", "off", "didnt_fit")},
+        "task_clear": {k: task_clear.get(k, 0) for k in ("yes", "no")},
+        "tweak_reasons": dict(tweak_reasons.most_common()),
+        "broke_reports": sum(1 for i in full if i["answers"].get("broke")),
+        "quit_notes": sum(1 for i in full if i["answers"].get("quit_reason")),
         "triggers": dict(triggers.most_common()),
         "last_7_days": sum(1 for i in items if (i["created_at"] or "") >= week_ago),
         "unique_users": len({i["user_id"] for i in items if i["user_id"]}),
         "anonymous": sum(1 for i in items if not i["user_id"]),
         "want_contact": sum(1 for i in items if i["contact_ok"]),
+        # Older stars-and-chips rows, kept visible until they age out.
+        "legacy_average_rating": round(sum(legacy) / len(legacy), 2) if legacy else None,
+        "legacy_count": len(legacy),
+    }
+
+
+def _product_metrics(db: DBSession) -> Dict[str, Any]:
+    """What people actually did — the numbers to trust before any form.
+
+    Over accounts created in the last 30 days: did they build a plan (day-1
+    activation), lock one, come back on day 3, still show up in week 2; and
+    across all locked weeks, how many plan days were marked done."""
+    from datetime import datetime as _dt, timedelta as _td
+
+    since = _dt.utcnow() - _td(days=30)
+    users = db.query(User).filter(User.created_at >= since).all()
+    cohort = [u for u in users if not (u.email or "").endswith("@example.com")]
+    ids = [u.id for u in cohort]
+    if not ids:
+        # Same shape as a populated answer, so the inbox never has to special-case it.
+        return {
+            "cohort_days": 30, "signups": 0,
+            "built_plan": 0, "built_plan_pct": None, "locked_plan": 0, "locked_plan_pct": None,
+            "day3_eligible": 0, "back_on_day3": 0, "day3_pct": None,
+            "week2_eligible": 0, "active_week2": 0, "week2_pct": None,
+            "plan_days_elapsed": 0, "days_done": 0, "completion_pct": None,
+        }
+
+    sessions = db.query(Session).filter(Session.user_id.in_(ids)).all()
+    by_user: Dict[str, List[Session]] = {}
+    for s in sessions:
+        by_user.setdefault(s.user_id, []).append(s)
+    checkins = db.query(DailyCheckin).filter(DailyCheckin.user_id.in_(ids)).all()
+    journals = db.query(VoiceJournal).filter(VoiceJournal.user_id.in_(ids)).all()
+    active_days: Dict[str, set] = {}
+    for c in checkins:
+        active_days.setdefault(c.user_id, set()).add(c.date)
+    for j in journals:
+        active_days.setdefault(j.user_id, set()).add(j.date)
+
+    def _day_offset(u: User, iso: str) -> int:
+        try:
+            return (date.fromisoformat(iso) - u.created_at.date()).days
+        except Exception:
+            return -1
+
+    built = sum(1 for u in cohort if any(s.week_plan_json for s in by_user.get(u.id, [])))
+    locked = sum(1 for u in cohort if any(s.plan_start_date for s in by_user.get(u.id, [])))
+    old_enough_3 = [u for u in cohort if (_dt.utcnow() - u.created_at).days >= 3]
+    back_day3 = sum(1 for u in old_enough_3 if any(_day_offset(u, d) >= 2 for d in active_days.get(u.id, set())))
+    old_enough_8 = [u for u in cohort if (_dt.utcnow() - u.created_at).days >= 8]
+    week2 = sum(1 for u in old_enough_8 if any(_day_offset(u, d) >= 7 for d in active_days.get(u.id, set())))
+
+    done = sum(1 for c in checkins if c.status == "done")
+    plan_days = 0
+    today_iso = _dt.utcnow().date().isoformat()
+    for s in sessions:
+        if not s.plan_start_date:
+            continue
+        try:
+            for p in json.loads(s.result_json or "[]"):
+                start = p.get("start_date")
+                if not start:
+                    continue
+                for i, _d in enumerate(p.get("days", [])):
+                    day_iso = (date.fromisoformat(start) + _td(days=i)).isoformat()
+                    if day_iso <= today_iso:
+                        plan_days += 1
+        except Exception:
+            continue
+
+    pct = lambda n, d: round(100 * n / d) if d else None  # noqa: E731
+    return {
+        "cohort_days": 30,
+        "signups": len(cohort),
+        "built_plan": built, "built_plan_pct": pct(built, len(cohort)),
+        "locked_plan": locked, "locked_plan_pct": pct(locked, len(cohort)),
+        "day3_eligible": len(old_enough_3), "back_on_day3": back_day3, "day3_pct": pct(back_day3, len(old_enough_3)),
+        "week2_eligible": len(old_enough_8), "active_week2": week2, "week2_pct": pct(week2, len(old_enough_8)),
+        "plan_days_elapsed": plan_days, "days_done": done, "completion_pct": pct(done, plan_days),
     }
 
 
 @app.get("/admin/feedback", tags=["admin"])
 def list_feedback(
     trigger: Optional[str] = None,
+    kind: Optional[str] = None,
     min_rating: Optional[int] = None,
     limit: int = 200,
     offset: int = 0,
@@ -4493,15 +4810,23 @@ def list_feedback(
     q = db.query(UserFeedback)
     if trigger:
         q = q.filter(UserFeedback.trigger == trigger)
+    if kind:
+        q = q.filter(UserFeedback.kind == kind)
     if min_rating:
         q = q.filter(UserFeedback.rating >= int(min_rating))
     total = q.count()
     rows = q.order_by(UserFeedback.created_at.desc(), UserFeedback.id.desc()).offset(offset).limit(limit).all()
 
     everything = db.query(UserFeedback).order_by(UserFeedback.created_at.desc()).limit(5000).all()
+    try:
+        metrics = _product_metrics(db)
+    except Exception as e:
+        logger.warning(f"[Feedback] metrics failed (non-fatal): {e}")
+        metrics = {"error": "unavailable"}
     return {
         "total": total,
         "stats": _feedback_stats(_feedback_items(db, everything)),
+        "metrics": metrics,
         "items": _feedback_items(db, rows),
     }
 
@@ -4516,14 +4841,18 @@ def feedback_csv(x_internal_token: Optional[str] = Header(None), db: DBSession =
     rows = db.query(UserFeedback).order_by(UserFeedback.created_at.asc(), UserFeedback.id.asc()).all()
     items = _feedback_items(db, rows)
     fields = [
-        "id", "created_at", "user_email", "user_name", "user_id", "sequence_no", "rating", "trigger",
-        "page", "liked", "confusing", "comment", "contact_ok", "email", "account_age_days", "device",
+        "id", "created_at", "user_email", "user_name", "user_id", "sequence_no", "kind", "trigger", "answers",
+        "rating", "page", "liked", "confusing", "comment", "contact_ok", "email", "account_age_days", "device",
+        "goal", "week_number", "plan_day", "current_streak", "days_active",
     ]
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
     for item in items:
-        writer.writerow({k: (", ".join(v) if isinstance(v, list) else v) for k, v in item.items()})
+        writer.writerow({
+            k: (", ".join(v) if isinstance(v, list) else json.dumps(v, ensure_ascii=False) if isinstance(v, dict) else v)
+            for k, v in item.items()
+        })
     return Response(
         content=buf.getvalue(),
         media_type="text/csv",

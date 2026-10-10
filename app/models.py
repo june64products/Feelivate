@@ -173,16 +173,35 @@ class UserFeedback(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
     sequence_no = Column(Integer, nullable=True)        # 1 = this user's first feedback
-    rating = Column(Integer, nullable=False)            # 1–5
-    liked = Column(Text, nullable=True)                 # JSON list of chips
-    confusing = Column(Text, nullable=True)             # JSON list of chips
+    # Which form was answered. Each moment asks its own few questions:
+    #   full        the side-tab / weekly form (upset-if-gone, liked most, confusing, quit, broke)
+    #   plan_fit    right after a plan is built: too hard / about right / too easy
+    #   task_day    after the evening voice note: how was today's task
+    #   tweaks      after the second tweak of a draft: why isn't it landing
+    #   task_email  👍/👎 from the morning email
+    kind = Column(String, nullable=False, default="full", index=True)
+    rating = Column(Integer, nullable=True)             # legacy 1–5 stars (older rows); null for the new forms
+    # The form's answers as JSON. Keys per kind, e.g. full: {upset, upset_reason,
+    # liked_most, confusing[], confusing_notes{}, quit_reason, broke}; plan_fit:
+    # {fit}; task_day: {quality, clarity, time}; tweaks: {reason, tweak_count};
+    # task_email: {clear}.
+    answers = Column(Text, nullable=True)
+    liked = Column(Text, nullable=True)                 # legacy JSON list of chips
+    confusing = Column(Text, nullable=True)             # legacy JSON list of chips
     comment = Column(Text, nullable=True)
     contact_ok = Column(Boolean, default=False)
     email = Column(String, nullable=True)               # anonymous visitors who want a reply
-    trigger = Column(String, nullable=False)            # exit_intent | first_plan | first_chats | timer | logout | side_tab | tab_return
+    trigger = Column(String, nullable=False)            # the moment that asked (see FEEDBACK_TRIGGERS)
     page = Column(String, nullable=True)                # route the form was opened from
     device = Column(String, nullable=True)              # trimmed user agent
     account_age_days = Column(Integer, nullable=True)   # days since sign-up at submission
+    # Captured at submission so a note like "the plan felt off" has a where:
+    session_id = Column(String, nullable=True)          # the goal they were on
+    goal = Column(String, nullable=True)                # its focus, trimmed
+    week_number = Column(Integer, nullable=True)        # current locked week
+    plan_day = Column(String, nullable=True)            # today's plan day label, e.g. "Oct 06 (Mon)"
+    current_streak = Column(Integer, nullable=True)
+    days_active = Column(Integer, nullable=True)        # distinct days with a check-in or journal
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
