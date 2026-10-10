@@ -676,6 +676,7 @@ def build_chat_prompt(
     week_report_data: Optional[dict] = None,
     client_timezone: str = "UTC",
     current_week_complete: bool = False,
+    plan_start: Optional[str] = None,
 ) -> List[Dict[str, str]]:
     """
     Build the messages array for the LLM call.
@@ -703,6 +704,27 @@ def build_chat_prompt(
 
     system_content = SMART_MENTOR_SYSTEM_PROMPT
     system_content += f"\n\nUSER LOCAL TIMEZONE: {client_timezone}\nCURRENT DATE & TIME: {current_date} ({day_name}) {current_time}. Use these real calendar dates starting from today when building plans."
+
+    # The user said when their first week begins (asked right after the setup
+    # answers). The window is that day through its Sunday — build for it, not
+    # for today, so no day has to be padded with rest later.
+    plan_start_d = None
+    if plan_start:
+        try:
+            plan_start_d = datetime.date.fromisoformat(plan_start)
+        except (TypeError, ValueError):
+            plan_start_d = None
+    if plan_start_d is not None:
+        _ps_end = plan_start_d + datetime.timedelta(days=6 - plan_start_d.weekday())
+        _ps_n = (_ps_end - plan_start_d).days + 1
+        _ps_days = ", ".join((plan_start_d + datetime.timedelta(days=i)).strftime("%b %d (%a)") for i in range(_ps_n))
+        system_content += (
+            f"\n\n📅 PLAN START (the user chose this): the week BEGINS ON {plan_start_d.strftime('%A %d %B %Y')}"
+            f"{' — that is today' if plan_start_d.isoformat() == current_date else ''} and runs through Sunday {_ps_end.strftime('%d %B')}."
+            f"\nBuild the `days` array for EXACTLY these {_ps_n} calendar days, in order: {_ps_days}."
+            f"\nThe first entry is {plan_start_d.strftime('%b %d (%a)')}, the last is {_ps_end.strftime('%b %d (%a)')}. Nothing before the start, nothing after that Sunday."
+            f"\nThe rules below that say 'from today' mean from this start date."
+        )
 
 
     # ── Inject plan locking status ──────────────────────────────────────────
@@ -814,8 +836,11 @@ def build_chat_prompt(
     # Calculate next week number
     next_week = current_week + 1 if phase == "active" else current_week
     
-    # Override for the very first plan based on day of week
-    dow = now.weekday()
+    # Override for the very first plan based on day of week — of the day the
+    # week actually begins when the user has chosen one, else today.
+    first_day = plan_start_d if plan_start_d is not None else now.date()
+    dow = first_day.weekday()
+    first_day_name = first_day.strftime("%A")
     is_first_plan = (current_week == 0 and phase != "active")
     if is_first_plan:
         next_week = 1 if dow <= 2 else 0
@@ -828,14 +853,14 @@ def build_chat_prompt(
     
     if is_first_plan and next_week == 0:
          system_content += (
-             f"\n\n⚠️ CRITICAL INSTRUCTION ON WEEK 0: Because today is {day_name} (late in the week), "
-             f"you MUST build a short, partial 'Week 0' plan that only covers the remaining days until this Sunday. "
+             f"\n\n⚠️ CRITICAL INSTRUCTION ON WEEK 0: Because the week begins on {first_day_name} (late in the week), "
+             f"you MUST build a short, partial 'Week 0' plan that only covers the days from {first_day.strftime('%b %d (%a)')} until that Sunday. "
              f"DO NOT call it Week 1. Output `\"week_number\": 0` in your JSON plan."
          )
     elif is_first_plan and next_week == 1:
          system_content += (
-             f"\n\n⚠️ CRITICAL INSTRUCTION ON WEEK 1: Because today is {day_name} (early in the week), "
-             f"you MUST build a full 'Week 1' plan starting from today and ending on this Sunday. "
+             f"\n\n⚠️ CRITICAL INSTRUCTION ON WEEK 1: Because the week begins on {first_day_name} (early in the week), "
+             f"you MUST build a full 'Week 1' plan starting on {first_day.strftime('%b %d (%a)')} and ending on that Sunday. "
              f"Output `\"week_number\": 1` in your JSON plan."
          )
 

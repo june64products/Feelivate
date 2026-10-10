@@ -444,8 +444,9 @@ export default function WorkspacePage() {
         });
     };
 
-    // Send a message
-    const handleSendMessage = async (text: string) => {
+    // Send a message. `startDate` rides along only with the setup answers:
+    // the day the first week should begin, so the draft is built for it.
+    const handleSendMessage = async (text: string, startDate?: string) => {
         if (!userId) return;
 
         const userMsg = { role: 'user', content: text };
@@ -456,7 +457,7 @@ export default function WorkspacePage() {
         setMentorOpen(true);
 
         try {
-            const res = await chatWithMentor(text, activeSessionId, userId);
+            const res = await chatWithMentor(text, activeSessionId, userId, startDate);
 
             if (!activeSessionId && res.session_id) {
                 setActiveSessionId(res.session_id);
@@ -1918,7 +1919,7 @@ export default function WorkspacePage() {
             {setupQuestions && !demoMode && (
                 <SetupQuestionsModal
                     questions={setupQuestions}
-                    onSubmit={(text) => { setSetupQuestions(null); handleSendMessage(text); }}
+                    onSubmit={(text, startDate) => { setSetupQuestions(null); handleSendMessage(text, startDate); }}
                 />
             )}
 

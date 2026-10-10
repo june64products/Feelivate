@@ -240,3 +240,115 @@ def test_the_mentor_is_told_the_week_has_not_started(client, monkeypatch):
     out = client.post("/chat", json={"message": "what do I do tomorrow?", "session_id": "s-mentor", "user_id": uid, "timezone": "UTC"}, headers=headers).json()
     assert out.get("plan") is None
     assert "STARTS ON" in seen["system"] and "in 3 days" in seen["system"]
+
+
+# ─── "When do you start?" asked with the setup answers ──────────────────────
+
+
+def _mentor_plan(week_number: int):
+    """A model reply whose day labels are deliberately wrong — the server re-stamps them."""
+    return json.dumps({
+        "reply": "Here's your week.",
+        "plan": {
+            "week_number": week_number,
+            "theme": "Home Strength",
+            "win_condition": "5 of 7",
+            "days": [{"day": d, "action": f"Push-ups 3x12 and a 20 minute walk ({d})"} for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]],
+        },
+    })
+
+
+def test_start_chosen_with_setup_answers_shapes_the_draft_and_the_lock(client, monkeypatch):
+    import app.llm as llm
+    import app.main as main
+    from app import guardrail
+    from app.database import SessionLocal
+    from app.models import Session as UserSession
+
+    seen = {}
+
+    def fake_chain(messages, **kw):
+        seen["system"] = "\n".join(m["content"] for m in messages if m["role"] == "system")
+        return _mentor_plan(1)
+
+    monkeypatch.setattr(llm, "call_with_fallback_chain", fake_chain)
+    monkeypatch.setattr(llm, "create_embedding", lambda *a, **k: None)
+    monkeypatch.setattr(main, "_generate_and_save_title", lambda *a, **k: None)
+    monkeypatch.setattr(guardrail, "screen", lambda *a, **k: guardrail.ALLOWED)
+
+    headers, uid = register(client, "upfront@example.com")
+    today = date.today()
+    monday = today + timedelta(days=(7 - today.weekday()) % 7 or 7)   # the next Monday, 1–7 days out
+    msg = "Setup answers:\n\nHow much time?\n→ 30 min\n\nLevel?\n→ beginner\n\nI start on Monday — build the week from that day.\n\nThat's everything — build my plan."
+    out = client.post(
+        "/chat",
+        json={"message": msg, "session_id": "s-upfront", "user_id": uid, "timezone": "UTC", "start_date": monday.isoformat()},
+        headers=headers,
+    ).json()
+
+    # The model was told the real window, and the draft is stamped and labelled for it.
+    assert "PLAN START" in seen["system"] and monday.strftime("%A %d %B") in seen["system"]
+    assert "WEEK 1" in seen["system"], "a Monday start is a full Week 1 whatever today is"
+    plan = out["plan"]
+    assert plan["start_date"] == monday.isoformat()
+    assert len(plan["days"]) == 7
+    assert plan["days"][0]["day"] == monday.strftime("%b %d (%a)")
+    assert plan["days"][-1]["day"] == (monday + timedelta(days=6)).strftime("%b %d (%a)")
+    assert all("rest" not in d["action"].lower() for d in plan["days"]), "no padded rest days"
+
+    db = SessionLocal()
+    s = db.query(UserSession).filter(UserSession.id == "s-upfront").first()
+    assert s.phase == "planning" and s.plan_starts_on == monday.isoformat()
+    db.close()
+
+    # Locking without naming a day keeps the chosen one.
+    resp = approve(client, headers, "s-upfront", today, None)
+    assert resp.status_code == 200, resp.text
+    db = SessionLocal()
+    s = db.query(UserSession).filter(UserSession.id == "s-upfront").first()
+    assert s.phase == "active"
+    assert s.plan_start_date == monday.isoformat() and s.plan_starts_on == monday.isoformat()
+    locked = json.loads(s.week_plan_json)
+    assert locked["start_date"] == monday.isoformat() and len(locked["days"]) == 7
+    db.close()
+
+
+def test_weekend_start_chosen_up_front_rolls_to_monday(client, monkeypatch):
+    import app.llm as llm
+    import app.main as main
+    from app import guardrail
+    from app.database import SessionLocal
+    from app.models import Session as UserSession
+
+    monkeypatch.setattr(llm, "call_with_fallback_chain", lambda messages, **kw: _mentor_plan(1))
+    monkeypatch.setattr(llm, "create_embedding", lambda *a, **k: None)
+    monkeypatch.setattr(main, "_generate_and_save_title", lambda *a, **k: None)
+    monkeypatch.setattr(guardrail, "screen", lambda *a, **k: guardrail.ALLOWED)
+
+    headers, uid = register(client, "upfront-sat@example.com")
+    today = date.today()
+    saturday = today + timedelta(days=(5 - today.weekday()) % 7 or 7)
+    monday_after = saturday + timedelta(days=2)
+    out = client.post(
+        "/chat",
+        json={"message": "Setup answers:\n\nTime?\n→ 20 min\n\nThat's everything — build my plan.", "session_id": "s-upfront-sat", "user_id": uid, "timezone": "UTC", "start_date": saturday.isoformat()},
+        headers=headers,
+    ).json()
+    assert out["plan"]["start_date"] == monday_after.isoformat()
+    assert out["plan"]["days"][0]["day"] == monday_after.strftime("%b %d (%a)")
+
+    db = SessionLocal()
+    s = db.query(UserSession).filter(UserSession.id == "s-upfront-sat").first()
+    assert s.plan_starts_on == monday_after.isoformat()
+    db.close()
+
+
+def test_start_too_far_ahead_is_refused_up_front(client):
+    headers, uid = register(client, "upfront-far@example.com")
+    far = date.today() + timedelta(days=30)
+    resp = client.post(
+        "/chat",
+        json={"message": "Setup answers:\n\nTime?\n→ 20 min", "session_id": "s-upfront-far", "user_id": uid, "timezone": "UTC", "start_date": far.isoformat()},
+        headers=headers,
+    )
+    assert resp.status_code == 400 and "14 days" in resp.json()["detail"]

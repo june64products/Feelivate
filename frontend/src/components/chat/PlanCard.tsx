@@ -5,7 +5,7 @@ import { useWindowSize } from '../../hooks/useWindowSize';
 import ConfirmDialog from '../workspace/ConfirmDialog';
 import { requestHowTo } from '../mission/HowToModal';
 import { isRestAction } from '../mission/missionTheme';
-import { projectedWeekWindow, daysBetween, formatDay, localISODate, windowFrom } from '../../lib/weekWindow';
+import { projectedWeekWindow, daysBetween, formatDay, localISODate, rollWeekendStart, windowFrom } from '../../lib/weekWindow';
 import { useExpandableDay, CLAMP_CHARS } from '../../lib/useExpandableDay';
 import StartDatePicker from '../mission/StartDatePicker';
 
@@ -28,6 +28,8 @@ interface PlanData {
     days: PlanDay[];
     /** Stamped by the backend when the plan was built. Absent on older plans. */
     generated_date?: string;
+    /** YYYY-MM-DD: the day this week begins — stamped on a draft once the user has chosen it. */
+    start_date?: string;
 }
 
 interface PlanCardProps {
@@ -55,9 +57,13 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
     const planAge = plan.generated_date ? daysBetween(plan.generated_date, today) : 0;
     const isStale = planAge >= STALE_AFTER_DAYS;
 
-    // When the week begins. Defaults to the lock day (or the roll-forward
-    // Monday); the user may push it out so they can get ready first.
-    const [startDate, setStartDate] = useState<string>(defaultWindow.start);
+    // When the week begins. A first week drafted after "when do you start?"
+    // carries that day on the plan and keeps it; otherwise the lock day (or
+    // the roll-forward Monday), which the user may push out to get ready first.
+    const chosenStart: string | null =
+        typeof plan.start_date === 'string' && plan.start_date >= today && !isApproved ? plan.start_date : null;
+    const [startDate, setStartDate] = useState<string>(chosenStart ?? rollWeekendStart(defaultWindow.start));
+    const [changingStart, setChangingStart] = useState(false);
     const window_ = windowFrom(startDate);
     const lead = daysBetween(today, startDate);
 
@@ -280,8 +286,26 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
             </div>
 
             {/* When the week begins — the one choice that keeps people from
-                never locking at all because "from today" felt too soon. */}
-            <StartDatePicker isFirstPlan={isFirstPlan} value={startDate} onChange={setStartDate} />
+                never locking at all because "from today" felt too soon. Already
+                answered with the setup questions? Then it's one line, not the
+                whole picker again. */}
+            {chosenStart && !changingStart ? (
+                <div style={{ padding: '14px 24px 4px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontFamily: satoshi }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>{lead > 0 ? `Starts ${formatDay(window_.start)}` : 'Starts today'}</strong>
+                        {' '}and runs to {formatDay(window_.end)} — {window_.dayCount} day{window_.dayCount === 1 ? '' : 's'}, a task on each.
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setChangingStart(true)}
+                        style={{ border: 'none', background: 'none', color: 'var(--accent-primary)', fontSize: '12.5px', cursor: 'pointer', padding: 0, fontFamily: satoshi, textDecoration: 'underline' }}
+                    >
+                        Change start day
+                    </button>
+                </div>
+            ) : (
+                <StartDatePicker isFirstPlan={isFirstPlan} value={startDate} onChange={setStartDate} />
+            )}
 
             {/* Actions — Swiss pill buttons */}
             <div data-tour="plan-actions" style={{

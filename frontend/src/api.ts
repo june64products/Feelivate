@@ -125,7 +125,9 @@ export interface ChatResponse {
 export const chatWithMentor = async (
     message: string,
     sessionId: string | null,
-    userId: string
+    userId: string,
+    /** YYYY-MM-DD — when the first week should begin; sent with the setup answers. */
+    startDate?: string,
 ): Promise<ChatResponse> => {
     const response = await secureFetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
@@ -134,6 +136,7 @@ export const chatWithMentor = async (
             session_id: sessionId,
             user_id: userId,
             timezone: getClientTimezone(),
+            ...(startDate ? { start_date: startDate } : {}),
         }),
     });
 

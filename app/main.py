@@ -452,6 +452,10 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     user_id: str
     timezone: Optional[str] = "UTC"
+    # YYYY-MM-DD: when the user wants their first week to begin. Sent with the
+    # setup answers so the draft is built for the real window (start → Sunday)
+    # instead of today's and then padded with rest days at lock time.
+    start_date: Optional[str] = None
 
 class LoginRequest(BaseModel):
     email: str
@@ -919,7 +923,23 @@ async def chat(
             )
             db.add(session_rec)
             db.commit()
-        
+
+        # 1b. "When do you start?" — answered right after the setup questions,
+        # before the first draft exists. Remembered on the session so the draft
+        # (and every tweak of it) is built for start → Sunday, and the lock
+        # defaults to the same day. Only the first week is asked up front; a
+        # later week keeps its lock-time choice.
+        if payload.start_date and session_rec.phase != "active" and not session_rec.is_completed:
+            import datetime as _sd
+            try:
+                import zoneinfo as _sz
+                _today_for_start = _sd.datetime.now(_sz.ZoneInfo(payload.timezone or "UTC")).date().isoformat()
+            except Exception:
+                _today_for_start = _sd.date.today().isoformat()
+            session_rec.plan_starts_on = _resolve_start_date(session_rec, _today_for_start, payload.start_date)
+            db.commit()
+        _chosen_start = session_rec.plan_starts_on if (session_rec.phase != "active" and session_rec.plan_starts_on) else None
+
         # 2. Fetch conversation history from DB
         db_messages = db.query(ChatMessage).filter(
             ChatMessage.session_id == session_id
@@ -1163,6 +1183,7 @@ async def chat(
             week_report_data=week_report_data,
             client_timezone=payload.timezone,
             current_week_complete=current_week_complete,
+            plan_start=_chosen_start,
         )
 
         # 4h. A locked week that hasn't started yet: the mentor must know, so
@@ -1342,7 +1363,8 @@ async def chat(
                 # on approve, because an unlocked plan may sit for weeks. If it
                 # does, approve re-fits against the actual lock day.
                 _plan_week = plan_data.get("week_number", 0)
-                _proj_start = _projected_week_start(session_rec, _plan_week, _gen_today.isoformat())
+                # The user's chosen first-week start wins over the projection.
+                _proj_start = _chosen_start or _projected_week_start(session_rec, _plan_week, _gen_today.isoformat())
 
                 # Record when this plan was built so the client can warn before a
                 # long-stale plan gets locked into a brand new week. Only the build
@@ -1350,6 +1372,9 @@ async def chat(
                 # lock time, since a plan can sit unlocked for weeks and any window
                 # stored here would be stale by then.
                 plan_data["generated_date"] = _gen_today.isoformat()
+                if _chosen_start:
+                    # The draft carries the chosen start so the lock card can preselect it.
+                    plan_data["start_date"] = _chosen_start
 
                 _fit_plan_to_window(plan_data, _proj_start)
             except Exception as e:
@@ -1483,6 +1508,10 @@ async def chat(
             response["safety"] = crisis_payload()
         return response
 
+    except HTTPException:
+        # A deliberate refusal (e.g. a start date too far ahead) must reach the
+        # client as the 4xx it is, not as the generic "hit a snag" reply.
+        raise
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
@@ -1598,6 +1627,10 @@ async def approve_plan(
     # marked missed the moment it is locked. The user may instead name the day
     # they will actually be ready (people routinely want a couple of days to get
     # set, or a clean Monday); that date wins within _resolve_start_date's limits.
+    # A first week whose start was chosen with the setup answers keeps that day
+    # unless the lock names another.
+    if not start_date and session_rec.phase != "active" and session_rec.plan_starts_on and session_rec.plan_starts_on >= today_iso:
+        start_date = session_rec.plan_starts_on
     start_iso = _resolve_start_date(session_rec, today_iso, start_date)
     starts_later = start_iso > today_iso
 
