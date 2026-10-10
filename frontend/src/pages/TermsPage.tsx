@@ -16,8 +16,8 @@ import LegalDoc, { type LegalSection } from '../components/legal/LegalDoc';
  * TERMS_VERSION follows the Privacy Policy's version scheme (the date of the
  * last material change).
  */
-const TERMS_VERSION = '2026-09-28';
-const LAST_UPDATED = '28 September 2026';
+const TERMS_VERSION = '2026-10-10';
+const LAST_UPDATED = '10 October 2026';
 
 const HELPLINES: string[][] = [
   ['UK', 'Samaritans (24/7)', '116 123 (free)'],
@@ -83,7 +83,11 @@ const SECTIONS: LegalSection[] = [
 
   { id: 'lock-in', h: 'The "Lock-In Protocol"', blocks: [
     { t: 'p', text: 'When you approve a week, the plan locks. You cannot quietly soften it mid-week to make it easier. That is a deliberate commitment device, and it is the core of how the product works.' },
-    { t: 'p', text: 'To be clear about what locking is not: it is a rule inside the app, not an obligation you owe us. You can end an ongoing session or a plan at any time using the "Stop" (finish this goal) action, and start a new one. Nothing is charged, forfeited or penalised if you stop. Streaks and reports are motivational features, nothing more.' },
+    { t: 'p', text: 'To be clear about what locking is not: it is a rule inside the app, not an obligation you owe us. You can end a goal at any time with "Finish this goal" in the goal menu, and start a new one. Nothing is charged, forfeited or penalised if you stop. Streaks and reports are motivational features, nothing more.' },
+    { t: 'h3', text: 'Choosing when a week starts' },
+    { t: 'p', text: 'When you set up a goal you choose the day your first week begins: today, or a date within the next 14 days. A week always runs from its start day to the following Sunday, so a Saturday or Sunday start moves to the Monday after it. Nothing is due before the start; if you have turned on task emails, we may send short countdown notes on the days before it.' },
+    { t: 'h3', text: 'Finishing a goal' },
+    { t: 'p', text: 'Finishing a goal is final for that goal. No further weekly plans, weekly reports or task emails are produced for it. The mentor remains available for conversation, and everything you recorded for the goal — plans, check-ins, journals and reports — stays in your archive until you delete your account. To start again, start a new goal.' },
   ] },
 
   { id: 'your-content', h: 'Your content', blocks: [
@@ -96,7 +100,7 @@ const SECTIONS: LegalSection[] = [
     { t: 'h3', text: 'AI provider processing' },
     { t: 'p', text: 'Your Content is processed by our AI providers as described in our [Privacy Policy](https://feelivate.com/privacy#ai-processing). Their API terms prohibit the use of your data to train their models; we are in the process of putting formal contractual arrangements in place to the same effect.' },
     { t: 'h3', text: 'Feedback' },
-    { t: 'p', text: 'Any feedback or suggestions you provide may be used by us without compensation to you.' },
+    { t: 'p', text: 'We may ask you short questions inside the app at a few moments (after your first plan, after a voice note, after a second change to a draft plan, after your first weekly report, and when you leave or log out) and in the daily task email (a 👍/👎 on whether the task was clear). Answering is always optional and you can close any prompt. What we collect with your answers is described in our [Privacy Policy](https://feelivate.com/privacy). Any feedback or suggestions you provide may be used by us without compensation to you.' },
   ] },
 
   { id: 'acceptable-use', h: 'How you agree to use it', blocks: [

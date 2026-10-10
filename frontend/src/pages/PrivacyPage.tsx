@@ -23,8 +23,8 @@ import LegalDoc, { type LegalSection } from '../components/legal/LegalDoc';
  *   - Northflank region: detected as Singapore (Google Cloud) — confirm
  *   - Log retention periods on Northflank and Vercel
  */
-const POLICY_VERSION = '2026-09-28';
-const LAST_UPDATED = '28 September 2026';
+const POLICY_VERSION = '2026-10-10';
+const LAST_UPDATED = '10 October 2026';
 
 const SECTIONS: LegalSection[] = [
   { id: 'introduction', h: 'Introduction', blocks: [
@@ -52,12 +52,12 @@ const SECTIONS: LegalSection[] = [
       ['Email address and password (stored only as an Argon2 hash); your name, if you choose to add one', 'Sign-up form, or Google sign-in (which gives us your email address and basic profile)', 'Art 6(1)(b) – contract performance'],
       ['Your goals, focus and vision', 'Chat with the mentor', 'Art 6(1)(b) – contract performance'],
       ['Chat messages with the AI mentor', 'Chat', 'Art 6(1)(b) – contract performance'],
-      ['Weekly plans, tasks and completion status', 'Generated from your chat, updated by you', 'Art 6(1)(b) – contract performance'],
+      ['Weekly plans, tasks and completion status; the day you choose for a week to begin', 'Generated from your chat, updated by you; the start-day choice you make when setting up a goal or locking a week', 'Art 6(1)(b) – contract performance'],
       ['Daily check-ins (which days you marked done; a day you did not mark counts as missed) and any note you add; the reason you choose when a day is missed', 'Check-in; the recovery card after a missed day', 'Art 6(1)(a) – consent'],
       ['The reason you give for your goal (your "why"), which the mentor may quote back to you at weak moments', 'Chat with the mentor', 'Art 6(1)(a) + Art 9(2)(a) – explicit consent'],
       ['Voice notes and the text transcripts made from them; mood check-ins recorded between weeks', 'Voice journal', 'Art 6(1)(a) + Art 9(2)(a) – explicit consent'],
       ['Notification email address, preferred send time and timezone', 'Notification settings', 'Art 6(1)(a) – consent'],
-      ['Feedback: a 1–5 rating, what worked and what was confusing, a comment, and whether we may email you about it. Visitors without an account may leave an email address if they want a reply', 'Feedback form (the side tab, or the one-time prompt for new accounts)', 'Art 6(1)(f) – legitimate interests (improving the service); an email address you choose to leave – Art 6(1)(a) consent'],
+      ['Feedback: short questions we ask at a few moments — after your first plan (does it fit), after a voice note (how today\'s task went), after a second change to a draft (what was off), and the fuller form from the side tab, when you leave, at logout or after your first weekly report (how you would feel if Feelivate went away, what you liked, what was confusing, what almost made you quit, whether something broke) — plus any free text you add, and whether we may email you about it. From the daily task email: a 👍/👎 on whether that day\'s task was clear. With each answer we record where you were in the app: your goal, week and plan day, streak, days active, device type, and which prompt asked. Visitors without an account may leave an email address if they want a reply', 'Feedback prompts in the app, the side tab, and links in the daily task email', 'Art 6(1)(f) – legitimate interests (improving the service); an email address you choose to leave – Art 6(1)(a) consent'],
       ['Anything you write to us', 'Contact form, support email', 'Art 6(1)(b) / Art 6(1)(f) – responding to you'],
     ] },
     { t: 'h3', text: 'Information the Service derives from what you give it' },
@@ -99,7 +99,7 @@ const SECTIONS: LegalSection[] = [
       ['Creating and running your account, authenticating you', 'Art 6(1)(b) – contract performance'],
       ['Generating weekly plans, tasks, streaks and weekly reports', 'Art 6(1)(b) – contract performance'],
       ['Remembering your conversations across weeks (long-term memory)', 'Art 6(1)(b) – contract performance'],
-      ['Sending your daily task email at your chosen time, and the related reminder and recovery emails', 'Art 6(1)(a) – consent (withdrawable any time)'],
+      ['Sending your daily task email at your chosen time, the related reminder and recovery emails, and short countdown notes on the days before a week you scheduled to start later', 'Art 6(1)(a) – consent (withdrawable any time)'],
       ['Syncing your plan to Google Calendar (optional)', 'Art 6(1)(a) – consent'],
       ['Processing journals, voice transcripts, mood check-ins and emotion logs', 'Art 6(1)(a) + Art 9(2)(a) – explicit consent'],
       ['Screening messages for safety (crisis language) and misuse', 'Art 6(1)(f) – legitimate interests (safety)'],
@@ -167,9 +167,10 @@ const SECTIONS: LegalSection[] = [
       ['Speech-to-text and analysis provider', 'Voice audio for speech-to-text (discarded after transcription); transcripts for emotion analysis; messages for safety screening; first messages for session titles.', 'United States'],
       ['Embedding provider', 'Every chat message, to create the embeddings used for long-term memory.', 'United States'],
       ['Vector-memory provider', 'Long-term memory: the text of each chat exchange with its embedding, keyed to your account.', 'Frankfurt, Germany'],
-      ['Email delivery provider', 'Email address, name, today\'s task text, verification codes, reminder and recovery emails, contact-form forwards.', 'United States company; messages are dispatched from Tokyo, Japan'],
+      ['Email delivery provider', 'Email address, name, today\'s task text, verification codes, reminder, recovery and countdown emails, contact-form forwards. Task emails carry one-tap links (Done, and a 👍/👎 on whether the task was clear) that are signed to your account and expire within two days.', 'United States company; messages are dispatched from Tokyo, Japan'],
       ['Google LLC', 'Only if you sign in with Google or connect Google Calendar: identity data; calendar events created from your plan.', 'United States'],
     ] },
+    { t: 'p', text: 'If you reply to a task email, your reply arrives in our support inbox ([info@june64.com](mailto:info@june64.com)) and is handled like any message you send us.' },
     { t: 'h3', text: 'When we share your data' },
     { t: 'p', text: 'Apart from our processors, we share your personal data with no one, except where we are legally compelled to (e.g. a valid court order or binding legal obligation), or where it is necessary to establish or defend legal claims.' },
     { t: 'h3', text: 'If Feelivate is ever sold or merged' },
@@ -190,11 +191,11 @@ const SECTIONS: LegalSection[] = [
   { id: 'retention', h: 'How long we keep it', blocks: [
     { t: 'p', text: 'We keep your personal data only for as long as necessary to provide the service or as required by law.' },
     { t: 'table', head: ['Data', 'Retention period'], rows: [
-      ['Account, plans, chats, journals, emotion logs, reports, long-term memory', 'For as long as your account remains open'],
+      ['Account, plans, chats, journals, emotion logs, reports, long-term memory — including everything belonging to a goal you have finished', 'For as long as your account remains open. Finishing a goal stops new plans, reports and task emails for it; it does not delete anything'],
       ['Everything – on account deletion', 'Erased immediately and permanently'],
       ['Consent records', 'For the life of your account, then deleted with it'],
       ['Email verification codes', '10 minutes, then cleared automatically'],
-      ['Feedback you send us', 'For as long as it is useful for improving the service; you can ask us to delete yours at any time'],
+      ['Feedback you send us', 'For as long as it is useful for improving the service; deleted with your account, and you can ask us to delete yours sooner at any time'],
       ['Service logs', 'A limited period set by our hosting platforms, then deleted'],
       ['Inactive accounts', 'Not deleted automatically. Your account and data stay until you delete them (Profile → Delete account). If we introduce automatic deletion of inactive accounts, we will update this policy and email you first'],
       ['Records we must keep by law (e.g. tax)', 'For the statutory period'],
@@ -255,7 +256,7 @@ const SECTIONS: LegalSection[] = [
       ['feelivate_onboarding_<id>', 'Whether you have completed the guided tour'],
       ['last_journal_date_…', 'Whether today\'s journal has been recorded (locks the mic for the day)'],
       ['slip_reason_…, recovery_line_…', 'The reason you chose for a missed day and the recovery line shown afterwards'],
-      ['feelivate-feedback:<id>', 'Whether we have already asked you for feedback, so we do not ask again'],
+      ['feelivate-feedback:<id>, feelivate-feedback-moments:<id>', 'Whether we have already asked you for feedback, and which in-app feedback moments have been asked, so each is asked once'],
     ] },
     { t: 'h3', text: 'Logging out' },
     { t: 'p', text: 'Logging out clears the authentication entries (sign-in token, user id and name, open goal) from your local storage. The remaining functional keys contain no content beyond dates and short labels and are cleared when you clear your browser data.' },

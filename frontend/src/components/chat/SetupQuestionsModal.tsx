@@ -176,7 +176,9 @@ export default function SetupQuestionsModal({ questions, onSubmit }: SetupQuesti
                             Your week runs from that day to its Sunday, with a real task on every day of it. Pick the day you'll actually be ready — not the day you wish you were.
                         </p>
 
-                        <div style={{ margin: '0 -24px' }}>
+                        {/* The picker carries its own 24px side padding; pull it out to the
+                            modal's edge so its pills line up with the text above. */}
+                        <div style={{ margin: isMobile ? '0 -20px' : '0 -26px' }}>
                             <StartDatePicker isFirstPlan value={startDate} onChange={setStartDate} />
                         </div>
 

@@ -63,7 +63,6 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
     const chosenStart: string | null =
         typeof plan.start_date === 'string' && plan.start_date >= today && !isApproved ? plan.start_date : null;
     const [startDate, setStartDate] = useState<string>(chosenStart ?? rollWeekendStart(defaultWindow.start));
-    const [changingStart, setChangingStart] = useState(false);
     const window_ = windowFrom(startDate);
     const lead = daysBetween(today, startDate);
 
@@ -289,19 +288,12 @@ export default function PlanCard({ plan, onApprove, onRequestChange, isApproved,
                 never locking at all because "from today" felt too soon. Already
                 answered with the setup questions? Then it's one line, not the
                 whole picker again. */}
-            {chosenStart && !changingStart ? (
-                <div style={{ padding: '14px 24px 4px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {chosenStart ? (
+                <div style={{ padding: '14px 24px 4px', borderTop: '1px solid var(--border-subtle)' }}>
                     <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontFamily: satoshi }}>
                         <strong style={{ color: 'var(--text-primary)' }}>{lead > 0 ? `Starts ${formatDay(window_.start)}` : 'Starts today'}</strong>
                         {' '}and runs to {formatDay(window_.end)} — {window_.dayCount} day{window_.dayCount === 1 ? '' : 's'}, a task on each.
                     </span>
-                    <button
-                        type="button"
-                        onClick={() => setChangingStart(true)}
-                        style={{ border: 'none', background: 'none', color: 'var(--accent-primary)', fontSize: '12.5px', cursor: 'pointer', padding: 0, fontFamily: satoshi, textDecoration: 'underline' }}
-                    >
-                        Change start day
-                    </button>
                 </div>
             ) : (
                 <StartDatePicker isFirstPlan={isFirstPlan} value={startDate} onChange={setStartDate} />

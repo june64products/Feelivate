@@ -219,6 +219,14 @@ export const DEMO_STEPS: DemoStep[] = [
         scene: { messages: CHAT, planApproved: true },
     },
     {
+        id: 'finish-goal',
+        target: 'goal-pill',
+        placement: 'bottom',
+        title: 'Done with a goal? Finish it',
+        body: 'Reached it, or ready to stop? Open this pill → “Finish this goal”. One confirm and it closes for good: no new weeks, no new reports, no task emails. Your mentor stays to talk, every week you recorded stays in the archive, and a fresh start is simply a new goal.',
+        scene: { messages: CHAT, planApproved: true },
+    },
+    {
         id: 'path',
         target: 'week-panel',
         placement: 'top',
