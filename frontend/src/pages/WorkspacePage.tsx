@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, Sparkles, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Bell, BellOff, CheckCircle, Mail, Loader2, X, Clock, ShieldAlert, BookOpen } from 'lucide-react';
 import {
     chatWithMentor,
     approvePlan,
@@ -957,7 +957,7 @@ export default function WorkspacePage() {
                                                     color: 'var(--text-primary)', cursor: 'pointer', fontFamily: missionSatoshi,
                                                 }}
                                             >
-                                                <Sparkles size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                                                <BookOpen size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
                                                 <span style={{ flex: 1 }}>
                                                     <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 700 }}>See your weeks and reports</span>
                                                     <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>Everything you recorded, kept as it was.</span>
@@ -1473,7 +1473,7 @@ export default function WorkspacePage() {
 
                                     {notifMessage && (
                                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'var(--glass-hover)', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '14px' }}>
-                                            <Sparkles size={13} /><span>{notifMessage}</span>
+                                            <CheckCircle size={13} /><span>{notifMessage}</span>
                                         </div>
                                     )}
 
@@ -1690,7 +1690,7 @@ export default function WorkspacePage() {
 
                                     {notifMessage && (
                                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', background: 'var(--glass-hover)', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '12px' }}>
-                                            <Sparkles size={13} /><span>{notifMessage}</span>
+                                            <CheckCircle size={13} /><span>{notifMessage}</span>
                                         </div>
                                     )}
                                     {notifError && (
@@ -1778,7 +1778,7 @@ export default function WorkspacePage() {
                                     background: 'var(--glass-hover)', color: 'var(--text-primary)',
                                     fontSize: '12px', marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center'
                                 }}>
-                                    <Sparkles size={14} />
+                                    <CheckCircle size={14} />
                                     <span>{syncMessage}</span>
                                 </div>
                             )}

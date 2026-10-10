@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ClipboardList } from 'lucide-react';
 import type { SetupQuestion } from '../../api';
 import { useWindowSize } from '../../hooks/useWindowSize';
 import StartDatePicker from '../mission/StartDatePicker';
@@ -97,7 +97,7 @@ export default function SetupQuestionsModal({ questions, onSubmit }: SetupQuesti
                                 background: 'var(--btn-primary-bg)', display: 'flex',
                                 alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                             }}>
-                                <Sparkles size={16} style={{ color: 'var(--btn-primary-text)' }} />
+                                <ClipboardList size={16} style={{ color: 'var(--btn-primary-text)' }} />
                             </div>
                             <h3 style={{
                                 fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)',

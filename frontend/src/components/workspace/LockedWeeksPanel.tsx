@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, X, Lock, Sparkles, FileText, ChevronUp, Mic } from 'lucide-react';
+import { ChevronRight, ChevronDown, X, Lock, FileText, ChevronUp, Mic } from 'lucide-react';
 import { getSessionReports, type ArchivedWeekReport } from '../../api';
 import { useExpandableDay, CLAMP_CHARS } from '../../lib/useExpandableDay';
 
@@ -785,7 +785,7 @@ function WeekPill({
     light?: boolean;
 }) {
     const { weekNumber, isOngoing, isLocked } = item;
-    // isOngoing = true → recorded today (indigo/sparkle)
+    // isOngoing = true → recorded today (indigo/mic)
     // isLocked = true → completed past week (purple/lock)
     // neither → active current week, not recorded yet (emerald/play)
     const isActiveCurrent = !isOngoing && !isLocked;
@@ -850,7 +850,7 @@ function WeekPill({
         >
             {/* Icon */}
             {isOngoing
-                ? <Sparkles size={10} />
+                ? <Mic size={10} />
                 : isActiveCurrent
                     ? <span style={{ fontSize: '9px', lineHeight: 1 }}>▶</span>
                     : <Lock size={10} />

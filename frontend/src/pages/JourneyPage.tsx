@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, Loader2, ArrowLeft, Lock, ChevronDown, FileText, Sparkles, Trophy, Award, TrendingUp, Quote, Target, Zap, BarChart3, AlertTriangle } from 'lucide-react';
+import { Mic, Square, Loader2, ArrowLeft, Lock, ChevronDown, FileText, Lightbulb, BookOpen, Trophy, Award, TrendingUp, Quote, Target, Zap, BarChart3, AlertTriangle } from 'lucide-react';
 import {
     getJournalsForSession,
     getWeeklyReport,
@@ -1958,7 +1958,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                                                                 border: '1px solid var(--border-subtle)',
                                                             }}>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                                                    <Sparkles size={14} color="#a78bfa" />
+                                                                    <Lightbulb size={14} color="#a78bfa" />
                                                                     <p style={{
                                                                         fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
                                                                         textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0,
@@ -2133,7 +2133,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                                                             transition: 'background 0.2s',
                                                         }}>
                                                             {isExpanded
-                                                                ? <Sparkles size={16} color="var(--text-primary)" />
+                                                                ? <BookOpen size={16} color="var(--text-primary)" />
                                                                 : <FileText size={16} color="var(--text-secondary)" />
                                                             }
                                                         </div>
@@ -2268,7 +2268,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                                                                             border: '1px solid var(--border-subtle)',
                                                                         }}>
                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>
-                                                                                <Sparkles size={14} color="#a78bfa" />
+                                                                                <Lightbulb size={14} color="#a78bfa" />
                                                                                 <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, fontFamily: satoshi }}>Hidden Insight</p>
                                                                             </div>
                                                                             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontFamily: satoshi }}>{aw.report.hidden_insight}</p>
