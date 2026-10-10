@@ -876,20 +876,14 @@ export const getWeekInfo = async (sessionId: string): Promise<WeekInfo> => {
 // SESSION COMPLETION
 // ============================================================
 
-export interface SessionReport {
-    headline: string;
-    biggest_wins: string[];
-    growth_arc: string;
-    advice_for_next_chapter: string;
-    stats: {
-        total_weeks: number;
-        days_done: number;
-        days_total: number;
-        avg_mood: number;
-    };
+export interface FinishedGoalStats {
+    total_weeks: number;
+    days_done: number;
+    days_total: number;
 }
 
-export const completeSession = async (sessionId: string): Promise<{ status: string; report: SessionReport }> => {
+/** Finish a goal. Instant — nothing is generated; the mentor becomes chat-only. */
+export const completeSession = async (sessionId: string): Promise<{ status: string; stats: FinishedGoalStats }> => {
     const response = await secureFetch(`${API_BASE_URL}/sessions/${sessionId}/complete`, {
         method: 'POST',
     });

@@ -1454,7 +1454,8 @@ async def chat(
         # NEW-goal discovery turn may carry one, never alongside a plan, and a
         # malformed structure is dropped rather than trusted.
         questions_data = parsed.get("questions")
-        if plan_data or not isinstance(questions_data, list):
+        _session_finished = bool(session_rec.is_completed or session_rec.phase == "completed")
+        if plan_data or _session_finished or not isinstance(questions_data, list):
             questions_data = None
         else:
             questions_data = [
@@ -3132,116 +3133,41 @@ async def complete_session(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Finish a goal. End means end.
+
+    The session is marked completed immediately — no model call, nothing to
+    wait for, nothing that can fail halfway and leave the goal half-open. From
+    here the mentor is a plain conversation: no new weekly plans, no new
+    reviews, no task emails. Every week already recorded stays in the archive.
     """
-    Mark a session as complete. Generate a final aggregated report covering
-    all weeks, total checkins, emotional arc, and highlights.
-    """
-    from datetime import date
-    from .llm import call_llm
+    from datetime import datetime as _dt
 
     session_rec = db.query(Session).filter(Session.id == session_id).first()
     if not session_rec or session_rec.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Gather all weekly reports for this session
-    weekly_reports = (
-        db.query(WeeklyReport)
-        .filter(WeeklyReport.session_id == session_id)
-        .order_by(WeeklyReport.week_number.asc())
-        .all()
-    )
-
-    # Count checkins
-    checkins = (
-        db.query(DailyCheckin)
-        .filter(DailyCheckin.session_id == session_id)
-        .all()
-    )
+    checkins = db.query(DailyCheckin).filter(DailyCheckin.session_id == session_id).all()
     done_count = sum(1 for c in checkins if c.status == "done")
-    total_count = len(checkins)
-
-    # Journals for this session
-    journals = (
-        db.query(VoiceJournal)
-        .filter(VoiceJournal.session_id == session_id)
-        .order_by(VoiceJournal.date.asc())
-        .all()
-    )
-
-    # Build summary context for the AI
-    weeks_summary = []
-    for wr in weekly_reports:
-        try:
-            rd = json.loads(wr.report_json)
-            weeks_summary.append({
-                "week": wr.week_number,
-                "start": wr.week_start,
-                "end": wr.week_end,
-                "consistency": rd.get("consistency_score", 0),
-                "avg_score": rd.get("avg_score", 0),
-                "dominant_emotion": rd.get("dominant_emotion", "neutral"),
-                "what_went_well": rd.get("what_went_well", ""),
-                "where_you_slipped": rd.get("where_you_slipped", ""),
-            })
-        except Exception:
-            pass
-
-    emotion_labels = [j.emotion_label for j in journals if j.emotion_label]
-    avg_emotion_score = round(sum(j.emotion_score or 0 for j in journals) / max(len(journals), 1), 1)
-
-    # Ask LLM to generate final session summary
-    context = json.dumps({
-        "total_weeks": session_rec.current_week,
-        "days_done": done_count,
-        "days_total": total_count,
-        "avg_emotion_score": avg_emotion_score,
-        "emotion_labels": emotion_labels,
-        "weeks": weeks_summary,
-        "focus": session_rec.focus or "",
-    })
-
-    prompt = (
-        f"You are a mentor writing a final summary report for a user who has completed their transformation plan.\n"
-        f"Context: {context}\n\n"
-        f"Write a warm, insightful final report in JSON format:\n"
-        f"{{\"headline\": \"1-line summary of their journey\","
-        f" \"biggest_wins\": [\"list of 3 biggest achievements\"],"
-        f" \"growth_arc\": \"2-3 sentences describing their emotional and performance arc\","
-        f" \"advice_for_next_chapter\": \"1-2 sentences of forward-looking advice\","
-        f" \"stats\": {{\"total_weeks\": N, \"days_done\": N, \"days_total\": N, \"avg_mood\": N}}}}"
-    )
-
+    weeks_recorded = db.query(WeeklyReport).filter(WeeklyReport.session_id == session_id).count()
+    weeks_locked = 0
     try:
-        raw = await asyncio.to_thread(call_llm, prompt, temperature=0.7, max_tokens=600)
-        raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
-        json_str = _extract_json_by_braces(raw)
-        if not json_str:
-            start = raw.find("{")
-            end = raw.rfind("}")
-            json_str = raw[start:end + 1] if start != -1 else "{}"
-        report_data = json.loads(json_str)
-    except Exception as e:
-        logger.warning(f"Final report generation failed: {e}")
-        report_data = {
-            "headline": f"Completed {session_rec.current_week} week plan",
-            "biggest_wins": ["Showed up consistently", "Built self-awareness", "Stayed committed"],
-            "growth_arc": "You committed to the process and saw it through.",
-            "advice_for_next_chapter": "Keep the habits you built. Start fresh with new goals.",
-            "stats": {
-                "total_weeks": session_rec.current_week,
-                "days_done": done_count,
-                "days_total": total_count,
-                "avg_mood": avg_emotion_score,
-            },
-        }
+        weeks_locked = len(json.loads(session_rec.result_json or "[]"))
+    except (TypeError, ValueError):
+        pass
 
-    # Save to session
+    stats = {
+        "total_weeks": max(weeks_locked, weeks_recorded, int(session_rec.current_week or 0)),
+        "days_done": done_count,
+        "days_total": len(checkins),
+    }
+    already = bool(session_rec.is_completed or session_rec.phase == "completed")
     session_rec.is_completed = 1
     session_rec.phase = "completed"
-    session_rec.session_report_json = json.dumps(report_data)
+    if not already:
+        session_rec.session_report_json = json.dumps({"finished_at": _dt.utcnow().isoformat(timespec="seconds"), "stats": stats})
     db.commit()
-
-    return {"status": "completed", "report": report_data}
+    logger.info(f"[Finish] session={session_id} user={current_user.id} weeks={stats['total_weeks']} done={done_count}/{len(checkins)}")
+    return {"status": "completed", "stats": stats}
 
 
 # ============================================================
@@ -3718,6 +3644,23 @@ async def get_weekly_report(
         week_start_d = today - timedelta(days=today.weekday())
         ws = week_start_d.isoformat()
         we = (week_start_d + timedelta(days=6)).isoformat()
+
+    # ── 0. Finished goal: the archive is read-only ──────────────────────────────
+    # "End means end": once a goal is finished no new review is written for it,
+    # whatever the calendar says. Reviews that already exist stay readable.
+    if session_rec is not None and (session_rec.is_completed or session_rec.phase == "completed"):
+        done_q = db.query(WeeklyReport).filter(WeeklyReport.user_id == user_id, WeeklyReport.week_start == ws, WeeklyReport.session_id == session_id)
+        done_wr = done_q.first()
+        if done_wr:
+            try:
+                return {"status": "cached", "week_start": ws, "week_end": we, "week_number": wk_num, "report": json.loads(done_wr.report_json)}
+            except (TypeError, ValueError):
+                pass
+        return {
+            "status": "no_data",
+            "message": "This goal is finished — no new reviews are written for it.",
+            "week_start": ws, "week_end": we, "week_number": wk_num, "finished": True,
+        }
 
     # ── 1. Fetch this week's voice journals (SESSION-SCOPED) ────────────────────
     # Each journey/session is independent: a new session starts fresh and must NOT

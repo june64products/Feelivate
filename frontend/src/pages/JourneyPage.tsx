@@ -910,6 +910,8 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
     // The main journal locks in this gap; the mood mic takes over.
     // In the guided demo the scene decides (so the tour can show this state
     // without touching the backend); the real rule is unchanged otherwise.
+    // A finished goal: reports stay readable, but nothing invites another week.
+    const goalFinished = !demoMode && !!weekInfo?.is_completed;
     const noActiveWeek = demoMode
         ? demoBetweenWeeks
         : (
@@ -1053,7 +1055,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                 // Celebration fires ONLY on the very last day of the week (today === week_end)
                 // and only once a real report exists (not for no_data / in_progress states).
                 const isLastDay = wi?.week_end ? today === wi.week_end : false;
-                if (isLastDay && r.report && r.status !== 'no_data' && r.status !== 'in_progress') {
+                if (isLastDay && !wi?.is_completed && r.report && r.status !== 'no_data' && r.status !== 'in_progress') {
                     setTimeout(() => setShowWeekEndCelebration(true), 800);
                 }
             }
@@ -1339,7 +1341,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                                 >
                                     View Full Report
                                 </button>
-                                {!weekInfo?.has_next_plan && (
+                                {!weekInfo?.has_next_plan && !goalFinished && (
                                     <button
                                         onClick={() => {
                                             setShowWeekEndCelebration(false);
@@ -1745,7 +1747,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                                     )}
                                 </div>
                                 {/* Plan Week N+1 button — own row for breathing room */}
-                                {weekInfo?.has_plan && weekInfo.is_week_complete && weekInfo.has_report && !weekInfo.has_next_plan && (
+                                {weekInfo?.has_plan && weekInfo.is_week_complete && weekInfo.has_report && !weekInfo.has_next_plan && !goalFinished && (
                                     <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
                                         <button
                                             onClick={() => {
@@ -1779,7 +1781,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                                     : (weekInfo?.is_week_complete ?? false);
                                 return (
                                     <>
-                                        {!isWeekComplete && weekDays.some(d => d.has_journal) && (
+                                        {!isWeekComplete && !goalFinished && weekDays.some(d => d.has_journal) && (
                                             <div style={{
                                                 borderRadius: '18px', padding: '18px 20px',
                                                 background: 'var(--card-bg)',
@@ -1813,8 +1815,11 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                                                     color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6,
                                                     fontFamily: satoshi,
                                                 }}>
-                                                    Record voice journals across the week.<br />
-                                                    At the end of the week, your AI performance review will appear here.
+                                                    {goalFinished ? (
+                                                        <>This goal is finished — no new review is written for it.<br />Reviews from before you finished are in the archive below.</>
+                                                    ) : (
+                                                        <>Record voice journals across the week.<br />At the end of the week, your AI performance review will appear here.</>
+                                                    )}
                                                 </div>
                                             ) : (report?.status === 'in_progress' || report?.status === 'waiting_for_sunday_entry') ? (
                                                 <div style={{
@@ -2009,7 +2014,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                                                         )}
 
                                                         {/* Plan Week N+1 prompt — only when next plan doesn't exist */}
-                                                        {!weekInfo?.has_next_plan && (
+                                                        {!weekInfo?.has_next_plan && !goalFinished && (
                                                             <div style={{
                                                                 padding: '14px 16px', borderRadius: '12px',
                                                                 background: 'var(--bg-surface)',

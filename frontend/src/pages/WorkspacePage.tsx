@@ -206,7 +206,10 @@ export default function WorkspacePage() {
     const uiMentorOpen = demoMode
         ? (demoView === 'chat' && demoMessages.length > 0 && !demoPlanApproved)
         : mentorOpen;
-    const isPlanningStage = !uiIsPlanApproved && !!uiActivePlan && !isEmptyState;
+    // A finished goal keeps its last plan on record (the archive panel reads it)
+    // but it is never a draft to lock again.
+    const isFinishedStage = isSessionCompleted && !demoMode;
+    const isPlanningStage = !uiIsPlanApproved && !!uiActivePlan && !isEmptyState && !isFinishedStage;
 
     // Mic locked state — check localStorage for today's recording (PER SESSION, so a
     // recording in one session doesn't lock the mic in another fresh session).
@@ -367,8 +370,12 @@ export default function WorkspacePage() {
     }, [activeSessionId]);
 
     // Listen for "Plan Week N+1" button from JourneyPage
+    const sessionCompletedRef = useRef(false);
+    sessionCompletedRef.current = isSessionCompleted;
     useEffect(() => {
         const handleNextWeekPlan = (e: Event) => {
+            // A finished goal never gets another week, whatever asked for it.
+            if (sessionCompletedRef.current) { setView('chat'); return; }
             const week = (e as CustomEvent).detail?.week ?? 2;
             setView('chat');
             // Small delay so view switches before sending
@@ -885,7 +892,7 @@ export default function WorkspacePage() {
                             whole screen stuck at opacity 0. Entry animations on
                             each stage still play on mount. */}
                         <>
-                            {isEmptyState && !uiIsPlanApproved ? (
+                            {isEmptyState && !uiIsPlanApproved && !isFinishedStage ? (
                                 /* No goal yet — one question, not a chat thread */
                                 <GoalStart
                                     key="goal-start"
@@ -893,6 +900,82 @@ export default function WorkspacePage() {
                                     disabled={isLoading || demoMode}
                                     demoMode={demoMode}
                                 />
+                            ) : isFinishedStage ? (
+                                /* The goal is finished. The mentor stays, the archive
+                                   stays; nothing else is asked of them here. */
+                                <motion.div
+                                    key="finished-stage"
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    style={{ padding: '26px 20px 60px', maxWidth: '560px', margin: '0 auto' }}
+                                >
+                                    <div style={{
+                                        borderRadius: '22px', padding: '26px 24px',
+                                        background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
+                                        boxShadow: 'var(--shadow-sm)', fontFamily: missionSatoshi,
+                                    }}>
+                                        <div style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                            padding: '5px 11px', borderRadius: '100px',
+                                            background: 'var(--accent-glow)', color: 'var(--accent-primary)',
+                                            fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                                            marginBottom: '14px',
+                                        }}>
+                                            <CheckCircle size={13} /> Goal finished
+                                        </div>
+                                        <h2 style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontFamily: missionClash, lineHeight: 1.2 }}>
+                                            {sessionFocus || 'This goal is closed.'}
+                                        </h2>
+                                        <p style={{ margin: '0 0 20px', fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.65 }}>
+                                            No new weekly plans, reviews or task emails for this one. Your mentor is still here to talk,
+                                            and every week you recorded is in the archive.
+                                        </p>
+                                        <div style={{ display: 'grid', gap: '10px' }}>
+                                            <button
+                                                onClick={() => setMentorOpen(true)}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+                                                    padding: '13px 14px', borderRadius: '14px', textAlign: 'left',
+                                                    border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)',
+                                                    color: 'var(--text-primary)', cursor: 'pointer', fontFamily: missionSatoshi,
+                                                }}
+                                            >
+                                                <MessageCircle size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                                                <span style={{ flex: 1 }}>
+                                                    <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 700 }}>Talk to your mentor</span>
+                                                    <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>Questions, reflection, what's next — just no new plan here.</span>
+                                                </span>
+                                                <ChevronRight size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                            </button>
+                                            <button
+                                                onClick={() => { setJourneyInitialTab('archive'); setView('journey'); }}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+                                                    padding: '13px 14px', borderRadius: '14px', textAlign: 'left',
+                                                    border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)',
+                                                    color: 'var(--text-primary)', cursor: 'pointer', fontFamily: missionSatoshi,
+                                                }}
+                                            >
+                                                <Sparkles size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                                                <span style={{ flex: 1 }}>
+                                                    <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 700 }}>See your weeks and reports</span>
+                                                    <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>Everything you recorded, kept as it was.</span>
+                                                </span>
+                                                <ChevronRight size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                            </button>
+                                            <button
+                                                onClick={handleNewChat}
+                                                style={{
+                                                    marginTop: '4px', padding: '12px 16px', borderRadius: '100px', border: 'none',
+                                                    background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                                                    fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: missionSatoshi,
+                                                }}
+                                            >
+                                                Start a new goal
+                                            </button>
+                                        </div>
+                                    </div>
+                                </motion.div>
                             ) : isPlanningStage ? (
                                 /* A draft week exists — center stage, commit or tweak */
                                 <motion.div
