@@ -22,6 +22,8 @@ interface MissionTopBarProps {
     /** Local ISO date, for the panel's week dots. */
     todayIso: string;
     demoMode: boolean;
+    /** Guided tour only: hold the goal menu open (true) or closed (false). */
+    demoMenuOpen?: boolean;
     /** Bumps when the session list should re-fetch (same key the sidebar used). */
     refreshKey: number;
     onSelectSession: (id: string) => void;
@@ -41,7 +43,7 @@ interface MissionTopBarProps {
  */
 export default function MissionTopBar({
     userId, activeSessionId, sessionFocus, currentWeek, streak, isPlanActive,
-    todayDone, todayIso, demoMode, refreshKey, onSelectSession, onNewGoal, onOpenArchive,
+    todayDone, todayIso, demoMode, demoMenuOpen, refreshKey, onSelectSession, onNewGoal, onOpenArchive,
     onOpenAlerts, onOpenCalendar, onOpenPlanInfo, onStopSession, onLogout,
 }: MissionTopBarProps) {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -55,13 +57,19 @@ export default function MissionTopBar({
         getUserSessions(userId).then(setSessions).catch(() => { });
     }, [userId, refreshKey, demoMode, activeSessionId]);
 
+    // The tour drives the menu while it runs; a click outside must not undo that.
+    const tourDriven = demoMenuOpen !== undefined;
+    useEffect(() => {
+        if (tourDriven) setMenuOpen(!!demoMenuOpen);
+    }, [tourDriven, demoMenuOpen]);
     useEffect(() => {
         const close = (e: MouseEvent) => {
+            if (tourDriven) return;
             if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
         };
         document.addEventListener('mousedown', close);
         return () => document.removeEventListener('mousedown', close);
-    }, []);
+    }, [tourDriven]);
 
     const goalLabel = (() => {
         const active = sessions.find(s => s.id === activeSessionId);
@@ -241,9 +249,10 @@ export default function MissionTopBar({
                                 <Archive size={14} />
                                 Report archive
                             </button>
-                            {activeSessionId && isPlanActive && (
+                            {(activeSessionId || demoMode) && isPlanActive && (
                                 <button
-                                    onClick={() => { setMenuOpen(false); onStopSession(); }}
+                                    data-tour="finish-goal"
+                                    onClick={() => { if (demoMode) return; setMenuOpen(false); onStopSession(); }}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
                                         padding: '9px 12px', borderRadius: '10px', border: 'none',

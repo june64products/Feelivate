@@ -22,7 +22,8 @@ export type DemoTarget =
     | 'today-card' | 'done-button' | 'goal-pill' | 'streak'
     | 'journey-nav' | 'journey-mic' | 'mood-mic' | 'archive-tab'
     | 'reports-button' | 'mentor-chip'
-    | 'emotion-orb' | 'profile-menu' | 'center';
+    | 'emotion-orb' | 'profile-menu' | 'center'
+    | 'finish-goal' | 'finished-card';
 
 export interface DemoSceneMessage {
     role: 'user' | 'assistant';
@@ -44,6 +45,10 @@ export interface DemoScene {
     journeyTab?: 'overview' | 'archive';
     /** Journey shows the between-weeks state: journal locked + mood-only mic (demo only). */
     betweenWeeks?: boolean;
+    /** The goal pill's menu is held open (to point at "Finish this goal"). */
+    goalMenuOpen?: boolean;
+    /** The workspace shows the finished-goal card instead of the plan. */
+    finished?: boolean;
 }
 
 export interface DemoStep {
@@ -220,11 +225,20 @@ export const DEMO_STEPS: DemoStep[] = [
     },
     {
         id: 'finish-goal',
-        target: 'goal-pill',
+        target: 'finish-goal',
         placement: 'bottom',
-        title: 'Done with a goal? Finish it',
-        body: 'Reached it, or ready to stop? Open this pill → “Finish this goal”. One confirm and it closes for good: no new weeks, no new reports, no task emails. Your mentor stays to talk, every week you recorded stays in the archive, and a fresh start is simply a new goal.',
-        scene: { messages: CHAT, planApproved: true },
+        title: 'Stopping a goal',
+        body: 'Reached it — or just done with it? Open the goal pill and tap “Finish this goal”. One confirm and the whole session closes for good. (Watch — I\'ll show you what that looks like next.)',
+        scene: { messages: CHAT, planApproved: true, goalMenuOpen: true },
+    },
+    {
+        id: 'finished-view',
+        target: 'finished-card',
+        placement: 'bottom',
+        title: 'A finished goal looks like this',
+        body: 'No new weeks, no new reports, no task emails for it. Your mentor still talks, every week you recorded stays in the archive, and a fresh start is simply a new goal.',
+        scene: { messages: CHAT, planApproved: false, finished: true },
+        mobileCard: 'bottom',
     },
     {
         id: 'path',

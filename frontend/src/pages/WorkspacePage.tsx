@@ -118,6 +118,8 @@ export default function WorkspacePage() {
     const [demoSelectedWeek, setDemoSelectedWeek] = useState<number | null>(null);
     const [demoJourneyTab, setDemoJourneyTab] = useState<'overview' | 'archive'>('overview');
     const [demoBetweenWeeks, setDemoBetweenWeeks] = useState(false);
+    const [demoGoalMenuOpen, setDemoGoalMenuOpen] = useState(false);
+    const [demoFinished, setDemoFinished] = useState(false);
 
     const uiMessages = demoMode ? demoMessages : messages;
     const uiLoading = demoMode ? demoLoading : isLoading;
@@ -208,7 +210,7 @@ export default function WorkspacePage() {
         : mentorOpen;
     // A finished goal keeps its last plan on record (the archive panel reads it)
     // but it is never a draft to lock again.
-    const isFinishedStage = isSessionCompleted && !demoMode;
+    const isFinishedStage = demoMode ? demoFinished : isSessionCompleted;
     const isPlanningStage = !uiIsPlanApproved && !!uiActivePlan && !isEmptyState && !isFinishedStage;
 
     // Mic locked state — check localStorage for today's recording (PER SESSION, so a
@@ -693,6 +695,8 @@ export default function WorkspacePage() {
         setDemoSelectedWeek(null);
         setDemoJourneyTab('overview');
         setDemoBetweenWeeks(false);
+        setDemoGoalMenuOpen(false);
+        setDemoFinished(false);
     };
 
     // Called when the user Skips/Stops or the demo finishes its last step.
@@ -718,6 +722,8 @@ export default function WorkspacePage() {
         setSelectedWeek: (w) => setDemoSelectedWeek(w),
         setJourneyTab: (t) => setDemoJourneyTab(t),
         setBetweenWeeks: (v) => setDemoBetweenWeeks(v),
+        setGoalMenuOpen: (v) => setDemoGoalMenuOpen(v),
+        setFinished: (v) => setDemoFinished(v),
     }), []);
 
     // Auto-open the demo for newly signed-up users, and on "Replay tutorial".
@@ -854,6 +860,7 @@ export default function WorkspacePage() {
                         todayDone={todayStatus === 'done'}
                         todayIso={todayIso}
                         demoMode={demoMode}
+                        demoMenuOpen={demoMode ? demoGoalMenuOpen : undefined}
                         refreshKey={sidebarRefreshKey}
                         onSelectSession={(id) => { handleSelectSession(id); }}
                         onNewGoal={handleNewChat}
@@ -910,7 +917,7 @@ export default function WorkspacePage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     style={{ padding: '26px 20px 60px', maxWidth: '560px', margin: '0 auto' }}
                                 >
-                                    <div style={{
+                                    <div data-tour="finished-card" style={{
                                         borderRadius: '22px', padding: '26px 24px',
                                         background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
                                         boxShadow: 'var(--shadow-sm)', fontFamily: missionSatoshi,
@@ -925,7 +932,7 @@ export default function WorkspacePage() {
                                             <CheckCircle size={13} /> Goal finished
                                         </div>
                                         <h2 style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', fontFamily: missionClash, lineHeight: 1.2 }}>
-                                            {sessionFocus || 'This goal is closed.'}
+                                            {sessionFocus || uiActivePlan?.theme || 'This goal is closed.'}
                                         </h2>
                                         <p style={{ margin: '0 0 20px', fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.65 }}>
                                             No new weekly plans, reviews or task emails for this one. Your mentor is still here to talk,
