@@ -11,6 +11,11 @@ export type StartChoice = 'today' | 'tomorrow' | 'monday' | 'custom';
 interface StartDatePickerProps {
     /** The session's very first plan may begin today however short the week is. */
     isFirstPlan: boolean;
+    /**
+     * The first day this week may begin — for Week N+1, the day after the
+     * current week's Sunday. Days before it are not offered.
+     */
+    earliest?: string;
     value: string;                 // ISO date the week will begin
     onChange: (iso: string) => void;
 }
@@ -21,14 +26,20 @@ interface StartDatePickerProps {
  * choice lives beside the commit button: today, tomorrow, next Monday, or a
  * date within the next two weeks — with the resulting window spelled out.
  */
-export default function StartDatePicker({ isFirstPlan, value, onChange }: StartDatePickerProps) {
+export default function StartDatePicker({ isFirstPlan, earliest, value, onChange }: StartDatePickerProps) {
     const today = localISODate();
-    const defaultWindow = useMemo(() => projectedWeekWindow(today, isFirstPlan), [today, isFirstPlan]);
+    // Nothing before `earliest`: a later week cannot overlap the one still running.
+    const base = earliest && earliest > today ? earliest : today;
+    const defaultWindow = useMemo(() => {
+        if (isFirstPlan) return projectedWeekWindow(today, true);
+        const start = rollWeekendStart(base);
+        return { ...windowFrom(start), startsLater: start > today };
+    }, [today, base, isFirstPlan]);
     // A week runs to its Sunday, so a weekend start would be a 1–2 day stub:
     // "tomorrow" on a Friday or Saturday means next Monday, and a picked
     // Saturday or Sunday rolls to the Monday after it — shown before committing.
-    const tomorrow = rollWeekendStart(addDays(today, 1));
-    const monday = nextMonday(today);
+    const tomorrow = rollWeekendStart(addDays(base, 1));
+    const monday = nextMonday(base);
     const maxDate = addDays(today, MAX_START_LEAD_DAYS);
 
     const [customOpen, setCustomOpen] = useState(false);
@@ -44,14 +55,18 @@ export default function StartDatePicker({ isFirstPlan, value, onChange }: StartD
     const window_ = windowFrom(value);
     const lead = daysBetween(today, value);
 
+    const firstLabel = defaultWindow.start === today
+        ? 'Today'
+        : base > today && defaultWindow.start === base
+            ? formatDay(defaultWindow.start)
+            : `Next ${formatDay(defaultWindow.start).split(',')[0]}`;
+    const firstSub = defaultWindow.start === today
+        ? 'start right now'
+        : base > today && defaultWindow.start === base ? 'the earliest day' : 'the default';
+
     const options: { key: StartChoice; label: string; sub: string; iso: string }[] = [
-        {
-            key: 'today',
-            label: defaultWindow.startsLater ? `Next ${formatDay(defaultWindow.start).split(',')[0]}` : 'Today',
-            sub: defaultWindow.startsLater ? 'the default' : 'start right now',
-            iso: defaultWindow.start,
-        },
-        { key: 'tomorrow', label: 'Tomorrow', sub: tomorrow === addDays(today, 1) ? formatDay(tomorrow) : `weekend → ${formatDay(tomorrow)}`, iso: tomorrow },
+        { key: 'today', label: firstLabel, sub: firstSub, iso: defaultWindow.start },
+        { key: 'tomorrow', label: base === today ? 'Tomorrow' : 'The day after', sub: tomorrow === addDays(base, 1) ? formatDay(tomorrow) : `weekend → ${formatDay(tomorrow)}`, iso: tomorrow },
         { key: 'monday', label: 'Next Monday', sub: formatDay(monday), iso: monday },
     ];
     // Collapse duplicates (e.g. the default already is tomorrow or next Monday).
@@ -111,11 +126,11 @@ export default function StartDatePicker({ isFirstPlan, value, onChange }: StartD
                     <input
                         type="date"
                         value={pickedRaw || value}
-                        min={today}
+                        min={base}
                         max={maxDate}
                         onChange={(e) => {
                             const v = e.target.value;
-                            if (!v || v < today || v > maxDate) return;
+                            if (!v || v < base || v > maxDate) return;
                             setPickedRaw(v);
                             onChange(rollWeekendStart(v));
                         }}
@@ -128,7 +143,9 @@ export default function StartDatePicker({ isFirstPlan, value, onChange }: StartD
                     <span style={{ fontSize: '11.5px', color: pickedRolled ? 'var(--accent-warm)' : 'var(--text-muted)', fontFamily: satoshi }}>
                         {pickedRolled
                             ? `Weeks run to Sunday, so a weekend start becomes Monday ${formatDay(value)}.`
-                            : `Up to ${formatDay(maxDate)}. Weekend dates move to the next Monday.`}
+                            : base > today
+                                ? `From ${formatDay(base)} (when the current week ends) up to ${formatDay(maxDate)}. Weekend dates move to the next Monday.`
+                                : `Up to ${formatDay(maxDate)}. Weekend dates move to the next Monday.`}
                     </span>
                 </div>
             )}

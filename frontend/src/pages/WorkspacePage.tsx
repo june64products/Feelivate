@@ -34,6 +34,8 @@ import { satoshi as missionSatoshi, clashDisplay as missionClash, planEntryFor, 
 import { Mic, MessageCircle, ChevronRight } from 'lucide-react';
 import WeeklyReviewModal from '../components/workspace/WeeklyReviewModal';
 import SessionCompleteModal from '../components/workspace/SessionCompleteModal';
+import NextWeekStartModal from '../components/mission/NextWeekStartModal';
+import { addDays, windowFrom } from '../lib/weekWindow';
 import JourneyPage from './JourneyPage';
 import EmotionOrb from '../components/workspace/EmotionOrb';
 import LockedWeeksPanel from '../components/workspace/LockedWeeksPanel';
@@ -60,6 +62,10 @@ export default function WorkspacePage() {
     // The day the locked week begins; later than today when the user chose a
     // runway. Until then the stage shows a countdown instead of a task.
     const [planStartsOn, setPlanStartsOn] = useState<string | null>(null);
+    // "Week N — when do you start?" — asked before the mentor drafts a later
+    // week, exactly as the first week is asked with the setup answers.
+    const [nextWeekAsk, setNextWeekAsk] = useState<{ week: number; earliest: string; text: string } | null>(null);
+    const activePlanRef = useRef<any | null>(null);
 
     const [isLoading, setIsLoading] = useState(false);
     // Setter-only now: the demo handles still drive it, but no sidebar reads it.
@@ -127,6 +133,7 @@ export default function WorkspacePage() {
     const uiView = demoMode ? demoView : view;
     const uiTodayEmotion = demoMode ? demoEmotion : todayEmotion;
     const uiActivePlan = demoMode ? DEMO_PLAN : activePlan;
+    activePlanRef.current = activePlan;
     const uiSessionId = demoMode ? 'demo-session' : activeSessionId;
 
     // Derived: whether we're in the cinematic empty state
@@ -380,12 +387,7 @@ export default function WorkspacePage() {
             if (sessionCompletedRef.current) { setView('chat'); return; }
             const week = (e as CustomEvent).detail?.week ?? 2;
             setView('chat');
-            // Small delay so view switches before sending
-            setTimeout(() => {
-                handleSendMessage(
-                    `I've reviewed my week report. Please build me Week ${week} plan based on my performance data and what I need to improve.`
-                );
-            }, 300);
+            askNextWeekStart(week);
         };
         const handleCloseJourney = () => setView('chat');
         window.addEventListener('request-next-week-plan', handleNextWeekPlan);
@@ -421,10 +423,10 @@ export default function WorkspacePage() {
         setFeedbackBusy(
             'workspace',
             isLoading || demoMode || showCeremony || !!setupQuestions || !!blockedNotice
-            || showEmailModal || showReviewModal || showCompleteModal || consentStatus !== 'clear'
+            || showEmailModal || showReviewModal || showCompleteModal || !!nextWeekAsk || consentStatus !== 'clear'
             || !!howTo,
         );
-    }, [setFeedbackBusy, isLoading, demoMode, showCeremony, setupQuestions, blockedNotice, showEmailModal, showReviewModal, showCompleteModal, consentStatus, howTo]);
+    }, [setFeedbackBusy, isLoading, demoMode, showCeremony, setupQuestions, blockedNotice, showEmailModal, showReviewModal, showCompleteModal, nextWeekAsk, consentStatus, howTo]);
     useEffect(() => () => setFeedbackBusy('workspace', false), [setFeedbackBusy]);
 
     // Start a new chat session
@@ -446,8 +448,22 @@ export default function WorkspacePage() {
         });
     };
 
-    // Send a message. `startDate` rides along only with the setup answers:
-    // the day the first week should begin, so the draft is built for it.
+    const nextWeekRequestText = (week: number) =>
+        `I've reviewed my week report. Please build me Week ${week} plan based on my performance data and what I need to improve.`;
+
+    // Open the "when do you start?" picker for Week N+1. The current week's
+    // Sunday is the floor: a later week never overlaps the one still running.
+    const askNextWeekStart = (week: number, text?: string, earliestFromServer?: string) => {
+        if (demoMode) return;
+        const plan = activePlanRef.current;
+        const planStart: string | undefined = typeof plan?.start_date === 'string' ? plan.start_date : undefined;
+        const earliest = earliestFromServer ?? (planStart ? addDays(windowFrom(planStart).end, 1) : getLocalISODate());
+        setNextWeekAsk({ week, earliest, text: text ?? nextWeekRequestText(week) });
+    };
+
+    // Send a message. `startDate` rides along with the setup answers (the day
+    // the first week should begin) or with a Week N+1 request, so the draft is
+    // built for the days it will actually run.
     const handleSendMessage = async (text: string, startDate?: string) => {
         if (!userId) return;
 
@@ -460,6 +476,15 @@ export default function WorkspacePage() {
 
         try {
             const res = await chatWithMentor(text, activeSessionId, userId, startDate);
+
+            // The mentor wants to know when Week N+1 starts before writing it.
+            // Nothing was saved server-side: take the message back off the
+            // thread, ask the day, and send the same message again with it.
+            if (res.needs_start_date) {
+                setMessages(prev => (prev.length && prev[prev.length - 1].role === 'user' ? prev.slice(0, -1) : prev));
+                askNextWeekStart(res.needs_start_date.week, text, res.needs_start_date.earliest);
+                return;
+            }
 
             if (!activeSessionId && res.session_id) {
                 setActiveSessionId(res.session_id);
@@ -1148,9 +1173,7 @@ export default function WorkspacePage() {
                                                 </motion.button>
                                                 <motion.button
                                                     whileTap={{ scale: 0.96 }}
-                                                    onClick={() => handleSendMessage(
-                                                        `I've reviewed my week report. Please build me Week ${(uiActivePlan?.week_number ?? 1) + 1} plan based on my performance data and what I need to improve.`
-                                                    )}
+                                                    onClick={() => askNextWeekStart((uiActivePlan?.week_number ?? 1) + 1)}
                                                     style={{
                                                         padding: '13px 22px', borderRadius: '100px',
                                                         border: '1px solid var(--border-medium)', background: 'transparent',
@@ -2114,6 +2137,21 @@ export default function WorkspacePage() {
                     );
                 }}
             />
+
+            {/* Week N+1: when does it start? (asked before the mentor drafts it) */}
+            {nextWeekAsk && !demoMode && (
+                <NextWeekStartModal
+                    week={nextWeekAsk.week}
+                    earliest={nextWeekAsk.earliest}
+                    onClose={() => setNextWeekAsk(null)}
+                    onConfirm={(iso) => {
+                        const ask = nextWeekAsk;
+                        setNextWeekAsk(null);
+                        setView('chat');
+                        handleSendMessage(ask.text, iso);
+                    }}
+                />
+            )}
 
             {/* Session Complete Modal */}
             {showCompleteModal && activeSessionId && (

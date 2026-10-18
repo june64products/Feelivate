@@ -204,8 +204,22 @@ def test_complete_week_explicit_ask_builds_the_next_week(client, monkeypatch):
     mentor = FakeMentor(next_week_reply())
     monkeypatch.setattr(llm, "call_with_fallback_chain", mentor)
 
+    # An explicit ask is answered with "when do you start?" first — nothing is
+    # built or saved until the day is known, exactly like the first week.
     out = chat(client, headers, uid, sid, "build week 1")
-    assert out.get("plan") and out["plan"]["week_number"] == 1
+    assert out.get("plan") is None and out["needs_start_date"]["week"] == 1
+    assert len(mentor.calls) == 0
+    assert session_state(sid) == ("active", 0)
+
+    start = out["needs_start_date"]["earliest"]
+    resp = client.post(
+        "/chat",
+        json={"message": "build week 1", "session_id": sid, "user_id": uid, "timezone": "UTC", "start_date": start},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    out = resp.json()
+    assert out.get("plan") and out["plan"]["week_number"] == 1 and out["plan"]["start_date"] == start
     assert len(mentor.calls) == 1
     assert session_state(sid) == ("planning", 1)
 

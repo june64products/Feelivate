@@ -120,6 +120,11 @@ export interface ChatResponse {
     safety?: SafetyNotice;
     /** Present only when the request was refused outright. */
     blocked?: BlockedNotice;
+    /**
+     * The next week was asked for without a start day. Nothing was built or
+     * saved: ask the day, then send the same message again with `startDate`.
+     */
+    needs_start_date?: { week: number; earliest: string } | null;
 }
 
 export const chatWithMentor = async (

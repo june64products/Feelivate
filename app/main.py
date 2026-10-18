@@ -929,16 +929,24 @@ async def chat(
         # (and every tweak of it) is built for start → Sunday, and the lock
         # defaults to the same day. Only the first week is asked up front; a
         # later week keeps its lock-time choice.
-        if payload.start_date and session_rec.phase != "active" and not session_rec.is_completed:
-            import datetime as _sd
-            try:
-                import zoneinfo as _sz
-                _today_for_start = _sd.datetime.now(_sz.ZoneInfo(payload.timezone or "UTC")).date().isoformat()
-            except Exception:
-                _today_for_start = _sd.date.today().isoformat()
-            session_rec.plan_starts_on = _resolve_start_date(session_rec, _today_for_start, payload.start_date)
-            db.commit()
-        _chosen_start = session_rec.plan_starts_on if (session_rec.phase != "active" and session_rec.plan_starts_on) else None
+        import datetime as _sd
+        try:
+            import zoneinfo as _sz
+            _today_for_start = _sd.datetime.now(_sz.ZoneInfo(payload.timezone or "UTC")).date().isoformat()
+        except Exception:
+            _today_for_start = _sd.date.today().isoformat()
+        _next_week_start = None   # a later week's chosen start, held until its draft is saved
+        if payload.start_date and not session_rec.is_completed:
+            if session_rec.phase != "active":
+                session_rec.plan_starts_on = _resolve_start_date(session_rec, _today_for_start, payload.start_date)
+                db.commit()
+            else:
+                # Week N+1: validated now, written to the session only once the
+                # draft exists — an active week must never see a future start.
+                _next_week_start = _resolve_next_week_start(session_rec, _today_for_start, payload.start_date)
+        _chosen_start = (
+            session_rec.plan_starts_on if (session_rec.phase != "active" and session_rec.plan_starts_on) else _next_week_start
+        )
 
         # 2. Fetch conversation history from DB
         db_messages = db.query(ChatMessage).filter(
@@ -1268,6 +1276,28 @@ async def chat(
         # session reacquires a connection on its next query.
         db.commit()
 
+        # 5d. Week N+1 is asked for, but not when it should begin. The client
+        # asks that first (same picker as the first week) and sends the message
+        # again with start_date — so the draft is built for the real window
+        # instead of today's and re-stamped at lock time. Nothing is saved here.
+        if (
+            session_rec.phase == "active"
+            and current_week_complete
+            and not session_rec.is_completed
+            and _chosen_start is None
+            and _asks_for_next_week(message, _last_assistant_text(history[:-1]))
+        ):
+            _cur_wk_ask = session_rec.current_week if session_rec.current_week is not None else 1
+            _earliest = max(_next_week_floor(session_rec) or _today_for_start, _today_for_start)
+            logger.info(f"[NextWeek] start date needed before building Week {_cur_wk_ask + 1} (earliest {_earliest})")
+            return {
+                "reply": "",
+                "plan": None,
+                "questions": None,
+                "session_id": session_id,
+                "needs_start_date": {"week": _cur_wk_ask + 1, "earliest": _effective_lock_start(_earliest)},
+            }
+
         raw_response = await asyncio.to_thread(
             call_with_fallback_chain,
             prompt_messages,
@@ -1424,6 +1454,8 @@ async def chat(
                 session_rec.week_plan_json = json.dumps(plan_data)
                 session_rec.current_week = new_week_num
                 session_rec.phase = "planning"  # Back to pending approval for new week
+                if _next_week_start:
+                    session_rec.plan_starts_on = _next_week_start
 
             # Store the focus from the first message if not set
             if not session_rec.focus and len(db_messages) == 0:
@@ -1533,6 +1565,52 @@ async def chat(
 # next Monday" on any weekday with a buffer; short enough that the plan is
 # still about the person who approved it.
 MAX_START_LEAD_DAYS = 14
+
+
+def _next_week_floor(session_rec) -> Optional[str]:
+    """The first day the week after the current locked one may begin: the day
+    after that week's Sunday. None when there is no locked week."""
+    from datetime import date as _d, timedelta as _td
+
+    if not session_rec.plan_start_date:
+        return None
+    try:
+        cur = session_rec.current_week if session_rec.current_week is not None else 1
+        _, we, _ = _week_bounds_for(session_rec, cur)
+        return (_d.fromisoformat(we) + _td(days=1)).isoformat()
+    except Exception as e:
+        logger.warning(f"Next-week floor lookup failed: {e}")
+        return None
+
+
+def _resolve_next_week_start(session_rec, today_iso: str, requested: Optional[str]) -> str:
+    """Where Week N+1 begins, asked BEFORE its draft is built (an active
+    session): the user's day, never before the current week ends, never in the
+    past, at most MAX_START_LEAD_DAYS ahead, weekends rolled to Monday."""
+    from datetime import date as _d
+
+    floor = _next_week_floor(session_rec) or today_iso
+    earliest = max(floor, today_iso)
+    if not requested:
+        return _effective_lock_start(earliest)
+    try:
+        chosen = _d.fromisoformat(requested)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="start_date must be a date like 2026-10-06.")
+    today = _d.fromisoformat(today_iso)
+    if chosen < today:
+        raise HTTPException(status_code=400, detail="The start date can't be in the past.")
+    if chosen.isoformat() < floor:
+        cur = session_rec.current_week if session_rec.current_week is not None else 1
+        raise HTTPException(status_code=400, detail=f"Week {cur} runs until {(_d.fromisoformat(floor) - _td_one()).isoformat()}; start on or after {floor}.")
+    if (chosen - today).days > MAX_START_LEAD_DAYS:
+        raise HTTPException(status_code=400, detail=f"Pick a start within the next {MAX_START_LEAD_DAYS} days.")
+    return _effective_lock_start(chosen.isoformat())
+
+
+def _td_one():
+    from datetime import timedelta as _td
+    return _td(days=1)
 
 
 def _resolve_start_date(session_rec, today_iso: str, requested: Optional[str]) -> str:

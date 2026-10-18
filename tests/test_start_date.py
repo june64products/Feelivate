@@ -352,3 +352,131 @@ def test_start_too_far_ahead_is_refused_up_front(client):
         headers=headers,
     )
     assert resp.status_code == 400 and "14 days" in resp.json()["detail"]
+
+
+# ─── Week N+1: the start day is asked BEFORE the draft, like the first week ─
+
+
+def locked_week(user_id, sid, start: date, week_number=1):
+    """A session whose Week `week_number` is locked and runs from `start` to its Sunday."""
+    from app.database import SessionLocal
+    from app.models import Session as UserSession
+
+    end = start + timedelta(days=6 - start.weekday())
+    days = [{"day": (start + timedelta(days=i)).strftime("%b %d (%a)"), "action": f"Push-ups 3x12 ({i + 1})"} for i in range((end - start).days + 1)]
+    plan = {"week_number": week_number, "theme": "Home Strength", "start_date": start.isoformat(), "days": days}
+    db = SessionLocal()
+    db.add(UserSession(
+        id=sid, user_id=user_id, focus="get fit at home", history="", vision="", phase="active",
+        current_week=week_number, plan_start_date=start.isoformat(), plan_starts_on=start.isoformat(),
+        week_plan_json=json.dumps(plan), result_json=json.dumps([plan]),
+    ))
+    db.commit()
+    db.close()
+    return start, end
+
+
+def _quiet(monkeypatch):
+    import app.main as main
+    from app import guardrail
+    import app.llm as llm
+
+    monkeypatch.setattr(llm, "create_embedding", lambda *a, **k: None)
+    monkeypatch.setattr(main, "_generate_and_save_title", lambda *a, **k: None)
+    monkeypatch.setattr(guardrail, "screen", lambda *a, **k: guardrail.ALLOWED)
+
+
+def _chat(client, headers, uid, sid, text, start_date=None):
+    body = {"message": text, "session_id": sid, "user_id": uid, "timezone": "UTC"}
+    if start_date:
+        body["start_date"] = start_date
+    return client.post("/chat", json=body, headers=headers)
+
+
+NEXT_WEEK_ASK = "I've reviewed my week report. Please build me Week 2 plan based on my performance data and what I need to improve."
+
+
+def test_week_two_is_not_built_until_the_start_day_is_known(client, monkeypatch):
+    import app.llm as llm
+    from app.database import SessionLocal
+    from app.models import ChatMessage
+
+    _quiet(monkeypatch)
+
+    def explode(*a, **k):
+        raise AssertionError("the model must not run before the start day is known")
+
+    monkeypatch.setattr(llm, "call_with_fallback_chain", explode)
+
+    headers, uid = register(client, "nextweek-ask@example.com")
+    today = date.today()
+    start, end = locked_week(uid, "s-nw-ask", today - timedelta(days=today.weekday() + 7))   # ended last Sunday
+
+    out = _chat(client, headers, uid, "s-nw-ask", NEXT_WEEK_ASK)
+    assert out.status_code == 200, out.text
+    body = out.json()
+    assert body["plan"] is None and body["reply"] == ""
+    # Earliest = the day after the finished week, but never in the past, and never a weekend.
+    from app.weeks import _effective_lock_start
+
+    earliest = _effective_lock_start(max(end + timedelta(days=1), today).isoformat())
+    assert body["needs_start_date"] == {"week": 2, "earliest": earliest}
+
+    db = SessionLocal()
+    assert db.query(ChatMessage).filter(ChatMessage.session_id == "s-nw-ask").count() == 0, "nothing is saved for a question"
+    db.close()
+    assert load_session("s-nw-ask")["phase"] == "active", "the locked week is untouched"
+
+
+def test_week_two_is_drafted_for_the_chosen_start_and_locks_on_it(client, monkeypatch):
+    import app.llm as llm
+
+    _quiet(monkeypatch)
+    seen = {}
+
+    def mentor(messages, **kw):
+        seen["system"] = "\n".join(m["content"] for m in messages if m["role"] == "system")
+        return _mentor_plan(2)
+
+    monkeypatch.setattr(llm, "call_with_fallback_chain", mentor)
+
+    headers, uid = register(client, "nextweek-build@example.com")
+    today = date.today()
+    start, end = locked_week(uid, "s-nw-build", today - timedelta(days=today.weekday() + 7))
+    # The next Monday that is at least a day after the finished week.
+    chosen = today + timedelta(days=(7 - today.weekday()) % 7 or 7)
+    assert chosen > end
+
+    out = _chat(client, headers, uid, "s-nw-build", NEXT_WEEK_ASK, start_date=chosen.isoformat()).json()
+    assert "needs_start_date" not in out or out["needs_start_date"] is None
+    assert "PLAN START" in seen["system"] and chosen.strftime("%A %d %B") in seen["system"]
+    plan = out["plan"]
+    assert plan and plan["week_number"] == 2
+    assert plan["start_date"] == chosen.isoformat()
+    assert plan["days"][0]["day"] == chosen.strftime("%b %d (%a)")
+    assert plan["days"][-1]["day"] == (chosen + timedelta(days=6)).strftime("%b %d (%a)")
+    assert len(plan["days"]) == 7
+
+    s = load_session("s-nw-build")
+    assert s["phase"] == "planning" and s["plan_starts_on"] == chosen.isoformat()
+
+    # A tweak keeps the same window.
+    out2 = _chat(client, headers, uid, "s-nw-build", "make Tuesday lighter").json()
+    assert out2["plan"]["start_date"] == chosen.isoformat()
+
+    # Locking without naming a day keeps the chosen one.
+    resp = approve(client, headers, "s-nw-build", today, None)
+    assert resp.status_code == 200, resp.text
+    s = load_session("s-nw-build")
+    assert s["phase"] == "active" and s["plan_starts_on"] == chosen.isoformat()
+    assert s["plan"]["start_date"] == chosen.isoformat() and s["plan"]["week_number"] == 2
+
+
+def test_week_two_cannot_start_before_week_one_ends(client, monkeypatch):
+    _quiet(monkeypatch)
+    headers, uid = register(client, "nextweek-early@example.com")
+    today = date.today()
+    # Week 1 is still running: it ends this coming Sunday.
+    start, end = locked_week(uid, "s-nw-early", today - timedelta(days=today.weekday()))
+    resp = _chat(client, headers, uid, "s-nw-early", NEXT_WEEK_ASK, start_date=today.isoformat())
+    assert resp.status_code == 400 and "runs until" in resp.json()["detail"]
