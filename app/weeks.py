@@ -245,7 +245,26 @@ def build_quiet_week_report(week_number: int, ws: str, we: str, done_days: int) 
     """
     from datetime import date as _d
     total_days = (_d.fromisoformat(we) - _d.fromisoformat(ws)).days + 1
+    silent = done_days == 0
+    saw = (
+        ["No evening notes landed this week, and no days were checked off.",
+         "That is the whole record — there is nothing to read into it yet."]
+        if silent else
+        [f"{done_days} day{'s' if done_days != 1 else ''} got checked off, so the plan was in reach.",
+         "No evening notes landed, so there is no read on how those days actually felt."]
+    )
     return {
+        "schema_version": 3,
+        "sparse": True,
+        "saw": saw,
+        "one_thing": (
+            "A silent week is data, not a verdict. The plan didn't fail — it never got a first rep. "
+            "The next move is small: the same week again, and one note on the first day back."
+        ),
+        "quote": None,
+        "vs_last_week": None,
+        "badge": {"name": "Quiet Week", "reason": "Nothing recorded — the restart is the whole point."},
+        "week_badge": {"name": "Quiet Week", "reason": "Nothing recorded — the restart is the whole point."},
         "quiet_week": done_days == 0,
         "momentum_score": 0,
         "avg_score": 0,

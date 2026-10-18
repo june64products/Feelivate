@@ -16,8 +16,8 @@ import LegalDoc, { type LegalSection } from '../components/legal/LegalDoc';
  * TERMS_VERSION follows the Privacy Policy's version scheme (the date of the
  * last material change).
  */
-const TERMS_VERSION = '2026-10-10';
-const LAST_UPDATED = '10 October 2026';
+const TERMS_VERSION = '2026-10-18';
+const LAST_UPDATED = '18 October 2026';
 
 const HELPLINES: string[][] = [
   ['UK', 'Samaritans (24/7)', '116 123 (free)'],
@@ -100,7 +100,7 @@ const SECTIONS: LegalSection[] = [
     { t: 'h3', text: 'AI provider processing' },
     { t: 'p', text: 'Your Content is processed by our AI providers as described in our [Privacy Policy](https://feelivate.com/privacy#ai-processing). Their API terms prohibit the use of your data to train their models; we are in the process of putting formal contractual arrangements in place to the same effect.' },
     { t: 'h3', text: 'Feedback' },
-    { t: 'p', text: 'We may ask you short questions inside the app at a few moments (after your first plan, after a voice note, after a second change to a draft plan, after your first weekly report, and when you leave or log out) and in the daily task email (a 👍/👎 on whether the task was clear). Answering is always optional and you can close any prompt. What we collect with your answers is described in our [Privacy Policy](https://feelivate.com/privacy). Any feedback or suggestions you provide may be used by us without compensation to you.' },
+    { t: 'p', text: 'We may ask you short questions inside the app at a few moments (after your first plan, after a voice note, after a second change to a draft plan, after your first weekly report, under each week review, and when you leave or log out) and in the daily task email (a 👍/👎 on whether the task was clear). Answering is always optional and you can close any prompt. What we collect with your answers is described in our [Privacy Policy](https://feelivate.com/privacy). Any feedback or suggestions you provide may be used by us without compensation to you.' },
   ] },
 
   { id: 'acceptable-use', h: 'How you agree to use it', blocks: [

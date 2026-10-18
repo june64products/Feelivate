@@ -3787,6 +3787,7 @@ async def get_weekly_report(
                 cached_entry_count == len(journals)
                 and cached_days_done == journals_in_week  # voice journal = source of truth
                 and "momentum_score" in cached_data        # V2 schema check — force regen if old format
+                and int(cached_data.get("schema_version") or 2) >= 3  # v3 review: an older review is rewritten once
             )
             if cache_valid:
                 return {"status": "cached", "week_start": ws, "week_end": we, "week_number": wk_num, "report": cached_data}
@@ -3892,10 +3893,10 @@ async def get_weekly_report(
     )
     momentum_label = (
         "Peak" if momentum_score >= 85 else
-        "Strong Week" if momentum_score >= 70 else
+        "Strong week" if momentum_score >= 70 else
         "Building" if momentum_score >= 50 else
-        "Struggling" if momentum_score >= 30 else
-        "Reset Needed"
+        "Rough week" if momentum_score >= 30 else
+        "Fresh start"
     )
 
     # ── 5d. Extract best quote from transcripts ──────────────────────
@@ -3967,102 +3968,77 @@ async def get_weekly_report(
             lines.append(f"  Day {i+1} ({day_label or d}): Planned: '{task}' | Checkin: {s}{j_info}{reason_info}")
         plan_vs_actual = "\nWEEK PLAN vs ACTUAL CHECK-INS & JOURNALS:\n" + "\n".join(lines)
 
-    prompt = f"""You are a world-class performance coach and behavioral analyst. Your job is to write a deep, honest, insightful WEEK REVIEW for this user.
+    entry_count = len(journals)
+    sparse_week = entry_count <= 2
+    goal_line = (session_rec.focus or "").strip()[:160] if session_rec else ""
+    noted_days = ", ".join(
+        _date_cls.fromisoformat(j.date).strftime("%a %d %b") for j in sorted(journals, key=lambda j: j.date)
+    ) or "none"
+    if prev_week_stats:
+        vs_last_rule = (
+            f"One plain line comparing this week with last week (last week: {prev_week_stats.get('days_done', 0)} days with a note, "
+            f"mood {prev_week_stats.get('avg_score', 0)}/10). Specific, no scolding."
+        )
+    else:
+        vs_last_rule = "null — there is no previous week to compare with"
+    sparse_block = ""
+    if sparse_week:
+        sparse_block = (
+            f"\n\nTHIN WEEK: only {entry_count} voice note(s) landed. Keep the whole review short and honest."
+            "\n- headline: acknowledge the quiet in a human way (never 'insufficient data')."
+            "\n- saw: 2-3 lines at most. What they did say gets its due; the silence gets one plain line."
+            "\n- one_thing: what the quiet days MIGHT mean, offered as a hunch or a question, never a verdict."
+            "\n- next_week_focus: the smallest possible restart — one day, one note."
+            "\n- badge: something plain and kind ('Quiet Week', 'One Note', 'Sunday Sprint'). No drama."
+        )
 
-You have access to:
-- All their daily voice journal entries this week (what they actually felt and said)
-- Their daily checkin status (did they complete their plan each day)
-- Their week's planned tasks (what they were supposed to do)
+    prompt = f"""You are this person's mentor at Feelivate. You watched their week: the plan they committed to, the days they checked in, and the evening voice notes they recorded. Write their week review — the thing they open on Sunday night and actually want to read.
 
-Be direct, specific, and honest. This is NOT a therapy session — it's a performance review. Call out exactly where consistency broke, what patterns emerged, and what needs to change next week.
+VOICE
+- Warm and direct, second person ("you"). You are on their side and you tell the truth.
+- Credit what they did before naming what they didn't. A miss is stated once, plainly — never shamed, never lectured, never "you failed".
+- No motivational clichés (no "journey", "crush", "unlock", "level up", "warrior", "grind"). No exclamation marks.
+- No percentages or scores in the prose; the numbers are shown separately.
+- Write like a person: no "Day 1:" prefixes, no headings or labels inside a field, no bullet characters inside strings.
+
+DATA HONESTY (non-negotiable)
+- Voice notes exist for these days only: {noted_days}. You may describe how a day FELT only if it has a voice note. For every other day you know just one thing — whether the plan was checked off — so say nothing about mood or reasons there.
+- Never invent events, feelings or causes. If you don't know why something happened, don't guess; name what you'd want to know.
+- Use their own words where you can, lightly tidied: drop filler and repeats, fix obvious transcription slips, keep their voice.{sparse_block}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WEEK DATA: {ws} to {we} (Week {wk_num})
-Theme: {week_plan_theme or 'Personal growth'}
-Days with checkin done: {days_done}/{past_days_count}
-Days missed: {days_missed}
-Avg emotional score: {avg_score}/10
-Momentum score: {momentum_score}/100 ({momentum_label})
+WEEK {wk_num}: {ws} to {we}
+Goal: {goal_line or 'not stated'}
+Week theme: {week_plan_theme or '—'}
+Days in the week so far: {past_days_count} · with a voice note: {entry_count} · checked off: {days_done} · missed: {days_missed}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-VOICE JOURNAL ENTRIES (what the user actually recorded):
-{transcripts_block}
+VOICE NOTES (what they actually said):
+{transcripts_block or '(none)'}
 {plan_vs_actual}
 {cross_week_context}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
+Respond with ONLY valid JSON (no markdown, no code fences) in this exact schema:
 {{
-  "dominant_emotion": "the single most common emotional state this week",
-  "week_summary": {{
-    "wins": "2-3 specific wins — cite actual days or actions. Keep to 2 sentences max.",
-    "dips": "2-3 specific dips or consistency breaks. Be direct, cite evidence. 2 sentences max.",
-    "pattern": "One key behavioral pattern you noticed this week. 1-2 sentences."
-  }},
-  "hidden_insight": "One non-obvious insight about their emotional patterns that they probably haven't noticed themselves.",
-  "next_week_focus": "The single most important thing they must do differently next week. Very specific and actionable.",
-  "next_week_plan_context": "2-3 bullet points of what the next week plan should account for. Format: bullet per line with \\n separator.",
-  "week_badge": {{
-    "name": "A short badge name for this week based on their pattern. Examples: 'Iron Week' (100% consistency), 'Comeback King' (started low finished high), 'Steady Climber' (mood improved each day), 'Grit Mode' (pushed through despite low mood), 'Fresh Start' (first week). Pick the most fitting one.",
-    "reason": "One sentence explaining why they earned this badge."
-  }},
-  "best_quote": "The single most emotionally resonant or powerful sentence from the user's voice journal transcripts this week. Copy it exactly as they said it — this gets displayed as a pull-quote.",
-  "actionable_coaching": [
-    {{
-      "observation": "Day 1: One-line observation about what happened — e.g. 'Strong start, executed setup task with high energy'",
-      "micro_action": "One specific micro-action for improvement — e.g. 'Keep this momentum by setting a 9am start ritual'"
-    }},
-    {{
-      "observation": "Day 2: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 3: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 4: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 5: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 6: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 7: One-line observation",
-      "micro_action": "One specific micro-action"
-    }}
-  ],
-  "trigger_patterns": [
-    {{
-      "pattern": "A recurring friction or trigger detected — e.g. 'Friday mood dip', 'Cravings correlate with low scores'",
-      "frequency": "How often it occurred — e.g. 'Every Friday', '3 out of 4 weeks'",
-      "weeks_detected": [1, 2, 3]
-    }}
-  ],
-  "recurring_friction": ["list", "of", "recurring", "friction", "points"],
-  "best_days": ["Tue", "Sun"],
-  "worst_days": ["Thu", "Fri"],
-  "mood_trend": "Description of overall mood trajectory — e.g. 'high-start, mid-dip, strong-finish'"
-}}
-
-IMPORTANT NOTES:
-- For "best_quote": Pick the MOST powerful, emotionally resonant line from the user's actual voice transcripts. NOT your own words.
-- For "actionable_coaching": Each day MUST have both "observation" AND "micro_action". Make micro_actions specific — e.g. "Try 5-min breathing before coding" not "take a break".
-- For "trigger_patterns": Only include if you detect recurring patterns. If this is Week 1 or patterns are unclear, return an empty array [].
-- For "week_badge": Always generate one — even for Week 1.
-- Keep "week_summary" concise — 3 short bullets, not paragraphs."""
+  "headline": "One line, at most 12 words, about THIS week specifically — what actually happened, in plain words. Not a label. Shape: 'Six quiet days, then the whole week in one Sunday.'",
+  "saw": ["3 to 5 short lines, each under 25 words, telling the week in order: what they did, which days, how they said it felt. Credit first. Misses in one plain line."],
+  "one_thing": "The single most useful observation they probably haven't noticed, drawn from their own words or the pattern of the days. 1-2 sentences. An observation, not advice.",
+  "next_week_focus": "ONE change for next week — specific and small enough to actually happen. One sentence.",
+  "next_week_plan_context": "2-3 short bullet points for whoever builds next week's plan, separated by \\n.",
+  "quote": "One sentence from their voice notes worth keeping, lightly tidied. null if nothing stands out.",
+  "vs_last_week": "{vs_last_rule}",
+  "dominant_emotion": "the single most common feeling in their notes, one lowercase word, or null without notes",
+  "mood_trend": "3-6 words on how mood moved across the days WITH notes, or null",
+  "badge": {{"name": "a 2-3 word stamp for this week (e.g. 'Sunday Sprint', 'Steady Climber', 'Grit Mode', 'Fresh Start')", "reason": "one short sentence on why"}}
+}}"""
 
     try:
         messages = [
-            {"role": "system", "content": "You are a world-class performance coach and behavioral analyst. You must output raw JSON only matching the schema exactly. No markdown, no code fences."},
+            {"role": "system", "content": "You are a mentor writing a weekly review for one person. Output raw JSON only, matching the schema exactly. No markdown, no code fences, no commentary."},
             {"role": "user", "content": prompt}
         ]
-        raw = await asyncio.to_thread(call_with_fallback_chain, messages, temperature=0.4, max_tokens=4000)
+        raw = await asyncio.to_thread(call_with_fallback_chain, messages, temperature=0.5, max_tokens=2500)
         # Strip thinking blocks if generated
         raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL)
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
@@ -4074,69 +4050,87 @@ IMPORTANT NOTES:
             json_str = raw[start_idx:end_idx + 1] if start_idx != -1 else "{}"
         ai_data = json.loads(json_str)
 
-        # Normalize actionable_coaching
-        coaching_list = ai_data.get("actionable_coaching", [])
-        if not isinstance(coaching_list, list):
-            coaching_list = []
-        while len(coaching_list) < 7:
-            coaching_list.append({"observation": "", "micro_action": ""})
-        # Ensure each item has both fields
-        for item in coaching_list:
-            if not isinstance(item, dict):
-                item = {"observation": "", "micro_action": ""}
-            item.setdefault("observation", "")
-            item.setdefault("micro_action", "")
-        ai_data["actionable_coaching"] = coaching_list
+        from collections import Counter as _Counter
 
-        # Normalize week_summary
-        ws_data = ai_data.get("week_summary", {})
-        if not isinstance(ws_data, dict):
-            ws_data = {}
-        ws_data.setdefault("wins", "")
-        ws_data.setdefault("dips", "")
-        ws_data.setdefault("pattern", "")
-        ai_data["week_summary"] = ws_data
+        def _clean_text(v, cap):
+            if v is None:
+                return None
+            t = re.sub(r"\s+", " ", str(v)).strip()
+            t = re.sub(r"^(day\s*\d+\s*[:\-–—]\s*)", "", t, flags=re.I)
+            t = t.strip(" -•·")
+            return t[:cap].rstrip() if t else None
 
-        # Normalize week_badge
-        badge = ai_data.get("week_badge", {})
+        def _nullish(v):
+            return v is None or (isinstance(v, str) and v.strip().lower() in ("", "null", "none"))
+
+        headline = _clean_text(ai_data.get("headline"), 140) or (
+            f"{entry_count} of {past_days_count} days with a note." if journals else "A quiet week."
+        )
+        raw_saw = ai_data.get("saw")
+        if isinstance(raw_saw, str):
+            raw_saw = [raw_saw]
+        saw = [t for t in (_clean_text(x, 260) for x in (raw_saw if isinstance(raw_saw, list) else [])) if t][:6]
+        one_thing = _clean_text(ai_data.get("one_thing") or ai_data.get("hidden_insight"), 420) or ""
+        next_focus = _clean_text(ai_data.get("next_week_focus"), 300) or "Keep the same plan and win the first day back."
+        plan_ctx = ai_data.get("next_week_plan_context") or ""
+        if isinstance(plan_ctx, list):
+            plan_ctx = "\n".join(str(x) for x in plan_ctx)
+        plan_ctx = str(plan_ctx).strip()[:900]
+        _q = ai_data.get("quote") if "quote" in ai_data else ai_data.get("best_quote")
+        quote = None if _nullish(_q) else _clean_text(_q, 240)
+        if quote and len(quote) < 8:
+            quote = None
+        _v = ai_data.get("vs_last_week")
+        vs_last = None if (not prev_week_stats or _nullish(_v)) else _clean_text(_v, 240)
+        badge = ai_data.get("badge") or ai_data.get("week_badge") or {}
         if not isinstance(badge, dict):
-            badge = {"name": "Week Warrior", "reason": "Completed this week's journey."}
-        badge.setdefault("name", "Week Warrior")
-        badge.setdefault("reason", "Completed this week's journey.")
-        ai_data["week_badge"] = badge
+            badge = {}
+        badge = {
+            "name": _clean_text(badge.get("name"), 40) or ("Quiet Week" if sparse_week else "Week Done"),
+            "reason": _clean_text(badge.get("reason"), 160) or "",
+        }
+        _dom_counts = _Counter(j.emotion_label for j in journals if j.emotion_label).most_common(1)
+        _d = ai_data.get("dominant_emotion")
+        dominant = (None if _nullish(_d) else _clean_text(_d, 30)) or (_dom_counts[0][0] if _dom_counts else "neutral")
+        _m = ai_data.get("mood_trend")
+        mood_trend = "" if _nullish(_m) else (_clean_text(_m, 80) or "")
 
-        # Normalize trigger_patterns
-        triggers = ai_data.get("trigger_patterns", [])
-        if not isinstance(triggers, list):
-            triggers = []
-        ai_data["trigger_patterns"] = triggers
-
-        # Use AI best_quote if provided, otherwise fall back to server-side extraction
-        if not ai_data.get("best_quote"):
-            ai_data["best_quote"] = best_quote
+        ai_data = {
+            "headline": headline, "saw": saw, "one_thing": one_thing,
+            "next_week_focus": next_focus, "next_week_plan_context": plan_ctx,
+            "quote": quote, "vs_last_week": vs_last, "badge": badge,
+            "dominant_emotion": dominant, "mood_trend": mood_trend,
+            # Older readers (the planner's fallback path, the archive) still find the fields they know.
+            "hidden_insight": one_thing,
+            "week_summary": {"wins": " ".join(saw[:2]), "dips": " ".join(saw[2:]), "pattern": one_thing},
+            "what_went_well": " ".join(saw[:2]), "where_you_slipped": " ".join(saw[2:]),
+            "best_quote": quote or "", "week_badge": badge,
+            "trigger_patterns": [], "recurring_friction": [], "best_days": peak_performance_days, "worst_days": [],
+        }
 
     except Exception as e:
         logger.error(f"Weekly report AI generation failed: {e}")
+        noted = sorted(journals, key=lambda j: j.date)
+        saw_fb = [f"{_date_cls.fromisoformat(j.date).strftime('%A')}: {j.one_liner}" for j in noted if j.one_liner][:4]
+        if days_missed:
+            saw_fb.append(f"{days_missed} day{'s' if days_missed != 1 else ''} passed without a note.")
+        from collections import Counter as _Counter
+        _dom = _Counter(j.emotion_label for j in journals if j.emotion_label).most_common(1)
+        _badge = {"name": "Quiet Week" if sparse_week else "Week Done", "reason": ""}
         ai_data = {
-            "dominant_emotion": journals[0].emotion_label if journals else "neutral",
-            "week_summary": {
-                "wins": "You showed up and recorded your journey.",
-                "dips": "Analysis unavailable.",
-                "pattern": f"You completed {days_done} out of {past_days_count} days.",
-            },
-            "hidden_insight": "",
-            "next_week_focus": "Keep showing up every day.",
+            "headline": f"{entry_count} of {past_days_count} days with a note.",
+            "saw": saw_fb, "one_thing": "",
+            "next_week_focus": "Keep the same plan and win the first day back.",
             "next_week_plan_context": "",
-            "week_badge": {"name": "Week Warrior", "reason": "Completed this week's journey."},
-            "best_quote": best_quote,
-            "actionable_coaching": [{"observation": "", "micro_action": ""} for _ in range(7)],
-            "trigger_patterns": [],
-            "recurring_friction": [],
-            "best_days": [],
-            "worst_days": [],
-            "mood_trend": "",
+            "quote": best_quote or None, "vs_last_week": None, "badge": _badge,
+            "dominant_emotion": _dom[0][0] if _dom else "neutral", "mood_trend": "",
+            "hidden_insight": "",
+            "week_summary": {"wins": " ".join(saw_fb[:2]), "dips": " ".join(saw_fb[2:]), "pattern": ""},
+            "what_went_well": " ".join(saw_fb[:2]), "where_you_slipped": " ".join(saw_fb[2:]),
+            "best_quote": best_quote or "", "week_badge": _badge,
+            "trigger_patterns": [], "recurring_friction": [], "best_days": peak_performance_days, "worst_days": [],
+            "review_fallback": True,
         }
-        coaching_list = ai_data["actionable_coaching"]
 
     # ── 7. Build the final report dict ──────────────────────────────────────
     report_data = {
@@ -4148,6 +4142,8 @@ IMPORTANT NOTES:
         "days_missed": days_missed,
         "past_days_count": past_days_count,
         "entry_count": len(journals),
+        "schema_version": 3,
+        "sparse": sparse_week,
         "week_start": ws,
         "week_end": we,
         "week_number": wk_num,
@@ -4171,8 +4167,8 @@ IMPORTANT NOTES:
                 # (DailyCheckin can be inflated by backfill; journal IS the record)
                 "checkin": "done" if d in journal_by_date else ("missed" if d <= today.isoformat() else "pending"),
                 "has_journal": d in journal_by_date,
-                "coaching_insight": coaching_list[i].get("observation", "") if i < len(coaching_list) else "",
-                "coaching_micro_action": coaching_list[i].get("micro_action", "") if i < len(coaching_list) else "",
+                "coaching_insight": "",
+                "coaching_micro_action": "",
             }
             for i, d in enumerate(all_week_days)
         ],
@@ -4211,6 +4207,14 @@ IMPORTANT NOTES:
         },
         "ai_insight": ai_data.get("hidden_insight", ""),
         "next_week_carry_forward": ai_data.get("next_week_focus", ""),
+    }
+
+    report_data["model_context"]["mentor_review"] = {
+        "headline": ai_data.get("headline", ""),
+        "what_the_mentor_saw": ai_data.get("saw", []),
+        "one_thing": ai_data.get("one_thing", ""),
+        "next_week_focus": ai_data.get("next_week_focus", ""),
+        "vs_last_week": ai_data.get("vs_last_week"),
     }
 
     # ── 8. Cache the report ───────────────────────────────────────────────────
@@ -4281,7 +4285,7 @@ from .models import UserFeedback
 # The moments that can open a form. Anything else is recorded as the side tab.
 FEEDBACK_TRIGGERS = {
     "exit_intent", "first_plan", "first_chats", "timer", "logout", "side_tab", "tab_return",
-    "after_journal", "second_tweak", "weekly_report", "task_email",
+    "after_journal", "second_tweak", "weekly_report", "task_email", "review_read",
 }
 # The chips the form offers; unknown values are dropped rather than stored.
 FEEDBACK_CHIPS = {"signup", "tutorial", "plan", "mentor_chat", "alerts", "design", "speed", "other"}
@@ -4329,6 +4333,14 @@ FEEDBACK_FORMS: Dict[str, Dict[str, Any]] = {
         "required": ["clear"],
         "choices": {"clear": {"yes", "no"}},
         "text": {},
+    },
+    # Under a week review: did it read true? The one number that says
+    # whether the review is worth reading.
+    "review": {
+        "required": ["accurate"],
+        "choices": {"accurate": {"yes", "partly", "no"}},
+        "text": {"note": 300},
+        "ints": {"week_number"},
     },
 }
 
@@ -4664,6 +4676,7 @@ def _feedback_stats(items: List[Dict[str, Any]]) -> Dict[str, Any]:
     task_quality = Counter(i["answers"].get("quality") for i in items if i["kind"] == "task_day" and i["answers"].get("quality"))
     task_clear = Counter(i["answers"].get("clear") for i in items if i["kind"] == "task_email" and i["answers"].get("clear"))
     tweak_reasons = Counter(i["answers"].get("reason") for i in items if i["kind"] == "tweaks" and i["answers"].get("reason"))
+    review_accuracy = Counter(i["answers"].get("accurate") for i in items if i["kind"] == "review" and i["answers"].get("accurate"))
     kinds = Counter(i["kind"] for i in items)
     triggers = Counter(i["trigger"] for i in items)
     legacy = [int(i["rating"]) for i in items if i.get("rating")]
@@ -4678,6 +4691,7 @@ def _feedback_stats(items: List[Dict[str, Any]]) -> Dict[str, Any]:
         "task_quality": {k: task_quality.get(k, 0) for k in ("great", "fine", "off", "didnt_fit")},
         "task_clear": {k: task_clear.get(k, 0) for k in ("yes", "no")},
         "tweak_reasons": dict(tweak_reasons.most_common()),
+        "review_accuracy": {k: review_accuracy.get(k, 0) for k in ("yes", "partly", "no")},
         "broke_reports": sum(1 for i in full if i["answers"].get("broke")),
         "quit_notes": sum(1 for i in full if i["answers"].get("quit_reason")),
         "triggers": dict(triggers.most_common()),
