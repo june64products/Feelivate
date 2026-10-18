@@ -12,14 +12,13 @@ export type FeedbackTrigger =
     | 'after_journal'  // right after the evening voice note was saved (task_day)
     | 'second_tweak'   // the draft was tweaked a second time (tweaks)
     | 'weekly_report'  // the first weekly report was opened (full form)
-    | 'task_email'     // 👍/👎 from the morning email
-    | 'review_read';   // "did this read true?" under a week review
+    | 'task_email';    // 👍/👎 from the morning email
 
 /**
  * Which questions a form asks. Each moment gets its own few questions
  * instead of one long form for everything.
  */
-export type FeedbackKind = 'full' | 'plan_fit' | 'task_day' | 'tweaks' | 'task_email' | 'review';
+export type FeedbackKind = 'full' | 'plan_fit' | 'task_day' | 'tweaks' | 'task_email';
 
 export const FEEDBACK_CHIPS = [
     { key: 'signup', label: 'Sign-up' },
@@ -163,7 +162,6 @@ export interface FeedbackAdminStats {
     task_quality: Record<string, number>;
     task_clear: Record<string, number>;
     tweak_reasons: Record<string, number>;
-    review_accuracy: Record<string, number>;
     broke_reports: number;
     quit_notes: number;
     triggers: Record<string, number>;

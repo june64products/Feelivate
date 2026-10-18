@@ -771,19 +771,6 @@ export interface WeeklyReport {
             momentum_score: number;
             days_done: number;
         } | null;
-        // The review (v3): a letter, not a dashboard
-        schema_version?: number;
-        headline?: string;
-        saw?: string[];
-        one_thing?: string;
-        quote?: string | null;
-        vs_last_week?: string | null;
-        badge?: WeekBadge | null;
-        mood_trend?: string;
-        /** Two or fewer evening notes: the review is deliberately short. */
-        sparse?: boolean;
-        /** A week that ended with no notes at all. */
-        quiet_week?: boolean;
         // AI analysis — V2 (new)
         dominant_emotion: string;
         week_summary?: WeekSummary;

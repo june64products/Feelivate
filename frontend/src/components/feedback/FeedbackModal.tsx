@@ -43,7 +43,6 @@ const KIND_FOR: Record<FeedbackTrigger, FeedbackKind> = {
     timer: 'full',
     logout: 'full',
     task_email: 'full',
-    review_read: 'full',   // the review's own thumbs post directly; never opens this modal
 };
 
 const COPY: Record<FeedbackTrigger, { title: string; sub: string }> = {
@@ -58,7 +57,6 @@ const COPY: Record<FeedbackTrigger, { title: string; sub: string }> = {
     second_tweak: { title: 'Two tweaks in — what is off?', sub: 'Help the mentor get it right next time.' },
     weekly_report: { title: 'One week in. Be honest.', sub: 'You have seen a full week now — this is the feedback that matters most.' },
     task_email: { title: 'Tell us what you think', sub: '' },
-    review_read: { title: 'Tell us what you think', sub: '' },
 };
 
 const useIsNarrow = () => {

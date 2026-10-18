@@ -23,7 +23,6 @@ const TRIGGER_LABELS: Record<string, string> = {
     second_tweak: 'Second tweak',
     weekly_report: 'Weekly report',
     task_email: 'Morning email',
-    review_read: 'Under a week review',
 };
 
 const KIND_LABELS: Record<string, string> = {
@@ -32,7 +31,6 @@ const KIND_LABELS: Record<string, string> = {
     task_day: "Today's task",
     tweaks: 'Tweaks',
     task_email: 'Email 👍/👎',
-    review: 'Week review',
 };
 
 const ANSWER_LABELS: Record<string, string> = {
@@ -42,7 +40,7 @@ const ANSWER_LABELS: Record<string, string> = {
     clear: 'Clear', somewhat: 'Somewhat', unclear: 'Unclear',
     shorter: 'Took less', right: 'As planned', longer: 'Took longer',
     wrong_time: 'Wrong time', not_my_goal: 'Not my goal', misunderstood: 'Misunderstood', other: 'Other',
-    yes: '👍 Yes', no: '👎 No', partly: 'Partly',
+    yes: '👍 Yes', no: '👎 No',
 };
 
 const CHIP_LABELS: Record<string, string> = Object.fromEntries(FEEDBACK_CHIPS.map((c) => [c.key, c.label]));
@@ -150,8 +148,6 @@ function Answers({ it }: { it: FeedbackAdminItem }) {
         if (a.reason) out.push(row(`after ${a.tweak_count ?? 2} tweaks`, a.reason, toneFor(a.reason)));
     } else if (it.kind === 'task_email') {
         if (a.clear) out.push(row('task clear?', a.clear, toneFor(a.clear)));
-    } else if (it.kind === 'review') {
-        if (a.accurate) out.push(row(`week ${a.week_number ?? '?'} review true?`, a.accurate, toneFor(a.accurate)));
     }
     return <>{out.length ? out : <span style={{ color: 'var(--text-muted)' }}>—</span>}</>;
 }
@@ -291,7 +287,6 @@ export default function FeedbackAdminPage() {
                     <CountList title="Today's task (after voice note)" counts={stats.task_quality} order={['great', 'fine', 'off', 'didnt_fit']} labels={ANSWER_LABELS} tone={{ great: good, didnt_fit: bad, off: bad }} />
                     <CountList title="Task clear? (email 👍/👎)" counts={stats.task_clear} order={['yes', 'no']} labels={ANSWER_LABELS} tone={{ yes: good, no: bad }} />
                     <CountList title="Why tweaks keep happening" counts={stats.tweak_reasons} labels={ANSWER_LABELS} />
-                    <CountList title="Did the week review read true?" counts={stats.review_accuracy ?? {}} order={['yes', 'partly', 'no']} labels={ANSWER_LABELS} tone={{ yes: good, no: bad }} />
                     <CountList title="Which moment asked" counts={stats.triggers} labels={TRIGGER_LABELS} />
                 </section>
 

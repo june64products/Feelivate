@@ -49,7 +49,7 @@ from .models import (
 # The date of the last material change to the Privacy Policy / Terms. Must
 # match POLICY_VERSION in frontend/src/pages/PrivacyPage.tsx. Changing it
 # asks every existing user to accept the new documents on their next sign-in.
-CONSENT_POLICY_VERSION = os.getenv("CONSENT_POLICY_VERSION", "2026-10-18")
+CONSENT_POLICY_VERSION = os.getenv("CONSENT_POLICY_VERSION", "2026-10-10")
 
 # Every consent here must be granted before the account can be used.
 # `explicit` marks the Art 9 consent, which the UI must present as its own
