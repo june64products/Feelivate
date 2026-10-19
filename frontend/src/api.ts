@@ -786,6 +786,12 @@ export interface WeeklyReport {
         hidden_insight: string;
         next_week_focus: string;
         next_week_plan_context: string;
+        // Patterns (top-level from the model, mirrored under `patterns`)
+        best_days?: string[];
+        worst_days?: string[];
+        mood_trend?: string;
+        recurring_friction?: string[];
+        patterns?: { best_days?: string[]; worst_days?: string[]; mood_trend?: string; recurring_friction?: string[] };
         // Legacy fields (backward compat with old cached reports)
         emotional_arc?: string;
         what_went_well?: string;
