@@ -126,6 +126,7 @@ export default function WorkspacePage() {
     const [demoBetweenWeeks, setDemoBetweenWeeks] = useState(false);
     const [demoGoalMenuOpen, setDemoGoalMenuOpen] = useState(false);
     const [demoFinished, setDemoFinished] = useState(false);
+    const [demoArchiveWeek, setDemoArchiveWeek] = useState<number | null>(null);
 
     const uiMessages = demoMode ? demoMessages : messages;
     const uiLoading = demoMode ? demoLoading : isLoading;
@@ -722,6 +723,7 @@ export default function WorkspacePage() {
         setDemoBetweenWeeks(false);
         setDemoGoalMenuOpen(false);
         setDemoFinished(false);
+        setDemoArchiveWeek(null);
     };
 
     // Called when the user Skips/Stops or the demo finishes its last step.
@@ -749,6 +751,7 @@ export default function WorkspacePage() {
         setBetweenWeeks: (v) => setDemoBetweenWeeks(v),
         setGoalMenuOpen: (v) => setDemoGoalMenuOpen(v),
         setFinished: (v) => setDemoFinished(v),
+        setArchiveWeek: (w) => setDemoArchiveWeek(w),
     }), []);
 
     // Auto-open the demo for newly signed-up users, and on "Replay tutorial".
@@ -818,6 +821,7 @@ export default function WorkspacePage() {
                         demoMode={demoMode}
                         demoTab={demoJourneyTab}
                         demoBetweenWeeks={demoBetweenWeeks}
+                        demoExpandedWeek={demoMode ? demoArchiveWeek : null}
                         initialTab={journeyInitialTab}
                         onJournalSaved={(entry) => {
                             // Directly update the orb with the saved entry — no refetch needed

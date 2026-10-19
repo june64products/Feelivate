@@ -136,10 +136,12 @@ interface JourneyPageProps {
     demoTab?: 'overview' | 'archive';
     /** Guided demo: render the between-weeks state (journal locked + mood mic). */
     demoBetweenWeeks?: boolean;
+    /** Guided demo: the archive report that should be open (to point at its View button). */
+    demoExpandedWeek?: number | null;
     initialTab?: 'overview' | 'archive';
 }
 
-export default function JourneyPage({ userId, sessionId, onJournalSaved, onReportSeen, onClose, demoMode = false, demoTab, demoBetweenWeeks = false, initialTab }: JourneyPageProps) {
+export default function JourneyPage({ userId, sessionId, onJournalSaved, onReportSeen, onClose, demoMode = false, demoTab, demoBetweenWeeks = false, demoExpandedWeek = null, initialTab }: JourneyPageProps) {
     const [journals, setJournals] = useState<JournalEntry[]>([]);
     const [report, setReport] = useState<WeeklyReport | null>(null);
     const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null);
@@ -204,6 +206,10 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
     useEffect(() => {
         if (demoMode && demoTab) setActiveTab(demoTab);
     }, [demoMode, demoTab]);
+    // The tour opens one archive report to point at its View button.
+    useEffect(() => {
+        if (demoMode) setExpandedWeek(demoExpandedWeek ?? null);
+    }, [demoMode, demoExpandedWeek]);
 
     const loadAll = async () => {
         try {

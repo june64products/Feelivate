@@ -28,6 +28,7 @@ export interface DemoHandles {
     setBetweenWeeks: (v: boolean) => void;
     setGoalMenuOpen: (v: boolean) => void;
     setFinished: (v: boolean) => void;
+    setArchiveWeek: (w: number | null) => void;
 }
 
 interface GuidedDemoProps {
@@ -141,6 +142,7 @@ export default function GuidedDemo({ active, handles, onExit }: GuidedDemoProps)
         h.setBetweenWeeks(scene.betweenWeeks ?? false);
         h.setGoalMenuOpen(scene.goalMenuOpen ?? false);
         h.setFinished(scene.finished ?? false);
+        h.setArchiveWeek(scene.archiveWeek ?? null);
 
         const built = (scene.messages ?? []).map(m => ({
             role: m.role, content: m.content, plan: m.withPlan ? DEMO_PLAN : undefined,

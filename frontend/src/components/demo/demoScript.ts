@@ -23,7 +23,7 @@ export type DemoTarget =
     | 'journey-nav' | 'journey-mic' | 'mood-mic' | 'archive-tab'
     | 'reports-button' | 'mentor-chip'
     | 'emotion-orb' | 'profile-menu' | 'center'
-    | 'finish-goal' | 'finished-card';
+    | 'finish-goal' | 'finished-card' | 'review-view';
 
 export interface DemoSceneMessage {
     role: 'user' | 'assistant';
@@ -49,6 +49,8 @@ export interface DemoScene {
     goalMenuOpen?: boolean;
     /** The workspace shows the finished-goal card instead of the plan. */
     finished?: boolean;
+    /** Archive tab: this week's report is open (to point at the View button). */
+    archiveWeek?: number | null;
 }
 
 export interface DemoStep {
@@ -107,7 +109,27 @@ export const DEMO_ARCHIVE = [
             avg_score: 7, consistency_score: 86, days_done: 6, days_missed: 1,
             past_days_count: 7, entry_count: 6, week_number: 1,
             week_theme: 'Build the running habit', dominant_emotion: 'motivated',
-            hidden_insight: '', next_week_focus: '', next_week_plan_context: '', days: [],
+            momentum_score: 78, momentum_label: 'Strong Week',
+            week_badge: { name: 'Steady Climber', reason: 'Six evenings logged, and the pace went up each time.' },
+            best_quote: 'The 25 minutes felt like 10. I think I like this now.',
+            week_summary: {
+                wins: 'Five runs in six days, each one a little longer than the last.',
+                dips: 'Thursday slipped — a late meeting ate the evening.',
+                pattern: 'Mornings beat evenings every time you tried both.',
+            },
+            hidden_insight: 'Your mood on run days was two points higher than on rest days — the run is doing more than fitness.',
+            next_week_focus: 'Move the Thursday run to the morning, before meetings can touch it.',
+            next_week_plan_context: '- keep mornings\n- one long run on Saturday\n- rest Sunday',
+            best_days: ['Sat', 'Wed'], worst_days: ['Thu'], mood_trend: 'steady climb, one dip',
+            days: [
+                { date: '2026-06-01', day_label: 'Jun 01 (Mon)', planned_task: 'Easy 20-minute walk + 5 minutes of light jogging.', emotion: 'motivated', score: 7, one_liner: 'Legs felt fresh. Easy start.', checkin: 'done', has_journal: true, coaching_insight: 'Strong start', coaching_micro_action: 'Keep the 7am slot.' },
+                { date: '2026-06-02', day_label: 'Jun 02 (Tue)', planned_task: 'Rest or gentle stretching.', emotion: 'calm', score: 6, one_liner: 'Stretched on the balcony.', checkin: 'done', has_journal: true, coaching_insight: '', coaching_micro_action: '' },
+                { date: '2026-06-03', day_label: 'Jun 03 (Wed)', planned_task: 'Run/walk intervals: 1 min jog, 2 min walk × 6.', emotion: 'focused', score: 8, one_liner: 'Intervals clicked today.', checkin: 'done', has_journal: true, coaching_insight: 'Best session yet', coaching_micro_action: 'Repeat the same warm-up.' },
+                { date: '2026-06-04', day_label: 'Jun 04 (Thu)', planned_task: '20-minute brisk walk.', emotion: null, score: null, one_liner: null, checkin: 'missed', has_journal: false, coaching_insight: 'Late meeting', coaching_micro_action: 'Move it to the morning.' },
+                { date: '2026-06-05', day_label: 'Jun 05 (Fri)', planned_task: 'Run/walk intervals: 2 min jog, 2 min walk × 5.', emotion: 'motivated', score: 7, one_liner: 'Back on it. Not as hard as I feared.', checkin: 'done', has_journal: true, coaching_insight: '', coaching_micro_action: '' },
+                { date: '2026-06-06', day_label: 'Jun 06 (Sat)', planned_task: 'Your longest effort yet — 25 minutes, any pace.', emotion: 'excited', score: 8, one_liner: 'The 25 minutes felt like 10.', checkin: 'done', has_journal: true, coaching_insight: 'Longest run', coaching_micro_action: 'Note what you ate before — it worked.' },
+                { date: '2026-06-07', day_label: 'Jun 07 (Sun)', planned_task: 'Reflect on the week and rest.', emotion: 'calm', score: 7, one_liner: 'Proud of this week.', checkin: 'done', has_journal: true, coaching_insight: '', coaching_micro_action: '' },
+            ],
         },
     },
     {
@@ -322,6 +344,16 @@ export const DEMO_STEPS: DemoStep[] = [
         title: 'Overview vs Archive',
         body: 'Your CURRENT week\'s AI review builds in “Overview”. Once a week ends, its report moves to “Archive” — here are 2 example weekly reports.',
         scene: { messages: CHAT, planApproved: true, view: 'journey', journeyTab: 'archive' },
+    },
+    {
+        id: 'review-view',
+        target: 'review-view',
+        placement: 'top',
+        title: 'Swipe it, or scroll it',
+        body: 'A report opens as swipeable pages — the week drawn first, then momentum, your best line, wins and dips, and next week. Prefer one long page? Tap the View button to switch to a single scroll; tap it again to go back to swiping.',
+        scene: { messages: CHAT, planApproved: true, view: 'journey', journeyTab: 'archive', archiveWeek: 1 },
+        // No forced pin: the View button sits low in the frame, so the card
+        // auto-pins to the top and never covers it.
     },
     {
         id: 'orb',

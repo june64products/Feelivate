@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MoveHorizontal, MoveVertical } from 'lucide-react';
 import type { WeeklyReport, WeeklyReportDay } from '../../api';
 import { clashDisplay, satoshi } from '../mission/missionTheme';
 
@@ -155,6 +155,8 @@ interface WeekReviewStoryProps {
 export default function WeekReviewStory({ report, days, weekStart, weekEnd, onPlanNext, compact = false, height }: WeekReviewStoryProps) {
     const trackRef = useRef<HTMLDivElement>(null);
     const [page, setPage] = useState(0);
+    // The View button: swipeable pages by default, or everything as one long page.
+    const [mode, setMode] = useState<'swipe' | 'scroll'>('swipe');
 
     const wk = report.week_number ?? 1;
     const pastDays = report.past_days_count ?? days.length;
@@ -403,43 +405,86 @@ export default function WeekReviewStory({ report, days, weekStart, weekEnd, onPl
     };
 
     const frameH = height ?? (compact ? 'min(64vh, 560px)' : 'min(78vh, 760px)');
-    return (
-        <div
-            tabIndex={0}
-            onKeyDown={onKey}
-            aria-roledescription="carousel"
-            aria-label={`Week ${wk} review`}
+    const swipe = mode === 'swipe';
+
+    // The View button: it always names the OTHER way of reading.
+    const viewToggle = (
+        <button
+            data-tour="review-view"
+            onClick={() => setMode(swipe ? 'scroll' : 'swipe')}
+            aria-label={swipe ? 'View: switch to one scrolling page' : 'View: switch to swipeable pages'}
+            title={swipe ? 'Read it as one long page' : 'Read it as swipeable pages'}
             style={{
-                position: 'relative', width: '100%', maxWidth: '520px', margin: '0 auto', height: frameH,
-                background: 'var(--card-bg)', border: '1px solid var(--border-subtle)', borderRadius: '24px',
-                boxShadow: compact ? 'none' : 'var(--shadow-lg)', overflow: 'hidden', outline: 'none', fontFamily: satoshi,
+                display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 11px', borderRadius: '100px',
+                border: '1px solid var(--border-medium)', background: 'var(--card-bg)', color: 'var(--text-primary)',
+                fontSize: '10.5px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: satoshi,
             }}
         >
-            {/* progress */}
-            <div style={{ position: 'absolute', top: '12px', left: '16px', right: '16px', display: 'flex', gap: '4px', zIndex: 3 }}>
-                {pages.map((_, i) => (
-                    <button key={i} onClick={() => go(i)} aria-label={`Page ${i + 1}`} style={{ flex: 1, height: '10px', padding: 0, background: 'none', border: 0, cursor: 'pointer' }}>
-                        <span style={{ display: 'block', height: '2px', borderRadius: '2px', background: i <= page ? 'var(--text-primary)' : 'var(--border-medium)', transition: 'background 0.25s' }} />
-                    </button>
-                ))}
-            </div>
-            {/* pages */}
-            <div ref={trackRef} style={{ height: '100%', display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollSnapType: 'x mandatory', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} className="hide-scrollbar">
-                {pages.map((content, i) => (
-                    <section key={i} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', height: '100%', padding: compact ? '40px 20px 72px' : '44px 26px 76px', display: 'flex', flexDirection: 'column', overflowY: 'auto', boxSizing: 'border-box' }}>
-                        {content}
-                    </section>
-                ))}
-            </div>
-            {/* folio */}
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 14px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(to top, var(--card-bg) 55%, transparent)', zIndex: 3 }}>
-                <span style={{ ...cap, color: 'var(--text-muted)' }}>Feelivate · Week review</span>
+            {swipe ? <MoveVertical size={12} /> : <MoveHorizontal size={12} />}
+            View · {swipe ? 'Scroll' : 'Swipe'}
+        </button>
+    );
+
+    const bar = (
+        <div style={{
+            ...(swipe ? { position: 'absolute' as const, bottom: 0, left: 0, right: 0 } : { position: 'sticky' as const, bottom: 0 }),
+            padding: '10px 14px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+            background: 'linear-gradient(to top, var(--card-bg) 55%, transparent)', zIndex: 3,
+        }}>
+            {viewToggle}
+            {swipe ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <button onClick={() => go(page - 1)} disabled={page === 0} aria-label="Previous page" style={navBtn(page === 0)}><ChevronLeft size={15} /></button>
                     <span style={{ ...cap, color: 'var(--text-muted)', minWidth: '42px', textAlign: 'center' }}>{page + 1} / {count}</span>
                     <button onClick={() => go(page + 1)} disabled={page === count - 1} aria-label="Next page" style={navBtn(page === count - 1)}><ChevronRight size={15} /></button>
                 </div>
-            </div>
+            ) : (
+                <span style={{ ...cap, color: 'var(--text-muted)' }}>{count} pages · one scroll</span>
+            )}
+        </div>
+    );
+
+    return (
+        <div
+            tabIndex={0}
+            onKeyDown={swipe ? onKey : undefined}
+            aria-roledescription={swipe ? 'carousel' : undefined}
+            aria-label={`Week ${wk} review`}
+            style={{
+                position: 'relative', width: '100%', maxWidth: '520px', margin: '0 auto',
+                height: swipe ? frameH : (height ?? 'auto'),
+                background: 'var(--card-bg)', border: '1px solid var(--border-subtle)', borderRadius: '24px',
+                boxShadow: compact ? 'none' : 'var(--shadow-lg)', overflow: swipe ? 'hidden' : (height ? 'auto' : 'visible'),
+                outline: 'none', fontFamily: satoshi,
+            }}
+        >
+            {swipe && (
+                <div style={{ position: 'absolute', top: '12px', left: '16px', right: '16px', display: 'flex', gap: '4px', zIndex: 3 }}>
+                    {pages.map((_, i) => (
+                        <button key={i} onClick={() => go(i)} aria-label={`Page ${i + 1}`} style={{ flex: 1, height: '10px', padding: 0, background: 'none', border: 0, cursor: 'pointer' }}>
+                            <span style={{ display: 'block', height: '2px', borderRadius: '2px', background: i <= page ? 'var(--text-primary)' : 'var(--border-medium)', transition: 'background 0.25s' }} />
+                        </button>
+                    ))}
+                </div>
+            )}
+            {swipe ? (
+                <div ref={trackRef} style={{ height: '100%', display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollSnapType: 'x mandatory', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} className="hide-scrollbar">
+                    {pages.map((content, i) => (
+                        <section key={i} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', height: '100%', padding: compact ? '40px 20px 72px' : '44px 26px 76px', display: 'flex', flexDirection: 'column', overflowY: 'auto', boxSizing: 'border-box' }}>
+                            {content}
+                        </section>
+                    ))}
+                </div>
+            ) : (
+                <div style={{ padding: compact ? '10px 20px 4px' : '14px 26px 6px' }}>
+                    {pages.map((content, i) => (
+                        <section key={i} style={{ display: 'flex', flexDirection: 'column', padding: '20px 0 24px', borderTop: i ? '1px solid var(--border-medium)' : 'none' }}>
+                            {content}
+                        </section>
+                    ))}
+                </div>
+            )}
+            {bar}
             <style>{`.hide-scrollbar::-webkit-scrollbar{display:none}`}</style>
         </div>
     );
