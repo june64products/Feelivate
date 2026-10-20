@@ -244,16 +244,28 @@ def test_a_days_emotion_is_judged_from_the_whole_entry(monkeypatch):
 
     seen = []
 
-    def fake(messages, **_k):
-        seen.append(" ".join(m.get("content", "") for m in messages))
+    def qwen(prompt, **kw):
+        assert kw.get("model_override") == "qwen/qwen3.8-27b", "Groq's qwen reads the entry first — it spends no OpenRouter tokens"
+        seen.append(prompt)
         return '{"label": "hopeful", "score": 8, "one_liner": "A bad start that ended in a grin."}'
 
-    monkeypatch.setattr(llm, "call_with_fallback_chain", fake)
-    monkeypatch.setattr(llm, "call_llm", lambda *a, **k: (_ for _ in ()).throw(AssertionError("the chain answered; no fallback needed")))
+    monkeypatch.setattr(llm, "call_llm", qwen)
+    monkeypatch.setattr(llm, "call_with_fallback_chain", lambda *a, **k: (_ for _ in ()).throw(AssertionError("qwen answered; the gpt-oss chain is only the fallback")))
 
     out = asyncio.run(_analyze_emotion(MONDAY_ENTRY))
     assert out == {"label": "hopeful", "score": 8, "one_liner": "A bad start that ended in a grin."}
     assert len(seen) == 1 and TAIL in seen[0], "the model saw the end of the entry, not just its first 800 characters"
+
+
+def test_the_gpt_oss_chain_catches_a_day_when_qwen_is_down(monkeypatch):
+    import app.llm as llm
+    from app.main import _analyze_emotion
+
+    monkeypatch.setattr(llm, "call_llm", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("groq offline")))
+    monkeypatch.setattr(llm, "call_with_fallback_chain", lambda messages, **k: '{"label": "focused", "score": 6, "one_liner": "Clumsy but complete."}')
+
+    out = asyncio.run(_analyze_emotion(WEDNESDAY_ENTRY))
+    assert out == {"label": "focused", "score": 6, "one_liner": "Clumsy but complete."}
 
 
 def test_the_mentor_is_handed_the_whole_review_when_building_next_week():

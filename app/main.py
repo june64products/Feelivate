@@ -3426,14 +3426,15 @@ async def _analyze_emotion(transcript: str) -> dict:
     )
     system = "You are an expert emotion analyst. Output raw JSON only — no markdown, no preamble."
 
-    # gpt-oss-120b (OpenRouter, then OpenAI's safety net) reads the entry; Groq's
-    # qwen stays as a last resort so a chain outage never collapses a day to neutral/5.
+    # Groq's qwen reads the entry first — it does this job well and costs no
+    # OpenRouter tokens; the gpt-oss chain (OpenRouter, then OpenAI) is the
+    # safety net so a Groq outage never collapses a day to neutral/5.
     attempts = [
+        ("qwen/qwen3.8-27b", lambda: call_llm(prompt, temperature=0.2, max_tokens=240, model_override="qwen/qwen3.8-27b")),
         ("gpt-oss chain", lambda: call_with_fallback_chain(
             [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
             temperature=0.2, max_tokens=240,
         )),
-        ("qwen/qwen3.8-27b", lambda: call_llm(prompt, temperature=0.2, max_tokens=240, model_override="qwen/qwen3.8-27b")),
     ]
     last_err = None
     for model, fn in attempts:
