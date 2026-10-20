@@ -348,12 +348,12 @@ export const DEMO_STEPS: DemoStep[] = [
     {
         id: 'review-view',
         target: 'review-view',
-        placement: 'top',
+        placement: 'bottom',
         title: 'Dashboard, or swipe',
-        body: 'A report opens as a dashboard: everything on one screen — your numbers, how the week felt, what your mentor saw, each day, and next week. Prefer one thing at a time? Tap the View button to switch to swipeable pages; tap it again to come back.',
+        body: 'A report opens as a dashboard: everything on one screen — your numbers, how the week felt, what your mentor saw, next week, and each day. Prefer one thing at a time? Tap the View button to switch to swipeable cards; tap it again to come back.',
         scene: { messages: CHAT, planApproved: true, view: 'journey', journeyTab: 'archive', archiveWeek: 1 },
-        // No forced pin: the View button sits low in the frame, so the card
-        // auto-pins to the top and never covers it.
+        // The View button sits top-right of the report, so the card goes
+        // below it; on phones the sheet auto-pins to the bottom edge.
     },
     {
         id: 'orb',
