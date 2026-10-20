@@ -32,7 +32,7 @@ const fmtRange = (a?: string, b?: string) => {
     return `${f(a)} – ${f(b)}`;
 };
 
-type Tier = 'wide' | 'mid' | 'narrow';
+export type Tier = 'wide' | 'mid' | 'narrow';
 
 // ─── type bits ────────────────────────────────────────────────────────────────
 const lab: CSSProperties = { fontSize: '10px', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.2, fontFamily: satoshi };
@@ -48,7 +48,7 @@ const chip = (color?: string): CSSProperties => ({
 });
 const Dot = ({ color }: { color: string }) => <i style={{ width: '7px', height: '7px', borderRadius: '50%', display: 'inline-block', background: color, flexShrink: 0 }} />;
 
-function SectionHead({ n, title, meta, right }: { n: string; title: string; meta?: string; right?: ReactNode }) {
+export function SectionHead({ n, title, meta, right }: { n: string; title: string; meta?: string; right?: ReactNode }) {
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
             <span style={{ fontFamily: clashDisplay, fontWeight: 600, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>{n}</span>
@@ -149,29 +149,30 @@ function EmotionRing({ days }: { days: WeeklyReportDay[] }) {
     );
 }
 
-// ─── the dashboard ────────────────────────────────────────────────────────────
-interface WeekReviewDashboardProps {
+// ─── the five sections ────────────────────────────────────────────────────────
+export interface ReviewSection {
+    id: string;
+    n: string;
+    title: string;
+    meta?: string;
+    body: ReactNode;
+}
+
+interface ReviewArgs {
     report: ReportData;
     days: WeeklyReportDay[];
     weekStart?: string;
     weekEnd?: string;
     onPlanNext?: () => void;
-    /** Rendered in the 01 header: the View button that swaps to the swipe story. */
-    viewButton?: ReactNode;
+    tier: Tier;
 }
 
-export default function WeekReviewDashboard({ report, days, weekStart, weekEnd, onPlanNext, viewButton }: WeekReviewDashboardProps) {
-    const ref = useRef<HTMLDivElement>(null);
-    const [tier, setTier] = useState<Tier>('wide');
-    useEffect(() => {
-        const el = ref.current; if (!el) return;
-        const apply = (w: number) => setTier(w >= 1000 ? 'wide' : w >= 620 ? 'mid' : 'narrow');
-        apply(el.getBoundingClientRect().width);
-        const ro = new ResizeObserver(entries => { for (const e of entries) apply(e.contentRect.width); });
-        ro.observe(el);
-        return () => ro.disconnect();
-    }, []);
-
+/**
+ * The report's five sections, built once from the data. The dashboard lays
+ * them out as a column; the swipe view shows one per card. Same tiles, same
+ * rules either way.
+ */
+export function useReviewSections({ report, days, weekStart, weekEnd, onPlanNext, tier }: ReviewArgs): ReviewSection[] {
     const wk = report.week_number ?? 1;
     const pastDays = report.past_days_count ?? days.length;
     const noted = days.filter(d => d.has_journal);
@@ -215,175 +216,216 @@ export default function WeekReviewDashboard({ report, days, weekStart, weekEnd, 
 
     const wide = tier === 'wide', narrow = tier === 'narrow';
     const cols = (w: string, m: string, n: string) => ({ display: 'grid', gap: '8px', gridTemplateColumns: wide ? w : tier === 'mid' ? m : n } as CSSProperties);
-    const section: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '6px' };
 
-    return (
-        <div ref={ref} style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontFamily: satoshi, width: '100%' }}>
+    const sections: ReviewSection[] = [];
 
-            {/* 01 · AT A GLANCE */}
-            <section style={section}>
-                <SectionHead n="01" title="At a glance" meta={[`Week ${wk}`, fmtRange(weekStart, weekEnd), report.week_theme].filter(Boolean).join(' · ')} right={viewButton} />
-                <div style={cols('5fr 2.4fr 4.6fr', '1fr 1fr', '1fr')}>
-                    <div style={{ ...tile, gridColumn: wide ? 'auto' : narrow ? 'auto' : '1 / -1' }}>
-                        <h2 style={disp('clamp(19px, 1.9vw, 25px)', 1.08)}>{headline}</h2>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '2px' }}>
-                            {report.week_badge?.name && <Stamp name={report.week_badge.name} reason={report.week_badge.reason} />}
-                            {report.dominant_emotion && <span style={chip()}><Dot color={emotionColor(report.dominant_emotion)} />mostly {report.dominant_emotion}</span>}
-                            {bestNoted && <span style={chip()}><Dot color={emotionColor(bestNoted.emotion)} />best day {weekday(bestNoted.date)}</span>}
-                        </div>
-                        {report.week_badge?.reason && <p style={{ ...body, fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Badge: {report.week_badge.reason}</p>}
+    sections.push({
+        id: 'glance', n: '01', title: 'At a glance',
+        meta: [`Week ${wk}`, fmtRange(weekStart, weekEnd), report.week_theme].filter(Boolean).join(' · '),
+        body: (
+            <div style={cols('5fr 2.4fr 4.6fr', '1fr 1fr', '1fr')}>
+                <div style={{ ...tile, gridColumn: wide ? 'auto' : narrow ? 'auto' : '1 / -1' }}>
+                    <h2 style={disp('clamp(19px, 1.9vw, 25px)', 1.08)}>{headline}</h2>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '2px' }}>
+                        {report.week_badge?.name && <Stamp name={report.week_badge.name} reason={report.week_badge.reason} />}
+                        {report.dominant_emotion && <span style={chip()}><Dot color={emotionColor(report.dominant_emotion)} />mostly {report.dominant_emotion}</span>}
+                        {bestNoted && <span style={chip()}><Dot color={emotionColor(bestNoted.emotion)} />best day {weekday(bestNoted.date)}</span>}
                     </div>
-                    <div style={{ ...tile, flexDirection: 'row', alignItems: 'center', gap: '14px' }}>
-                        <svg viewBox="0 0 120 120" style={{ width: '84px', height: '84px', flexShrink: 0 }} aria-hidden="true">
-                            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border-subtle)" strokeWidth="9" />
-                            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--accent-warm)" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${(Math.max(0, Math.min(100, momentum)) / 100) * 314} 314`} transform="rotate(-90 60 60)" />
-                            <text x="60" y="66" textAnchor="middle" fontFamily={clashDisplay} fontWeight="600" fontSize="32" fill="var(--text-primary)">{momentum}</text>
-                        </svg>
-                        <div style={{ minWidth: 0 }}>
-                            <p style={lab}>Momentum</p>
-                            <div style={{ ...disp('20px'), marginTop: '2px' }}>{momentumLabel}</div>
-                            <p style={cap}>out of 100</p>
-                            <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.35, margin: '4px 0 0' }}>40% consistency · 30% mood · 30% execution</p>
-                        </div>
+                    {report.week_badge?.reason && <p style={{ ...body, fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Badge: {report.week_badge.reason}</p>}
+                </div>
+                <div style={{ ...tile, flexDirection: 'row', alignItems: 'center', gap: '14px' }}>
+                    <svg viewBox="0 0 120 120" style={{ width: '84px', height: '84px', flexShrink: 0 }} aria-hidden="true">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border-subtle)" strokeWidth="9" />
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--accent-warm)" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${(Math.max(0, Math.min(100, momentum)) / 100) * 314} 314`} transform="rotate(-90 60 60)" />
+                        <text x="60" y="66" textAnchor="middle" fontFamily={clashDisplay} fontWeight="600" fontSize="32" fill="var(--text-primary)">{momentum}</text>
+                    </svg>
+                    <div style={{ minWidth: 0 }}>
+                        <p style={lab}>Momentum</p>
+                        <div style={{ ...disp('20px'), marginTop: '2px' }}>{momentumLabel}</div>
+                        <p style={cap}>out of 100</p>
+                        <p style={{ fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.35, margin: '4px 0 0', fontFamily: satoshi }}>40% consistency · 30% mood · 30% execution</p>
                     </div>
-                    <div style={{ ...tile, padding: '8px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '8px', flex: 1 }}>
-                            {[
-                                { k: 'Consistency', v: `${report.consistency_score ?? 0}`, u: '%', sub: prev ? <Delta now={report.consistency_score ?? 0} prev={prev.consistency_score} suffix="%" /> : `${daysDone} of ${pastDays} days` },
-                                { k: 'Days done', v: `${daysDone}`, u: `/${pastDays}`, sub: prev ? <Delta now={daysDone} prev={prev.days_done} /> : `${report.days_missed ?? 0} missed` },
-                                { k: 'Avg mood', v: `${report.avg_score ?? 0}`, u: '/10', sub: prev ? <Delta now={report.avg_score ?? 0} prev={prev.avg_score} /> : `${noted.length} evening note${noted.length === 1 ? '' : 's'}` },
-                                prev
-                                    ? { k: 'Momentum', v: `${momentum}`, u: '', sub: <Delta now={momentum} prev={prev.momentum_score} /> }
-                                    : { k: 'vs last week', v: '—', u: '', sub: 'from Week 2' },
-                            ].map(s => (
-                                <div key={s.k} style={{ border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center', background: 'var(--bg-surface)', minWidth: 0 }}>
-                                    <p style={lab}>{s.k}</p>
-                                    <div style={num(s.v === '—' ? '16px' : '24px')}>{s.v}<span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{s.u}</span></div>
-                                    <p style={cap}>{s.sub}</p>
+                </div>
+                <div style={{ ...tile, padding: '8px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '8px', flex: 1 }}>
+                        {[
+                            { k: 'Consistency', v: `${report.consistency_score ?? 0}`, u: '%', sub: prev ? <Delta now={report.consistency_score ?? 0} prev={prev.consistency_score} suffix="%" /> : `${daysDone} of ${pastDays} days` },
+                            { k: 'Days done', v: `${daysDone}`, u: `/${pastDays}`, sub: prev ? <Delta now={daysDone} prev={prev.days_done} /> : `${report.days_missed ?? 0} missed` },
+                            { k: 'Avg mood', v: `${report.avg_score ?? 0}`, u: '/10', sub: prev ? <Delta now={report.avg_score ?? 0} prev={prev.avg_score} /> : `${noted.length} evening note${noted.length === 1 ? '' : 's'}` },
+                            prev
+                                ? { k: 'Momentum', v: `${momentum}`, u: '', sub: <Delta now={momentum} prev={prev.momentum_score} /> }
+                                : { k: 'vs last week', v: '—', u: '', sub: 'from Week 2' },
+                        ].map(s => (
+                            <div key={s.k} style={{ border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center', background: 'var(--bg-surface)', minWidth: 0 }}>
+                                <p style={lab}>{s.k}</p>
+                                <div style={num(s.v === '—' ? '16px' : '24px')}>{s.v}<span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{s.u}</span></div>
+                                <p style={cap}>{s.sub}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        ),
+    });
+
+    sections.push({
+        id: 'felt', n: '02', title: 'How it felt', meta: 'dot = note · dashed = no note · ✓ = done',
+        body: (
+            <div style={cols('5fr 2.6fr 4.4fr', '1fr 1fr', '1fr')}>
+                <div style={{ ...tile, gridColumn: wide || narrow ? 'auto' : '1 / -1' }}>
+                    <p style={lab}>How each evening felt</p>
+                    <MoodChart days={days} />
+                </div>
+                <div style={tile}>
+                    <p style={lab}>Emotion mix</p>
+                    <EmotionRing days={days} />
+                </div>
+                <div style={tile}>
+                    <p style={lab}>Patterns</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr 1fr' : 'auto auto 1fr', gap: '14px', alignItems: 'start' }}>
+                        <div><p style={{ ...cap, color: 'var(--color-success)' }}>Best days</p><div style={{ ...disp('16px'), marginTop: '2px' }}>{bestDays.length ? bestDays.join(' · ') : '—'}</div></div>
+                        <div><p style={{ ...cap, color: 'var(--accent-warm)' }}>Hardest days</p><div style={{ ...disp('16px'), marginTop: '2px' }}>{worstDays.length ? worstDays.join(' · ') : '—'}</div></div>
+                        <div style={{ gridColumn: narrow ? '1 / -1' : 'auto' }}><p style={cap}>Mood trend</p><p style={{ ...body, marginTop: '2px' }}>{moodTrend || '—'}</p></div>
+                    </div>
+                    {friction.length > 0 && (
+                        <div><p style={cap}>Recurring friction</p><div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '4px' }}>{friction.map((f, i) => <span key={i} style={chip()}>{f}</span>)}</div></div>
+                    )}
+                    {showTriggers && (
+                        <div><p style={cap}>Trigger patterns</p>
+                            {report.trigger_patterns!.map((t, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '11.5px', fontFamily: satoshi, padding: '3px 0', borderTop: i ? '1px solid var(--border-subtle)' : 'none' }}>
+                                    <span style={{ color: 'var(--text-primary)' }}>{t.pattern}</span><span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{t.frequency}</span>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    )}
                 </div>
-            </section>
+            </div>
+        ),
+    });
 
-            {/* 02 · HOW IT FELT */}
-            <section style={section}>
-                <SectionHead n="02" title="How it felt" meta="dot = note · dashed = no note · ✓ = done" />
-                <div style={cols('5fr 2.6fr 4.4fr', '1fr 1fr', '1fr')}>
-                    <div style={{ ...tile, gridColumn: wide || narrow ? 'auto' : '1 / -1' }}>
-                        <p style={lab}>How each evening felt</p>
-                        <MoodChart days={days} />
-                    </div>
-                    <div style={tile}>
-                        <p style={lab}>Emotion mix</p>
-                        <EmotionRing days={days} />
-                    </div>
-                    <div style={tile}>
-                        <p style={lab}>Patterns</p>
-                        <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr 1fr' : 'auto auto 1fr', gap: '14px', alignItems: 'start' }}>
-                            <div><p style={{ ...cap, color: 'var(--color-success)' }}>Best days</p><div style={{ ...disp('16px'), marginTop: '2px' }}>{bestDays.length ? bestDays.join(' · ') : '—'}</div></div>
-                            <div><p style={{ ...cap, color: 'var(--accent-warm)' }}>Hardest days</p><div style={{ ...disp('16px'), marginTop: '2px' }}>{worstDays.length ? worstDays.join(' · ') : '—'}</div></div>
-                            <div style={{ gridColumn: narrow ? '1 / -1' : 'auto' }}><p style={cap}>Mood trend</p><p style={{ ...body, marginTop: '2px' }}>{moodTrend || '—'}</p></div>
+    if (mentorShown.length > 0 || report.best_quote) {
+        sections.push({
+            id: 'mentor', n: '03', title: 'What your mentor saw',
+            body: (
+                <div style={cols(`repeat(${mentorShown.length + (report.best_quote ? 1 : 0)}, 1fr)`, '1fr 1fr', '1fr')}>
+                    {mentorShown.map(c => (
+                        <div key={c.label} style={{ ...tile, borderTop: `3px solid ${c.color}`, ...(c.strong ? { background: 'linear-gradient(180deg, rgba(245,158,11,0.08), transparent 60%), var(--card-bg)' } : {}) }}>
+                            <p style={{ ...lab, color: c.color }}>{c.label}</p>
+                            <p style={{ ...body, fontSize: '11.5px', fontWeight: c.strong ? 600 : 400 }}>{c.text}</p>
                         </div>
-                        {friction.length > 0 && (
-                            <div><p style={cap}>Recurring friction</p><div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '4px' }}>{friction.map((f, i) => <span key={i} style={chip()}>{f}</span>)}</div></div>
-                        )}
-                        {showTriggers && (
-                            <div><p style={cap}>Trigger patterns</p>
-                                {report.trigger_patterns!.map((t, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '11.5px', fontFamily: satoshi, padding: '3px 0', borderTop: i ? '1px solid var(--border-subtle)' : 'none' }}>
-                                        <span style={{ color: 'var(--text-primary)' }}>{t.pattern}</span><span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{t.frequency}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    ))}
+                    {report.best_quote && (
+                        <div style={{ ...tile, borderTop: '3px solid var(--text-primary)' }}>
+                            <p style={lab}>In your words</p>
+                            <p style={disp('13.5px', 1.3)}>“{report.best_quote}”</p>
+                            {quoteDay && <p style={{ ...cap, marginTop: 'auto' }}>{weekday(quoteDay.date, true)}{quoteDay.emotion ? ` · ${quoteDay.emotion}` : ''}{quoteDay.score ? ` · ${quoteDay.score}/10` : ''}</p>}
+                        </div>
+                    )}
                 </div>
-            </section>
+            ),
+        });
+    }
 
-            {/* 03 · WHAT YOUR MENTOR SAW */}
-            {(mentorShown.length > 0 || report.best_quote) && (
-                <section style={section}>
-                    <SectionHead n="03" title="What your mentor saw" />
-                    <div style={cols(`repeat(${mentorShown.length + (report.best_quote ? 1 : 0)}, 1fr)`, '1fr 1fr', '1fr')}>
-                        {mentorShown.map(c => (
-                            <div key={c.label} style={{ ...tile, borderTop: `3px solid ${c.color}`, ...(c.strong ? { background: 'linear-gradient(180deg, rgba(245,158,11,0.08), transparent 60%), var(--card-bg)' } : {}) }}>
-                                <p style={{ ...lab, color: c.color }}>{c.label}</p>
-                                <p style={{ ...body, fontSize: '11.5px', fontWeight: c.strong ? 600 : 400 }}>{c.text}</p>
-                            </div>
-                        ))}
-                        {report.best_quote && (
-                            <div style={{ ...tile, borderTop: '3px solid var(--text-primary)' }}>
-                                <p style={lab}>In your words</p>
-                                <p style={disp('13.5px', 1.3)}>“{report.best_quote}”</p>
-                                {quoteDay && <p style={{ ...cap, marginTop: 'auto' }}>{weekday(quoteDay.date, true)}{quoteDay.emotion ? ` · ${quoteDay.emotion}` : ''}{quoteDay.score ? ` · ${quoteDay.score}/10` : ''}</p>}
-                            </div>
-                        )}
-                    </div>
-                </section>
-            )}
-
-            {/* 04 · DAY BY DAY */}
-            {days.length > 0 && (
-                <section style={section}>
-                    <SectionHead n="04" title="Day by day" meta="task · your words · coaching" />
-                    <div style={{ display: 'grid', gap: '8px', gridTemplateColumns: wide ? `repeat(${days.length}, minmax(0, 1fr))` : tier === 'mid' ? 'repeat(4, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))' }}>
-                        {days.map(d => {
-                            const done = d.has_journal || d.checkin === 'done';
-                            const col = emotionColor(d.emotion);
-                            const muted = !done;
-                            return (
-                                <div key={d.date} style={{ ...tile, padding: '9px 10px', gap: '5px', borderRadius: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '20px' }}>
-                                        <small style={{ fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', color: muted ? 'var(--text-muted)' : 'var(--text-secondary)', fontWeight: 800 }}>{weekday(d.date)}</small>
-                                        <b style={{ fontFamily: clashDisplay, fontSize: '15px', letterSpacing: '-0.02em', lineHeight: 1, color: muted ? 'var(--text-muted)' : 'var(--text-primary)' }}>{dayNum(d.date)}</b>
-                                        <span style={{ ...chip(d.has_journal ? undefined : 'var(--text-muted)'), marginLeft: 'auto' }}>
-                                            {d.has_journal ? <><Dot color={col} />{d.emotion ?? 'noted'}{d.score ? ` ${d.score}` : ''}</> : d.checkin === 'done' ? 'done' : d.checkin === 'pending' ? 'ahead' : d.checkin === 'skipped' ? 'skipped' : 'missed'}
-                                        </span>
-                                    </div>
-                                    <div style={{ height: '5px', borderRadius: '3px', background: 'var(--border-subtle)', flexShrink: 0 }}>
-                                        {d.has_journal && d.score ? <i style={{ display: 'block', height: '100%', borderRadius: '3px', width: `${(d.score / 10) * 100}%`, background: col }} /> : null}
-                                    </div>
-                                    {d.planned_task && <p style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0, fontFamily: satoshi }}>{d.planned_task}</p>}
-                                    {d.has_journal && d.one_liner && <p style={{ fontSize: '11px', color: 'var(--text-primary)', lineHeight: 1.4, margin: 0, fontFamily: satoshi }}>“{d.one_liner}”</p>}
-                                    {(d.coaching_insight || d.coaching_micro_action) && (
-                                        <p style={{ fontSize: '10.5px', lineHeight: 1.4, margin: 0, marginTop: 'auto', fontFamily: satoshi, color: d.has_journal ? col : 'var(--text-secondary)' }}>
-                                            → {d.coaching_insight}{d.coaching_insight && d.coaching_micro_action ? ' — ' : ''}{d.coaching_micro_action}
-                                        </p>
-                                    )}
+    if (days.length > 0) {
+        sections.push({
+            id: 'days', n: '04', title: 'Day by day', meta: 'task · your words · coaching',
+            body: (
+                <div style={{ display: 'grid', gap: '8px', gridTemplateColumns: wide ? `repeat(${days.length}, minmax(0, 1fr))` : tier === 'mid' ? 'repeat(4, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))' }}>
+                    {days.map(d => {
+                        const done = d.has_journal || d.checkin === 'done';
+                        const col = emotionColor(d.emotion);
+                        const muted = !done;
+                        return (
+                            <div key={d.date} style={{ ...tile, padding: '9px 10px', gap: '5px', borderRadius: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '20px' }}>
+                                    <small style={{ fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', color: muted ? 'var(--text-muted)' : 'var(--text-secondary)', fontWeight: 800 }}>{weekday(d.date)}</small>
+                                    <b style={{ fontFamily: clashDisplay, fontSize: '15px', letterSpacing: '-0.02em', lineHeight: 1, color: muted ? 'var(--text-muted)' : 'var(--text-primary)' }}>{dayNum(d.date)}</b>
+                                    <span style={{ ...chip(d.has_journal ? undefined : 'var(--text-muted)'), marginLeft: 'auto' }}>
+                                        {d.has_journal ? <><Dot color={col} />{d.emotion ?? 'noted'}{d.score ? ` ${d.score}` : ''}</> : d.checkin === 'done' ? 'done' : d.checkin === 'pending' ? 'ahead' : d.checkin === 'skipped' ? 'skipped' : 'missed'}
+                                    </span>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </section>
-            )}
+                                <div style={{ height: '5px', borderRadius: '3px', background: 'var(--border-subtle)', flexShrink: 0 }}>
+                                    {d.has_journal && d.score ? <i style={{ display: 'block', height: '100%', borderRadius: '3px', width: `${(d.score / 10) * 100}%`, background: col }} /> : null}
+                                </div>
+                                {d.planned_task && <p style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0, fontFamily: satoshi }}>{d.planned_task}</p>}
+                                {d.has_journal && d.one_liner && <p style={{ fontSize: '11px', color: 'var(--text-primary)', lineHeight: 1.4, margin: 0, fontFamily: satoshi }}>“{d.one_liner}”</p>}
+                                {(d.coaching_insight || d.coaching_micro_action) && (
+                                    <p style={{ fontSize: '10.5px', lineHeight: 1.4, margin: 0, marginTop: 'auto', fontFamily: satoshi, color: d.has_journal ? col : 'var(--text-secondary)' }}>
+                                        → {d.coaching_insight}{d.coaching_insight && d.coaching_micro_action ? ' — ' : ''}{d.coaching_micro_action}
+                                    </p>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            ),
+        });
+    }
 
-            {/* 05 · NEXT WEEK */}
-            {(report.next_week_focus || planNotes.length > 0 || onPlanNext) && (
-                <section style={section}>
-                    <SectionHead n="05" title="Next week" meta={wk < 3 ? `Week-over-week from Week 2 · Trigger patterns from Week 3` : undefined} />
-                    <div style={{ ...tile, border: '1px solid var(--accent-warm)' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: wide ? '1.1fr 2fr auto' : '1fr', gap: '16px', alignItems: 'center' }}>
-                            <div>
-                                <p style={{ ...lab, color: 'var(--accent-warm)' }}>One change</p>
-                                <p style={{ ...disp('15px', 1.25), marginTop: '3px' }}>{report.next_week_focus || 'Keep showing up every day.'}</p>
-                            </div>
-                            <div>
-                                {planNotes.length > 0 && <p style={lab}>The plan will account for</p>}
-                                <ul style={{ margin: '3px 0 0', padding: 0, listStyle: 'none', display: 'flex', gap: '14px', flexWrap: 'wrap', fontSize: '11.5px', lineHeight: 1.45, color: 'var(--text-secondary)', fontFamily: satoshi }}>
-                                    {planNotes.map((t, i) => <li key={i}><span style={{ color: 'var(--accent-warm)', marginRight: '6px' }}>•</span>{t}</li>)}
-                                </ul>
-                            </div>
-                            {onPlanNext && (
-                                <button onClick={onPlanNext} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 16px', borderRadius: '100px', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', fontWeight: 700, fontSize: '11.5px', border: 0, cursor: 'pointer', fontFamily: satoshi, whiteSpace: 'nowrap', justifySelf: wide ? 'end' : 'start' }}>
-                                    Plan Week {wk + 1} →
-                                </button>
-                            )}
+    if (report.next_week_focus || planNotes.length > 0 || onPlanNext) {
+        sections.push({
+            id: 'next', n: '05', title: 'Next week',
+            meta: wk < 3 ? 'Week-over-week from Week 2 · Trigger patterns from Week 3' : undefined,
+            body: (
+                <div style={{ ...tile, border: '1px solid var(--accent-warm)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: wide ? '1.1fr 2fr auto' : '1fr', gap: '16px', alignItems: 'center' }}>
+                        <div>
+                            <p style={{ ...lab, color: 'var(--accent-warm)' }}>One change</p>
+                            <p style={{ ...disp('15px', 1.25), marginTop: '3px' }}>{report.next_week_focus || 'Keep showing up every day.'}</p>
                         </div>
+                        <div>
+                            {planNotes.length > 0 && <p style={lab}>The plan will account for</p>}
+                            <ul style={{ margin: '3px 0 0', padding: 0, listStyle: 'none', display: 'flex', gap: '14px', flexWrap: 'wrap', fontSize: '11.5px', lineHeight: 1.45, color: 'var(--text-secondary)', fontFamily: satoshi }}>
+                                {planNotes.map((t, i) => <li key={i}><span style={{ color: 'var(--accent-warm)', marginRight: '6px' }}>•</span>{t}</li>)}
+                            </ul>
+                        </div>
+                        {onPlanNext && (
+                            <button onClick={onPlanNext} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 16px', borderRadius: '100px', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', fontWeight: 700, fontSize: '11.5px', border: 0, cursor: 'pointer', fontFamily: satoshi, whiteSpace: 'nowrap', justifySelf: wide ? 'end' : 'start' }}>
+                                Plan Week {wk + 1} →
+                            </button>
+                        )}
                     </div>
+                </div>
+            ),
+        });
+    }
+
+    return sections;
+}
+
+// ─── the dashboard ────────────────────────────────────────────────────────────
+interface WeekReviewDashboardProps {
+    report: ReportData;
+    days: WeeklyReportDay[];
+    weekStart?: string;
+    weekEnd?: string;
+    onPlanNext?: () => void;
+    /** Rendered in the 01 header: the View button that swaps to the swipe cards. */
+    viewButton?: ReactNode;
+}
+
+export default function WeekReviewDashboard({ report, days, weekStart, weekEnd, onPlanNext, viewButton }: WeekReviewDashboardProps) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [tier, setTier] = useState<Tier>('wide');
+    useEffect(() => {
+        const el = ref.current; if (!el) return;
+        const apply = (w: number) => setTier(w >= 1000 ? 'wide' : w >= 620 ? 'mid' : 'narrow');
+        apply(el.getBoundingClientRect().width);
+        const ro = new ResizeObserver(entries => { for (const e of entries) apply(e.contentRect.width); });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+    const sections = useReviewSections({ report, days, weekStart, weekEnd, onPlanNext, tier });
+
+    return (
+        <div ref={ref} style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontFamily: satoshi, width: '100%' }}>
+            {sections.map((sec, i) => (
+                <section key={sec.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <SectionHead n={sec.n} title={sec.title} meta={sec.meta} right={i === 0 ? viewButton : undefined} />
+                    {sec.body}
                 </section>
-            )}
+            ))}
         </div>
     );
 }
