@@ -212,9 +212,11 @@ export default function WorkspacePage() {
 
     // Which mission stage fills the screen (demo mirrors respected).
     // Demo drawer rule: open while the scripted conversation is being built,
-    // closed once the scene locks the plan — the Today surface takes the stage.
+    // closed once the scene locks the plan — the Today surface takes the stage —
+    // and closed on the finished-goal scene, whose card lives on the surface
+    // (an open drawer would sit on top of the very thing the tour points at).
     const uiMentorOpen = demoMode
-        ? (demoView === 'chat' && demoMessages.length > 0 && !demoPlanApproved)
+        ? (demoView === 'chat' && demoMessages.length > 0 && !demoPlanApproved && !demoFinished)
         : mentorOpen;
     // A finished goal keeps its last plan on record (the archive panel reads it)
     // but it is never a draft to lock again.
