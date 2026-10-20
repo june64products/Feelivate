@@ -3344,23 +3344,72 @@ _EMOTION_LABELS = [
     "drained", "excited", "neutral", "frustrated", "hopeful",
 ]
 
+def _loads_model_json(raw: str) -> Optional[dict]:
+    """A JSON object out of a model reply — fences, think-blocks and chatter stripped."""
+    raw = re.sub(r'<think>.*?</think>', '', raw or '', flags=re.DOTALL)
+    raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
+    json_str = _extract_json_by_braces(raw)
+    if not json_str:
+        start, end = raw.find("{"), raw.rfind("}")
+        json_str = raw[start:end + 1] if start != -1 and end > start else ""
+    if not json_str:
+        return None
+    try:
+        data = json.loads(json_str)
+    except (TypeError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _loose(text: str) -> str:
+    """Text reduced to lowercase words, for 'did they really say this' checks."""
+    return " ".join(re.sub(r"[^\w]+", " ", (text or "").lower()).split())
+
+
+def _said_verbatim(quote: str, transcripts: list) -> bool:
+    """True when `quote` appears, word for word, in one of the transcripts."""
+    q = _loose(quote)
+    return len(q) >= 12 and any(q in _loose(t) for t in transcripts)
+
+
+def _strongest_sentence(transcript: str) -> str:
+    """
+    A sentence the person actually said, for when the model paraphrases:
+    the longest sentence of a readable length, else the opening of the entry.
+    """
+    parts = [p.strip() for p in re.split(r"(?<=[.!?।])\s+|\n+", transcript or "") if p.strip()]
+    fit = [p for p in parts if 30 <= len(p) <= 220]
+    if fit:
+        return max(fit, key=len)
+    return (parts[0] if parts else (transcript or "").strip())[:200]
+
+
 async def _analyze_emotion(transcript: str) -> dict:
     """
     Use LLM to detect emotion from transcript.
     Returns {label, score, one_liner}.
     """
-    from .llm import call_llm
+    from .llm import call_llm, call_with_fallback_chain
 
     text = (transcript or "").strip()
     if not text:
         logger.warning("[Emotion] Empty transcript — returning neutral/5")
         return {"label": "neutral", "score": 5, "one_liner": ""}
+    # The WHOLE entry goes to the model. It used to see the first 800
+    # characters — about a minute of speech — so a note that opened one way
+    # and ended another was labelled by its opening. 20k characters is a
+    # guard against runaway input (~25 minutes of talking), not a working cap.
+    if len(text) > 20000:
+        text = text[:20000]
 
     prompt = (
         "You are an expert emotion analyst. Read the journal entry below — it may be in "
         "English, Hindi, or Hinglish — and detect how the writer actually feels.\n\n"
-        f"Entry: \"{text[:800]}\"\n\n"
+        f"Entry (complete — read all of it):\n\"{text}\"\n\n"
         "Rules:\n"
+        "- Read the ENTIRE entry before deciding. People often open one way and land "
+        "somewhere else; the feeling they end on, weighed with everything before it, is "
+        "the day's emotion — never just the opening lines.\n"
         f"- Pick the single best label from: {', '.join(_EMOTION_LABELS)}\n"
         "- Give an honest score from 1 to 10 using the FULL range:\n"
         "    1-3  = clearly negative (drained, anxious, frustrated, stressed)\n"
@@ -3369,28 +3418,27 @@ async def _analyze_emotion(transcript: str) -> dict:
         "- Use 'neutral' with score 5 ONLY when the entry has NO emotional signal at all. "
         "If there is ANY emotional cue, choose the matching label with an honest score — "
         "do NOT default to neutral/5.\n"
-        "- Judge how the writer feels, not the topic they talk about.\n\n"
+        "- Judge how the writer feels, not the topic they talk about.\n"
+        "- one_liner: ONE short sentence that sums up the WHOLE entry — what they did and "
+        "how it left them — keeping their own specifics.\n\n"
         "Respond with ONLY valid JSON, nothing else:\n"
         "{\"label\": \"<label>\", \"score\": <integer 1-10>, \"one_liner\": \"<1 short sentence>\"}"
     )
+    system = "You are an expert emotion analyst. Output raw JSON only — no markdown, no preamble."
 
-    # Try several models in order. Using a single model_override bypasses the
-    # fallback chain, so any hiccup with that one model (rate-limit, outage,
-    # decommission) would silently collapse every entry to neutral/5. Trying
-    # multiple models means we only fall back to neutral if ALL of them fail.
-    # qwen/qwen3.8-27b replaced llama-3.3-70b-versatile (retired by Groq, Aug 2026);
-    # the 3.6 name it briefly carried now 404s. This prompt is ~300 tokens, well
-    # inside Groq's free-tier cap, so Groq is still the right first stop here.
-    models_to_try = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "gpt-4o-mini"]
+    # gpt-oss-120b (OpenRouter, then OpenAI's safety net) reads the entry; Groq's
+    # qwen stays as a last resort so a chain outage never collapses a day to neutral/5.
+    attempts = [
+        ("gpt-oss chain", lambda: call_with_fallback_chain(
+            [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+            temperature=0.2, max_tokens=240,
+        )),
+        ("qwen/qwen3.8-27b", lambda: call_llm(prompt, temperature=0.2, max_tokens=240, model_override="qwen/qwen3.8-27b")),
+    ]
     last_err = None
-    for model in models_to_try:
+    for model, fn in attempts:
         try:
-            raw = await asyncio.to_thread(
-                call_llm, prompt,
-                temperature=0.2,
-                max_tokens=150,
-                model_override=model,
-            )
+            raw = await asyncio.to_thread(fn)
             logger.info(f"[Emotion] ({model}) raw response: {repr(raw[:300])}")
             raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
             json_str = _extract_json_by_braces(raw)
@@ -3978,10 +4026,13 @@ async def get_weekly_report(
 
     # ── 5d. Extract best quote from transcripts ──────────────────────
     best_quote = ""
+    best_j_transcript = ""
     if journals:
-        # Pick the one-liner from the highest-scored journal entry
+        # The highest-scored entry: its one-liner as a last resort, its
+        # transcript as the source of a real sentence when the model paraphrases.
         best_j = max(journals, key=lambda j: (j.emotion_score or 0))
         best_quote = best_j.one_liner or ""
+        best_j_transcript = best_j.transcript or ""
 
     # ── 5e. Detect peak performance time from journal timestamps ─────
     peak_performance_days: list = []
@@ -4001,33 +4052,69 @@ async def get_weekly_report(
             sorted_days = sorted(day_scores.items(), key=lambda x: x[1], reverse=True)
             peak_performance_days = [d[0] for d in sorted_days[:3]]
 
-    # ── 5f. Build cross-week pattern context for AI ──────────────────
+    # ── 5f. The weeks before (from Week 2) ───────────────────────────────
+    # The week just before is read in full — every field, every day — and the
+    # weeks before that as a line of numbers each, so patterns across weeks
+    # are seen rather than guessed.
+    from .prompts import render_week_report
     cross_week_context = ""
-    if prev_week_reports and wk_num >= 3:
-        pattern_lines = []
-        for pw in prev_week_reports:
-            pw_num = pw.get("week_number", "?")
-            pw_dom = pw.get("dominant_emotion", "")
-            pw_cs = pw.get("consistency_score", 0)
-            pw_avg = pw.get("avg_score", 0)
-            pw_days = pw.get("days", [])
-            # Extract days with low scores
-            low_days = [d.get("date", "") for d in pw_days if d.get("score") and d.get("score") <= 4]
-            missed_days = [d.get("date", "") for d in pw_days if not d.get("has_journal")]
-            pattern_lines.append(
-                f"  Week {pw_num}: consistency={pw_cs}%, avg_mood={pw_avg}/10, "
-                f"dominant={pw_dom}, low_score_dates={low_days}, missed_dates={missed_days}"
-            )
-        cross_week_context = "\n\nCROSS-WEEK HISTORY (for pattern detection):\n" + "\n".join(pattern_lines)
+    if prev_week_reports and wk_num >= 2:
+        prev_full = next((pw for pw in prev_week_reports if pw.get("week_number") == wk_num - 1), None)
+        older = [pw for pw in prev_week_reports if pw is not prev_full]
+        blocks = []
+        if prev_full:
+            blocks.append(f"LAST WEEK'S REVIEW IN FULL (Week {wk_num - 1}):\n{render_week_report(prev_full)}")
+        if older:
+            pattern_lines = []
+            for pw in older:
+                pw_days = [d for d in pw.get("days", []) if isinstance(d, dict)]
+                low_days = [d.get("date", "") for d in pw_days if d.get("score") and d.get("score") <= 4]
+                missed_days = [d.get("date", "") for d in pw_days if not d.get("has_journal")]
+                pattern_lines.append(
+                    f"  Week {pw.get('week_number', '?')}: consistency={pw.get('consistency_score', 0)}%, "
+                    f"avg_mood={pw.get('avg_score', 0)}/10, dominant={pw.get('dominant_emotion', '')}, "
+                    f"low_score_dates={low_days}, missed_dates={missed_days}"
+                )
+            blocks.append("EARLIER WEEKS (numbers only):\n" + "\n".join(pattern_lines))
+        cross_week_context = "\n\n" + "\n\n".join(blocks)
 
-    # ── 6. Build rich AI prompt ─────────────────────────────────────────
-    # Full transcripts block
-    transcripts_block = "\n\n".join(
-        f"[{j.date}] Emotion: {j.emotion_label} ({j.emotion_score}/10)\n"
-        f"Summary: {j.one_liner}\n"
-        f"Full entry: {j.transcript[:600]}"
-        for j in journals
-    )
+    # ── 6. Build the analysis prompts ────────────────────────────────────
+    # Every journal entry goes in COMPLETE. The review used to see the first
+    # 600 characters of each — about forty seconds of speech — so an entry
+    # that opened one way and ended another was reviewed by its opening.
+    day_name_of = {d: _date_cls.fromisoformat(d).strftime("%A") for d in all_week_days}
+    planned_of = {d: (_plan_day_for(i).get("action", "") or "") for i, d in enumerate(all_week_days)}
+
+    def _entry_block(j) -> str:
+        head = f"[{j.date} · {day_name_of.get(j.date, '')}] Felt that evening: {j.emotion_label} ({j.emotion_score}/10) · one-line: {j.one_liner or '—'}"
+        if planned_of.get(j.date):
+            head += f"\nPlanned that day: {planned_of[j.date]}"
+        return head + f"\nFull entry (verbatim, complete):\n{(j.transcript or '').strip()}"
+
+    transcripts_block = "\n\n".join(_entry_block(j) for j in journals)
+    all_transcripts = [(j.transcript or "") for j in journals]
+
+    missing_lines = []
+    for d in all_week_days:
+        if d in journal_by_date or d > today.isoformat():
+            continue
+        line = f"  {d} · {day_name_of[d]}: no journal · check-in {checkin_map.get(d, 'missed')}"
+        if planned_of.get(d):
+            line += f" · planned: {planned_of[d]}"
+        if d in slip_reason_map:
+            line += f" · their stated reason: {slip_reason_map[d]}"
+        missing_lines.append(line)
+    missing_block = "\n".join(missing_lines) if missing_lines else "  none — every day has a journal"
+
+    goal_lines = []
+    if session_rec:
+        for label, val in (
+            ("Goal", session_rec.focus), ("Their why, in their words", session_rec.commitment_why),
+            ("Where they want to be", session_rec.vision), ("Background they gave", session_rec.history),
+        ):
+            if val and str(val).strip():
+                goal_lines.append(f"{label}: {str(val).strip()[:1200]}")
+    goal_block = "\n".join(goal_lines) if goal_lines else "Goal: (not recorded)"
 
     # Plan vs actual comparison block (iterate calendar days, end-anchored tasks)
     plan_vs_actual = ""
@@ -4045,16 +4132,96 @@ async def get_weekly_report(
             lines.append(f"  Day {i+1} ({day_label or d}): Planned: '{task}' | Checkin: {s}{j_info}{reason_info}")
         plan_vs_actual = "\nWEEK PLAN vs ACTUAL CHECK-INS & JOURNALS:\n" + "\n".join(lines)
 
+    # ── 6a. Pass one: the evidence sheet ─────────────────────────────────
+    # Before anything is judged, the model retells what each entry actually
+    # said — in order, in the person's own specifics — and what runs across
+    # the days. The review is then written from that sheet and the complete
+    # transcripts, so every line of it traces back to something they said.
+    evidence_prompt = f"""You are a careful behavioural analyst. Build an EVIDENCE SHEET for this person's week before any review is written. Read every journal entry in full, start to finish, and record only what is actually there — no advice, no invention.
+
+{goal_block}
+Week {wk_num}: {ws} to {we} · theme: {week_plan_theme or '—'}
+
+JOURNAL ENTRIES (complete transcripts — the user's own words, possibly in English, Hindi or Hinglish):
+{transcripts_block}
+
+DAYS WITHOUT A JOURNAL:
+{missing_block}
+{cross_week_context}
+
+Respond with ONLY valid JSON (no markdown, no code fences):
+{{
+  "days": [
+    {{
+      "date": "YYYY-MM-DD",
+      "said_in_short": "3-5 sentences that faithfully retell the WHOLE entry in order — what they did, what happened, how it went. Keep their specifics (names, numbers, places, times).",
+      "did": "What they actually did versus what was planned that day, in one or two sentences.",
+      "felt": "How they felt, including any shift within the entry (e.g. 'started frustrated, ended relieved'). Use their own emotional words.",
+      "why": "The causes they themselves named for how it went. 'not stated' if they gave none.",
+      "key_line": "ONE sentence copied EXACTLY, character for character, from this entry — the line that carries the most weight.",
+      "friction": ["things that got in the way, in their words"],
+      "win": "a concrete win from this entry, or null"
+    }}
+  ],
+  "week_arc": "The emotional and practical arc across the journaled days, in order, 2-3 sentences.",
+  "threads": ["themes that appear in more than one entry — name the days"],
+  "contradictions": ["where what they said and what they did differ — name the days"],
+  "what_they_need": "What this person needs next week, judged from the whole of what they recorded — one or two sentences."
+}}
+
+Rules:
+- One object per journaled day, in date order; nothing for days without a journal.
+- Every claim must be traceable to an entry. If only one or two days have journals, analyse those fully — do not pad, do not generalise beyond them.
+- Quote in the user's own language; do not translate key_line."""
+
+    evidence: Optional[dict] = None
+    try:
+        raw_ev = await asyncio.to_thread(
+            call_with_fallback_chain,
+            [
+                {"role": "system", "content": "You are a careful behavioural analyst. Output raw JSON only — no markdown, no code fences, no preamble."},
+                {"role": "user", "content": evidence_prompt},
+            ],
+            temperature=0.2, max_tokens=4000,
+        )
+        parsed = _loads_model_json(raw_ev)
+        if parsed and isinstance(parsed.get("days"), list):
+            evidence = parsed
+        else:
+            logger.warning("Weekly report evidence pass returned no usable JSON; writing the review from the transcripts alone")
+    except Exception as _ev_err:
+        logger.warning(f"Weekly report evidence pass failed (non-fatal): {_ev_err}")
+
+    # Only lines the person actually said survive as their words.
+    if evidence:
+        for ev_day in evidence.get("days", []):
+            if not isinstance(ev_day, dict):
+                continue
+            jd = journal_by_date.get(ev_day.get("date"))
+            if not jd or not _said_verbatim(str(ev_day.get("key_line") or ""), [jd.transcript or ""]):
+                ev_day["key_line"] = ""
+
+    evidence_block = (
+        "\nEVIDENCE SHEET (built from the complete transcripts above — what each entry actually said):\n"
+        + json.dumps(evidence, ensure_ascii=False, indent=1)
+    ) if evidence else ""
+
+    # ── 6b. Pass two: the review ─────────────────────────────────────────
     prompt = f"""You are a world-class performance coach and behavioral analyst. Your job is to write a deep, honest, insightful WEEK REVIEW for this user.
 
 You have access to:
-- All their daily voice journal entries this week (what they actually felt and said)
+- Every one of their voice journal entries this week, COMPLETE and verbatim (what they actually felt and said)
+- An evidence sheet that retells each entry and what runs across the days
 - Their daily checkin status (did they complete their plan each day)
 - Their week's planned tasks (what they were supposed to do)
+- Their goal in their own words, and last week's full review when there is one
+
+Read everything before writing. Every sentence of the review must be grounded in what they recorded — cite the day. Analyse the days that exist collectively and deeply: if three days have journals, the review is about those three days in depth, not about the four that are missing. Never invent what a missing day felt like.
 
 Be direct, specific, and honest. This is NOT a therapy session — it's a performance review. Call out exactly where consistency broke, what patterns emerged, and what needs to change next week.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{goal_block}
 WEEK DATA: {ws} to {we} (Week {wk_num})
 Theme: {week_plan_theme or 'Personal growth'}
 Days with checkin done: {days_done}/{past_days_count}
@@ -4063,76 +4230,57 @@ Avg emotional score: {avg_score}/10
 Momentum score: {momentum_score}/100 ({momentum_label})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-VOICE JOURNAL ENTRIES (what the user actually recorded):
+VOICE JOURNAL ENTRIES (complete transcripts — the user's own words):
 {transcripts_block}
+
+DAYS WITHOUT A JOURNAL:
+{missing_block}
 {plan_vs_actual}
+{evidence_block}
 {cross_week_context}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Respond with ONLY valid JSON (no markdown, no code fences) in this EXACT schema:
 {{
-  "dominant_emotion": "the single most common emotional state this week",
+  "dominant_emotion": "the single most common emotional state this week, judged from the whole of each entry",
   "week_summary": {{
-    "wins": "2-3 specific wins — cite actual days or actions. Keep to 2 sentences max.",
-    "dips": "2-3 specific dips or consistency breaks. Be direct, cite evidence. 2 sentences max.",
-    "pattern": "One key behavioral pattern you noticed this week. 1-2 sentences."
+    "wins": "2-3 specific wins — cite actual days and what they said or did. 2 sentences max.",
+    "dips": "2-3 specific dips or consistency breaks — be direct, cite the day and the evidence. 2 sentences max.",
+    "pattern": "One key behavioral pattern you noticed across the journaled days. 1-2 sentences."
   }},
-  "hidden_insight": "One non-obvious insight about their emotional patterns that they probably haven't noticed themselves.",
+  "hidden_insight": "One non-obvious insight about their emotional patterns that they probably haven't noticed themselves — drawn from how the entries read in full, not from any one line.",
   "next_week_focus": "The single most important thing they must do differently next week. Very specific and actionable.",
   "next_week_plan_context": "2-3 bullet points of what the next week plan should account for. Format: bullet per line with \\n separator.",
   "week_badge": {{
     "name": "A short badge name for this week based on their pattern. Examples: 'Iron Week' (100% consistency), 'Comeback King' (started low finished high), 'Steady Climber' (mood improved each day), 'Grit Mode' (pushed through despite low mood), 'Fresh Start' (first week). Pick the most fitting one.",
     "reason": "One sentence explaining why they earned this badge."
   }},
-  "best_quote": "The single most emotionally resonant or powerful sentence from the user's voice journal transcripts this week. Copy it exactly as they said it — this gets displayed as a pull-quote.",
+  "best_quote": "The single most emotionally resonant or powerful sentence from the user's voice journal transcripts this week. Copy it EXACTLY, character for character, in their own language — it is displayed as a pull-quote.",
   "actionable_coaching": [
     {{
-      "observation": "Day 1: One-line observation about what happened — e.g. 'Strong start, executed setup task with high energy'",
+      "observation": "Day 1: One-line observation about what happened that day, from the entry — e.g. 'Strong start, executed setup task with high energy'",
       "micro_action": "One specific micro-action for improvement — e.g. 'Keep this momentum by setting a 9am start ritual'"
-    }},
-    {{
-      "observation": "Day 2: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 3: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 4: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 5: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 6: One-line observation",
-      "micro_action": "One specific micro-action"
-    }},
-    {{
-      "observation": "Day 7: One-line observation",
-      "micro_action": "One specific micro-action"
     }}
   ],
   "trigger_patterns": [
     {{
-      "pattern": "A recurring friction or trigger detected — e.g. 'Friday mood dip', 'Cravings correlate with low scores'",
+      "pattern": "A recurring friction or trigger detected across weeks — e.g. 'Friday mood dip', 'Cravings correlate with low scores'",
       "frequency": "How often it occurred — e.g. 'Every Friday', '3 out of 4 weeks'",
       "weeks_detected": [1, 2, 3]
     }}
   ],
-  "recurring_friction": ["list", "of", "recurring", "friction", "points"],
+  "recurring_friction": ["list", "of", "recurring", "friction", "points", "in their words"],
   "best_days": ["Tue", "Sun"],
   "worst_days": ["Thu", "Fri"],
   "mood_trend": "Description of overall mood trajectory — e.g. 'high-start, mid-dip, strong-finish'"
 }}
 
 IMPORTANT NOTES:
-- For "best_quote": Pick the MOST powerful, emotionally resonant line from the user's actual voice transcripts. NOT your own words.
-- For "actionable_coaching": Each day MUST have both "observation" AND "micro_action". Make micro_actions specific — e.g. "Try 5-min breathing before coding" not "take a break".
-- For "trigger_patterns": Only include if you detect recurring patterns. If this is Week 1 or patterns are unclear, return an empty array [].
-- For "week_badge": Always generate one — even for Week 1.
+- "actionable_coaching": exactly one object per calendar day listed under WEEK PLAN vs ACTUAL, in that order ({len(all_week_days)} objects). Each MUST have both "observation" AND "micro_action". For a day with a journal, the observation comes from that entry. For a day WITHOUT a journal, the observation names the miss and what was planned, and the micro_action says how to make that day easier next time. Make micro_actions specific — e.g. "Try 5-min breathing before coding" not "take a break".
+- "best_quote": the MOST powerful line from the user's actual transcripts, copied exactly. NOT your own words, NOT a paraphrase, NOT translated.
+- "trigger_patterns": only patterns seen in MORE THAN ONE week (use the earlier weeks above). In Week 1, or when nothing recurs, return [].
+- "week_badge": always generate one — even for Week 1.
+- Write the review in English; quote the user in whatever language they spoke.
 - Keep "week_summary" concise — 3 short bullets, not paragraphs."""
 
     try:
@@ -4140,7 +4288,7 @@ IMPORTANT NOTES:
             {"role": "system", "content": "You are a world-class performance coach and behavioral analyst. You must output raw JSON only matching the schema exactly. No markdown, no code fences."},
             {"role": "user", "content": prompt}
         ]
-        raw = await asyncio.to_thread(call_with_fallback_chain, messages, temperature=0.4, max_tokens=4000)
+        raw = await asyncio.to_thread(call_with_fallback_chain, messages, temperature=0.4, max_tokens=5000)
         # Strip thinking blocks if generated
         raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL)
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
@@ -4189,9 +4337,10 @@ IMPORTANT NOTES:
             triggers = []
         ai_data["trigger_patterns"] = triggers
 
-        # Use AI best_quote if provided, otherwise fall back to server-side extraction
-        if not ai_data.get("best_quote"):
-            ai_data["best_quote"] = best_quote
+        # The pull-quote must be something they actually said. A paraphrase,
+        # a translation, or nothing at all → one of their own sentences instead.
+        if not _said_verbatim(str(ai_data.get("best_quote") or ""), all_transcripts):
+            ai_data["best_quote"] = _strongest_sentence(best_j_transcript) if best_j_transcript else best_quote
 
     except Exception as e:
         logger.error(f"Weekly report AI generation failed: {e}")
@@ -4206,7 +4355,7 @@ IMPORTANT NOTES:
             "next_week_focus": "Keep showing up every day.",
             "next_week_plan_context": "",
             "week_badge": {"name": "Week Warrior", "reason": "Completed this week's journey."},
-            "best_quote": best_quote,
+            "best_quote": _strongest_sentence(best_j_transcript) if best_j_transcript else best_quote,
             "actionable_coaching": [{"observation": "", "micro_action": ""} for _ in range(7)],
             "trigger_patterns": [],
             "recurring_friction": [],
@@ -4217,8 +4366,17 @@ IMPORTANT NOTES:
         coaching_list = ai_data["actionable_coaching"]
 
     # ── 7. Build the final report dict ──────────────────────────────────────
+    ev_by_date: dict = {}
+    if evidence:
+        for ev_day in evidence.get("days", []):
+            if isinstance(ev_day, dict) and ev_day.get("date"):
+                ev_by_date[ev_day["date"]] = ev_day
     report_data = {
         **ai_data,
+        # The evidence sheet the review was written from, kept with it so the
+        # next week's plan and the next review can read what each entry said.
+        "analysis": evidence,
+        "analysis_version": 2,
         # Core metrics
         "avg_score": avg_score,
         "consistency_score": consistency_score,
@@ -4245,6 +4403,8 @@ IMPORTANT NOTES:
                 "emotion": journal_by_date[d].emotion_label if d in journal_by_date else None,
                 "score": journal_by_date[d].emotion_score if d in journal_by_date else None,
                 "one_liner": journal_by_date[d].one_liner if d in journal_by_date else None,
+                # A sentence they actually said that day (verified against the transcript).
+                "key_line": (ev_by_date.get(d) or {}).get("key_line") or None,
                 # Use journal presence as source of truth for checkin status
                 # (DailyCheckin can be inflated by backfill; journal IS the record)
                 "checkin": "done" if d in journal_by_date else ("missed" if d <= today.isoformat() else "pending"),
@@ -4277,7 +4437,7 @@ IMPORTANT NOTES:
                 "mood_score": journal_by_date[d].emotion_score if d in journal_by_date else None,
                 "emotion": journal_by_date[d].emotion_label if d in journal_by_date else None,
                 "journal_summary": journal_by_date[d].one_liner if d in journal_by_date else None,
-                "friction_noted": None,
+                "friction_noted": ", ".join(str(f) for f in ((ev_by_date.get(d) or {}).get("friction") or []) if f) or None,
             }
             for i, d in enumerate(all_week_days)
         ],

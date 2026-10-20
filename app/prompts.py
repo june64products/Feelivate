@@ -666,6 +666,109 @@ Format: {"reply": "Your message here", "plan": null}
 """
 
 
+def render_week_report(report: dict) -> str:
+    """
+    The whole weekly review as plain text for a model — every field and every
+    day, nothing summarised away. The mentor reads this before building the
+    next week, and the next review reads it to see the week before.
+    """
+    if not isinstance(report, dict):
+        return ""
+    wn = report.get("week_number", "?")
+    lines: List[str] = []
+    head = f"Week {wn} · {report.get('week_start', '')} to {report.get('week_end', '')}"
+    if report.get("week_theme"):
+        head += f" · theme: {report['week_theme']}"
+    lines.append(head)
+    if report.get("quiet_week"):
+        lines.append("QUIET WEEK: no journals and no completed days were recorded.")
+    total = report.get("past_days_count") or ((report.get("days_done") or 0) + (report.get("days_missed") or 0))
+    lines.append(
+        f"Consistency {report.get('consistency_score', 0)}% · days done {report.get('days_done', 0)}/{total}"
+        f" · missed {report.get('days_missed', 0)} · avg mood {report.get('avg_score', 0)}/10"
+        f" · momentum {report.get('momentum_score', '?')}/100 ({report.get('momentum_label', '')})"
+        f" · dominant emotion: {report.get('dominant_emotion', '') or '—'}"
+    )
+    summary = report.get("week_summary") or {}
+    if isinstance(summary, dict):
+        for key, label in (("wins", "Wins"), ("dips", "Dips"), ("pattern", "Pattern")):
+            if summary.get(key):
+                lines.append(f"{label}: {summary[key]}")
+    for key, label in (
+        ("what_went_well", "What went well"), ("where_you_slipped", "Where they slipped"),
+        ("consistency_analysis", "Consistency"), ("emotional_arc", "Emotional arc"),
+    ):
+        if report.get(key):
+            lines.append(f"{label}: {report[key]}")
+    if report.get("hidden_insight"):
+        lines.append(f"Hidden insight: {report['hidden_insight']}")
+    if report.get("mood_trend"):
+        lines.append(f"Mood trend: {report['mood_trend']}")
+    if report.get("best_days"):
+        lines.append("Best days: " + ", ".join(str(d) for d in report["best_days"]))
+    if report.get("worst_days"):
+        lines.append("Hardest days: " + ", ".join(str(d) for d in report["worst_days"]))
+    if report.get("recurring_friction"):
+        lines.append("Recurring friction: " + "; ".join(str(f) for f in report["recurring_friction"]))
+    for t in report.get("trigger_patterns") or []:
+        if isinstance(t, dict) and t.get("pattern"):
+            lines.append(f"Trigger pattern: {t['pattern']} ({t.get('frequency', '')})")
+    badge = report.get("week_badge") or {}
+    if isinstance(badge, dict) and badge.get("name"):
+        lines.append(f"Badge: {badge['name']} — {badge.get('reason', '')}")
+    if report.get("best_quote"):
+        lines.append(f"In their own words: \"{report['best_quote']}\"")
+    if report.get("next_week_focus"):
+        lines.append(f"Next week focus: {report['next_week_focus']}")
+    ctx = report.get("next_week_plan_context")
+    if ctx:
+        bullets = [ln.strip().lstrip("-•· ").strip() for ln in str(ctx).split("\n") if ln.strip()]
+        if bullets:
+            lines.append("Next week's plan must account for:\n" + "\n".join(f"  • {b}" for b in bullets))
+    days = report.get("days") or []
+    if days:
+        lines.append("Day by day:")
+        for d in days:
+            if not isinstance(d, dict):
+                continue
+            label = d.get("day_label") or d.get("date", "")
+            if d.get("day_label") and d.get("date"):
+                label += f" ({d['date']})"
+            bits = [f"  {label}"]
+            if d.get("planned_task"):
+                bits.append(f"planned: {d['planned_task']}")
+            if d.get("has_journal"):
+                bits.append(f"journal: {d.get('emotion') or 'noted'} {d.get('score') or ''}/10 — \"{d.get('one_liner') or ''}\"")
+            else:
+                bits.append(f"no journal ({d.get('checkin') or 'missed'})")
+            if d.get("key_line"):
+                bits.append(f"their words: \"{d['key_line']}\"")
+            if d.get("coaching_insight"):
+                bits.append(f"observation: {d['coaching_insight']}")
+            if d.get("coaching_micro_action"):
+                bits.append(f"micro-action: {d['coaching_micro_action']}")
+            lines.append(" | ".join(bits))
+    analysis = report.get("analysis")
+    if isinstance(analysis, dict):
+        if analysis.get("week_arc"):
+            lines.append(f"Week arc: {analysis['week_arc']}")
+        if analysis.get("threads"):
+            lines.append("Threads across the week: " + "; ".join(str(t) for t in analysis["threads"]))
+        if analysis.get("contradictions"):
+            lines.append("Words vs actions: " + "; ".join(str(c) for c in analysis["contradictions"]))
+        if analysis.get("what_they_need"):
+            lines.append(f"What they need next: {analysis['what_they_need']}")
+        ev_days = [d for d in (analysis.get("days") or []) if isinstance(d, dict) and d.get("date")]
+        if ev_days:
+            lines.append("What each journal actually said:")
+            for d in ev_days:
+                lines.append(
+                    f"  {d['date']}: {d.get('said_in_short', '')} | did: {d.get('did', '')}"
+                    f" | felt: {d.get('felt', '')} | why: {d.get('why', '')}"
+                )
+    return "\n".join(lines)
+
+
 def build_chat_prompt(
     messages: List[Dict[str, str]],
     system_context: Optional[str] = None,
@@ -894,38 +997,12 @@ def build_chat_prompt(
     if week_report_data and isinstance(week_report_data, dict):
         wn = week_report_data.get("week_number", current_week)
 
-        # V2: Use model_context if available (structured JSON layer)
-        model_ctx = week_report_data.get("model_context")
-        if model_ctx and isinstance(model_ctx, dict):
-            system_content += f"\n\n{'═'*39}"
-            system_content += f"\nWEEK {wn} PERFORMANCE REPORT (Structured Data)"
-            system_content += f"\n{'═'*39}"
-            system_content += f"\n{json.dumps(model_ctx, indent=2)}"
-        else:
-            # Fallback: legacy flat field extraction
-            cs = week_report_data.get("consistency_score", 0)
-            avg = week_report_data.get("avg_score", 0)
-            done = week_report_data.get("days_done", 0)
-            missed = week_report_data.get("days_missed", 0)
-            went_well = week_report_data.get("what_went_well", "")
-            slipped = week_report_data.get("where_you_slipped", "")
-            next_ctx = week_report_data.get("next_week_plan_context", "")
-            arc = week_report_data.get("emotional_arc", "")
-            focus = week_report_data.get("next_week_focus", "")
-
-            system_content += f"\n\n{'═'*39}"
-            system_content += f"\nWEEK {wn} PERFORMANCE REPORT (AI-Generated from voice journals + checkins)"
-            system_content += f"\n{'═'*39}"
-            system_content += (
-                f"\nConsistency Score: {cs}% ({done} days done, {missed} missed)"
-                f"\nAvg Emotional Score: {avg}/10"
-                f"\nEmotional Arc: {arc}"
-                f"\nWhat went well: {went_well}"
-                f"\nWhere they slipped: {slipped}"
-                f"\nKey focus for next week: {focus}"
-            )
-            if next_ctx:
-                system_content += f"\nNext week plan must account for:\n{next_ctx}"
+        # The WHOLE review, every field and every day — the next week is built
+        # from all of it, not from a digest of it.
+        system_content += f"\n\n{'═'*39}"
+        system_content += f"\nWEEK {wn} PERFORMANCE REPORT — the complete review of last week"
+        system_content += f"\n{'═'*39}"
+        system_content += f"\n{render_week_report(week_report_data)}"
 
         # ── Quiet week: the report shows ZERO user input. The progression rules
         # (advance, never repeat) are built on evidence of work — with none, they
@@ -952,7 +1029,11 @@ def build_chat_prompt(
                 f" Never lecture, never list what they missed."
             )
         system_content += (
-            f"\n\n⚠️ CRITICAL: Use the performance report above to build Week {wn + 1}."
+            f"\n\n⚠️ CRITICAL: Read EVERY line of the report above — the wins, the dips, the pattern,"
+            f" the hidden insight, each day's observation and micro-action, what each journal said,"
+            f" and the plan context — before building Week {wn + 1}. The new week must visibly"
+            f" answer to them: a reader comparing the report and the plan should see exactly"
+            f" which dip each change fixes and which win each day builds on."
             f"\n- Address friction points from the report's patterns/recurring_friction"
             f"\n- Build on strong days (best_days) and restructure around weak days (worst_days)"
             f"\n- If consistency was below 70% → reduce daily task count, make days shorter"
