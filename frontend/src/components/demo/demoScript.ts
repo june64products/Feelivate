@@ -349,8 +349,8 @@ export const DEMO_STEPS: DemoStep[] = [
         id: 'review-view',
         target: 'review-view',
         placement: 'top',
-        title: 'Swipe it, or scroll it',
-        body: 'A report opens as swipeable pages — the week drawn first, then momentum, your best line, wins and dips, and next week. Prefer one long page? Tap the View button to switch to a single scroll; tap it again to go back to swiping.',
+        title: 'Dashboard, or swipe',
+        body: 'A report opens as a dashboard: everything on one screen — your numbers, how the week felt, what your mentor saw, each day, and next week. Prefer one thing at a time? Tap the View button to switch to swipeable pages; tap it again to come back.',
         scene: { messages: CHAT, planApproved: true, view: 'journey', journeyTab: 'archive', archiveWeek: 1 },
         // No forced pin: the View button sits low in the frame, so the card
         // auto-pins to the top and never covers it.

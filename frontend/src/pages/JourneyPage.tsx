@@ -481,7 +481,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                             role="dialog"
                             aria-label={`Week ${reportData.week_number} review`}
                             style={{
-                                width: '100%', maxWidth: '560px', maxHeight: '94vh',
+                                width: '100%', maxWidth: 'min(1180px, 96vw)', maxHeight: '94vh',
                                 background: 'var(--card-bg)', border: '1px solid var(--border-subtle)',
                                 borderRadius: '28px', boxShadow: 'var(--shadow-lg)',
                                 overflow: 'hidden', display: 'flex', flexDirection: 'column',
@@ -500,7 +500,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                                     Later
                                 </button>
                             </div>
-                            <div style={{ flex: 1, minHeight: 0, padding: '6px 14px 0' }}>
+                            <div style={{ flex: 1, minHeight: 0, padding: '6px 14px 0', overflowY: 'auto' }}>
                                 <WeekReviewStory
                                     report={reportData}
                                     days={weekDays}
@@ -640,7 +640,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                             transition={{ duration: 0.2 }}
                             style={{
                                 display: 'flex', flexDirection: 'column', gap: '16px',
-                                maxWidth: '820px', margin: '0 auto', width: '100%',
+                                maxWidth: '1240px', margin: '0 auto', width: '100%',
                             }}
                         >
                             {/* ── Voice recorder — the hero of this page ── */}
@@ -1040,7 +1040,7 @@ export default function JourneyPage({ userId, sessionId, onJournalSaved, onRepor
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
                             transition={{ duration: 0.2 }}
-                            style={{ maxWidth: '820px', margin: '0 auto', width: '100%' }}
+                            style={{ maxWidth: '1240px', margin: '0 auto', width: '100%' }}
                         >
                             <p style={{
                                 fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',

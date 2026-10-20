@@ -786,6 +786,8 @@ export interface WeeklyReport {
         hidden_insight: string;
         next_week_focus: string;
         next_week_plan_context: string;
+        /** A week that ended with no voice notes at all (deterministic report). */
+        quiet_week?: boolean;
         // Patterns (top-level from the model, mirrored under `patterns`)
         best_days?: string[];
         worst_days?: string[];
