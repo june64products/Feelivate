@@ -138,7 +138,7 @@ def evidence_json(ws, mid, we, key_line=TAIL):
 
 def review_json(best_quote=TAIL):
     return json.dumps({
-        "dominant_emotion": "focused",
+        "dominant_emotion": "sadness",  # the model's own word — not a label the app knows
         "week_summary": {"wins": "Monday ended in a grin; Sunday became a tune.", "dips": "Three skipped days mid-week.", "pattern": "You come back the day after something sounds like music."},
         "hidden_insight": "Your mood turns the moment the notes turn into a tune.",
         "next_week_focus": "Keep the after-breakfast slot every day.",
@@ -195,6 +195,10 @@ def test_review_reads_every_journal_in_full_and_keeps_their_words(client, monkey
     report = body["report"]
     assert report["analysis_version"] == 2
     assert report["analysis"]["week_arc"].startswith("Frustration")
+    # One day each of frustrated / focused / drained: the tie goes to the higher score (focused 6),
+    # and the model's "sadness" never reaches the report.
+    assert report["dominant_emotion"] == "focused"
+    assert report["model_context"]["stats"]["dominant_emotion"] == "focused"
     assert report["best_quote"] == TAIL
     by_date = {d["date"]: d for d in report["days"]}
     assert by_date[ws]["key_line"] == TAIL

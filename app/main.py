@@ -3384,6 +3384,25 @@ def _strongest_sentence(transcript: str) -> str:
     return (parts[0] if parts else (transcript or "").strip())[:200]
 
 
+def _dominant_emotion(journals: list) -> Optional[str]:
+    """
+    The week's most common journal emotion — the label that appears on the
+    most days, ties broken by the higher total score. Deterministic, and
+    always one of the labels the app knows how to colour; the model's own
+    word for it ("sadness", "mixed") is not.
+    """
+    tally: dict = {}
+    for j in journals:
+        label = (getattr(j, "emotion_label", None) or "").strip().lower()
+        if not label:
+            continue
+        n, total = tally.get(label, (0, 0))
+        tally[label] = (n + 1, total + (getattr(j, "emotion_score", None) or 0))
+    if not tally:
+        return None
+    return max(tally.items(), key=lambda kv: (kv[1][0], kv[1][1]))[0]
+
+
 async def _analyze_emotion(transcript: str) -> dict:
     """
     Use LLM to detect emotion from transcript.
@@ -4342,6 +4361,10 @@ IMPORTANT NOTES:
         # a translation, or nothing at all → one of their own sentences instead.
         if not _said_verbatim(str(ai_data.get("best_quote") or ""), all_transcripts):
             ai_data["best_quote"] = _strongest_sentence(best_j_transcript) if best_j_transcript else best_quote
+
+        # The week's emotion is the one that appears on the most days, from the
+        # labels each entry was given — not the model's own word for it.
+        ai_data["dominant_emotion"] = _dominant_emotion(journals) or ai_data.get("dominant_emotion") or "neutral"
 
     except Exception as e:
         logger.error(f"Weekly report AI generation failed: {e}")
