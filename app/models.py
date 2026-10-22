@@ -42,6 +42,9 @@ class User(Base):
     # Recovery flow: local date the last "don't miss twice" email went out,
     # so a missed day triggers at most one recovery email.
     last_recovery_email_date = Column(String, nullable=True)
+    # "Your review is in": `<session_id>:<week_start>` of the last weekly
+    # review that was emailed, so each finished week is announced once.
+    last_review_email_key = Column(String, nullable=True)
 
 class UserConsent(Base):
     """

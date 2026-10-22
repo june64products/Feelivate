@@ -31,7 +31,7 @@ from .calendar_service import calendar_service
 from .google_login import google_login_service
 from .email_service import (
     generate_otp, send_verification_email, send_daily_task_email,
-    run_daily_email_scheduler, run_evening_reminders,
+    run_daily_email_scheduler, run_evening_reminders, run_week_review_emails,
 )
 from .security import (
     get_password_hash, verify_password, create_access_token, decode_access_token,
@@ -116,13 +116,23 @@ async def lifespan(app):
             id="daily_email_scheduler",
             replace_existing=True,
         )
-        # Evening nudges, same per-user-timezone check: 20:00 local if the day's
-        # journal is missing, 21:00 local if a live streak is about to lapse.
+        # The evening note, same per-user-timezone check: 20:30 local if the
+        # day's journal is missing (a streak that would end tonight is said
+        # in the same note).
         _scheduler.add_job(
             run_evening_reminders,
             trigger="cron",
             minute="*",
             id="evening_reminders",
+            replace_existing=True,
+        )
+        # "Your review is in" — 21:30 local once a locked week has ended and
+        # its review can be read.
+        _scheduler.add_job(
+            run_week_review_emails,
+            trigger="cron",
+            minute="*",
+            id="week_review_emails",
             replace_existing=True,
         )
         # Storage limitation (GDPR Art 5(1)(e)) is an obligation, not a chore —
@@ -3361,27 +3371,8 @@ def _loads_model_json(raw: str) -> Optional[dict]:
     return data if isinstance(data, dict) else None
 
 
-def _loose(text: str) -> str:
-    """Text reduced to lowercase words, for 'did they really say this' checks."""
-    return " ".join(re.sub(r"[^\w]+", " ", (text or "").lower()).split())
-
-
-def _said_verbatim(quote: str, transcripts: list) -> bool:
-    """True when `quote` appears, word for word, in one of the transcripts."""
-    q = _loose(quote)
-    return len(q) >= 12 and any(q in _loose(t) for t in transcripts)
-
-
-def _strongest_sentence(transcript: str) -> str:
-    """
-    A sentence the person actually said, for when the model paraphrases:
-    the longest sentence of a readable length, else the opening of the entry.
-    """
-    parts = [p.strip() for p in re.split(r"(?<=[.!?।])\s+|\n+", transcript or "") if p.strip()]
-    fit = [p for p in parts if 30 <= len(p) <= 220]
-    if fit:
-        return max(fit, key=len)
-    return (parts[0] if parts else (transcript or "").strip())[:200]
+# "In your words" guards — shared with the daily email (see journal_text.py).
+from .journal_text import loose as _loose, said_verbatim as _said_verbatim, strongest_sentence as _strongest_sentence  # noqa: E402
 
 
 def _dominant_emotion(journals: list) -> Optional[str]:

@@ -1,10 +1,19 @@
 """
 email_service.py — Feelivate Email Service
 - OTP verification emails
-- AI-generated personalized daily task emails (startup quality design)
-- Daily scheduler (APScheduler, every minute, sends at each user's preferred time in THEIR timezone)
+- The morning email: the mentor's read of last night's voice note + today's task
+- The recovery email a missed day earns instead
+- Countdown notes before a week that starts later
+- One evening note (20:30 local) when the day's journal is still missing
+- "Your review is in" the evening a week's review becomes readable
+- Schedulers (APScheduler, every minute, each user's own timezone)
+
+Every email that quotes the person uses their exact words (journal_text.py);
+nothing here is written in their voice for them.
 """
 
+import asyncio
+import html as _html
 import os
 import json
 import re
@@ -16,6 +25,8 @@ import pytz
 
 import resend
 from loguru import logger
+
+from .journal_text import said_verbatim, snippet, strongest_sentence
 
 # ── Resend init ──────────────────────────────────────────────────────────────
 resend.api_key = os.getenv("RESEND_API_KEY", "")
@@ -224,48 +235,78 @@ def send_verification_email(to_email: str, otp: str, user_name: str = "there") -
 # ║  AI Content Generator for Daily Email                        ║
 # ╚══════════════════════════════════════════════════════════════╝
 
-def _generate_ai_daily_content(user_name, day_label, task_title, task_description, session_focus):
-    """Generate personalized AI content: how-to, avoid, motivational thought."""
+# Lines that mark a note as written by nobody in particular. A read that
+# leans on any of them is thrown away in favour of the plain fallback.
+_FILLER = (
+    "you've got this", "you got this", "keep going", "proud of you", "you can do it",
+    "believe in yourself", "crush it", "rock star", "amazing job", "great job", "every small step",
+)
+
+
+def _mentor_read(user_name, goal, journal, task_title, task_description, day_label):
+    """
+    What the mentor read in last night's entry: two or three plain sentences
+    that could only have been written after reading THIS note, plus the one
+    line of theirs worth quoting back. Returns {"their_line", "read"}.
+
+    The whole transcript goes to the model. When the model is unavailable,
+    paraphrases, or writes filler, the fallback is built from the entry's
+    stored label, score and one-line summary — flat, but never invented.
+    """
+    transcript = (journal.get("transcript") or "").strip()
+    their_line = strongest_sentence(transcript)
+    emotion = (journal.get("emotion_label") or "").strip()
+    score = journal.get("emotion_score")
+    one_liner = (journal.get("one_liner") or "").strip()
+    name = (user_name or "there").split()[0]
+
+    def _fallback():
+        felt = f"{emotion} at {score}/10" if emotion and score else (emotion or "logged")
+        read = f"Last night read {felt}."
+        if one_liner:
+            read += f" {one_liner.rstrip('.')}."
+        read += f" Today picks up from there: {task_title.rstrip('.')}."
+        return {"their_line": their_line, "read": read}
+
+    if not transcript:
+        return _fallback()
     try:
         from .llm import call_llm
-        prompt = f"""You are a world-class behavioural coach writing a personal daily email to {user_name}.
+        prompt = f"""You are {name}'s accountability mentor. Last night they recorded this voice note — complete and verbatim; it may be in English, Hindi or Hinglish:
 
-User's transformation goal: {session_focus}
-Today ({day_label})'s task: {task_title}
-Task details: {task_description}
+\"\"\"{transcript[:20000]}\"\"\"
 
-Write a JSON object with exactly these 3 keys:
-{{
-  "how_to": "2-3 concise, actionable bullet tips (use bullet character) on HOW to do this task well. Be specific.",
-  "what_not_to_do": "1-2 bullet warnings on what mistakes to avoid today. Be direct.",
-  "motivational_thought": "2-3 sentences of a deeply personal, warm motivational thought written ONLY for {user_name}. Make it feel handwritten, not generic."
-}}
+Their goal: {goal or 'not recorded'}
+Stored read of the note: {emotion or '—'}{f' {score}/10' if score else ''}{f' — {one_liner}' if one_liner else ''}
+Today ({day_label}) they are supposed to: {task_title}{f' — {task_description}' if task_description else ''}
 
-Respond ONLY with valid JSON. No markdown fences. No extra text."""
+Write the two or three sentences you would say to {name} this morning, having actually read the note.
+Rules:
+- Refer to something specific they said: a detail, a number, a feeling they named. Nothing that could be sent to anyone else.
+- Plain words, second person. No praise-filler, no "you've got this", no "keep going", no exclamation marks, no emoji, no questions, no greeting.
+- If they named a problem, name the smallest fix for it today. If it went well, say exactly what to repeat.
+- The last sentence connects today's task to what they said. 70 words at most.
+- Also pick ONE sentence from the note worth quoting back to them — copied exactly, character for character, in their language. Not a paraphrase.
 
-        raw = call_llm(prompt, temperature=0.85, max_tokens=400)
+Respond with ONLY valid JSON: {{"their_line": "<exact sentence from the note>", "read": "<2-3 sentences>"}}"""
+        raw = call_llm(prompt, system="You write short, specific morning notes. Output raw JSON only.", temperature=0.5, max_tokens=360)
+        raw = re.sub(r'<think>.*?</think>', '', raw or '', flags=re.DOTALL)
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
-        start = raw.find("{")
-        end = raw.rfind("}") + 1
-        return json.loads(raw[start:end])
+        start, end = raw.find("{"), raw.rfind("}") + 1
+        data = json.loads(raw[start:end]) if start != -1 and end > start else {}
+        read = " ".join(str(data.get("read") or "").split()).replace("!", ".")
+        line = str(data.get("their_line") or "").strip()
+        if not said_verbatim(line, [transcript]):
+            line = their_line
+        words = read.split()
+        if len(words) < 8 or len(words) > 110 or any(f in read.lower() for f in _FILLER):
+            logger.info("[Morning] mentor read rejected (length or filler); using the plain fallback")
+            fb = _fallback()
+            return {"their_line": line, "read": fb["read"]}
+        return {"their_line": line, "read": read}
     except Exception as e:
-        logger.warning(f"AI content generation failed, using fallback: {e}")
-        return {
-            "how_to": (
-                f"Start with a 5-minute intention-setting ritual for this task\n"
-                f"Break it into smaller micro-steps and tackle one at a time\n"
-                f"Track your progress at the end of the day"
-            ),
-            "what_not_to_do": (
-                f"Don't skip this — consistency is your superpower\n"
-                f"Avoid multitasking while doing this task"
-            ),
-            "motivational_thought": (
-                f"Every small step you take today is building the person you want to become. "
-                f"{user_name}, you've already made the decision to change — now all you have to do is show up. "
-                f"One day at a time."
-            ),
-        }
+        logger.warning(f"[Morning] mentor read unavailable, using fallback: {e}")
+        return _fallback()
 
 
 def _bullets_to_html(text, color=SUB, icon="→", icon_color=ACCENT, font_size="14px"):
@@ -282,6 +323,208 @@ def _bullets_to_html(text, color=SUB, icon="→", icon_color=ACCENT, font_size="
 # ║  Daily Task Email (Premium Design)                           ║
 # ╚══════════════════════════════════════════════════════════════╝
 
+def _esc(text) -> str:
+    """User- or model-written text, safe inside the HTML."""
+    return _html.escape(str(text or ""), quote=False)
+
+
+def _week_strip(dots) -> str:
+    """
+    The week as a row of day pills — done filled, shielded blue, today in
+    the accent, missed dashed, upcoming faint. It changes every single day,
+    which is the point: the email never looks like yesterday's.
+    `dots` is a list of (letter, status).
+    """
+    cells = []
+    for letter, status in dots:
+        if status == "done":
+            style = f"background:{INK};color:#ffffff;border:1px solid {INK};"
+        elif status == "shielded":
+            style = "background:#eef4fb;color:#3b6ea5;border:1px solid #cfe0f2;"
+        elif status == "today":
+            style = f"background:{CARD};color:{ACCENT};border:2px solid {ACCENT};"
+        elif status == "missed":
+            style = f"background:{CARD};color:{MUTED};border:1px dashed #cfccc4;"
+        else:
+            style = f"background:{PANEL};color:{MUTED};border:1px solid {BORDER};"
+        cells.append(
+            f'<td align="center" style="padding:0 3px;"><div style="width:28px;height:28px;line-height:28px;border-radius:50%;'
+            f'font-size:11px;font-weight:800;text-align:center;font-family:{FONT};{style}">{letter}</div></td>'
+        )
+    return (f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr>{"".join(cells)}</tr></table>')
+
+
+def _feedback_rows(rating_urls, reply_to) -> str:
+    """One tap, no form: was today's task clear? Plus reply-to-a-person."""
+    if not (rating_urls or reply_to):
+        return ""
+    thumbs = ""
+    if rating_urls:
+        up, down = rating_urls
+        thumbs = (
+            f'<p style="margin:0 0 8px;color:{SUB};font-size:13px;font-family:{FONT};">Was today&#8217;s task clear?</p>'
+            f'<a href="{up}" style="display:inline-block;padding:9px 16px;margin:0 4px;border:1px solid {BORDER};border-radius:100px;'
+            f'color:{INK};text-decoration:none;font-size:13px;font-weight:700;font-family:{FONT};">&#128077; Yes</a>'
+            f'<a href="{down}" style="display:inline-block;padding:9px 16px;margin:0 4px;border:1px solid {BORDER};border-radius:100px;'
+            f'color:{INK};text-decoration:none;font-size:13px;font-weight:700;font-family:{FONT};">&#128078; Not really</a>'
+        )
+    reply_line = (
+        f'<p style="margin:{"12px" if thumbs else "0"} 0 0;color:{MUTED};font-size:12.5px;line-height:1.6;font-family:{FONT};">'
+        f'Too hard, too easy, or something in the way? Just reply to this email &#8212; a person reads every one.</p>'
+        if reply_to else ""
+    )
+    return f"""
+        <tr><td class="px" style="padding:0 36px 30px;text-align:center;">
+          <div style="border-top:1px solid {BORDER};padding-top:18px;">{thumbs}{reply_line}</div>
+        </td></tr>"""
+
+
+def build_daily_email(
+    *,
+    user_name: str,
+    day_label: str,
+    task_title: str,
+    task_description: str,
+    week_number: int,
+    today_str: str = "",
+    week_theme: str = "",
+    week_label: str = "",
+    day_index: Optional[int] = None,
+    day_count: Optional[int] = None,
+    week_dots=None,
+    streak: int = 0,
+    yesterday: Optional[dict] = None,
+    mentor: Optional[dict] = None,
+    checkin_url: str = "",
+    shield_note: str = "",
+    rating_urls: Optional[Tuple[str, str]] = None,
+    reply_to: str = "",
+) -> Tuple[str, str, str]:
+    """
+    The morning email: a reply to last night's note, then today's task.
+    Pure — returns (subject, preheader, card rows) so it can be read in a
+    test without sending anything.
+
+    `yesterday`: {"date", "weekday_label", "transcript", "emotion_label",
+    "emotion_score", "one_liner", "checkin"} for the day before, or None on
+    the first day of a week. `mentor`: {"their_line", "read"} when there was
+    a note to read.
+    """
+    name = (user_name or "there").split()[0]
+    noted = bool(yesterday and (yesterday.get("transcript") or "").strip())
+    streak = int(streak or 0)
+    progress = f"Day {day_index} of {day_count}" if day_index and day_count else day_label
+    week_sub = week_label or week_theme
+
+    # ── Headline: from the data, never from a model ──
+    if streak >= 2:
+        headline = f"{streak} in a row, {_esc(name)}."
+    elif noted and day_index:
+        headline = f"Noted, {_esc(name)}. On to day {day_index}."
+    elif noted:
+        headline = f"Noted, {_esc(name)}. On to today."
+    elif day_index and day_count:
+        headline = f"Day {day_index} of {day_count}, {_esc(name)}."
+    else:
+        headline = f"{_esc(day_label)}, {_esc(name)}."
+
+    # ── Subject: their own words first, then the streak, then the day ──
+    day_up = f"day {day_index} is up" if day_index else "today is up"
+    if noted and mentor and mentor.get("their_line"):
+        subject = f"“{snippet(mentor['their_line'], 48)}” — {day_up}"
+    elif streak >= 2:
+        subject = f"{streak} days in a row, {name} — {day_up}"
+    elif day_index and day_count:
+        subject = f"Day {day_index} of {day_count}, {name} — today's one thing"
+    else:
+        subject = f"{day_label}, {name} — today's one thing"
+    preheader = task_title[:90]
+
+    rows = f"""
+        <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
+          {_eyebrow(f'Week {week_number} &middot; {progress}' + (f' &middot; {today_str}' if today_str else ''))}
+          <h1 class="h1" style="color:{INK};font-size:30px;font-weight:800;margin:0;line-height:1.15;letter-spacing:-0.02em;font-family:{FONT};">{headline}</h1>
+          {f'<p style="color:{MUTED};font-size:12.5px;margin:8px 0 0;font-family:{FONT};">{_esc(week_sub)}</p>' if week_sub else ''}
+        </td></tr>"""
+
+    if shield_note:
+        rows += f"""
+        <tr><td class="px" style="padding:18px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef4fb;border:1px solid #cfe0f2;border-radius:14px;">
+            <tr><td style="padding:14px 18px;">
+              <p style="color:#3b6ea5;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 6px;font-family:{FONT};">&#128737;&#65039; Streak shield</p>
+              <p style="color:#41597a;font-size:13px;margin:0;line-height:1.6;font-family:{FONT};">{_esc(shield_note)}</p>
+            </td></tr>
+          </table>
+        </td></tr>"""
+
+    # ── Last night, in their words — then what the mentor read in it ──
+    if noted:
+        line = (mentor or {}).get("their_line") or strongest_sentence(yesterday.get("transcript") or "")
+        meta = " &middot; ".join(x for x in (
+            _esc(yesterday.get("weekday_label") or "Last night"),
+            _esc(yesterday.get("emotion_label") or ""),
+            f"{yesterday.get('emotion_score')}/10" if yesterday.get("emotion_score") else "",
+        ) if x)
+        rows += f"""
+        <tr><td class="px" style="padding:22px 36px 0;">
+          {_eyebrow('Last night, in your words', INK)}
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="border-left:3px solid {INK};padding:4px 0 4px 16px;">
+              <p style="color:{INK};font-size:15.5px;font-style:italic;line-height:1.7;margin:0 0 6px;font-family:{SERIF};">&#8220;{_esc(line)}&#8221;</p>
+              <p style="color:{MUTED};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:0;font-family:{FONT};">{meta}</p>
+            </td></tr>
+          </table>
+        </td></tr>"""
+        if mentor and mentor.get("read"):
+            rows += f"""
+        <tr><td class="px" style="padding:18px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{CARD};border:1px solid {BORDER};border-radius:14px;">
+            <tr><td style="padding:16px 20px;">
+              <p style="color:{INK};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 8px;font-family:{FONT};">What your mentor read</p>
+              <p style="color:{SUB};font-size:14.5px;margin:0;line-height:1.7;font-family:{FONT};">{_esc(mentor['read'])}</p>
+            </td></tr>
+          </table>
+        </td></tr>"""
+    elif yesterday and (yesterday.get("checkin") in ("done", "shielded")):
+        rows += f"""
+        <tr><td class="px" style="padding:22px 36px 0;">
+          <p style="color:{SUB};font-size:14px;margin:0;line-height:1.7;font-family:{FONT};">No note last night &#8212; {_esc(yesterday.get('weekday_label') or 'yesterday')} got ticked, but your mentor only knows the box, not the day. Tonight, one minute: how it actually went.</p>
+        </td></tr>"""
+
+    # ── Today ──
+    rows += f"""
+        <tr><td class="px" style="padding:18px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{PANEL};border:1px solid {BORDER};border-left:3px solid {ACCENT};border-radius:14px;">
+            <tr><td style="padding:18px 20px;">
+              <p style="color:{ACCENT};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:0 0 8px;font-family:{FONT};">Today &middot; {_esc(day_label)}</p>
+              <p style="color:{INK};font-size:17px;font-weight:700;margin:0 0 8px;line-height:1.45;font-family:{FONT};">{_esc(task_title)}</p>
+              {f'<p style="color:{SUB};font-size:13.5px;margin:0;line-height:1.7;font-family:{FONT};">{_esc(task_description)}</p>' if task_description else ''}
+            </td></tr>
+          </table>
+        </td></tr>"""
+
+    if week_dots:
+        rows += f"""
+        <tr><td class="px" style="padding:18px 36px 0;text-align:center;">
+          {_week_strip(week_dots)}
+          <p style="color:{MUTED};font-size:11px;margin:8px 0 0;letter-spacing:0.06em;text-transform:uppercase;font-family:{FONT};">Your week so far</p>
+        </td></tr>"""
+
+    # ── The one action: open the day. Marking done stays one tap away. ──
+    done_link = (
+        f'<p style="margin:14px 0 0;font-family:{FONT};"><a href="{checkin_url}" style="color:{SUB};font-size:12.5px;text-decoration:underline;">Already did it? Mark today done &#10003;</a></p>'
+        if checkin_url else ""
+    )
+    rows += f"""
+        <tr><td class="px" style="padding:26px 36px 24px;text-align:center;">
+          {_btn_flame('Open today &#8594;', APP_URL + '/app')}
+          {done_link}
+        </td></tr>"""
+
+    return subject, preheader, rows + _feedback_rows(rating_urls, reply_to)
+
+
 def send_daily_task_email(
     to_email: str,
     user_name: str,
@@ -293,10 +536,15 @@ def send_daily_task_email(
     week_theme: str = "",
     week_label: str = "",    # e.g. "Jun 5 – Jun 11"
     user_timezone: str = "UTC",
-    checkin_url: str = "",   # signed one-tap "Done" link (empty = no button)
+    checkin_url: str = "",   # signed one-tap "Done" link (empty = no link)
     shield_note: str = "",   # set when a streak shield auto-covered yesterday
     rating_urls: Optional[Tuple[str, str]] = None,  # signed (👍, 👎) links: "was today's task clear?"
     reply_to: str = "",      # where a plain reply to this email lands
+    day_index: Optional[int] = None,
+    day_count: Optional[int] = None,
+    week_dots=None,
+    streak: int = 0,
+    yesterday: Optional[dict] = None,
 ) -> bool:
     if not resend.api_key:
         logger.error("RESEND_API_KEY not set.")
@@ -307,117 +555,26 @@ def send_daily_task_email(
         _disp_tz = pytz.timezone(user_timezone)
     except Exception:
         _disp_tz = pytz.utc
-    today_str = datetime.now(_disp_tz).strftime("%A, %B %d, %Y")
-    ai = _generate_ai_daily_content(user_name, day_label, task_title, task_description, session_focus)
+    today_str = datetime.now(_disp_tz).strftime("%A, %d %B")
 
-    how_to_html = _bullets_to_html(ai["how_to"], SUB, "&#8594;", ACCENT, "14px")
-    avoid_html  = _bullets_to_html(ai["what_not_to_do"], "#a3542f", "&#10007;", "#c2410c", "13px")
-    week_sub    = week_label if week_label else week_theme
+    mentor = None
+    if yesterday and (yesterday.get("transcript") or "").strip():
+        mentor = _mentor_read(user_name, session_focus, yesterday, task_title, task_description, day_label)
 
-    # Streak shield banner — only when a shield silently covered yesterday.
-    shield_html = ""
-    if shield_note:
-        shield_html = f"""
-        <tr><td class="px" style="padding:16px 36px 0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef4fb;border:1px solid #cfe0f2;border-radius:14px;">
-            <tr><td style="padding:14px 18px;">
-              <p style="color:#3b6ea5;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 6px;font-family:{FONT};">&#128737;&#65039; Streak shield</p>
-              <p style="color:#41597a;font-size:13px;margin:0;line-height:1.6;font-family:{FONT};">{shield_note}</p>
-            </td></tr>
-          </table>
-        </td></tr>"""
-
-    # One-tap check-in — the email IS the daily loop, not just a reminder.
-    if checkin_url:
-        cta_html = f"""
-          {_btn_flame('Mark today done &#10003;', checkin_url)}
-          <p style="margin:14px 0 0;font-family:{FONT};"><a href="{APP_URL}/app" style="color:{MUTED};font-size:12.5px;text-decoration:none;">Open Feelivate &#8594;</a></p>"""
-    else:
-        cta_html = _btn_dark('Open Feelivate &#8594;', APP_URL)
-
-    rows = f"""
-        <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
-          {_eyebrow('Daily brief &middot; ' + today_str)}
-          <h1 class="h1" style="color:{INK};font-size:30px;font-weight:800;margin:0;line-height:1.15;letter-spacing:-0.02em;font-family:{FONT};">
-            Week {week_number} <span style="color:{ACCENT};">&#183;</span> {day_label}
-          </h1>
-          {f'<p style="color:{MUTED};font-size:12.5px;margin:8px 0 0;font-family:{FONT};">{week_sub}</p>' if week_sub else ''}
-        </td></tr>
-
-        <tr><td class="px" style="padding:22px 36px 0;">
-          <p style="color:{SUB};font-size:15px;margin:0;font-family:{FONT};">Good morning, <strong style="color:{INK};">{user_name}</strong> &#8212; one day, one task. Here&#39;s yours.</p>
-        </td></tr>
-        {shield_html}
-
-        <tr><td class="px" style="padding:18px 36px 0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{PANEL};border:1px solid {BORDER};border-left:3px solid {ACCENT};border-radius:14px;">
-            <tr><td style="padding:18px 20px;">
-              <p style="color:{ACCENT};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:0 0 8px;font-family:{FONT};">Today&#39;s task</p>
-              <p style="color:{INK};font-size:17px;font-weight:700;margin:0 0 8px;line-height:1.45;font-family:{FONT};">{task_title}</p>
-              <p style="color:{SUB};font-size:13.5px;margin:0;line-height:1.7;font-family:{FONT};">{task_description}</p>
-            </td></tr>
-          </table>
-        </td></tr>
-
-        <tr><td class="px" style="padding:16px 36px 0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{CARD};border:1px solid {BORDER};border-radius:14px;">
-            <tr><td style="padding:18px 20px;">
-              <p style="color:{INK};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 12px;font-family:{FONT};">How to do it well</p>
-              {how_to_html}
-            </td></tr>
-          </table>
-        </td></tr>
-
-        <tr><td class="px" style="padding:14px 36px 0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fdf1ec;border:1px solid #f3d5c8;border-radius:14px;">
-            <tr><td style="padding:16px 20px;">
-              <p style="color:#c2410c;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 10px;font-family:{FONT};">Avoid today</p>
-              {avoid_html}
-            </td></tr>
-          </table>
-        </td></tr>
-
-        <tr><td class="px" style="padding:18px 36px 0;">
-          <p style="color:{INK};font-size:15.5px;font-style:italic;line-height:1.75;margin:0;font-family:{SERIF};">&#8220;{ai["motivational_thought"]}&#8221;</p>
-          <p style="color:{MUTED};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:10px 0 0;font-family:{FONT};">For you, {user_name}</p>
-        </td></tr>
-
-        <tr><td class="px" style="padding:26px 36px 24px;text-align:center;">
-          {cta_html}
-        </td></tr>"""
-
-    # One tap, no form: was today's task clear? Plus the lowest-friction
-    # channel there is: reply to the email and it lands in our inbox.
-    feedback_rows = ""
-    if rating_urls or reply_to:
-        thumbs = ""
-        if rating_urls:
-            up, down = rating_urls
-            thumbs = (
-                f'<p style="margin:0 0 8px;color:{SUB};font-size:13px;font-family:{FONT};">Was today&#8217;s task clear?</p>'
-                f'<a href="{up}" style="display:inline-block;padding:9px 16px;margin:0 4px;border:1px solid {BORDER};border-radius:100px;'
-                f'color:{INK};text-decoration:none;font-size:13px;font-weight:700;font-family:{FONT};">&#128077; Yes</a>'
-                f'<a href="{down}" style="display:inline-block;padding:9px 16px;margin:0 4px;border:1px solid {BORDER};border-radius:100px;'
-                f'color:{INK};text-decoration:none;font-size:13px;font-weight:700;font-family:{FONT};">&#128078; Not really</a>'
-            )
-        reply_line = (
-            f'<p style="margin:{"12px" if thumbs else "0"} 0 0;color:{MUTED};font-size:12.5px;line-height:1.6;font-family:{FONT};">'
-            f'Too hard, too easy, or something in the way? Just reply to this email &#8212; a person reads every one.</p>'
-            if reply_to else ""
-        )
-        feedback_rows = f"""
-        <tr><td class="px" style="padding:0 36px 30px;text-align:center;">
-          <div style="border-top:1px solid {BORDER};padding-top:18px;">{thumbs}{reply_line}</div>
-        </td></tr>"""
-
-    html = _shell(f"Week {week_number} · {day_label} — {task_title[:80]}", rows + feedback_rows, manage_label="Manage alerts")
+    subject, preheader, rows = build_daily_email(
+        user_name=user_name, day_label=day_label, task_title=task_title, task_description=task_description,
+        week_number=week_number, today_str=today_str, week_theme=week_theme, week_label=week_label,
+        day_index=day_index, day_count=day_count, week_dots=week_dots, streak=streak,
+        yesterday=yesterday, mentor=mentor, checkin_url=checkin_url, shield_note=shield_note,
+        rating_urls=rating_urls, reply_to=reply_to,
+    )
+    html = _shell(preheader, rows, manage_label="Manage alerts")
 
     try:
         payload = {
             "from": f"Feelivate <{FROM_EMAIL}>",
             "to": [to_email],
-            # Subject: "Week 0 · Thursday — Your Task Title"
-            "subject": f"Week {week_number} \u00b7 {day_label} \u2014 {task_title[:55]}{'...' if len(task_title) > 55 else ''}",
+            "subject": subject,
             "html": html,
         }
         if reply_to:
@@ -729,6 +886,7 @@ def get_today_task_for_user(user, db):
     Returns a dict or None (None = skip email this tick).
     """
     try:
+        from datetime import date as DateObj
         from .models import Session as SessionModel
 
         # Only query locked/approved plans
@@ -808,6 +966,20 @@ def get_today_task_for_user(user, db):
         week_lbl    = plan.get("week_label") or ""
         week_theme  = plan.get("theme") or ""
 
+        # Where today sits in the week (the Journey's own bounds), for the
+        # "Day 3 of 7" line and the week strip. Best effort: an older session
+        # without stamped bounds simply goes without.
+        week_start = week_end = None
+        day_index = day_count = None
+        try:
+            from .weeks import _week_bounds_for
+            week_start, week_end, day_count = _week_bounds_for(session, week_num)
+            day_index = (today - DateObj.fromisoformat(week_start)).days + 1
+            if not (1 <= day_index <= day_count):
+                day_index = None
+        except Exception:
+            pass
+
         return {
             "task_title":       day_entry.get("action") or day_entry.get("title") or "Today's Task",
             "task_description": day_entry.get("description") or day_entry.get("details") or "",
@@ -818,6 +990,11 @@ def get_today_task_for_user(user, db):
             "session_focus":    session.focus or "personal transformation",
             # The user's stored "why" — quoted back in the recovery email.
             "commitment_why":   getattr(session, "commitment_why", None) or "",
+            "session_id":       session.id,
+            "week_start":       week_start,
+            "week_end":         week_end,
+            "day_index":        day_index,
+            "day_count":        day_count,
         }
     except Exception as e:
         logger.error(f"get_today_task_for_user failed for user {user.id}: {e}")
@@ -832,10 +1009,16 @@ def get_today_task_for_user(user, db):
 # ║  Evening reminders                                           ║
 # ╚══════════════════════════════════════════════════════════════╝
 
-# Local clock times these go out at. Both are checked per user, in that user's
-# own timezone, so 20:00 means 20:00 wherever they are.
-JOURNAL_REMINDER_TIME = os.getenv("JOURNAL_REMINDER_TIME", "20:00")
-STREAK_REMINDER_TIME = os.getenv("STREAK_REMINDER_TIME", "21:00")
+# Local clock time the evening note goes out at — checked per user, in that
+# user's own timezone, so 20:30 means 20:30 wherever they are. One note a
+# night: the journal nudge and the streak warning used to be two emails an
+# hour apart, which made three a day with the morning one.
+EVENING_REMINDER_TIME = os.getenv("EVENING_REMINDER_TIME", "20:30")
+# The evening a week's review becomes readable: "your review is in".
+REVIEW_EMAIL_TIME = os.getenv("REVIEW_EMAIL_TIME", "21:30")
+# A week that ended longer ago than this is never announced (first deploy,
+# long-dormant accounts): the review is still in the archive, just not mailed.
+REVIEW_EMAIL_MAX_AGE_DAYS = 2
 
 
 def _reminder_email(
@@ -898,43 +1081,54 @@ def _reminder_email(
         return False
 
 
-def send_journal_reminder_email(to_email: str, user_name: str) -> bool:
-    """20:00 local — today's voice journal hasn't been recorded."""
+def build_evening_email(user_name: str, task_title: str, streak: int = 0, streak_at_risk: bool = False) -> dict:
+    """
+    The one evening note. Asks how the day went, names the day's task, and —
+    only when a live streak would end tonight — says so in one line.
+    Returns {"subject", "eyebrow", "heading", "body_lines", "cta_label",
+    "accent", "footer_note"} for `_reminder_email`.
+    """
     name = (user_name or "there").split()[0]
-    return _reminder_email(
-        to_email=to_email,
-        subject="Your journal is still empty today",
-        eyebrow="Evening check-in",
-        heading=f"{name}, today hasn't been logged yet",
-        body_lines=[
-            "You haven't recorded your voice journal today. It takes about a minute — "
-            "just say how the day actually went, good or bad.",
-            "This is the part that makes next week's plan fit you. Without it your "
-            "mentor is guessing.",
-        ],
-        cta_label="Log today",
-        accent=ACCENT,
+    streak = int(streak or 0)
+    body = []
+    if task_title:
+        body.append(f"Today was: <strong style=\"color:{INK};\">{_esc(task_title.strip().rstrip('.'))}</strong>.")
+    body.append(
+        "Say how it actually went &#8212; done, half-done, or not at all. One minute, out loud. "
+        "Your mentor reads every word before tomorrow morning&#8217;s note."
     )
+    footer = ""
+    if streak_at_risk and streak >= 1:
+        day_word = "day" if streak == 1 else "days"
+        body.append(f"{streak} {day_word} in a row. Tonight&#8217;s note keeps it.")
+        footer = "Streaks are a motivational feature, nothing more &mdash; nothing is lost if one breaks."
+    if streak_at_risk and streak >= 2:
+        subject = f"{streak} days in a row — one minute keeps it"
+    else:
+        subject = f"How did today go, {name}?"
+    return {
+        "subject": subject,
+        "eyebrow": "Tonight &middot; one minute",
+        "heading": f"{_esc(name)}, how did today actually go?",
+        "body_lines": body,
+        "cta_label": "Record tonight's note",
+        "accent": ACCENT,
+        "footer_note": footer,
+    }
 
 
-def send_streak_reminder_email(to_email: str, user_name: str, current_streak: int) -> bool:
-    """21:00 local — the streak is alive but today is still unchecked."""
-    name = (user_name or "there").split()[0]
-    day_word = "day" if current_streak == 1 else "days"
+def send_evening_email(to_email: str, user_name: str, task_title: str, streak: int = 0, streak_at_risk: bool = False) -> bool:
+    """20:30 local — today's voice note hasn't been recorded."""
+    e = build_evening_email(user_name, task_title, streak, streak_at_risk)
     return _reminder_email(
         to_email=to_email,
-        subject=f"Your {current_streak}-{day_word} streak ends at midnight",
-        eyebrow="Streak at risk",
-        heading=f"{current_streak} {day_word} on the line, {name}",
-        body_lines=[
-            f"You've shown up {current_streak} {day_word} in a row. Today isn't marked "
-            "done yet, and the streak resets at midnight.",
-            "A few minutes now keeps it. Open the app, finish today's task and log your "
-            "journal.",
-        ],
-        cta_label="Keep the streak",
-        accent="#b45309",
-        footer_note="Streaks are a motivational feature, nothing more &mdash; nothing is lost if one breaks. ",
+        subject=e["subject"],
+        eyebrow=e["eyebrow"],
+        heading=e["heading"],
+        body_lines=e["body_lines"],
+        cta_label=e["cta_label"],
+        accent=e["accent"],
+        footer_note=e["footer_note"],
     )
 
 
@@ -981,20 +1175,52 @@ def _has_active_plan(db, user_id: str) -> bool:
     return not (starts_on and starts_on > _d.today().isoformat())
 
 
-def run_evening_reminders():
+def _streak_at_risk(db, user_id: str, now_local) -> int:
+    """
+    The streak that ends tonight if today stays unchecked, else 0: a run of
+    at least one day, alive through yesterday (a shielded yesterday counts —
+    that user is exactly the at-risk one), and today not yet done.
+    """
+    from .models import DailyCheckin, UserStreak
+
+    streak = db.query(UserStreak).filter(UserStreak.user_id == user_id).first()
+    if not streak or (streak.current_streak or 0) < 1:
+        return 0
+    today = now_local.strftime("%Y-%m-%d")
+    yesterday = (now_local.date() - timedelta(days=1)).isoformat()
+    chain_yesterday = (
+        db.query(DailyCheckin)
+        .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == yesterday, DailyCheckin.status.in_(("done", "shielded")))
+        .first()
+    )
+    if not chain_yesterday:
+        return 0
+    done_today = (
+        db.query(DailyCheckin)
+        .filter(DailyCheckin.user_id == user_id, DailyCheckin.date == today, DailyCheckin.status == "done")
+        .first()
+    )
+    return 0 if done_today else int(streak.current_streak)
+
+
+def run_evening_reminders(now_utc: Optional[datetime] = None):
     """Called every minute by APScheduler, alongside the daily task email.
 
     Same timezone handling as the morning email: for each user we ask what time
-    it is where THEY are, and match against the reminder times. 20:00 in Delhi
-    and 20:00 in Chicago are different UTC instants, and both get hit.
+    it is where THEY are, and match against EVENING_REMINDER_TIME. 20:30 in
+    Delhi and 20:30 in Chicago are different UTC instants, and both get hit.
+
+    One note a night, only when the day's voice journal is still missing. If
+    a live streak would end tonight, the same note says so — it is not a
+    second email any more.
 
     Only users who enabled email notifications are contacted — that switch is
     the consent record for this channel, so it gates every message here.
     """
     from .database import SessionLocal
-    from .models import User, UserStreak
+    from .models import User
 
-    now_utc = datetime.now(pytz.utc)
+    now_utc = now_utc or datetime.now(pytz.utc)
     db = SessionLocal()
     try:
         users = (
@@ -1014,81 +1240,246 @@ def run_evening_reminders():
                     user_tz, tz_str = pytz.utc, "UTC"
 
                 now_local = now_utc.astimezone(user_tz)
-                hhmm = now_local.strftime("%H:%M")
                 today = now_local.strftime("%Y-%m-%d")
 
-                # Same grace window as the daily email; the two reminders are
-                # an hour apart, so at most one window is open at a time.
-                sj = _minutes_since(now_local, JOURNAL_REMINDER_TIME)
-                ss = _minutes_since(now_local, STREAK_REMINDER_TIME)
-                in_journal = sj is not None and 0 <= sj < SEND_GRACE_MINUTES
-                in_streak = ss is not None and 0 <= ss < SEND_GRACE_MINUTES
-                if not (in_journal or in_streak):
+                since = _minutes_since(now_local, EVENING_REMINDER_TIME)
+                if since is None or not (0 <= since < SEND_GRACE_MINUTES):
+                    continue
+                if user.last_journal_reminder_date == today:
                     continue
                 recipient = _recipient_for(user)
                 if not recipient:
                     continue
                 if not _has_active_plan(db, user.id):
                     continue
+                if _has_journal_today(db, user.id, today):
+                    continue
+                task_info = get_today_task_for_user(user, db)
+                if not task_info:
+                    continue  # between weeks: the journal is locked, nothing to record
 
-                # ── 20:00 — journal not logged ──
-                if in_journal:
-                    if user.last_journal_reminder_date == today:
-                        continue
-                    if _has_journal_today(db, user.id, today):
-                        continue
-                    if send_journal_reminder_email(recipient, user.name):
-                        user.last_journal_reminder_date = today
-                        db.commit()
-
-                # ── 21:00 — streak alive but today still unchecked ──
-                elif in_streak:
-                    if user.last_streak_reminder_date == today:
-                        continue
-                    streak = (
-                        db.query(UserStreak)
-                        .filter(UserStreak.user_id == user.id)
-                        .first()
-                    )
-                    # Nothing to save if there's no run going.
-                    if not streak or (streak.current_streak or 0) < 1:
-                        continue
-                    # Chain must be alive through yesterday — a "shielded"
-                    # yesterday counts (that user is exactly the at-risk one:
-                    # tonight decides whether they miss twice).
-                    from .models import DailyCheckin
-                    yesterday = (now_local.date() - timedelta(days=1)).isoformat()
-                    chain_yesterday = (
-                        db.query(DailyCheckin)
-                        .filter(
-                            DailyCheckin.user_id == user.id,
-                            DailyCheckin.date == yesterday,
-                            DailyCheckin.status.in_(("done", "shielded")),
-                        )
-                        .first()
-                    )
-                    if not chain_yesterday:
-                        continue
-                    # Today already done → nothing to warn about.
-                    done_today = (
-                        db.query(DailyCheckin)
-                        .filter(
-                            DailyCheckin.user_id == user.id,
-                            DailyCheckin.date == today,
-                            DailyCheckin.status == "done",
-                        )
-                        .first()
-                    )
-                    if done_today:
-                        continue
-                    if send_streak_reminder_email(
-                        recipient, user.name, streak.current_streak
-                    ):
-                        user.last_streak_reminder_date = today
-                        db.commit()
+                streak = _streak_at_risk(db, user.id, now_local)
+                if send_evening_email(recipient, user.name, task_info["task_title"], streak=streak, streak_at_risk=streak > 0):
+                    user.last_journal_reminder_date = today
+                    db.commit()
 
             except Exception as e:
                 logger.error(f"[Reminders] failed for user {user.id}: {e}")
+                db.rollback()
+    finally:
+        db.close()
+
+
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  "Your review is in" — the evening a week's review is ready  ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+def _review_headline(report: dict) -> str:
+    """The same one-line summary the dashboard opens with."""
+    from datetime import date as _d
+    if report.get("quiet_week"):
+        return "This week went quiet."
+    days = [d for d in (report.get("days") or []) if isinstance(d, dict)]
+    done = report.get("days_done") or 0
+    total = report.get("past_days_count") or len(days) or 7
+    noted = [d for d in days if d.get("has_journal") and isinstance(d.get("score"), (int, float))]
+    best = max(noted, key=lambda d: d["score"]) if noted else None
+    line = f"{done} of {total} days."
+    if best and best.get("date"):
+        try:
+            line += f" {_d.fromisoformat(best['date']).strftime('%A')} was the high point."
+        except ValueError:
+            pass
+    return line
+
+
+def build_review_email(user_name: str, report: dict, week_number: int, week_start: str, week_end: str, has_next_plan: bool = False) -> Tuple[str, str, str]:
+    """
+    The announcement, not the review: the headline, the badge, three numbers,
+    one of their own lines, and the door. Everything else is in the app.
+    Returns (subject, preheader, card rows).
+    """
+    from datetime import date as _d
+    name = (user_name or "there").split()[0]
+    quiet = bool(report.get("quiet_week"))
+    badge = (report.get("week_badge") or {}).get("name") if isinstance(report.get("week_badge"), dict) else ""
+    headline = _review_headline(report)
+    try:
+        span = f"{_d.fromisoformat(week_start).strftime('%-d %b')} &ndash; {_d.fromisoformat(week_end).strftime('%-d %b')}"
+    except (ValueError, TypeError):
+        span = ""
+    cs = report.get("consistency_score") or 0
+    done = report.get("days_done") or 0
+    total = report.get("past_days_count") or 7
+    avg = report.get("avg_score") or 0
+    quote = (report.get("best_quote") or "").strip() if not quiet else ""
+    insight = bool((report.get("hidden_insight") or "").strip()) and not quiet
+
+    if quiet:
+        subject = f"Week {week_number} went quiet — your review is in"
+    else:
+        subject = f"Your Week {week_number} review is in" + (f" · {badge}" if badge else "")
+    preheader = headline
+
+    kpi = "".join(
+        f'<td width="33%" style="padding:12px 10px;border:1px solid {BORDER};border-radius:12px;background:{PANEL};text-align:center;">'
+        f'<p style="margin:0 0 4px;color:{SUB};font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;font-family:{FONT};">{k}</p>'
+        f'<p style="margin:0;color:{INK};font-size:22px;font-weight:800;letter-spacing:-0.02em;font-family:{FONT};">{v}</p></td>'
+        for k, v in (("Consistency", f"{cs}%"), ("Days done", f"{done}/{total}"), ("Avg mood", f"{avg}/10"))
+    )
+
+    rows = f"""
+        <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
+          {_eyebrow(f'Week {week_number} review' + (f' &middot; {span}' if span else ''))}
+          <h1 class="h1" style="color:{INK};font-size:28px;font-weight:800;margin:0 0 10px;line-height:1.15;letter-spacing:-0.02em;font-family:{FONT};">{_esc(headline)}</h1>
+          {f'<span style="display:inline-block;padding:5px 11px;border:1.5px solid {ACCENT};border-radius:6px;color:{ACCENT};font-size:10.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;font-family:{FONT};">&#9733; {_esc(badge)}</span>' if badge else ''}
+        </td></tr>
+        <tr><td class="px" style="padding:20px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="6"><tr>{kpi}</tr></table>
+        </td></tr>"""
+
+    if quiet:
+        rows += f"""
+        <tr><td class="px" style="padding:18px 36px 0;">
+          <p style="color:{SUB};font-size:14.5px;margin:0;line-height:1.7;font-family:{FONT};">No notes, no ticked days. That&#8217;s data, {_esc(name)}, not a verdict &#8212; the review says so, and the next week starts from the same place, not further on.</p>
+        </td></tr>"""
+    else:
+        if quote:
+            rows += f"""
+        <tr><td class="px" style="padding:20px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="border-left:3px solid {INK};padding:4px 0 4px 16px;">
+              <p style="color:{INK};font-size:15.5px;font-style:italic;line-height:1.7;margin:0 0 6px;font-family:{SERIF};">&#8220;{_esc(quote)}&#8221;</p>
+              <p style="color:{MUTED};font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;margin:0;font-family:{FONT};">You, this week</p>
+            </td></tr>
+          </table>
+        </td></tr>"""
+        rows += f"""
+        <tr><td class="px" style="padding:18px 36px 0;">
+          <p style="color:{SUB};font-size:14.5px;margin:0;line-height:1.7;font-family:{FONT};">Your mentor read every note from the week and wrote it up day by day{' &#8212; including one pattern you probably haven&#8217;t noticed' if insight else ''}. It&#8217;s in the app, in full.</p>
+        </td></tr>"""
+
+    next_line = ""
+    if not has_next_plan:
+        next_line = (f'<p style="margin:14px 0 0;color:{MUTED};font-size:12.5px;line-height:1.6;font-family:{FONT};">'
+                     f'Week {week_number + 1} gets built from this review &#8212; plan it when you&#8217;re ready.</p>')
+    rows += f"""
+        <tr><td class="px" style="padding:26px 36px 32px;text-align:center;">
+          {_btn_dark(f'Read your Week {week_number} review &#8594;', APP_URL + '/app?open=archive')}
+          {next_line}
+        </td></tr>"""
+    return subject, preheader, rows
+
+
+def send_week_review_email(to_email: str, user_name: str, report: dict, week_number: int, week_start: str, week_end: str, has_next_plan: bool = False) -> bool:
+    if not resend.api_key:
+        logger.error("RESEND_API_KEY not set.")
+        return False
+    subject, preheader, rows = build_review_email(user_name, report, week_number, week_start, week_end, has_next_plan)
+    html = _shell(preheader, rows, manage_label="Manage alerts")
+    try:
+        resend.Emails.send({
+            "from": f"Feelivate <{FROM_EMAIL}>",
+            "to": [to_email],
+            "subject": subject,
+            "html": html,
+        })
+        logger.info(f"[Review] sent Week {week_number} to {_mask_email(to_email)}")
+        return True
+    except Exception as e:
+        logger.error(f"[Review] send failed for {_mask_email(to_email)}: {type(e).__name__}: {e}")
+        return False
+
+
+def _review_keys(user) -> list:
+    return [k for k in (user.last_review_email_key or "").split(",") if k]
+
+
+def run_week_review_emails(now_utc: Optional[datetime] = None):
+    """Called every minute by APScheduler.
+
+    At REVIEW_EMAIL_TIME in each user's own timezone: for every goal whose
+    locked week has ended, make sure its review exists (the same code path
+    the Journey page uses — generated once, then cached) and announce it. A
+    week ending Sunday is announced Sunday night if Sunday's note is in, else
+    Monday night once the week is over. Each week is announced once; the
+    last few announced weeks are kept on the user row.
+    """
+    from .database import SessionLocal
+    from .models import Session as SessionModel, User
+    from .weeks import _week_bounds_for
+    from datetime import date as _d
+
+    now_utc = now_utc or datetime.now(pytz.utc)
+    db = SessionLocal()
+    try:
+        users = db.query(User).filter(User.email_notifications_enabled == 1).all()
+        for user in users:
+            try:
+                tz_str = user.preferred_notification_timezone or "UTC"
+                try:
+                    user_tz = pytz.timezone(tz_str)
+                except Exception:
+                    user_tz = pytz.utc
+                now_local = now_utc.astimezone(user_tz)
+                since = _minutes_since(now_local, REVIEW_EMAIL_TIME)
+                if since is None or not (0 <= since < SEND_GRACE_MINUTES):
+                    continue
+                recipient = _recipient_for(user)
+                if not recipient:
+                    continue
+                today = now_local.date()
+                today_iso = today.isoformat()
+                sent_keys = _review_keys(user)
+
+                sessions = (
+                    db.query(SessionModel)
+                    .filter(
+                        SessionModel.user_id == user.id,
+                        SessionModel.is_completed == 0,
+                        SessionModel.phase.in_(("active", "planning")),
+                        SessionModel.plan_start_date.isnot(None),
+                    )
+                    .order_by(SessionModel.created_at.desc())
+                    .all()
+                )
+                announced = False
+                for session in sessions:
+                    cur = session.current_week if session.current_week is not None else 1
+                    for wk in sorted({cur, cur - 1}, reverse=True):
+                        if wk < 0:
+                            continue
+                        try:
+                            ws, we, _n = _week_bounds_for(session, wk)
+                        except Exception:
+                            continue
+                        if we > today_iso:
+                            continue  # still running
+                        if (today - _d.fromisoformat(we)).days > REVIEW_EMAIL_MAX_AGE_DAYS:
+                            continue  # old news
+                        key = f"{session.id}:{ws}"
+                        if key in sent_keys:
+                            continue
+
+                        from .main import get_weekly_report
+                        res = asyncio.run(get_weekly_report(
+                            user_id=user.id, session_id=session.id, week_number=wk,
+                            force_refresh=False, client_date=today_iso, db=db, current_user=user,
+                        ))
+                        report = res.get("report") if isinstance(res, dict) else None
+                        if res.get("status") not in ("generated", "cached") or not report:
+                            continue  # not complete yet (Sunday's note still possible) → tomorrow
+                        has_next = (session.current_week or 0) > wk
+                        if send_week_review_email(recipient, user.name, report, wk, ws, we, has_next_plan=has_next):
+                            sent_keys = (sent_keys + [key])[-12:]
+                            user.last_review_email_key = ",".join(sent_keys)
+                            db.commit()
+                            announced = True
+                            break
+                    if announced:
+                        break  # one announcement per evening
+            except Exception as e:
+                logger.error(f"[Review] failed for user {user.id}: {e}")
                 db.rollback()
     finally:
         db.close()
@@ -1110,6 +1501,68 @@ def _minutes_since(now_local, hhmm):
     except (ValueError, TypeError, AttributeError):
         return None
     return (now_local - target).total_seconds() / 60.0
+
+
+def _morning_context(db, user, task_info: dict, now_local):
+    """
+    (yesterday, streak, week_dots) for the morning note.
+
+    yesterday — that day's voice journal as a dict (complete transcript),
+    or a journal-less stub carrying its check-in status; None on the first
+    day of the week. streak — the current run. week_dots — one (letter,
+    status) per day of the week: done / shielded / missed / today / upcoming.
+    """
+    from datetime import date as _d
+    from .models import DailyCheckin, UserStreak, VoiceJournal
+
+    today = now_local.date()
+    ws, we = task_info.get("week_start"), task_info.get("week_end")
+    sid = task_info.get("session_id")
+
+    yesterday = None
+    y_iso = (today - timedelta(days=1)).isoformat()
+    if not ws or y_iso >= ws:
+        jq = db.query(VoiceJournal).filter(VoiceJournal.user_id == user.id, VoiceJournal.date == y_iso)
+        if sid:
+            jq = jq.filter(VoiceJournal.session_id == sid)
+        j = jq.first()
+        y_check = db.query(DailyCheckin).filter(DailyCheckin.user_id == user.id, DailyCheckin.date == y_iso).first()
+        yesterday = {
+            "date": y_iso,
+            "weekday_label": (today - timedelta(days=1)).strftime("%A"),
+            "transcript": (j.transcript or "") if j else "",
+            "emotion_label": j.emotion_label if j else None,
+            "emotion_score": j.emotion_score if j else None,
+            "one_liner": j.one_liner if j else None,
+            "checkin": (y_check.status if y_check else None) if not j else "done",
+        }
+
+    streak_row = db.query(UserStreak).filter(UserStreak.user_id == user.id).first()
+    streak_n = int(streak_row.current_streak or 0) if streak_row else 0
+
+    week_dots = None
+    if ws and we:
+        try:
+            d0, d1 = _d.fromisoformat(ws), _d.fromisoformat(we)
+            rows = db.query(DailyCheckin).filter(DailyCheckin.user_id == user.id, DailyCheckin.date >= ws, DailyCheckin.date <= we).all()
+            status_of = {r.date: r.status for r in rows}
+            dots = []
+            for i in range((d1 - d0).days + 1):
+                day = d0 + timedelta(days=i)
+                iso = day.isoformat()
+                if iso == today.isoformat():
+                    st = "today"
+                elif day > today:
+                    st = "upcoming"
+                elif status_of.get(iso) in ("done", "shielded"):
+                    st = status_of[iso]
+                else:
+                    st = "missed"
+                dots.append((day.strftime("%a")[0], st))
+            week_dots = dots
+        except Exception:
+            week_dots = None
+    return yesterday, streak_n, week_dots
 
 
 def run_daily_email_scheduler():
@@ -1254,6 +1707,12 @@ def run_daily_email_scheduler():
                         sent_count += 1
                     continue
 
+                # ── Last night, the streak, and the week so far ──────────────
+                # The morning note replies to yesterday's voice journal and
+                # shows the week as it stands; both come from this user's
+                # own rows, nothing is written for them.
+                yesterday, streak_n, week_dots = _morning_context(db, user, task_info, now_local)
+
                 success = send_daily_task_email(
                     to_email=recipient,
                     user_name=user.name or "there",
@@ -1269,6 +1728,11 @@ def run_daily_email_scheduler():
                     shield_note=shield_note,
                     rating_urls=rating_urls,
                     reply_to=FEEDBACK_REPLY_TO,
+                    day_index=task_info.get("day_index"),
+                    day_count=task_info.get("day_count"),
+                    week_dots=week_dots,
+                    streak=streak_n,
+                    yesterday=yesterday,
                 )
 
                 if success:

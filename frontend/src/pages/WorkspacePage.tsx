@@ -106,6 +106,22 @@ export default function WorkspacePage() {
     const [view, setView] = useState<'chat' | 'journey'>('chat');
     // Which Journey tab to open on (the header "Archive" button opens straight to Archive)
     const [journeyInitialTab, setJourneyInitialTab] = useState<'overview' | 'archive'>('overview');
+    // Deep link from an email: /app?open=archive lands on the Journey archive
+    // (the "your review is in" note), /app?open=journey on the overview. The
+    // parameter is dropped from the address once read so a reload stays put.
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const open = params.get('open');
+            if (open === 'archive' || open === 'journey') {
+                setJourneyInitialTab(open === 'archive' ? 'archive' : 'overview');
+                setView('journey');
+                params.delete('open');
+                const rest = params.toString();
+                window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash);
+            }
+        } catch { /* no window / malformed URL: open as usual */ }
+    }, []);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showCompleteModal, setShowCompleteModal] = useState(false);
     const [isSessionCompleted, setIsSessionCompleted] = useState(false);
