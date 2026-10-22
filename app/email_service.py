@@ -243,11 +243,35 @@ _FILLER = (
 )
 
 
+_STOP = {"your", "that", "this", "with", "from", "have", "what", "when", "then", "than", "they", "them",
+         "about", "today", "tonight", "morning", "there", "here", "just", "been", "were", "will", "into"}
+
+
+def _hook_ok(hook: str, transcript: str, name: str) -> bool:
+    """
+    A subject line earns its place only if it is short, has no filler, and
+    carries at least one real word from the person's own note — so it can
+    never be the same line for everyone.
+    """
+    h = " ".join((hook or "").split()).strip().strip('"“”')
+    if not (8 <= len(h) <= 48) or "!" in h:
+        return False
+    low = h.lower()
+    if any(f in low for f in _FILLER):
+        return False
+    from .journal_text import loose
+    said = set(loose(transcript).split())
+    words = [w for w in loose(h).split() if len(w) >= 4 and w not in _STOP and w != name.lower()]
+    return any(w in said for w in words)
+
+
 def _mentor_read(user_name, goal, journal, task_title, task_description, day_label):
     """
     What the mentor read in last night's entry: two or three plain sentences
-    that could only have been written after reading THIS note, plus the one
-    line of theirs worth quoting back. Returns {"their_line", "read"}.
+    that could only have been written after reading THIS note, the one line
+    of theirs worth quoting back, and a subject-line hook drawn from the
+    note. Returns {"their_line", "read", "hook"} — hook is None when the
+    model's line failed the specificity check.
 
     The whole transcript goes to the model. When the model is unavailable,
     paraphrases, or writes filler, the fallback is built from the entry's
@@ -266,7 +290,7 @@ def _mentor_read(user_name, goal, journal, task_title, task_description, day_lab
         if one_liner:
             read += f" {one_liner.rstrip('.')}."
         read += f" Today picks up from there: {task_title.rstrip('.')}."
-        return {"their_line": their_line, "read": read}
+        return {"their_line": their_line, "read": read, "hook": None}
 
     if not transcript:
         return _fallback()
@@ -287,9 +311,10 @@ Rules:
 - If they named a problem, name the smallest fix for it today. If it went well, say exactly what to repeat.
 - The last sentence connects today's task to what they said. 70 words at most.
 - Also pick ONE sentence from the note worth quoting back to them — copied exactly, character for character, in their language. Not a paraphrase.
+- Also write the subject line of this morning's email: at most 42 characters, one specific thing from the note said plainly — the thing they struggled with, the idea they had, the word they used. It should only make sense to {name}. No praise, no exclamation marks, no emoji, no "Day 3", no "Good morning". Examples of the shape (do not copy): "About your ring finger, {name}" · "The metronome idea — yes, today" · "Sunday's catch-up had a cost".
 
-Respond with ONLY valid JSON: {{"their_line": "<exact sentence from the note>", "read": "<2-3 sentences>"}}"""
-        raw = call_llm(prompt, system="You write short, specific morning notes. Output raw JSON only.", temperature=0.5, max_tokens=360)
+Respond with ONLY valid JSON: {{"their_line": "<exact sentence from the note>", "read": "<2-3 sentences>", "hook": "<subject line, 42 characters at most>"}}"""
+        raw = call_llm(prompt, system="You write short, specific morning notes. Output raw JSON only.", temperature=0.5, max_tokens=400)
         raw = re.sub(r'<think>.*?</think>', '', raw or '', flags=re.DOTALL)
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
         start, end = raw.find("{"), raw.rfind("}") + 1
@@ -298,12 +323,17 @@ Respond with ONLY valid JSON: {{"their_line": "<exact sentence from the note>", 
         line = str(data.get("their_line") or "").strip()
         if not said_verbatim(line, [transcript]):
             line = their_line
+        hook = " ".join(str(data.get("hook") or "").split()).strip().strip('"“”')
+        if not _hook_ok(hook, transcript, name):
+            if hook:
+                logger.info("[Morning] subject hook rejected (generic or too long); using their own words")
+            hook = None
         words = read.split()
         if len(words) < 8 or len(words) > 110 or any(f in read.lower() for f in _FILLER):
             logger.info("[Morning] mentor read rejected (length or filler); using the plain fallback")
             fb = _fallback()
-            return {"their_line": line, "read": fb["read"]}
-        return {"their_line": line, "read": read}
+            return {"their_line": line, "read": fb["read"], "hook": hook}
+        return {"their_line": line, "read": read, "hook": hook}
     except Exception as e:
         logger.warning(f"[Morning] mentor read unavailable, using fallback: {e}")
         return _fallback()
@@ -428,9 +458,13 @@ def build_daily_email(
     else:
         headline = f"{_esc(day_label)}, {_esc(name)}."
 
-    # ── Subject: their own words first, then the streak, then the day ──
+    # ── Subject: the mentor's hook from their note, else their own words,
+    #    then the streak, then the day. This is the notification line. ──
     day_up = f"day {day_index} is up" if day_index else "today is up"
-    if noted and mentor and mentor.get("their_line"):
+    hook = (mentor or {}).get("hook") if noted else None
+    if hook:
+        subject = hook
+    elif noted and mentor and mentor.get("their_line"):
         subject = f"“{snippet(mentor['their_line'], 48)}” — {day_up}"
     elif streak >= 2:
         subject = f"{streak} days in a row, {name} — {day_up}"
@@ -438,7 +472,12 @@ def build_daily_email(
         subject = f"Day {day_index} of {day_count}, {name} — today's one thing"
     else:
         subject = f"{day_label}, {name} — today's one thing"
-    preheader = task_title[:90]
+    # The preview line under the subject: the mentor's first sentence when
+    # there is one (it is about them), otherwise today's task.
+    read_first = ""
+    if noted and mentor and mentor.get("read"):
+        read_first = re.split(r"(?<=[.!?])\s+", mentor["read"].strip(), maxsplit=1)[0]
+    preheader = (read_first or task_title)[:110]
 
     rows = f"""
         <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
@@ -1315,10 +1354,15 @@ def build_review_email(user_name: str, report: dict, week_number: int, week_star
     quote = (report.get("best_quote") or "").strip() if not quiet else ""
     insight = bool((report.get("hidden_insight") or "").strip()) and not quiet
 
+    # The notification line: a reason to look, with the badge as the tag.
     if quiet:
         subject = f"Week {week_number} went quiet — your review is in"
+    elif insight:
+        subject = f"{name}, your week had a pattern" + (f" · {badge}" if badge else "")
+    elif badge:
+        subject = f"Week {week_number}: {badge}. Here's why."
     else:
-        subject = f"Your Week {week_number} review is in" + (f" · {badge}" if badge else "")
+        subject = f"Your Week {week_number} review is in"
     preheader = headline
 
     kpi = "".join(

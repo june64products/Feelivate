@@ -80,7 +80,8 @@ def test_morning_note_quotes_their_words_and_drops_the_filler():
     yesterday = {"date": "2026-10-20", "weekday_label": "Tuesday", "transcript": TRANSCRIPT,
                  "emotion_label": "focused", "emotion_score": 6, "one_liner": "Clumsy but complete.", "checkin": "done"}
     mentor = {"their_line": "Tomorrow I want to try it with the metronome at sixty.",
-              "read": "Your ring finger collapsing is a hand-position thing, not a talent thing: keep the wrist level and it stops. Sixty on the metronome is the right call. Today's four bars are the same exercise with a tune on top."}
+              "read": "Your ring finger collapsing is a hand-position thing, not a talent thing: keep the wrist level and it stops. Sixty on the metronome is the right call. Today's four bars are the same exercise with a tune on top.",
+              "hook": "About your ring finger, Priya"}
     subject, preheader, rows = build_daily_email(
         user_name="Priya Dev", day_label="Wednesday", task_title="Learn the first four bars of Twinkle, right hand only.",
         task_description="Slow is fine.", week_number=1, today_str="Wednesday, 21 October", week_theme="First Keys",
@@ -88,10 +89,19 @@ def test_morning_note_quotes_their_words_and_drops_the_filler():
         streak=2, yesterday=yesterday, mentor=mentor, checkin_url="https://api.example/checkin?token=x",
         rating_urls=("https://api.example/up", "https://api.example/down"), reply_to="info@example.com",
     )
-    # The subject is their own sentence (cut at a word for phone inboxes), not a calendar line.
-    assert subject == "“Tomorrow I want to try it with the metronome at…” — day 3 is up"
+    # The notification line is the mentor's hook from their note; the preview
+    # under it is the mentor's first sentence — both about them, neither a calendar line.
+    assert subject == "About your ring finger, Priya"
     assert not subject.startswith("Week 1")
-    assert preheader.startswith("Learn the first four bars")
+    assert preheader == "Your ring finger collapsing is a hand-position thing, not a talent thing: keep the wrist level and it stops."
+
+    # Without a hook, the subject is their own sentence (cut at a word for phone inboxes).
+    subject2, pre2, _ = build_daily_email(
+        user_name="Priya Dev", day_label="Wednesday", task_title="Learn the first four bars of Twinkle, right hand only.",
+        task_description="", week_number=1, day_index=3, day_count=7, streak=2, yesterday=yesterday,
+        mentor={"their_line": mentor["their_line"], "read": mentor["read"], "hook": None},
+    )
+    assert subject2 == "“Tomorrow I want to try it with the metronome at…” — day 3 is up"
     # In their words, with the stored read of the night.
     assert "Last night, in your words" in rows
     assert "Tomorrow I want to try it with the metronome at sixty." in rows
@@ -145,7 +155,8 @@ def test_mentor_read_sends_the_whole_note_and_keeps_only_verbatim_lines(monkeypa
     def fake_llm(prompt, **kw):
         seen["prompt"] = prompt
         return json.dumps({"their_line": "my ring finger kept giving way",  # a paraphrase — not what they said
-                           "read": "Your ring finger collapsing is a wrist-height problem; keep the wrist level today. Sixty on the metronome is the right call. Today's four bars are the same motion with a tune."})
+                           "read": "Your ring finger collapsing is a wrist-height problem; keep the wrist level today. Sixty on the metronome is the right call. Today's four bars are the same motion with a tune.",
+                           "hook": "The metronome idea — yes, today"})
 
     monkeypatch.setattr(llm, "call_llm", fake_llm)
     journal = {"transcript": TRANSCRIPT, "emotion_label": "focused", "emotion_score": 6, "one_liner": "Clumsy but complete."}
@@ -153,6 +164,24 @@ def test_mentor_read_sends_the_whole_note_and_keeps_only_verbatim_lines(monkeypa
     assert "metronome at sixty" in seen["prompt"], "the complete transcript went to the model"
     assert out["read"].startswith("Your ring finger collapsing")
     assert out["their_line"] in TRANSCRIPT, "a paraphrase is replaced by a sentence they actually said"
+    assert out["hook"] == "The metronome idea — yes, today", "a hook that names something from the note is kept"
+
+
+def test_a_subject_hook_that_could_be_sent_to_anyone_is_dropped(monkeypatch):
+    import app.llm as llm
+    from app.email_service import _hook_ok, _mentor_read
+
+    journal = {"transcript": TRANSCRIPT, "emotion_label": "focused", "emotion_score": 6, "one_liner": "Clumsy but complete."}
+    for generic in ("Let's go, Priya!", "Your morning note is here", "Good morning Priya", "A new day, a new task"):
+        monkeypatch.setattr(llm, "call_llm", lambda *a, **k: json.dumps({
+            "their_line": "I did the full ten minutes and by the end it was smoother.",
+            "read": "Your ring finger collapsing is a wrist-height problem; keep the wrist level today. Sixty on the metronome is the right call. Today's four bars are the same motion with a tune.",
+            "hook": generic}))
+        out = _mentor_read("Priya", "learn the piano", journal, "Four bars", "", "Wednesday")
+        assert out["hook"] is None, generic
+    assert _hook_ok("About your ring finger, Priya", TRANSCRIPT, "Priya")
+    assert _hook_ok("Sixty on the metronome. Today.", TRANSCRIPT, "Priya")
+    assert not _hook_ok("About your ring finger and the metronome and everything else you said", TRANSCRIPT, "Priya"), "too long for a notification"
 
 
 def test_mentor_read_filler_is_thrown_away(monkeypatch):
@@ -262,8 +291,13 @@ def test_review_note_is_a_teaser_with_the_door_to_the_archive():
     from app.email_service import build_review_email
 
     subject, preheader, rows = build_review_email("Priya Dev", REPORT, 1, "2026-10-12", "2026-10-18", has_next_plan=False)
-    assert subject == "Your Week 1 review is in · Sunday Sprint"
+    assert subject == "Priya, your week had a pattern · Sunday Sprint"
     assert preheader == "4 of 7 days. Thursday was the high point."
+    # No insight → the badge carries the subject; neither → plain.
+    no_insight = dict(REPORT, hidden_insight="")
+    assert build_review_email("Priya", no_insight, 1, "2026-10-12", "2026-10-18")[0] == "Week 1: Sunday Sprint. Here's why."
+    bare = dict(REPORT, hidden_insight="", week_badge={})
+    assert build_review_email("Priya", bare, 1, "2026-10-12", "2026-10-18")[0] == "Your Week 1 review is in"
     assert "4 of 7 days. Thursday was the high point." in rows
     assert "Sunday Sprint" in rows
     assert "57%" in rows and "4/7" in rows and "6.2/10" in rows
