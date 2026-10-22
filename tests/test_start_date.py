@@ -224,7 +224,14 @@ def test_the_mentor_is_told_the_week_has_not_started(client, monkeypatch):
     headers, uid = register(client, "mentor@example.com")
     today = date.today()
     drafted_session(uid, "s-mentor", today)
-    approve(client, headers, "s-mentor", today, today + timedelta(days=3))
+    # Three days out — or the Monday after, when that lands on a weekend
+    # (the server rolls weekend starts forward, so "in 3 days" would read
+    # "in 5 days" on a Wednesday to Friday).
+    start = today + timedelta(days=3)
+    while start.weekday() >= 5:
+        start += timedelta(days=1)
+    days_out = (start - today).days
+    approve(client, headers, "s-mentor", today, start)
 
     seen = {}
 
@@ -239,7 +246,7 @@ def test_the_mentor_is_told_the_week_has_not_started(client, monkeypatch):
 
     out = client.post("/chat", json={"message": "what do I do tomorrow?", "session_id": "s-mentor", "user_id": uid, "timezone": "UTC"}, headers=headers).json()
     assert out.get("plan") is None
-    assert "STARTS ON" in seen["system"] and "in 3 days" in seen["system"]
+    assert "STARTS ON" in seen["system"] and f"in {days_out} days" in seen["system"]
 
 
 # ─── "When do you start?" asked with the setup answers ──────────────────────
