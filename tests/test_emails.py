@@ -389,20 +389,26 @@ def test_review_note_waits_for_a_week_that_is_still_running(client, monkeypatch)
 
 # ─── the voice: lines picked by the data, never repeated, Hinglish in India ─
 
-def test_hinglish_in_india_english_elsewhere():
+def test_english_everywhere_until_hinglish_is_switched_on():
+    import app.email_copy as ec
     from app.email_copy import lang_for, pick_morning
 
-    assert lang_for("Asia/Kolkata") == "hi" and lang_for("Asia/Calcutta") == "hi"
-    assert lang_for("Europe/Berlin") == "en" and lang_for(None) == "en"
+    # The user wants every email in English; the Hinglish lines wait behind a switch.
+    assert lang_for("Asia/Kolkata") == "en" and lang_for("Europe/Berlin") == "en" and lang_for(None) == "en"
+    assert ec.HINGLISH is False
     ctx = {"name": "Shubham Mishra", "task_title": "After breakfast — warm-up with a C-major scale (5 min), then two bars of Twinkle.", "idx": 1, "total": 7, "week": 2, "day": "Monday"}
-    hi = pick_morning(ctx, "hi", [], "2026-10-26")
-    en = pick_morning(ctx, "en", [], "2026-10-26")
-    assert hi["sit"] == "first_day" and en["sit"] == "first_day"
-    assert hi["subject"] == "Day 1, Shubham. Pehla din sabse aasaan."
-    assert en["subject"] == "Day 1, Shubham. The easy one."
+    en = pick_morning(ctx, lang_for("Asia/Kolkata"), [], "2026-10-26")
+    assert en["sit"] == "first_day"
+    assert en["subject"] == "Day 1, Shubham. Nobody's judging. Yet."
+    assert en["headline"] == "Today's job: start. That's the whole job."
     # The task is shortened to its first clause, stage direction dropped.
-    assert "Warm-up with a C-major scale" in hi["line"] and "After breakfast" not in hi["line"]
-    assert len(hi["subject"]) <= 48 and len(en["subject"]) <= 48
+    assert "Warm-up with a C-major scale" in en["line"] and "After breakfast" not in en["line"]
+    assert len(en["subject"]) <= 48
+    # Every English subject fits a phone notification.
+    for lib in (ec.MORNING, ec.RECOVERY, ec.EVENING, ec.REVIEW):
+        for e in lib:
+            if e["lang"] == "en":
+                assert len(e["s"]) <= 52, e["s"]
 
 
 def test_the_hook_follows_the_data_and_rotates():
@@ -423,7 +429,7 @@ def test_the_hook_follows_the_data_and_rotates():
     class U: email_copy_recent = None
     u = U()
     first = pick_morning(dict(base, idx=3, day="Thursday", streak=3), "en", [], "2026-10-29")
-    assert first["sit"] == "streak"
+    assert first["sit"] == "streak" and first["subject"] == "3 days in. Don't you dare stop now, Priya."
     remember(u, first, "2026-10-29")
     recent = json.loads(u.email_copy_recent)
     second = pick_morning(dict(base, idx=4, day="Friday", streak=4), "en", recent, "2026-10-30")
