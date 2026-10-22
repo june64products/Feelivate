@@ -45,6 +45,9 @@ class User(Base):
     # "Your review is in": `<session_id>:<week_start>` of the last weekly
     # review that was emailed, so each finished week is announced once.
     last_review_email_key = Column(String, nullable=True)
+    # Which email lines went out recently (JSON, newest first), so no line
+    # repeats within two weeks and no hook is used two mornings running.
+    email_copy_recent = Column(Text, nullable=True)
 
 class UserConsent(Base):
     """

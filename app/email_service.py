@@ -27,6 +27,7 @@ import resend
 from loguru import logger
 
 from .journal_text import said_verbatim, snippet, strongest_sentence
+from .email_copy import lang_for, pick_evening, pick_morning, pick_recovery, pick_review, recent_for, remember, short_task
 
 # ── Resend init ──────────────────────────────────────────────────────────────
 resend.api_key = os.getenv("RESEND_API_KEY", "")
@@ -284,12 +285,17 @@ def _mentor_read(user_name, goal, journal, task_title, task_description, day_lab
     one_liner = (journal.get("one_liner") or "").strip()
     name = (user_name or "there").split()[0]
 
+    # The task's opening clause, for a sentence that names it in passing.
+    task_short = re.split(r"[.;—–]\s|\s\(", (task_title or "").strip(), maxsplit=1)[0].strip().rstrip(".,")
+    if len(task_short) > 80:
+        task_short = snippet(task_short, 80)
+
     def _fallback():
         felt = f"{emotion} at {score}/10" if emotion and score else (emotion or "logged")
         read = f"Last night read {felt}."
         if one_liner:
             read += f" {one_liner.rstrip('.')}."
-        read += f" Today picks up from there: {task_title.rstrip('.')}."
+        read += f" Today picks up from there: {task_short or 'today’s task'}."
         return {"their_line": their_line, "read": read, "hook": None}
 
     if not transcript:
@@ -314,8 +320,13 @@ Rules:
 - Also write the subject line of this morning's email: at most 42 characters, one specific thing from the note said plainly — the thing they struggled with, the idea they had, the word they used. It should only make sense to {name}. No praise, no exclamation marks, no emoji, no "Day 3", no "Good morning". Examples of the shape (do not copy): "About your ring finger, {name}" · "The metronome idea — yes, today" · "Sunday's catch-up had a cost".
 
 Respond with ONLY valid JSON: {{"their_line": "<exact sentence from the note>", "read": "<2-3 sentences>", "hook": "<subject line, 42 characters at most>"}}"""
-        raw = call_llm(prompt, system="You write short, specific morning notes. Output raw JSON only.", temperature=0.5, max_tokens=400)
+        # gpt-oss is a reasoning model: its hidden reasoning counts against
+        # max_tokens, and at 400 the visible answer came back empty. The
+        # answer itself is ~120 tokens; the rest is headroom for thinking.
+        raw = call_llm(prompt, system="You write short, specific morning notes. Output raw JSON only.", temperature=0.5, max_tokens=1600)
         raw = re.sub(r'<think>.*?</think>', '', raw or '', flags=re.DOTALL)
+        if not raw.strip():
+            raise ValueError("model returned no text")
         raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
         start, end = raw.find("{"), raw.rfind("}") + 1
         data = json.loads(raw[start:end]) if start != -1 and end > start else {}
@@ -429,6 +440,7 @@ def build_daily_email(
     shield_note: str = "",
     rating_urls: Optional[Tuple[str, str]] = None,
     reply_to: str = "",
+    copy: Optional[dict] = None,
 ) -> Tuple[str, str, str]:
     """
     The morning email: a reply to last night's note, then today's task.
@@ -446,43 +458,53 @@ def build_daily_email(
     progress = f"Day {day_index} of {day_count}" if day_index and day_count else day_label
     week_sub = week_label or week_theme
 
-    # ── Headline: from the data, never from a model ──
-    if streak >= 2:
-        headline = f"{streak} in a row, {_esc(name)}."
-    elif noted and day_index:
-        headline = f"Noted, {_esc(name)}. On to day {day_index}."
-    elif noted:
-        headline = f"Noted, {_esc(name)}. On to today."
-    elif day_index and day_count:
-        headline = f"Day {day_index} of {day_count}, {_esc(name)}."
+    line = ""
+    cta_label = "Open today &#8594;"
+    if copy:
+        # ── The voice: a line written for this situation (email_copy.py),
+        #    filled with their own numbers. Subject = the notification. ──
+        subject = copy["subject"]
+        headline = _esc(copy["headline"])
+        line = _esc(copy["line"])
+        cta_label = _esc(copy["cta"]) + " &#8594;"
+        preheader = (copy["line"] or task_title)[:110]
     else:
-        headline = f"{_esc(day_label)}, {_esc(name)}."
+        # ── No library line (older callers / tests): headline from the data ──
+        if streak >= 2:
+            headline = f"{streak} in a row, {_esc(name)}."
+        elif noted and day_index:
+            headline = f"Noted, {_esc(name)}. On to day {day_index}."
+        elif noted:
+            headline = f"Noted, {_esc(name)}. On to today."
+        elif day_index and day_count:
+            headline = f"Day {day_index} of {day_count}, {_esc(name)}."
+        else:
+            headline = f"{_esc(day_label)}, {_esc(name)}."
 
-    # ── Subject: the mentor's hook from their note, else their own words,
-    #    then the streak, then the day. This is the notification line. ──
-    day_up = f"day {day_index} is up" if day_index else "today is up"
-    hook = (mentor or {}).get("hook") if noted else None
-    if hook:
-        subject = hook
-    elif noted and mentor and mentor.get("their_line"):
-        subject = f"“{snippet(mentor['their_line'], 48)}” — {day_up}"
-    elif streak >= 2:
-        subject = f"{streak} days in a row, {name} — {day_up}"
-    elif day_index and day_count:
-        subject = f"Day {day_index} of {day_count}, {name} — today's one thing"
-    else:
-        subject = f"{day_label}, {name} — today's one thing"
-    # The preview line under the subject: the mentor's first sentence when
-    # there is one (it is about them), otherwise today's task.
-    read_first = ""
-    if noted and mentor and mentor.get("read"):
-        read_first = re.split(r"(?<=[.!?])\s+", mentor["read"].strip(), maxsplit=1)[0]
-    preheader = (read_first or task_title)[:110]
+        # Subject: the mentor's hook from their note, else their own words,
+        # then the streak, then the day.
+        day_up = f"day {day_index} is up" if day_index else "today is up"
+        hook = (mentor or {}).get("hook") if noted else None
+        if hook:
+            subject = hook
+        elif noted and mentor and mentor.get("their_line"):
+            subject = f"“{snippet(mentor['their_line'], 48)}” — {day_up}"
+        elif streak >= 2:
+            subject = f"{streak} days in a row, {name} — {day_up}"
+        elif day_index and day_count:
+            subject = f"Day {day_index} of {day_count}, {name} — today's one thing"
+        else:
+            subject = f"{day_label}, {name} — today's one thing"
+        read_first = ""
+        if noted and mentor and mentor.get("read"):
+            read_first = re.split(r"(?<=[.!?])\s+", mentor["read"].strip(), maxsplit=1)[0]
+        preheader = (read_first or task_title)[:110]
 
     rows = f"""
         <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
           {_eyebrow(f'Week {week_number} &middot; {progress}' + (f' &middot; {today_str}' if today_str else ''))}
           <h1 class="h1" style="color:{INK};font-size:30px;font-weight:800;margin:0;line-height:1.15;letter-spacing:-0.02em;font-family:{FONT};">{headline}</h1>
+          {f'<p style="color:{SUB};font-size:16px;margin:12px 0 0;line-height:1.55;font-family:{FONT};">{line}</p>' if line else ''}
           {f'<p style="color:{MUTED};font-size:12.5px;margin:8px 0 0;font-family:{FONT};">{_esc(week_sub)}</p>' if week_sub else ''}
         </td></tr>"""
 
@@ -557,7 +579,7 @@ def build_daily_email(
     )
     rows += f"""
         <tr><td class="px" style="padding:26px 36px 24px;text-align:center;">
-          {_btn_flame('Open today &#8594;', APP_URL + '/app')}
+          {_btn_flame(cta_label, APP_URL + '/app')}
           {done_link}
         </td></tr>"""
 
@@ -584,6 +606,7 @@ def send_daily_task_email(
     week_dots=None,
     streak: int = 0,
     yesterday: Optional[dict] = None,
+    copy: Optional[dict] = None,
 ) -> bool:
     if not resend.api_key:
         logger.error("RESEND_API_KEY not set.")
@@ -605,7 +628,7 @@ def send_daily_task_email(
         week_number=week_number, today_str=today_str, week_theme=week_theme, week_label=week_label,
         day_index=day_index, day_count=day_count, week_dots=week_dots, streak=streak,
         yesterday=yesterday, mentor=mentor, checkin_url=checkin_url, shield_note=shield_note,
-        rating_urls=rating_urls, reply_to=reply_to,
+        rating_urls=rating_urls, reply_to=reply_to, copy=copy,
     )
     html = _shell(preheader, rows, manage_label="Manage alerts")
 
@@ -630,12 +653,21 @@ def send_daily_task_email(
 # ║  Recovery Email — "don't miss twice"                         ║
 # ╚══════════════════════════════════════════════════════════════╝
 
+def build_recovery_copy_preview(copy: Optional[dict]) -> Tuple[str, str]:
+    """(subject, headline) the recovery email will carry for this copy — for tests and previews."""
+    return (
+        (copy or {}).get("subject") or "One missed day changes nothing — today's the one that matters",
+        (copy or {}).get("headline") or "One missed day changes nothing.",
+    )
+
+
 def send_recovery_email(
     to_email: str,
     user_name: str,
     task_title: str,
     commitment_why: str = "",
     checkin_url: str = "",
+    copy: Optional[dict] = None,
 ) -> bool:
     """The email a missed day earns INSTEAD of the normal daily one.
 
@@ -649,6 +681,9 @@ def send_recovery_email(
         return False
 
     name = (user_name or "there").split()[0]
+    subject = (copy or {}).get("subject") or "One missed day changes nothing — today's the one that matters"
+    headline = _esc((copy or {}).get("headline") or "One missed day changes nothing.")
+    line = _esc((copy or {}).get("line") or "")
 
     why_html = ""
     if (commitment_why or "").strip():
@@ -672,7 +707,8 @@ def send_recovery_email(
     rows = f"""
         <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
           {_eyebrow('Recovery &middot; don&#39;t miss twice')}
-          <h1 class="h1" style="color:{INK};font-size:27px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-0.02em;font-family:{FONT};">One missed day changes nothing.</h1>
+          <h1 class="h1" style="color:{INK};font-size:27px;font-weight:800;margin:0;line-height:1.2;letter-spacing:-0.02em;font-family:{FONT};">{headline}</h1>
+          {f'<p style="color:{SUB};font-size:16px;margin:12px 0 0;line-height:1.55;font-family:{FONT};">{line}</p>' if line else ''}
         </td></tr>
 
         <tr><td class="px" style="padding:24px 36px 18px;">
@@ -696,13 +732,13 @@ def send_recovery_email(
           {cta_html}
         </td></tr>"""
 
-    html = _shell("One missed day changes nothing — today's the one that matters", rows)
+    html = _shell(subject, rows)
 
     try:
         resend.Emails.send({
             "from": f"Feelivate <{FROM_EMAIL}>",
             "to": [to_email],
-            "subject": "One missed day changes nothing — today's the one that matters",
+            "subject": subject,
             "html": html,
         })
         logger.info(f"Recovery email sent → {_mask_email(to_email)}")
@@ -1120,45 +1156,54 @@ def _reminder_email(
         return False
 
 
-def build_evening_email(user_name: str, task_title: str, streak: int = 0, streak_at_risk: bool = False) -> dict:
+def build_evening_email(user_name: str, task_title: str, streak: int = 0, streak_at_risk: bool = False, copy: Optional[dict] = None) -> dict:
     """
     The one evening note. Asks how the day went, names the day's task, and —
     only when a live streak would end tonight — says so in one line.
     Returns {"subject", "eyebrow", "heading", "body_lines", "cta_label",
-    "accent", "footer_note"} for `_reminder_email`.
+    "accent", "footer_note"} for `_reminder_email`. With `copy` (a line from
+    email_copy.py) the subject, heading, first line and button are its.
     """
     name = (user_name or "there").split()[0]
     streak = int(streak or 0)
     body = []
-    if task_title:
-        body.append(f"Today was: <strong style=\"color:{INK};\">{_esc(task_title.strip().rstrip('.'))}</strong>.")
-    body.append(
-        "Say how it actually went &#8212; done, half-done, or not at all. One minute, out loud. "
-        "Your mentor reads every word before tomorrow morning&#8217;s note."
-    )
     footer = ""
+    streak_said = False
+    if copy:
+        if copy.get("line"):
+            body.append(_esc(copy["line"]))
+        streak_said = copy.get("sit") == "streak_risk"
+    if task_title:
+        body.append(f"Today was: <strong style=\"color:{INK};\">{_esc(short_task(task_title, 90))}</strong>.")
+    if not copy:
+        body.append(
+            "Say how it actually went &#8212; done, half-done, or not at all. One minute, out loud. "
+            "Your mentor reads every word before tomorrow morning&#8217;s note."
+        )
     if streak_at_risk and streak >= 1:
-        day_word = "day" if streak == 1 else "days"
-        body.append(f"{streak} {day_word} in a row. Tonight&#8217;s note keeps it.")
+        if not streak_said:
+            day_word = "day" if streak == 1 else "days"
+            body.append(f"{streak} {day_word} in a row. Tonight&#8217;s note keeps it.")
         footer = "Streaks are a motivational feature, nothing more &mdash; nothing is lost if one breaks."
-    if streak_at_risk and streak >= 2:
-        subject = f"{streak} days in a row — one minute keeps it"
+    if copy:
+        subject, heading, cta = copy["subject"], _esc(copy["headline"]), _esc(copy["cta"])
     else:
-        subject = f"How did today go, {name}?"
+        subject = f"{streak} days in a row — one minute keeps it" if (streak_at_risk and streak >= 2) else f"How did today go, {name}?"
+        heading, cta = f"{_esc(name)}, how did today actually go?", "Record tonight's note"
     return {
         "subject": subject,
         "eyebrow": "Tonight &middot; one minute",
-        "heading": f"{_esc(name)}, how did today actually go?",
+        "heading": heading,
         "body_lines": body,
-        "cta_label": "Record tonight's note",
+        "cta_label": cta,
         "accent": ACCENT,
         "footer_note": footer,
     }
 
 
-def send_evening_email(to_email: str, user_name: str, task_title: str, streak: int = 0, streak_at_risk: bool = False) -> bool:
-    """20:30 local — today's voice note hasn't been recorded."""
-    e = build_evening_email(user_name, task_title, streak, streak_at_risk)
+def send_evening_email(to_email: str, user_name: str, task_title: str, streak: int = 0, streak_at_risk: bool = False, copy: Optional[dict] = None) -> bool:
+    """Evening, local — today's voice note hasn't been recorded."""
+    e = build_evening_email(user_name, task_title, streak, streak_at_risk, copy=copy)
     return _reminder_email(
         to_email=to_email,
         subject=e["subject"],
@@ -1212,6 +1257,41 @@ def _has_active_plan(db, user_id: str) -> bool:
     # streak reminders until it begins.
     starts_on = getattr(session, "plan_starts_on", None)
     return not (starts_on and starts_on > _d.today().isoformat())
+
+
+def _evening_time_for(db, user, now_local) -> str:
+    """
+    When this person usually records, minus half an hour: the median local
+    time of their last ten journals, kept between 18:00 and 22:30, rounded
+    to five minutes. Someone who always records at 22:00 is asked at 21:30,
+    not at a fixed 20:30. Fewer than three journals → EVENING_REMINDER_TIME.
+    """
+    if not (17 <= now_local.hour <= 23):
+        return EVENING_REMINDER_TIME  # nothing to compute outside the evening
+    try:
+        from .models import VoiceJournal
+        rows = (
+            db.query(VoiceJournal.created_at)
+            .filter(VoiceJournal.user_id == user.id)
+            .order_by(VoiceJournal.created_at.desc())
+            .limit(10)
+            .all()
+        )
+        mins = []
+        for (ts,) in rows:
+            if not ts:
+                continue
+            local = (ts.replace(tzinfo=pytz.utc) if ts.tzinfo is None else ts).astimezone(now_local.tzinfo)
+            mins.append(local.hour * 60 + local.minute)
+        if len(mins) < 3:
+            return EVENING_REMINDER_TIME
+        mins.sort()
+        m = mins[len(mins) // 2] - 30
+        m = max(18 * 60, min(22 * 60 + 30, m))
+        m -= m % 5
+        return f"{m // 60:02d}:{m % 60:02d}"
+    except Exception:
+        return EVENING_REMINDER_TIME
 
 
 def _streak_at_risk(db, user_id: str, now_local) -> int:
@@ -1281,7 +1361,7 @@ def run_evening_reminders(now_utc: Optional[datetime] = None):
                 now_local = now_utc.astimezone(user_tz)
                 today = now_local.strftime("%Y-%m-%d")
 
-                since = _minutes_since(now_local, EVENING_REMINDER_TIME)
+                since = _minutes_since(now_local, _evening_time_for(db, user, now_local))
                 if since is None or not (0 <= since < SEND_GRACE_MINUTES):
                     continue
                 if user.last_journal_reminder_date == today:
@@ -1298,8 +1378,15 @@ def run_evening_reminders(now_utc: Optional[datetime] = None):
                     continue  # between weeks: the journal is locked, nothing to record
 
                 streak = _streak_at_risk(db, user.id, now_local)
-                if send_evening_email(recipient, user.name, task_info["task_title"], streak=streak, streak_at_risk=streak > 0):
+                lang = lang_for(tz_str)
+                copy = pick_evening(
+                    {"name": user.name, "task_title": task_info["task_title"], "streak": streak,
+                     "last_day": bool(task_info.get("day_index") and task_info.get("day_count") and task_info["day_index"] == task_info["day_count"])},
+                    lang, recent_for(user), today,
+                )
+                if send_evening_email(recipient, user.name, task_info["task_title"], streak=streak, streak_at_risk=streak > 0, copy=copy):
                     user.last_journal_reminder_date = today
+                    remember(user, copy, today)
                     db.commit()
 
             except Exception as e:
@@ -1332,7 +1419,20 @@ def _review_headline(report: dict) -> str:
     return line
 
 
-def build_review_email(user_name: str, report: dict, week_number: int, week_start: str, week_end: str, has_next_plan: bool = False) -> Tuple[str, str, str]:
+def review_teaser(report: dict, lang: str = "en") -> str:
+    """One line that says what's inside without giving it away."""
+    best = [str(d) for d in (report.get("best_days") or []) if d][:1]
+    worst = [str(d) for d in (report.get("worst_days") or []) if d][:1]
+    if best and worst and best[0] != worst[0]:
+        return (f"{best[0]} hero, {worst[0]} zero. Poora scene app mein." if lang == "hi"
+                else f"{best[0]} hero, {worst[0]} zero. The whole story's in the app.")
+    insight = bool((report.get("hidden_insight") or "").strip())
+    if lang == "hi":
+        return "Mentor ne har note padh ke day by day likha" + (", aur ek pattern bhi pakda" if insight else "") + ". App mein."
+    return "Your mentor read every note and wrote the week up day by day" + (", pattern included" if insight else "") + ". It's in the app."
+
+
+def build_review_email(user_name: str, report: dict, week_number: int, week_start: str, week_end: str, has_next_plan: bool = False, copy: Optional[dict] = None) -> Tuple[str, str, str]:
     """
     The announcement, not the review: the headline, the badge, three numbers,
     one of their own lines, and the door. Everything else is in the app.
@@ -1355,7 +1455,15 @@ def build_review_email(user_name: str, report: dict, week_number: int, week_star
     insight = bool((report.get("hidden_insight") or "").strip()) and not quiet
 
     # The notification line: a reason to look, with the badge as the tag.
-    if quiet:
+    line = ""
+    cta = f"Read your Week {week_number} review"
+    headline_shown = headline
+    if copy:
+        subject = copy["subject"]
+        headline_shown = copy.get("headline") or headline
+        line = copy.get("line") or ""
+        cta = copy.get("cta") or cta
+    elif quiet:
         subject = f"Week {week_number} went quiet — your review is in"
     elif insight:
         subject = f"{name}, your week had a pattern" + (f" · {badge}" if badge else "")
@@ -1363,7 +1471,7 @@ def build_review_email(user_name: str, report: dict, week_number: int, week_star
         subject = f"Week {week_number}: {badge}. Here's why."
     else:
         subject = f"Your Week {week_number} review is in"
-    preheader = headline
+    preheader = line or headline
 
     kpi = "".join(
         f'<td width="33%" style="padding:12px 10px;border:1px solid {BORDER};border-radius:12px;background:{PANEL};text-align:center;">'
@@ -1375,7 +1483,8 @@ def build_review_email(user_name: str, report: dict, week_number: int, week_star
     rows = f"""
         <tr><td class="px" style="padding:30px 36px 22px;border-bottom:1px solid {BORDER};">
           {_eyebrow(f'Week {week_number} review' + (f' &middot; {span}' if span else ''))}
-          <h1 class="h1" style="color:{INK};font-size:28px;font-weight:800;margin:0 0 10px;line-height:1.15;letter-spacing:-0.02em;font-family:{FONT};">{_esc(headline)}</h1>
+          <h1 class="h1" style="color:{INK};font-size:28px;font-weight:800;margin:0 0 10px;line-height:1.15;letter-spacing:-0.02em;font-family:{FONT};">{_esc(headline_shown)}</h1>
+          {f'<p style="color:{SUB};font-size:16px;margin:0 0 12px;line-height:1.55;font-family:{FONT};">{_esc(line)}</p>' if line else ''}
           {f'<span style="display:inline-block;padding:5px 11px;border:1.5px solid {ACCENT};border-radius:6px;color:{ACCENT};font-size:10.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;font-family:{FONT};">&#9733; {_esc(badge)}</span>' if badge else ''}
         </td></tr>
         <tr><td class="px" style="padding:20px 36px 0;">
@@ -1398,7 +1507,8 @@ def build_review_email(user_name: str, report: dict, week_number: int, week_star
             </td></tr>
           </table>
         </td></tr>"""
-        rows += f"""
+        if not line:
+            rows += f"""
         <tr><td class="px" style="padding:18px 36px 0;">
           <p style="color:{SUB};font-size:14.5px;margin:0;line-height:1.7;font-family:{FONT};">Your mentor read every note from the week and wrote it up day by day{' &#8212; including one pattern you probably haven&#8217;t noticed' if insight else ''}. It&#8217;s in the app, in full.</p>
         </td></tr>"""
@@ -1409,17 +1519,17 @@ def build_review_email(user_name: str, report: dict, week_number: int, week_star
                      f'Week {week_number + 1} gets built from this review &#8212; plan it when you&#8217;re ready.</p>')
     rows += f"""
         <tr><td class="px" style="padding:26px 36px 32px;text-align:center;">
-          {_btn_dark(f'Read your Week {week_number} review &#8594;', APP_URL + '/app?open=archive')}
+          {_btn_dark(_esc(cta) + ' &#8594;', APP_URL + '/app?open=archive')}
           {next_line}
         </td></tr>"""
     return subject, preheader, rows
 
 
-def send_week_review_email(to_email: str, user_name: str, report: dict, week_number: int, week_start: str, week_end: str, has_next_plan: bool = False) -> bool:
+def send_week_review_email(to_email: str, user_name: str, report: dict, week_number: int, week_start: str, week_end: str, has_next_plan: bool = False, copy: Optional[dict] = None) -> bool:
     if not resend.api_key:
         logger.error("RESEND_API_KEY not set.")
         return False
-    subject, preheader, rows = build_review_email(user_name, report, week_number, week_start, week_end, has_next_plan)
+    subject, preheader, rows = build_review_email(user_name, report, week_number, week_start, week_end, has_next_plan, copy=copy)
     html = _shell(preheader, rows, manage_label="Manage alerts")
     try:
         resend.Emails.send({
@@ -1514,9 +1624,19 @@ def run_week_review_emails(now_utc: Optional[datetime] = None):
                         if res.get("status") not in ("generated", "cached") or not report:
                             continue  # not complete yet (Sunday's note still possible) → tomorrow
                         has_next = (session.current_week or 0) > wk
-                        if send_week_review_email(recipient, user.name, report, wk, ws, we, has_next_plan=has_next):
+                        lang = lang_for(tz_str)
+                        badge = (report.get("week_badge") or {}).get("name") if isinstance(report.get("week_badge"), dict) else ""
+                        copy = pick_review(
+                            {"name": user.name, "week": wk, "done": report.get("days_done") or 0,
+                             "total": report.get("past_days_count") or 7, "badge": badge or "",
+                             "headline": _review_headline(report), "teaser": review_teaser(report, lang),
+                             "quiet": bool(report.get("quiet_week"))},
+                            lang, recent_for(user), today_iso,
+                        )
+                        if send_week_review_email(recipient, user.name, report, wk, ws, we, has_next_plan=has_next, copy=copy):
                             sent_keys = (sent_keys + [key])[-12:]
                             user.last_review_email_key = ",".join(sent_keys)
+                            remember(user, copy, today_iso)
                             db.commit()
                             announced = True
                             break
@@ -1737,14 +1857,20 @@ def run_daily_email_scheduler():
                     and yesterday_missed(db, user.id, today_date_str)
                     and user.last_recovery_email_date != today_date_str
                 ):
+                    r_copy = pick_recovery(
+                        {"name": user.name, "task_title": task_info["task_title"]},
+                        lang_for(tz_str), recent_for(user), today_date_str,
+                    )
                     success = send_recovery_email(
                         to_email=recipient,
                         user_name=user.name or "there",
                         task_title=task_info["task_title"],
                         commitment_why=task_info.get("commitment_why", ""),
                         checkin_url=checkin_url,
+                        copy=r_copy,
                     )
                     if success:
+                        remember(user, r_copy, today_date_str)
                         user.last_recovery_email_date = today_date_str
                         user.last_daily_email_date = today_date_str
                         db.commit()
@@ -1756,6 +1882,25 @@ def run_daily_email_scheduler():
                 # shows the week as it stands; both come from this user's
                 # own rows, nothing is written for them.
                 yesterday, streak_n, week_dots = _morning_context(db, user, task_info, now_local)
+
+                # ── The voice: which line this morning gets (email_copy.py) ──
+                dots = week_dots or []
+                lang = lang_for(tz_str)
+                m_copy = pick_morning(
+                    {
+                        "name": user.name, "task_title": task_info["task_title"], "streak": streak_n,
+                        "idx": task_info.get("day_index"), "total": task_info.get("day_count"),
+                        "done": sum(1 for _l, st in dots if st in ("done", "shielded")),
+                        "past": sum(1 for _l, st in dots if st in ("done", "shielded", "missed")),
+                        "day": now_local.strftime("%A"), "week": task_info["week_number"],
+                        "noted": bool(yesterday and (yesterday.get("transcript") or "").strip()),
+                        "ticked": bool(yesterday and yesterday.get("checkin") in ("done", "shielded")),
+                        "score": (yesterday or {}).get("emotion_score"),
+                        "emotion": (yesterday or {}).get("emotion_label") or "",
+                        "their_words": snippet(strongest_sentence((yesterday or {}).get("transcript") or ""), 90) if yesterday else "",
+                    },
+                    lang, recent_for(user), today_date_str,
+                )
 
                 success = send_daily_task_email(
                     to_email=recipient,
@@ -1777,10 +1922,12 @@ def run_daily_email_scheduler():
                     week_dots=week_dots,
                     streak=streak_n,
                     yesterday=yesterday,
+                    copy=m_copy,
                 )
 
                 if success:
                     user.last_daily_email_date = today_date_str
+                    remember(user, m_copy, today_date_str)
                     db.commit()
                     sent_count += 1
 

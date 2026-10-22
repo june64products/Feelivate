@@ -160,6 +160,7 @@ def init_db():
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS shield_run_milestone INTEGER DEFAULT 0;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_recovery_email_date VARCHAR;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_review_email_key VARCHAR;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_copy_recent TEXT;",
                 # ── sessions ──
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS title VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;",
@@ -226,6 +227,7 @@ def init_db():
                 "ALTER TABLE users ADD COLUMN shield_run_milestone INTEGER DEFAULT 0;",
                 "ALTER TABLE users ADD COLUMN last_recovery_email_date VARCHAR;",
                 "ALTER TABLE users ADD COLUMN last_review_email_key VARCHAR;",
+                "ALTER TABLE users ADD COLUMN email_copy_recent TEXT;",
                 "ALTER TABLE sessions ADD COLUMN title VARCHAR;",
                 "ALTER TABLE sessions ADD COLUMN updated_at TIMESTAMP;",
                 "ALTER TABLE sessions ADD COLUMN history TEXT;",

@@ -251,15 +251,20 @@ def test_evening_note_goes_once_at_2030_only_when_the_journal_is_missing(client,
     db.close()
 
     sent = []
-    monkeypatch.setattr(es, "send_evening_email", lambda to, name, task, streak=0, streak_at_risk=False: sent.append((to, task, streak, streak_at_risk)) or True)
+    monkeypatch.setattr(es, "send_evening_email", lambda to, name, task, streak=0, streak_at_risk=False, copy=None: sent.append((to, task, streak, streak_at_risk, copy)) or True)
 
     at_2031 = datetime.combine(date.today(), datetime.min.time(), tzinfo=pytz.utc).replace(hour=20, minute=31)
     es.run_evening_reminders(now_utc=at_2031.replace(hour=19))   # too early
     assert sent == []
     es.run_evening_reminders(now_utc=at_2031)
     assert len(sent) == 1
-    to, task, streak, at_risk = sent[0]
+    to, task, streak, at_risk, copy = sent[0]
     assert to == "evening@example.com" and task.startswith("Piano") and streak == 3 and at_risk is True
+    # A UTC user gets the English streak line, with their number in it, and the pick is remembered.
+    assert copy["sit"] == "streak_risk" and copy["id"].endswith(".en.1") and "3" in copy["subject"]
+    db = SessionLocal()
+    assert json.loads(db.query(User).filter(User.id == uid).first().email_copy_recent)[0]["id"] == copy["id"]
+    db.close()
     es.run_evening_reminders(now_utc=at_2031.replace(minute=35))  # same evening: once only
     assert len(sent) == 1
 
@@ -339,7 +344,7 @@ def test_review_note_goes_once_the_week_is_over_and_only_once(client, monkeypatc
     db.close()
 
     sent = []
-    monkeypatch.setattr(es, "send_week_review_email", lambda to, name, report, wk, ws, we, has_next_plan=False: sent.append((to, wk, ws, has_next_plan)) or True)
+    monkeypatch.setattr(es, "send_week_review_email", lambda to, name, report, wk, ws, we, has_next_plan=False, copy=None: sent.append((to, wk, ws, has_next_plan)) or True)
     # "Last Sunday" is up to six days ago depending on the weekday this runs on.
     monkeypatch.setattr(es, "REVIEW_EMAIL_MAX_AGE_DAYS", 7)
 
@@ -380,6 +385,76 @@ def test_review_note_waits_for_a_week_that_is_still_running(client, monkeypatch)
     if date.today().weekday() == 6:
         pytest.skip("on a Sunday this week's end is today; the running-week case needs another day")
     es.run_week_review_emails(now_utc=at_2131)
+
+
+# ─── the voice: lines picked by the data, never repeated, Hinglish in India ─
+
+def test_hinglish_in_india_english_elsewhere():
+    from app.email_copy import lang_for, pick_morning
+
+    assert lang_for("Asia/Kolkata") == "hi" and lang_for("Asia/Calcutta") == "hi"
+    assert lang_for("Europe/Berlin") == "en" and lang_for(None) == "en"
+    ctx = {"name": "Shubham Mishra", "task_title": "After breakfast — warm-up with a C-major scale (5 min), then two bars of Twinkle.", "idx": 1, "total": 7, "week": 2, "day": "Monday"}
+    hi = pick_morning(ctx, "hi", [], "2026-10-26")
+    en = pick_morning(ctx, "en", [], "2026-10-26")
+    assert hi["sit"] == "first_day" and en["sit"] == "first_day"
+    assert hi["subject"] == "Day 1, Shubham. Pehla din sabse aasaan."
+    assert en["subject"] == "Day 1, Shubham. The easy one."
+    # The task is shortened to its first clause, stage direction dropped.
+    assert "Warm-up with a C-major scale" in hi["line"] and "After breakfast" not in hi["line"]
+    assert len(hi["subject"]) <= 48 and len(en["subject"]) <= 48
+
+
+def test_the_hook_follows_the_data_and_rotates():
+    from app.email_copy import pick_morning, remember
+
+    base = {"name": "Priya", "task_title": "Four bars of Twinkle", "total": 7, "week": 1, "done": 2, "past": 3}
+    # A rough night outranks a running streak; a good night quotes their words.
+    low = pick_morning(dict(base, idx=4, day="Thursday", streak=3, noted=True, score=3, emotion="drained"), "en", [], "2026-10-29")
+    assert low["sit"] == "after_low" and "3/10" in low["subject"]
+    high = pick_morning(dict(base, idx=4, day="Thursday", streak=3, noted=True, score=8, emotion="motivated", their_words="it actually sounded like music"), "en", [], "2026-10-29")
+    assert high["sit"] == "after_high" and "it actually sounded like music" in high["line"]
+    # Day 7 of a streak is a milestone; a Wednesday with nothing else is the midweek check.
+    assert pick_morning(dict(base, idx=7, day="Sunday", streak=7), "hi", [], "2026-11-01")["sit"] == "milestone"
+    wed = pick_morning(dict(base, idx=3, day="Wednesday", streak=0), "hi", [], "2026-10-28")
+    assert wed["sit"] == "wednesday" and "2/3" in wed["subject"] and "tum aage ho" in wed["headline"]
+
+    # The same hook never lands two mornings running, and a line is not repeated within two weeks.
+    class U: email_copy_recent = None
+    u = U()
+    first = pick_morning(dict(base, idx=3, day="Thursday", streak=3), "en", [], "2026-10-29")
+    assert first["sit"] == "streak"
+    remember(u, first, "2026-10-29")
+    recent = json.loads(u.email_copy_recent)
+    second = pick_morning(dict(base, idx=4, day="Friday", streak=4), "en", recent, "2026-10-30")
+    assert second["sit"] == "friday", "yesterday was the streak hook, so today another hook speaks"
+    remember(u, second, "2026-10-30")
+    third = pick_morning(dict(base, idx=5, day="Saturday", streak=5), "en", json.loads(u.email_copy_recent), "2026-10-31")
+    assert third["sit"] == "streak" and third["id"] != first["id"], "back to the streak, but a different line"
+
+
+def test_library_lines_render_into_the_emails():
+    from app.email_copy import pick_evening, pick_recovery, pick_review
+    from app.email_service import build_daily_email, build_evening_email, build_recovery_copy_preview, build_review_email
+
+    copy = {"id": "x", "sit": "streak", "subject": "3 din ho gaye. Aaj rukne ka mann? Nahi na.", "headline": "3 in a row. Chain mat todo.", "line": "Aaj: Four bars. Kal se chhota lagega, promise.", "cta": "Chain jaari rakho"}
+    subject, preheader, rows = build_daily_email(user_name="Shubham", day_label="Thursday", task_title="Four bars of Twinkle", task_description="", week_number=1, day_index=4, day_count=7, streak=3, copy=copy)
+    assert subject == copy["subject"] and preheader == copy["line"]
+    assert "3 in a row. Chain mat todo." in rows and "Chain jaari rakho" in rows and "Kal se chhota lagega" in rows
+
+    ev = pick_evening({"name": "Shubham", "task_title": "Four bars", "streak": 5}, "hi", [], "2026-10-29")
+    e = build_evening_email("Shubham", "Four bars", streak=5, streak_at_risk=True, copy=ev)
+    assert e["subject"] == "5 din ki streak, 11:59 pe gayab." and e["heading"] == "1 minute mein bacha lo."
+    assert not any("in a row" in b for b in e["body_lines"]), "the streak is said once, by the library line"
+
+    rv = pick_review({"name": "Shubham", "week": 1, "done": 4, "total": 7, "badge": "Sunday Sprint", "headline": "4 of 7 days.", "teaser": "Thursday hero, Friday zero. Poora scene app mein."}, "hi", [], "2026-10-25")
+    assert rv["subject"].startswith("Report card aa gaya")
+    subject, _p, rows = build_review_email("Shubham", REPORT, 1, "2026-10-12", "2026-10-18", copy=rv)
+    assert subject == rv["subject"] and "4/7. Sunday Sprint." in rows and "Thursday hero, Friday zero" in rows and "Report card dekho" in rows
+
+    rc = pick_recovery({"name": "Shubham", "task_title": "Four bars"}, "en", [], "2026-10-29")
+    assert rc["sit"] == "missed" and rc["subject"] == "Yesterday's gone. Today isn't."
+    assert build_recovery_copy_preview(rc) == ("Yesterday's gone. Today isn't.", "One miss is nothing. Two is a habit.")
 
 
 # ─── the next-week prompt still reads the whole review (unchanged contract) ─
