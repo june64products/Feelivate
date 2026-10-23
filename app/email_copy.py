@@ -9,7 +9,7 @@ Hinglish for people in India and English elsewhere, with slots for the
 person's own numbers. The model never writes these; it only adds the one
 line that reads last night's note.
 
-The voice is a strict mentor's: witty on a normal day, dark when the
+The voice is a strict mentor's: pointed every day, dark when the
 person slips — a missed day, a skipped note, a streak about to die, a week
 with more misses than days done. The dark lines name the avoidance and
 the excuse ("you weren't busy", "you chose something else"); they never
@@ -84,32 +84,28 @@ MORNING: List[dict] = [
     _e("first_day", "hi", "Day 1, {name}. Pehla din sabse aasaan.", "Aaj sirf shuru karna hai. Bas.", "{task}. Done ka matlab done, perfect nahi.", "Chalo, shuru"),
     _e("first_day", "hi", "Week {week} ka pehla din. Halka rakho.", "Pehla din halka, baaki hafta aasaan.", "Aaj: {task}. Itna hi.", "Aaj ka task dekho"),
     _e("first_day", "hi", "{name}, aaj se ginti shuru.", "Day 1 of {total}. Yahin se chain banti hai.", "{task} — aur aaj raat ek minute bol dena kaisa gaya.", "Shuru karo"),
-    _e("first_day", "en", "Day 1, {name}. Nobody's judging. Yet.", "Today's job: start. That's the whole job.", "{task}. Done beats perfect, every single time.", "Start the clock"),
-    _e("first_day", "en", "Week {week}, Day 1. Fresh page, {name}.", "Clean slate. Don't overthink it.", "Today: {task}. Then go live your life.", "See day one"),
-    _e("first_day", "en", "The count starts today, {name}.", "Day 1 of {total}. Chains start with one link.", "{task}, then one minute tonight on how it went.", "Let's go"),
-
+    _e("first_day", "en", "Day 1, {name}. Everyone starts. Few come back.", "Starting is the easy part. Prove the second day.", "{task}. Done, not pretty.", "Start"),
+    _e("first_day", "en", "Week {week}, Day 1. No excuses on file yet.", "Clean slate. Don't waste it.", "Today: {task}. Then tonight, say it out loud.", "Open day one"),
+    _e("first_day", "en", "Day 1 of {total}, {name}. The excuse list is empty.", "Let's see which list grows: days done, or reasons.", "{task}. One minute tonight on how it went.", "Let's go"),
     # a streak milestone (7, 14, 21…)
     _e("milestone", "hi", "{streak} din. Ab yeh habit hai, {name}.", "{streak} din lagataar. Yeh luck nahi hai.", "Shield unlock: ek bura din ab streak nahi todega. Aaj: {task}.", "Dekho kya unlock hua"),
     _e("milestone", "hi", "Ek hafta poora. Kam log yahan tak aate hain.", "{streak} days. Aise hi log goal poora karte hain.", "Aaj: {task}. Routine ab tumhari hai.", "Aage badho"),
-    _e("milestone", "en", "{streak} days. Is this a habit? Asking for a friend.", "{streak} straight. That's not luck, that's you.", "Shield unlocked: one bad day can't break this now. Today: {task}.", "See what unlocked"),
-    _e("milestone", "en", "A full week, {name}. Most people quit on day 3.", "{streak} days running. Welcome to the rare club.", "Today: {task}. The routine is yours now.", "Keep the run"),
-
+    _e("milestone", "en", "{streak} days. Don't get comfortable, {name}.", "{streak} straight. This is where people relax and lose it.", "Shield unlocked: one bad day won't kill it now. Today: {task}.", "See what unlocked"),
+    _e("milestone", "en", "A full week. Most people quit on day 3.", "{streak} days running. The real test is day {next}.", "Today: {task}. The routine is yours now. Don't drop it.", "Keep the run"),
     # last night was rough (score ≤ 4)
     _e("after_low", "hi", "Kal {score}/10 tha. Aaj sirf 2 minute.", "Bura din tha. Aaj chhota din rakho.", "Bare minimum ready hai: {task} ka 2-minute version, bas.", "2 minute version dekho"),
     _e("after_low", "hi", "Kal {emotion}. Aaj halka, {name}.", "Kal thak gaye the. Aaj sirf dikhna hai.", "{task} — jitna ho sake. Chain zinda rakhni hai, record nahi banana.", "Halka din kholo"),
     _e("after_low", "hi", "{score}/10 ke baad agla din sabse important.", "Ek bura din kuch nahi. Do, aadat.", "Aaj: {task}. Chhota, par aaj.", "Aaj ka din bachao"),
-    _e("after_low", "en", "Yesterday was a {score}/10. Today costs 2 minutes.", "Rough night. Tiny day. Deal?", "The bare-minimum version is ready: {task}, two minutes, done.", "Take the tiny day"),
-    _e("after_low", "en", "{emotion} yesterday. Lighter today, {name}.", "You don't have to win today. Just show up.", "{task} — as much as you've got. The chain only needs a tick.", "Open the light day"),
+    _e("after_low", "en", "Yesterday was a {score}/10. Still no excuse.", "Rough night. Tiny day. But a day.", "The bare-minimum version is ready: {task}, two minutes, done.", "Take the tiny day"),
+    _e("after_low", "en", "{emotion} yesterday. Showing up anyway, {name}?", "Bad days are where this gets decided.", "{task} — as much as you've got. The chain only needs a tick.", "Show up anyway"),
     _e("after_low", "en", "After a {score}/10, today's the one that counts.", "One bad day is weather. Two is climate.", "Today: {task}. Small, but today.", "Save today"),
-
     # last night was good (score ≥ 7)
     _e("after_high", "hi", "Kal {score}/10. Wahi feeling aaj dobara?", "Kal jo chala, aaj repeat.", "Tumne kaha tha: “{their_words}”. Aaj: {task}.", "Repeat karo", req=("their_words",)),
     _e("after_high", "hi", "Kal {emotion} the. Aaj usi ko kharch karo.", "Momentum hai. Bachao mat, use karo.", "{task} — kal wale time par.", "Aaj ka task"),
     _e("after_high", "hi", "Kal ka din achha tha. Aaj usse jodo.", "Achhe din akele nahi aate. Jod ke aate hain.", "Aaj: {task}.", "Jodo"),
-    _e("after_high", "en", "Yesterday was a {score}/10. Encore?", "Whatever that was, do it again.", "You said: “{their_words}”. Today: {task}.", "Encore", req=("their_words",)),
-    _e("after_high", "en", "{emotion} yesterday. Don't let it cool off.", "Momentum is perishable. Use it today.", "{task} — same slot as yesterday.", "Use it"),
-    _e("after_high", "en", "Good day yesterday. Make it two.", "Good days come in pairs if you let them.", "Today: {task}.", "Pair it"),
-
+    _e("after_high", "en", "Yesterday was a {score}/10. Don't waste it.", "Good days are easy to squander.", "You said: “{their_words}”. Today: {task}.", "Encore", req=('their_words',)),
+    _e("after_high", "en", "{emotion} yesterday. Watch it fade by noon.", "Momentum is perishable. Use it before it goes.", "{task} — same slot as yesterday.", "Use it"),
+    _e("after_high", "en", "Good day yesterday. One doesn't count.", "Two makes a pattern. One is a fluke.", "Today: {task}.", "Make it two"),
     # yesterday got a tick but no note
     _e("no_note", "hi", "Kal tick to laga, bola kuch nahi.", "Mentor ko box dikha, din nahi.", "Aaj raat 1 minute bol dena. Aaj: {task}.", "Aaj ka task"),
     _e("no_note", "en", "Ticked the box. Said nothing. Convenient.", "A tick with no words is a tick you can't back up.", "Tonight, one minute, the real version. Today: {task}.", "Today's task"),
@@ -119,33 +115,30 @@ MORNING: List[dict] = [
     _e("slipping", "en", "{done} for {past}. You know what that looks like.", "The plan isn't the problem, {name}.", "{task}. Ten minutes. Then argue with me tonight.", "Do the ten"),
     # the last day of the week
     _e("last_day", "hi", "Aaj last din. Shaam ko report card banega.", "Hafte ka aakhri task. Phir hisaab.", "{task}. Raat ko mentor poora hafta padhega.", "Hafta khatam karo"),
-    _e("last_day", "en", "Last day. Report card lands tonight.", "One more, then the week gets graded.", "{task}. Tonight your mentor reads all seven days.", "Finish the week"),
-
+    _e("last_day", "en", "Last day. Tonight the week gets graded.", "No hiding from the report card.", "{task}. Tonight your mentor reads all seven days.", "Finish the week"),
     # weekday moments
     _e("monday", "hi", "Monday ka sach: 10 min {task_noun} > 60 min guilt.", "Hafta yahin se banta hai.", "Aaj ka task Monday-proof hai: {task}.", "Monday jeeto"),
     _e("monday", "hi", "Monday, {name}. Hafte ko pehle din pakdo.", "Monday jo karta hai, Sunday woh dikhata hai.", "{task}. Itna hi.", "Shuru"),
-    _e("monday", "en", "Monday math: 10 min {task_noun} > 60 min guilt.", "The week is built right here, right now.", "Today's task is Monday-proof: {task}.", "Win Monday"),
-    _e("monday", "en", "Monday, {name}. Let's not make it a thing.", "What Monday does, Sunday shows.", "{task}. That's the whole Monday.", "Start"),
+    _e("monday", "en", "Monday math: 10 min {task_noun} > 60 min guilt.", "Skip today and the whole week knows.", "Today's task is Monday-proof: {task}.", "Win Monday"),
+    _e("monday", "en", "Monday, {name}. Don't make it the usual story.", "What Monday does, Sunday shows.", "{task}. That's the whole Monday.", "Start"),
     _e("wednesday", "hi", "Aadha hafta. {done}/{past} done. Just saying.", "Midweek check: {status_line}", "Aaj nikal gaya toh weekend aasaan: {task}.", "Aaj nikaalo"),
-    _e("wednesday", "en", "Halfway. {done}/{past} done. Just saying.", "Midweek check: {status_line}", "Clear today and the weekend owes you nothing: {task}.", "Clear today"),
+    _e("wednesday", "en", "Halfway. {done}/{past} done. Just saying.", "Midweek check: {status_line}", "Clear today, or the weekend becomes catch-up again: {task}.", "Clear today"),
     _e("friday", "hi", "Friday hai. Weekend ko batao hafta jeeta.", "Aaj kar lo, weekend guilt-free.", "{task}. Phir Saturday tumhari.", "Friday clear karo"),
-    _e("friday", "en", "It's Friday. The weekend is watching.", "Do it now, weekend guilt-free.", "{task}. Then Saturday is all yours.", "Clear Friday"),
-
+    _e("friday", "en", "It's Friday. The weekend is watching.", "Skip now, pay Sunday.", "{task}. Then Saturday is yours, guilt-free.", "Clear Friday"),
     # a streak running (2–6)
     _e("streak", "hi", "{streak} din ho gaye. Aaj rukne ka mann? Nahi na.", "{streak} in a row. Chain mat todo.", "Aaj: {task}. Kal se chhota lagega, promise.", "Chain jaari rakho"),
     _e("streak", "hi", "{streak} din. Ab toh aadat ban rahi hai, {name}.", "{streak} din lagataar. Aaj {next}.", "{task}. Streak khud nahi chalti, tum chalate ho.", "Day {idx} karo"),
     _e("streak", "hi", "Streak {streak}. Just saying.", "{streak} din se tum dikh rahe ho.", "Aaj bhi dikho: {task}.", "Aaj ka 10 minute"),
-    _e("streak", "en", "{streak} days in. Don't you dare stop now, {name}.", "{streak} in a row. The chain has feelings.", "Today: {task}. Smaller than it looks.", "Keep the chain"),
-    _e("streak", "en", "{streak} days. Starting to look like a habit.", "{streak} straight. Make it {next}.", "{task}. Streaks don't run themselves.", "Do day {idx}"),
-    _e("streak", "en", "Streak: {streak}. Just saying.", "You've shown up {streak} days running.", "Show up again: {task}.", "Today's ten minutes"),
-
+    _e("streak", "en", "{streak} days in. Don't you dare stop now, {name}.", "{streak} in a row. Break it and it was for nothing.", "Today: {task}. Smaller than it looks.", "Keep the chain"),
+    _e("streak", "en", "{streak} days. Starting to look like a habit.", "{streak} straight. Day {next} is where most people blink.", "{task}. Streaks don't run themselves.", "Do day {idx}"),
+    _e("streak", "en", "Streak: {streak}. Easy to lose. Just saying.", "You've shown up {streak} days running. Today decides {next}.", "Show up again: {task}.", "Today's ten minutes"),
     # nothing special about today
     _e("default", "hi", "Day {idx} of {total}, {name}. Ek kaam.", "Aaj ka ek kaam. Bas ek.", "{task}.", "Dekho"),
     _e("default", "hi", "{day}: {task_noun}. Itna hi.", "Ek task, ek din. Simple.", "{task}.", "Aaj ka task"),
     _e("default", "hi", "{name}, aaj ka hisaab chhota hai.", "Ek kaam, phir free.", "{task}. Shaam ko ek minute.", "Kar lo"),
-    _e("default", "en", "Day {idx} of {total}, {name}. One thing.", "One task. One day. No drama.", "{task}.", "See it"),
-    _e("default", "en", "{day}: {task_noun}. That's it. That's the email.", "Today's bill is small.", "{task}. One minute tonight.", "Do it"),
-    _e("default", "en", "{name}, your to-do list has one item.", "Today's one thing. Just one.", "{task}.", "Today's task"),
+    _e("default", "en", "Day {idx} of {total}, {name}. One thing. No excuses.", "One task. One day. No negotiating.", "{task}.", "Do it"),
+    _e("default", "en", "{day}: {task_noun}. That's it. That's the email.", "Today's bill is small. Pay it.", "{task}. One minute tonight.", "Pay it"),
+    _e("default", "en", "{name}, your to-do list has one item.", "Nobody's going to do it for you.", "{task}.", "Today's task"),
 ]
 
 RECOVERY: List[dict] = [
@@ -159,7 +152,7 @@ RECOVERY: List[dict] = [
 
 EVENING: List[dict] = [
     _e("sunday_last", "hi", "Hafte ki aakhri note. Report card adhoora.", "Sunday ki note, poore hafte ka hisaab.", "Mentor raat ko hafta padhega. Aaj ka din bhi dena.", "Note do"),
-    _e("sunday_last", "en", "Last note of the week. The report card needs it.", "Sunday's note closes the week.", "Your mentor reads the whole week tonight. Don't leave today blank.", "Give it"),
+    _e("sunday_last", "en", "Last note of the week. Don't duck the report card.", "Sunday's note closes the week. Or leaves a hole in it.", "Your mentor reads the whole week tonight. Don't leave today blank.", "Give it"),
     _e("streak_risk", "hi", "{streak} din ki streak, 11:59 pe gayab.", "1 minute mein bacha lo.", "Bas bol do aaj kaisa gaya. Itna hi.", "Streak bachao"),
     _e("streak_risk", "hi", "{streak} din ka kaam, aaj raat ka ek minute.", "Streak ko sirf ek minute chahiye.", "Note record karo, din done.", "1 minute"),
     _e("streak_risk", "en", "{streak} days, and tonight you let it die.", "Not lose it. Let it.", "One minute saves it. Say how today went.", "Save it"),
@@ -181,9 +174,9 @@ REVIEW: List[dict] = [
     _e("review", "hi", "Report card aa gaya. Mummy ko mat dikhana 😄", "{done}/{total}. {badge}.", "{teaser}", "Report card dekho", req=("badge",)),
     _e("review", "hi", "Week {week} ka hisaab ready hai, {name}.", "{headline}", "{teaser}", "Poora dekho"),
     _e("review", "hi", "{badge}. Yeh kaise mila, andar hai.", "{headline}", "{teaser}", "Dekho kyun", req=("badge",)),
-    _e("review", "en", "Report card's in. Don't show your mom 😄", "{done}/{total}. {badge}.", "{teaser}", "See the report card", req=("badge",)),
-    _e("review", "en", "Week {week} is in, {name}. Grab a chair.", "{headline}", "{teaser}", "See it all"),
-    _e("review", "en", "{badge}. How you earned it is inside.", "{headline}", "{teaser}", "See why", req=("badge",)),
+    _e("review", "en", "Report card's in. Read it before you spin it.", "{done}/{total}. {badge}.", "{teaser}", "Face it", req=('badge',)),
+    _e("review", "en", "Week {week} is in, {name}. No sugar on it.", "{headline}", "{teaser}", "See it all"),
+    _e("review", "en", "{badge}. Read how you actually earned it.", "{headline}", "{teaser}", "See why", req=('badge',)),
 ]
 
 for _lib in (MORNING, RECOVERY, EVENING, REVIEW):
@@ -302,7 +295,7 @@ def pick_morning(ctx: dict, lang: str, recent: list, today_iso: str) -> dict:
     score = c.get("score")
     idx, total = c.get("idx"), c.get("total")
     done, past = int(c.get("done") or 0), int(c.get("past") or 0)
-    c["status_line"] = ("tum aage ho." if lang == "hi" else "you're ahead.") if past and done >= past - 1 else ("wapas aane ka din." if lang == "hi" else "today's the comeback.")
+    c["status_line"] = ("tum aage ho." if lang == "hi" else "you're ahead.") if past and done >= past - 1 else ("wapas aane ka din." if lang == "hi" else "you're behind, and you know it.")
     weekday = (c.get("day") or "").lower()
     order: List[str] = []
     if idx == 1:

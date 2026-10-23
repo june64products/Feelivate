@@ -399,8 +399,8 @@ def test_english_everywhere_until_hinglish_is_switched_on():
     ctx = {"name": "Shubham Mishra", "task_title": "After breakfast — warm-up with a C-major scale (5 min), then two bars of Twinkle.", "idx": 1, "total": 7, "week": 2, "day": "Monday"}
     en = pick_morning(ctx, lang_for("Asia/Kolkata"), [], "2026-10-26")
     assert en["sit"] == "first_day"
-    assert en["subject"] == "Day 1, Shubham. Nobody's judging. Yet."
-    assert en["headline"] == "Today's job: start. That's the whole job."
+    assert en["subject"] == "Day 1, Shubham. Everyone starts. Few come back."
+    assert en["headline"] == "Starting is the easy part. Prove the second day."
     # The task is shortened to its first clause, stage direction dropped.
     assert "Warm-up with a C-major scale" in en["line"] and "After breakfast" not in en["line"]
     assert len(en["subject"]) <= 48
