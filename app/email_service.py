@@ -1729,7 +1729,7 @@ def _morning_context(db, user, task_info: dict, now_local):
     return yesterday, streak_n, week_dots
 
 
-def run_daily_email_scheduler():
+def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
     """
     Called every minute by APScheduler.
 
@@ -1742,7 +1742,7 @@ def run_daily_email_scheduler():
     from .database import SessionLocal
     from .models import User
 
-    now_utc = datetime.now(pytz.utc)
+    now_utc = now_utc or datetime.now(pytz.utc)
 
     db = SessionLocal()
     try:
@@ -1825,7 +1825,16 @@ def run_daily_email_scheduler():
                 #    normal one ("don't miss twice", their own why quoted back).
                 from .streaks import apply_streak_shield, yesterday_missed
 
-                shield_info = apply_streak_shield(db, user, today_date_str)
+                # Only a day INSIDE this week can be missed. On Day 1 — and
+                # on any morning where yesterday fell before the week began,
+                # the gap between one week ending and the next being locked —
+                # there was nothing to do yesterday, so no shield is spent and
+                # no recovery email goes out; Day 1 gets the Day 1 email.
+                _ws = task_info.get("week_start")
+                _yesterday_iso = (now_local.date() - timedelta(days=1)).isoformat()
+                yesterday_in_week = bool(_ws) and _yesterday_iso >= _ws
+
+                shield_info = apply_streak_shield(db, user, today_date_str) if yesterday_in_week else None
                 shield_note = ""
                 if shield_info:
                     _dw = "day" if shield_info["streak"] == 1 else "days"
@@ -1853,7 +1862,8 @@ def run_daily_email_scheduler():
                         logger.warning(f"[Scheduler] one-tap token failed (non-fatal): {_tok_err}")
 
                 if (
-                    not shield_info
+                    yesterday_in_week
+                    and not shield_info
                     and yesterday_missed(db, user.id, today_date_str)
                     and user.last_recovery_email_date != today_date_str
                 ):

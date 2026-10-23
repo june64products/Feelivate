@@ -463,6 +463,89 @@ def test_library_lines_render_into_the_emails():
     assert build_recovery_copy_preview(rc) == ("Yesterday's gone. Today isn't.", "One miss is nothing. Two is a habit.")
 
 
+# ─── Day 1 is never a "miss": the gap before a week is nobody's fault ───────
+
+def _lock_week_from(uid, sid, start: date, focus="learn the piano"):
+    """A week locked from `start` (today or yesterday) through its Sunday."""
+    from app.database import SessionLocal
+    from app.models import Session as UserSession
+
+    end = start + timedelta(days=6 - start.weekday())
+    days = [(start + timedelta(days=i)).strftime("%b %d (%a)") for i in range((end - start).days + 1)]
+    plan = {"week_number": 2, "theme": "Consistent Growth", "start_date": start.isoformat(),
+            "days": [{"day": d, "action": f"Ten minutes at the piano ({d})"} for d in days]}
+    db = SessionLocal()
+    db.add(UserSession(id=sid, user_id=uid, focus=focus, phase="active", current_week=2, plan_start_date=start.isoformat(),
+                       plan_starts_on=start.isoformat(), week_plan_json=json.dumps(plan), result_json=json.dumps([plan]), commitment_why="I LOVE"))
+    db.commit()
+    db.close()
+
+
+def _morning_user(client, email):
+    """An alerts-on UTC user whose morning email is due at 08:00, with a done day from an older goal."""
+    from app.database import SessionLocal
+    from app.models import DailyCheckin, User
+
+    headers, uid = register(client, email)
+    db = SessionLocal()
+    u = db.query(User).filter(User.id == uid).first()
+    u.email_notifications_enabled = 1
+    u.preferred_notification_timezone = "UTC"
+    u.preferred_notification_time = "08:00"
+    # Done check-ins exist from an earlier goal — which is what used to make
+    # the gap before a new week look like a miss.
+    db.add(DailyCheckin(user_id=uid, session_id="old-goal", date=(date.today() - timedelta(days=12)).isoformat(), status="done"))
+    db.commit()
+    db.close()
+    return uid
+
+
+def _run_morning(monkeypatch, email):
+    """Run one 08:03 UTC scheduler tick; return what went to `email` and whether a shield was tried for them."""
+    import app.email_service as es
+    import app.streaks as streaks
+
+    sent = {"daily": [], "recovery": []}
+    monkeypatch.setattr(es, "send_daily_task_email", lambda **kw: sent["daily"].append(kw) or True)
+    monkeypatch.setattr(es, "send_recovery_email", lambda **kw: sent["recovery"].append(kw) or True)
+    monkeypatch.setattr(es, "_mentor_read", lambda *a, **k: None)
+    shield_tries = []
+    real_shield = streaks.apply_streak_shield
+    monkeypatch.setattr(streaks, "apply_streak_shield", lambda db, user, today: shield_tries.append(user.email) or real_shield(db, user, today))
+    at_0803 = datetime.combine(date.today(), datetime.min.time(), tzinfo=pytz.utc).replace(hour=8, minute=3)
+    es.run_daily_email_scheduler(now_utc=at_0803)
+    # Other alerts-on users from earlier tests share this database; keep only ours.
+    mine = {k: [kw for kw in v if kw["to_email"] == email] for k, v in sent.items()}
+    return mine, email in shield_tries
+
+
+def test_day_one_of_a_week_locked_today_gets_the_day_one_email_not_recovery(client, monkeypatch):
+    uid = _morning_user(client, "day-one@example.com")
+    _lock_week_from(uid, "s-day-one", date.today())          # locked today; yesterday was the gap between weeks
+
+    sent, shield_tried = _run_morning(monkeypatch, "day-one@example.com")
+
+    assert sent["recovery"] == [], "yesterday was not a plan day — nothing to recover from"
+    assert shield_tried is False, "no shield is spent on a day that was never owed"
+    assert len(sent["daily"]) == 1
+    kw = sent["daily"][0]
+    assert kw["day_index"] == 1 and kw["copy"]["sit"] == "first_day"
+    assert kw["shield_note"] == ""
+
+
+def test_a_real_miss_inside_the_week_still_earns_the_recovery_email(client, monkeypatch):
+    if date.today().weekday() == 0:
+        pytest.skip("on a Monday 'yesterday' is a different week; the in-week miss case needs another day")
+    uid = _morning_user(client, "day-two@example.com")
+    _lock_week_from(uid, "s-day-two", date.today() - timedelta(days=1))   # Day 1 was yesterday, and nothing was done
+
+    sent, _tried = _run_morning(monkeypatch, "day-two@example.com")
+
+    assert sent["daily"] == []
+    assert len(sent["recovery"]) == 1
+    assert sent["recovery"][0]["copy"]["sit"] == "missed" and sent["recovery"][0]["commitment_why"] == "I LOVE"
+
+
 # ─── the next-week prompt still reads the whole review (unchanged contract) ─
 
 def test_deep_link_param_is_documented_in_the_frontend():
