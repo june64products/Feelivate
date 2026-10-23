@@ -526,11 +526,10 @@ def test_day_one_of_a_week_locked_today_gets_the_day_one_email_not_recovery(clie
     sent, shield_tried = _run_morning(monkeypatch, "day-one@example.com")
 
     assert sent["recovery"] == [], "yesterday was not a plan day — nothing to recover from"
-    assert shield_tried is False, "no shield is spent on a day that was never owed"
+    assert shield_tried is True, "the streak shield still runs across the gap — the streak counts calendar days"
     assert len(sent["daily"]) == 1
     kw = sent["daily"][0]
     assert kw["day_index"] == 1 and kw["copy"]["sit"] == "first_day"
-    assert kw["shield_note"] == ""
 
 
 def test_a_real_miss_inside_the_week_still_earns_the_recovery_email(client, monkeypatch):

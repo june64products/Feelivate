@@ -1825,16 +1825,19 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                 #    normal one ("don't miss twice", their own why quoted back).
                 from .streaks import apply_streak_shield, yesterday_missed
 
-                # Only a day INSIDE this week can be missed. On Day 1 — and
-                # on any morning where yesterday fell before the week began,
-                # the gap between one week ending and the next being locked —
-                # there was nothing to do yesterday, so no shield is spent and
-                # no recovery email goes out; Day 1 gets the Day 1 email.
+                # Only a day INSIDE this week can be a miss worth a recovery
+                # email. On Day 1 — and any morning where yesterday fell before
+                # the week began, the gap between one week ending and the next
+                # being locked — there was nothing to do yesterday, so Day 1
+                # gets the Day 1 email. The streak SHIELD still runs on those
+                # mornings: the streak counts calendar days, and keeping it
+                # alive across the gap is what brings people back to the app
+                # every day to look after it.
                 _ws = task_info.get("week_start")
                 _yesterday_iso = (now_local.date() - timedelta(days=1)).isoformat()
                 yesterday_in_week = bool(_ws) and _yesterday_iso >= _ws
 
-                shield_info = apply_streak_shield(db, user, today_date_str) if yesterday_in_week else None
+                shield_info = apply_streak_shield(db, user, today_date_str)
                 shield_note = ""
                 if shield_info:
                     _dw = "day" if shield_info["streak"] == 1 else "days"
