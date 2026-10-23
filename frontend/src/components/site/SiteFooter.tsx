@@ -48,7 +48,7 @@ export default function SiteFooter() {
             <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--text-primary)', fontFamily: clash, letterSpacing: '-0.03em' }}>Feelivate</span>
           </div>
           <p style={{ fontSize: '13px', color: tp(55), lineHeight: 1.65, fontFamily: satoshi, fontWeight: 500, marginBottom: '16px', maxWidth: '260px' }}>
-            AI accountability mentor. Hyper-specific weekly plans that build who you become.
+            AI accountability partner. Hyper-specific weekly plans that build who you become.
           </p>
           <p style={{ fontSize: '11px', color: tp(35), fontFamily: satoshi, fontWeight: 500, letterSpacing: '0.05em' }}>
             By <span style={{ fontWeight: 700, color: tp(60), letterSpacing: '0.08em' }}>JUNE64</span>

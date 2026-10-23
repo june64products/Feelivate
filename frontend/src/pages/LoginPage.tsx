@@ -23,7 +23,7 @@ const GoogleIcon = () => (
 // ─── Full Feature List (Features modal) ───────────────────────────────────────
 const platformFeatures = [
   {
-    title: 'AI Accountability Mentor',
+    title: 'AI Accountability Partner',
     desc: 'Not another chatbot. A relentless mentor that learns your patterns, calls out your excuses, and coaches you toward the person you said you wanted to become.',
   },
   {
@@ -580,7 +580,7 @@ export default function LoginPage() {
           fontFamily: clashDisplay,
           letterSpacing: '0.12em',
         }}>
-          {Array(8).fill("AI ACCOUNTABILITY MENTOR   //   WEEKLY ACTION PLANS   //   DAILY MAIL NOTIFICATIONS   //   STREAK TRACKING   //   WEEKLY REPORTS   //   DAILY EMOTION LOGS   //   VOICE MEMO INTAKE   //   RELENTLESS ACCOUNTABILITY   //   ").join("")}
+          {Array(8).fill("AI ACCOUNTABILITY PARTNER   //   WEEKLY ACTION PLANS   //   DAILY MAIL NOTIFICATIONS   //   STREAK TRACKING   //   WEEKLY REPORTS   //   DAILY EMOTION LOGS   //   VOICE MEMO INTAKE   //   RELENTLESS ACCOUNTABILITY   //   ").join("")}
         </div>
       </div>
 
@@ -929,7 +929,7 @@ export default function LoginPage() {
                 fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.7,
                 fontFamily: satoshi, fontWeight: 500, marginBottom: '30px',
               }}>
-                Feelivate is an AI accountability mentor. You tell it what you actually want to become — fitter, focused, out of a rut — and it turns that fuzzy wish into a locked, hyper-specific 7-day plan, then holds you to it every single day until the person you described becomes the person you are.
+                Feelivate is an AI accountability partner. You tell it what you actually want to become — fitter, focused, out of a rut — and it turns that fuzzy wish into a locked, hyper-specific 7-day plan, then holds you to it every single day until the person you described becomes the person you are.
               </p>
 
               {/* Story blocks */}

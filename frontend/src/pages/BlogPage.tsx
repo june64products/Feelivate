@@ -12,7 +12,7 @@ const TOPICS = [
   { icon: Zap, title: 'Productivity', desc: 'Beating decision fatigue and spending your energy only on the work that moves the needle.' },
   { icon: HeartPulse, title: 'Mental Wellness', desc: 'Emotion-aware routines that keep you consistent on the days you least feel like it.' },
   { icon: TrendingUp, title: 'Personal Growth', desc: 'Practical ways to become the person you keep saying you want to be — on a schedule.' },
-  { icon: Compass, title: 'AI Productivity', desc: 'Using AI as a real accountability mentor, not just another app you forget to open.' },
+  { icon: Compass, title: 'AI Productivity', desc: 'Using AI as a real accountability partner, not just another app you forget to open.' },
 ];
 
 const formatDate = (iso: string | null) => {

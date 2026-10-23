@@ -29,7 +29,7 @@ const LAST_UPDATED = '10 October 2026';
 const SECTIONS: LegalSection[] = [
   { id: 'introduction', h: 'Introduction', blocks: [
     { t: 'p', text: 'This Privacy Policy explains how JUNE64 Ltd ("we", "our", "us") collects, uses and protects personal data when you use Feelivate at feelivate.com (the "Service"). "You" means the person using the Service.' },
-    { t: 'p', text: 'Feelivate is an AI accountability mentor: you tell it what you want to achieve, it builds you a locked 7-day plan, and it keeps you to it with daily emails, check-ins, streaks and weekly reports.' },
+    { t: 'p', text: 'Feelivate is an AI accountability partner: you tell it what you want to achieve, it builds you a locked 7-day plan, and it keeps you to it with daily emails, check-ins, streaks and weekly reports.' },
     { t: 'p', text: 'Some of what you write here — your journal entries, your voice notes, the emotion labels we derive from them — says something about your mental wellbeing. Under EU and UK law that is special category data, and it gets the highest level of protection. This policy explains exactly what we collect, why we are legally allowed to, who else sees it, and what you can make us do about it.' },
     { t: 'p', text: 'If you do not agree with this policy, please do not use the Service. If you have any questions or concerns, contact us at [info@june64.com](mailto:info@june64.com).' },
   ] },

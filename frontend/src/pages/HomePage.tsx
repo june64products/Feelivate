@@ -29,13 +29,13 @@ const HERO_PANELS = [
 // Copy below follows the SEO content brief (Home page doc) verbatim.
 const STEPS = [
   { icon: MessageSquare, title: 'Say the goal, plainly', desc: "Type or talk it through like you would with a real coach. Feelivate turns that loose, everyday language into one specific action you can commit to today, not another mission statement sitting in a notes app." },
-  { icon: Lock, title: 'Lock in the 7-day plan', desc: "Once you approve it, the week is set: exact daily actions, sequenced and timed, with nothing left to decide each morning. This is where Feelivate stops acting like a basic accountability tracker and starts working as an automated accountability mentor that's already planned three steps ahead." },
+  { icon: Lock, title: 'Lock in the 7-day plan', desc: "Once you approve it, the week is set: exact daily actions, sequenced and timed, with nothing left to decide each morning. This is where Feelivate stops acting like a basic accountability tracker and starts working as an automated accountability partner that's already planned three steps ahead." },
   { icon: Mail, title: 'Execute, one task at a time', desc: "A single task email lands at the time you picked. Open it, do the thing, and the streak takes care of itself. It's using AI for routine tracking in its simplest form: no dashboard to check, nothing to remember to log." },
   { icon: LineChart, title: 'Review honestly, then level up', desc: "At the end of the week, you get a clear report on what you actually did versus what you planned, no spin. Feelivate uses that gap the way an AI powered coach would: to adjust next week's plan, not just repeat the same list." },
 ];
 
 const HIGHLIGHTS = [
-  { icon: MessageSquare, title: 'AI Accountability Mentor', desc: 'The core of Feelivate: a partner that learns how you actually behave week to week and calls it out when the same excuse starts repeating itself.' },
+  { icon: MessageSquare, title: 'AI Accountability Partner', desc: 'The core of Feelivate: a partner that learns how you actually behave week to week and calls it out when the same excuse starts repeating itself.' },
   { icon: Lock, title: 'The Lock-In Protocol', desc: "Once your week is approved, it's locked. You commit to the action, not the mood you're in that morning, and skipping breaks the streak instead of quietly resetting it." },
   { icon: Mail, title: 'Daily Task Emails', desc: "Today's exact task lands in your inbox at the time you set, in your own timezone, with a short note on how to actually get it done." },
   { icon: LineChart, title: 'Streaks & Weekly Reports', desc: 'Your streak reflects real momentum, not just logged checkmarks, and every week closes with an honest report on what actually got done versus what was planned.' },
@@ -52,7 +52,7 @@ const USE_CASES = [
 
 const FAQS = [
   // ── SEO brief FAQs (PAA-targeted) — order and wording from the Home page doc ──
-  { q: 'What does an AI accountability mentor do differently than a regular habit tracker?', a: 'A habit tracker logs what you did after the fact. An AI accountability mentor builds the plan first, tells you the exact next action, and follows up if you skip it, so the accountability happens before the miss becomes a pattern, not after.' },
+  { q: 'What does an AI accountability partner do differently than a regular habit tracker?', a: 'A habit tracker logs what you did after the fact. An AI accountability partner builds the plan first, tells you the exact next action, and follows up if you skip it, so the accountability happens before the miss becomes a pattern, not after.' },
   { q: "Is an accountability app actually worth it if other habit apps haven't worked for me before?", a: "Most habit apps fail for the same reason: they track behavior without ever pushing you toward the next step. Feelivate works less like a passive tracker and more like an accountability coach online, one locked task at a time with a real follow-up, which is usually the missing piece for people who've dropped off other apps before." },
   { q: 'Can AI actually work as a personal coach, or is it just automated reminders?', a: "AI can't replace human judgment entirely, but it's well suited to the mechanical parts of coaching: building a plan, holding a fixed schedule, and reporting back honestly without excuses. Feelivate handles the structure and follow-through a personal development coach provides, minus the calendar of paid sessions." },
   { q: 'Can I use AI as a personal trainer for fitness goals specifically?', a: 'Feelivate isn\'t a certified trainer and won\'t design injury-specific programming, but it will turn "get in shape" into a locked weekly training and nutrition rhythm and hold you to it daily, covering the accountability half most fitness plans are missing.' },
@@ -63,7 +63,7 @@ const FAQS = [
   { q: 'Is there a free action plan template I can try before committing to anything?', a: "Feelivate's free tier works as a live version of that: describe one goal, and it generates a locked 7-day action plan at no cost, so you can see the actual output before deciding whether to continue." },
   { q: 'Are the weekly reports actually honest, or do they just show streaks and badges?', a: 'The weekly report is built around honest weekly progress reports rather than gamified streaks: it shows exactly what got completed against what was planned, without softening a bad week into a badge or a congratulatory push notification.' },
   // ── Original product FAQs, kept below the brief's set ──
-  { q: 'What is Feelivate?', a: 'Feelivate is an AI accountability mentor that turns your goals into locked 7-day action plans, then keeps you accountable with daily task emails, streaks, weekly reports, and voice check-ins.' },
+  { q: 'What is Feelivate?', a: 'Feelivate is an AI accountability partner that turns your goals into locked 7-day action plans, then keeps you accountable with daily task emails, streaks, weekly reports, and voice check-ins.' },
   { q: 'How is it different from a to-do app?', a: "To-do apps store tasks; Feelivate builds the plan for you, locks it so you can't quietly make it easier, and actively drives you to execute every day." },
   { q: 'How much does it cost?', a: 'Feelivate is currently free — founding members get full access to the best version at no cost.' },
   { q: 'Do I have to talk to it?', a: 'No. You can type or send a voice memo. Feelivate reads your emotional state either way and adapts the plan.' },
@@ -108,7 +108,7 @@ export default function HomePage() {
       name: 'Feelivate',
       applicationCategory: 'LifestyleApplication',
       operatingSystem: 'Web',
-      description: 'AI accountability mentor that turns goals into locked 7-day action plans with daily task emails, streaks, weekly reports, and voice check-ins.',
+      description: 'AI accountability partner that turns goals into locked 7-day action plans with daily task emails, streaks, weekly reports, and voice check-ins.',
       url: SITE_URL + '/',
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', description: 'Free for founding members' },
     },
@@ -122,8 +122,8 @@ export default function HomePage() {
   return (
     <div style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
       <Seo
-        title="AI Accountability Mentor For Goals That Actually Stick"
-        description="Feelivate is your AI accountability mentor: turn goals into a locked 7-day action plan with daily tasks, streak tracking, and honest weekly progress reports."
+        title="AI Accountability Partner For Goals That Actually Stick"
+        description="Feelivate is your AI accountability partner: turn goals into a locked 7-day action plan with daily tasks, streak tracking, and honest weekly progress reports."
         path="/"
         jsonLd={jsonLd}
       />
@@ -143,7 +143,7 @@ export default function HomePage() {
               <LiveKicker>Feelivate</LiveKicker>
             </Rise>
             <Words
-              text="AI Accountability Mentor"
+              text="AI Accountability Partner"
               accent="Accountability"
               delay={HERO_T.headline}
               style={{ fontSize: isMobile ? '37px' : '58px', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.0, margin: '16px 0 18px', fontFamily: clash }}
@@ -191,10 +191,10 @@ export default function HomePage() {
             }}>
               <div>
                 <h2 style={{ fontSize: isMobile ? '17px' : '19px', fontWeight: 700, fontFamily: clash, letterSpacing: '-0.02em', margin: '0 0 10px' }}>
-                  How does an AI accountability mentor work?
+                  How does an AI accountability partner work?
                 </h2>
                 <p style={{ fontSize: isMobile ? '13.5px' : '14.5px', color: 'var(--text-secondary)', lineHeight: 1.7, fontFamily: satoshi, fontWeight: 500, margin: 0 }}>
-                  An AI accountability mentor like Feelivate turns a single stated goal into a structured 7-day plan, then delivers one task at a time so you're never guessing what to do next. Feelivate tracks completion automatically and closes the week with a report that reflects what you actually did, not just what you checked off.
+                  An AI accountability partner like Feelivate turns a single stated goal into a structured 7-day plan, then delivers one task at a time so you're never guessing what to do next. Feelivate tracks completion automatically and closes the week with a report that reflects what you actually did, not just what you checked off.
                 </p>
               </div>
               <div>
@@ -277,7 +277,7 @@ export default function HomePage() {
           <div style={{ textAlign: 'center', marginBottom: '44px' }}>
             <Kicker>How it works</Kicker>
             <h2 style={{ fontSize: isMobile ? '28px' : '38px', fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.12, margin: '14px 0', fontFamily: clash, maxWidth: '760px', marginLeft: 'auto', marginRight: 'auto' }}>
-              Here's exactly how an AI accountability mentor turns one goal into a finished week.
+              Here's exactly how an AI accountability partner turns one goal into a finished week.
             </h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '18px' }}>

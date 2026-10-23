@@ -118,8 +118,8 @@ export default function StoryLandingPage() {
       style={{ height: '100svh', overflowY: 'auto', overflowX: 'hidden', position: 'relative', background: 'var(--bg-primary)', color: 'var(--text-primary)', scrollSnapType: 'y mandatory' }}
     >
       <Seo
-        title="Feelivate — AI Accountability Mentor for Your Goals & Habits"
-        description="Feelivate is an AI accountability mentor that turns your goals into a locked weekly plan — daily tasks, streaks, and honest weekly reports so you actually follow through."
+        title="Feelivate — AI Accountability Partner for Your Goals & Habits"
+        description="Feelivate is an AI accountability partner that turns your goals into a locked weekly plan — daily tasks, streaks, and honest weekly reports so you actually follow through."
         path="/story"
         noindex
       />
@@ -137,7 +137,7 @@ export default function StoryLandingPage() {
         {/* HERO */}
         <Screen isMobile={isMobile}>
           <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} style={{ maxWidth: '900px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: tp(50), fontFamily: satoshi }}>AI Accountability Mentor</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: tp(50), fontFamily: satoshi }}>AI Accountability Partner</span>
             <h1 style={{ fontSize: isMobile ? '40px' : '76px', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.0, margin: '22px 0 18px', fontFamily: clash }}>
               You already know who<br />you want to become.
             </h1>
@@ -212,7 +212,7 @@ export default function StoryLandingPage() {
             </Reveal>
             <Reveal root={scrollRef} delay={0.14}>
               <p style={{ fontSize: isMobile ? '16px' : '19px', color: tp(70), fontFamily: satoshi, fontWeight: 500, lineHeight: 1.6, maxWidth: '520px', margin: '0 auto' }}>
-                Your AI accountability mentor — it turns what you <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif" }}>want</span> into what you <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif" }}>do.</span>
+                Your AI accountability partner — it turns what you <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif" }}>want</span> into what you <span style={{ fontStyle: 'italic', fontFamily: "'Georgia', serif" }}>do.</span>
               </p>
             </Reveal>
           </div>

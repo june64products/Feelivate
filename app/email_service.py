@@ -302,7 +302,7 @@ def _mentor_read(user_name, goal, journal, task_title, task_description, day_lab
         return _fallback()
     try:
         from .llm import call_llm
-        prompt = f"""You are {name}'s accountability mentor. Last night they recorded this voice note — complete and verbatim; it may be in English, Hindi or Hinglish:
+        prompt = f"""You are {name}'s accountability partner. Last night they recorded this voice note — complete and verbatim; it may be in English, Hindi or Hinglish:
 
 \"\"\"{transcript[:20000]}\"\"\"
 
