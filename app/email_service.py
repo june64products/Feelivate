@@ -712,8 +712,8 @@ def send_recovery_email(
         </td></tr>
 
         <tr><td class="px" style="padding:24px 36px 18px;">
-          <p style="color:{SUB};font-size:15px;margin:0 0 12px;line-height:1.7;font-family:{FONT};">Hey <strong style="color:{INK};">{name}</strong> &#8212; yesterday didn&#39;t happen. That&#39;s fine. Really.</p>
-          <p style="color:{SUB};font-size:14px;margin:0;line-height:1.7;font-family:{FONT};">The research is clear: missing a <strong style="color:{INK};">single day does not break a habit</strong> (Lally et&nbsp;al., 2010). What starts a new, worse habit is missing <em>twice</em>. So there&#39;s exactly one day that matters now &#8212; today.</p>
+          <p style="color:{SUB};font-size:15px;margin:0 0 12px;line-height:1.7;font-family:{FONT};">Hey <strong style="color:{INK};">{name}</strong> &#8212; yesterday didn&#39;t happen. No story needed. We both know.</p>
+          <p style="color:{SUB};font-size:14px;margin:0;line-height:1.7;font-family:{FONT};">Here&#39;s the only fact that matters: missing a <strong style="color:{INK};">single day does not break a habit</strong> (Lally et&nbsp;al., 2010). Missing <em>twice</em> starts a new one &#8212; the habit of skipping. So there&#39;s exactly one day that decides this &#8212; today.</p>
         </td></tr>
 
         {why_html}
