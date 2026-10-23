@@ -459,8 +459,8 @@ def test_library_lines_render_into_the_emails():
     assert subject == rv["subject"] and "4/7. Sunday Sprint." in rows and "Thursday hero, Friday zero" in rows and "Report card dekho" in rows
 
     rc = pick_recovery({"name": "Shubham", "task_title": "Four bars"}, "en", [], "2026-10-29")
-    assert rc["sit"] == "missed" and rc["subject"] == "Same excuse, different day, Shubham."
-    assert build_recovery_copy_preview(rc) == ("Same excuse, different day, Shubham.", "Yesterday you did nothing. We both saw it.")
+    assert rc["sit"] == "missed" and rc["subject"] == "You quit yesterday, Shubham. Just for a day."
+    assert build_recovery_copy_preview(rc) == ("You quit yesterday, Shubham. Just for a day.", "But you did.")
 
 
 def test_a_slip_gets_the_strict_mentor_whatever_the_mood():
@@ -473,27 +473,27 @@ def test_a_slip_gets_the_strict_mentor_whatever_the_mood():
     assert slipping["sit"] == "after_high", "a good night is still answered first"
     slipping2 = pick_morning({"name": "Shubham", "task_title": "Four bars", "idx": 5, "total": 7, "done": 2, "past": 4, "day": "Friday",
                               "week": 1, "streak": 1, "noted": True, "score": 5, "emotion": "neutral"}, "en", [], "2026-10-30")
-    assert slipping2["sit"] == "slipping" and slipping2["subject"] == "2 misses. Don't make it 3."
-    assert slipping2["headline"] == "You're slipping, Shubham. Not quietly."
+    assert slipping2["sit"] == "slipping" and slipping2["subject"] == "2 days of 'tomorrow', Shubham."
+    assert slipping2["headline"] == "You're not busy. You're avoiding it."
     # A single miss is not "slipping"; Day 1 never is.
     assert pick_morning({"name": "S", "task_title": "x", "idx": 3, "total": 7, "done": 1, "past": 2, "day": "Wednesday", "week": 1}, "en", [], "2026-10-28")["sit"] != "slipping"
     assert pick_morning({"name": "S", "task_title": "x", "idx": 1, "total": 7, "done": 0, "past": 2, "day": "Monday", "week": 2}, "en", [], "2026-10-26")["sit"] == "first_day"
 
     # The miss itself: no "that's fine", a kick and the small version of today.
     rc = pick_recovery({"name": "Shubham", "task_title": "Four bars"}, "en", [], "2026-10-29")
-    assert "excuse" in rc["subject"] and "We both saw it" in rc["headline"] and "Four bars" in rc["line"]
+    assert "quit yesterday" in rc["subject"] and rc["headline"] == "But you did." and "Four bars" in rc["line"]
     # A low mood does not switch the kick off: the recovery pick never reads the score.
     assert pick_recovery({"name": "Shubham", "task_title": "Four bars", "score": 3, "emotion": "drained"}, "en", [], "2026-10-29")["sit"] == "missed"
 
     # The evening: silence is called what it is.
     ev = pick_evening({"name": "Shubham", "task_title": "Four bars", "streak": 0}, "en", [], "2026-10-29")
-    assert ev["subject"] == "No note, no proof, Shubham." and ev["headline"] == "Did today happen or not?"
+    assert ev["subject"] == "Another day you'd rather not talk about?" and ev["headline"] == "Silence. So it didn't happen."
     risk = pick_evening({"name": "Shubham", "task_title": "Four bars", "streak": 6}, "en", [], "2026-10-29")
-    assert risk["subject"] == "6-day streak. Dies at 11:59. Your call." and "letting it die" in risk["headline"]
+    assert risk["subject"] == "6 days, and tonight you let it die." and risk["headline"] == "Not lose it. Let it."
 
     # The review: under half the days done → "we need to talk"; a silent week is called a choice.
     weak = pick_review({"name": "Shubham", "week": 1, "done": 2, "total": 7, "badge": "Grit Mode", "headline": "2 of 7 days.", "teaser": "t"}, "en", [], "2026-10-25")
-    assert weak["sit"] == "weak" and weak["subject"] == "2 of 7. We need to talk, Shubham."
+    assert weak["sit"] == "weak" and weak["subject"] == "2 days. You planned 7, Shubham."
     fine = pick_review({"name": "Shubham", "week": 1, "done": 5, "total": 7, "badge": "Iron Week", "headline": "5 of 7 days.", "teaser": "t"}, "en", [], "2026-10-25")
     assert fine["sit"] == "review"
     quiet = pick_review({"name": "Shubham", "week": 1, "done": 0, "total": 7, "quiet": True, "headline": "", "teaser": ""}, "en", [], "2026-10-25")

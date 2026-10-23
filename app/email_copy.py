@@ -9,10 +9,11 @@ Hinglish for people in India and English elsewhere, with slots for the
 person's own numbers. The model never writes these; it only adds the one
 line that reads last night's note.
 
-The voice is a strict mentor's: witty on a normal day, a kick when the
+The voice is a strict mentor's: witty on a normal day, dark when the
 person slips — a missed day, a skipped note, a streak about to die, a week
-with more misses than days done. The kick is always aimed at the
-behaviour, never at the person.
+with more misses than days done. The dark lines name the avoidance and
+the excuse ("you weren't busy", "you chose something else"); they never
+go after the person's body, mind or worth.
 
 Every pick is remembered on the user row so a line is not repeated within
 two weeks and the same hook is not used two mornings running.
@@ -111,12 +112,11 @@ MORNING: List[dict] = [
 
     # yesterday got a tick but no note
     _e("no_note", "hi", "Kal tick to laga, bola kuch nahi.", "Mentor ko box dikha, din nahi.", "Aaj raat 1 minute bol dena. Aaj: {task}.", "Aaj ka task"),
-    _e("no_note", "en", "You ticked the box and said nothing.", "That's not accountability. That's a checkbox.", "Tonight, one minute, the real version. Today: {task}.", "Today's task"),
+    _e("no_note", "en", "Ticked the box. Said nothing. Convenient.", "A tick with no words is a tick you can't back up.", "Tonight, one minute, the real version. Today: {task}.", "Today's task"),
     # two or more misses this week already (yesterday itself was done, or the recovery email would have gone)
-    _e("slipping", "en", "{misses} misses. Don't make it {misses_next}.", "You're slipping, {name}. Not quietly.", "{done} of {past} done. Today: {task}. No speech, just the task.", "Stop the slide"),
-    _e("slipping", "en", "This is how people quit, {name}.", "Not with a decision. With {misses} skipped days.", "Today is the day it turns around or doesn't: {task}.", "Turn it around"),
-    _e("slipping", "en", "Your week is {done} for {past}. Say that out loud.", "The plan isn't the problem.", "{task}. Ten minutes. Then you can argue with me tonight.", "Do the ten"),
-
+    _e("slipping", "en", "{misses} days of 'tomorrow', {name}.", "You're not busy. You're avoiding it.", "{done} of {past} done. Today: {task}. No speech, just the task.", "Stop avoiding it"),
+    _e("slipping", "en", "One more skip and this becomes a story.", "The one you tell about the time you tried.", "Today is where it turns, or doesn't: {task}.", "Turn it"),
+    _e("slipping", "en", "{done} for {past}. You know what that looks like.", "The plan isn't the problem, {name}.", "{task}. Ten minutes. Then argue with me tonight.", "Do the ten"),
     # the last day of the week
     _e("last_day", "hi", "Aaj last din. Shaam ko report card banega.", "Hafte ka aakhri task. Phir hisaab.", "{task}. Raat ko mentor poora hafta padhega.", "Hafta khatam karo"),
     _e("last_day", "en", "Last day. Report card lands tonight.", "One more, then the week gets graded.", "{task}. Tonight your mentor reads all seven days.", "Finish the week"),
@@ -151,10 +151,10 @@ MORNING: List[dict] = [
 RECOVERY: List[dict] = [
     _e("missed", "hi", "Kal gaya. Aaj nahi jaayega.", "Ek din miss = kuch nahi. Do din = aadat tooti.", "Aaj ka chhota version ready hai: {task}.", "Wapas aao"),
     _e("missed", "hi", "{name}, kal chhoot gaya. Theek hai. Aaj?", "Kal ka hisaab nahi. Aaj ka hai.", "2-minute version chalega. Bas aaj: {task}.", "Aaj karo"),
-    _e("missed", "en", "Same excuse, different day, {name}.", "Yesterday you did nothing. We both saw it.", "One miss is a slip. Two is who you are. Today: {task}.", "Prove it today"),
-    _e("missed", "en", "You ghosted your own goal yesterday.", "The goal was there. You weren't.", "Nobody's coming to do this for you. The small version is ready: {task}.", "Show up"),
-    _e("missed", "en", "Yesterday: zero. Today: your call.", "Skip twice and this becomes your habit.", "Not the task — the skipping. Today: {task}.", "Break the pattern"),
-    _e("missed", "en", "Still 'starting tomorrow', {name}?", "Tomorrow has been doing all your work.", "It never shows up. Today does: {task}.", "Do it today"),
+    _e("missed", "en", "You quit yesterday, {name}. Just for a day.", "But you did.", "Quitting for a day is how quitting starts. Today: {task}.", "Un-quit"),
+    _e("missed", "en", "You'll say you were busy. You weren't.", "Nobody noticed you skipped. That's the problem.", "No one is watching this but you. Today: {task}.", "Show up"),
+    _e("missed", "en", "This is exactly how it went last time.", "A skipped day, a good reason, then nothing.", "Break the script today: {task}. The small version counts.", "Break the script"),
+    _e("missed", "en", "Yesterday you chose something else.", "Say it out loud. Then fix it.", "Today's version is small on purpose: {task}.", "Fix it today"),
 ]
 
 EVENING: List[dict] = [
@@ -162,12 +162,12 @@ EVENING: List[dict] = [
     _e("sunday_last", "en", "Last note of the week. The report card needs it.", "Sunday's note closes the week.", "Your mentor reads the whole week tonight. Don't leave today blank.", "Give it"),
     _e("streak_risk", "hi", "{streak} din ki streak, 11:59 pe gayab.", "1 minute mein bacha lo.", "Bas bol do aaj kaisa gaya. Itna hi.", "Streak bachao"),
     _e("streak_risk", "hi", "{streak} din ka kaam, aaj raat ka ek minute.", "Streak ko sirf ek minute chahiye.", "Note record karo, din done.", "1 minute"),
-    _e("streak_risk", "en", "{streak}-day streak. Dies at 11:59. Your call.", "You built it. You're the one letting it die.", "One minute saves it. Say how today went.", "Save it"),
-    _e("streak_risk", "en", "{streak} days of work. Lost over one minute?", "The streak doesn't need much. It needs you.", "Record the note. Day's done.", "One minute"),
+    _e("streak_risk", "en", "{streak} days, and tonight you let it die.", "Not lose it. Let it.", "One minute saves it. Say how today went.", "Save it"),
+    _e("streak_risk", "en", "{streak}-day streak. Gone at 11:59. Your call.", "You built it. You're the one walking away.", "Record the note. Day's done.", "One minute"),
     _e("journal", "hi", "Ek minute, {name}. Aaj kaisa gaya?", "Bolo, kal subah mentor ko kya batau?", "Done, aadha, ya kuch nahi. Sab chalega, chup nahi.", "1 minute bolo"),
     _e("journal", "hi", "Aaj ka din bina note ke so jaayega?", "Din gaya, note baaki.", "Aaj tha: {task}. Kaisa gaya, 60 second mein.", "Record karo"),
     _e("journal", "hi", "{name}, din ka last kaam. Sabse chhota.", "Bol ke so jao.", "Kal ka plan isi ek minute se banta hai.", "Bolo"),
-    _e("journal", "en", "No note, no proof, {name}.", "Did today happen or not?", "Done, half, or nothing — say it. Silence counts as nothing.", "Say it"),
+    _e("journal", "en", "Another day you'd rather not talk about?", "Silence. So it didn't happen.", "Done, half, or nothing — say it. Not saying it is its own answer.", "Say it"),
     _e("journal", "en", "You're about to sleep on a blank day.", "The day's done. The note isn't.", "Today was: {task}. Sixty seconds. Then sleep.", "Record it"),
     _e("journal", "en", "One minute, {name}. Or did you skip that too?", "Last job of the day. The smallest one.", "Tomorrow's plan is built from this minute. Skip it and tomorrow is a guess.", "One minute"),
 ]
@@ -176,8 +176,8 @@ REVIEW: List[dict] = [
     _e("quiet", "hi", "Hafta khamosh gaya. Koi lecture nahi.", "Restart, same level.", "Mentor ne kuch maana nahi, sirf note kiya.", "Restart"),
     _e("quiet", "en", "Seven days. Zero notes. That's a choice, {name}.", "A week of nothing.", "No lecture — just this: the restart is the same plan, and it's waiting.", "Restart"),
     _e("quiet", "en", "You went quiet. The goal didn't.", "Week {week}: nothing recorded.", "Same level, fresh start. Show up this time.", "Restart"),
-    _e("weak", "en", "{done} of {total}. We need to talk, {name}.", "{done}/{total}. {badge}.", "{teaser}", "Face the report card", req=("badge",)),
-    _e("weak", "en", "Your week: {done} of {total}. Read that again.", "{headline}", "{teaser}", "See the damage"),
+    _e("weak", "en", "{done} days. You planned {total}, {name}.", "{done}/{total}. {badge}.", "{teaser}", "Face the report card", req=('badge',)),
+    _e("weak", "en", "{misses_total} days you chose something else.", "{headline}", "{teaser}", "See the damage"),
     _e("review", "hi", "Report card aa gaya. Mummy ko mat dikhana 😄", "{done}/{total}. {badge}.", "{teaser}", "Report card dekho", req=("badge",)),
     _e("review", "hi", "Week {week} ka hisaab ready hai, {name}.", "{headline}", "{teaser}", "Poora dekho"),
     _e("review", "hi", "{badge}. Yeh kaise mila, andar hai.", "{headline}", "{teaser}", "Dekho kyun", req=("badge",)),
@@ -287,6 +287,7 @@ def _base_ctx(ctx: dict) -> dict:
         c["next"] = int(c["streak"]) + 1
     misses = max(0, int(c.get("past") or 0) - int(c.get("done") or 0))
     c["misses"], c["misses_next"] = misses, misses + 1
+    c["misses_total"] = max(0, int(c.get("total") or 0) - int(c.get("done") or 0))
     return c
 
 
