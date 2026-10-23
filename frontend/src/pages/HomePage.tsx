@@ -35,7 +35,7 @@ const STEPS = [
 ];
 
 const HIGHLIGHTS = [
-  { icon: MessageSquare, title: 'AI Accountability Mentor', desc: 'The core of Feelivate: a mentor that learns how you actually behave week to week and calls it out when the same excuse starts repeating itself.' },
+  { icon: MessageSquare, title: 'AI Accountability Mentor', desc: 'The core of Feelivate: a partner that learns how you actually behave week to week and calls it out when the same excuse starts repeating itself.' },
   { icon: Lock, title: 'The Lock-In Protocol', desc: "Once your week is approved, it's locked. You commit to the action, not the mood you're in that morning, and skipping breaks the streak instead of quietly resetting it." },
   { icon: Mail, title: 'Daily Task Emails', desc: "Today's exact task lands in your inbox at the time you set, in your own timezone, with a short note on how to actually get it done." },
   { icon: LineChart, title: 'Streaks & Weekly Reports', desc: 'Your streak reflects real momentum, not just logged checkmarks, and every week closes with an honest report on what actually got done versus what was planned.' },
