@@ -261,7 +261,12 @@ def test_evening_note_goes_once_at_2030_only_when_the_journal_is_missing(client,
     to, task, streak, at_risk, copy = sent[0]
     assert to == "evening@example.com" and task.startswith("Piano") and streak == 3 and at_risk is True
     # A UTC user gets the English streak line, with their number in it, and the pick is remembered.
-    assert copy["sit"] == "streak_risk" and copy["id"].endswith(".en.1") and "3" in copy["subject"]
+    # On the week's last day (the test week runs Monday→Sunday, so: when the
+    # suite runs on a Sunday) the "last note of the week" line outranks it.
+    if date.today() == end:
+        assert copy["sit"] == "sunday_last" and ".en." in copy["id"]
+    else:
+        assert copy["sit"] == "streak_risk" and copy["id"].endswith(".en.1") and "3" in copy["subject"]
     db = SessionLocal()
     assert json.loads(db.query(User).filter(User.id == uid).first().email_copy_recent)[0]["id"] == copy["id"]
     db.close()
