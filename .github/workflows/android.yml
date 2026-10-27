@@ -1,0 +1,123 @@
+name: Android
+
+# Every push to main that touches the app builds a debug APK in the cloud and
+# hands it to Firebase App Distribution, which notifies the testers' phones.
+#
+# Auth is keyless: GitHub's OIDC token is exchanged for a short-lived Google
+# access token through Workload Identity Federation (pool "github" on the
+# Firebase project), impersonating the project's Firebase service account.
+on:
+  push:
+    branches: ["main"]
+    paths: ["android/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  FIREBASE_PROJECT_NUMBER: "980030853864"
+  WIF_PROVIDER: projects/980030853864/locations/global/workloadIdentityPools/github/providers/github
+  WIF_SERVICE_ACCOUNT: firebase-adminsdk-fbsvc@feelivate.iam.gserviceaccount.com
+
+jobs:
+  build:
+    # The federation only trusts this repository; mirrors on other remotes skip the job.
+    if: github.repository == 'june64products/Feelivate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0 platform-tools"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # The same debug keystore as the dev Mac, so phones update in place and
+      # the SHA-1 registered for Google Sign-In keeps matching.
+      - name: Restore debug keystore
+        env:
+          DEBUG_KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          mkdir -p ~/.android
+          printf '%s' "$DEBUG_KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+
+      - name: Build debug APK
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+        run: |
+          # Offset keeps cloud builds above any APK built by hand on the Mac (versionCode 1).
+          gradle assembleDebug --no-daemon --console=plain \
+            -PversionCode=$((100 + ${{ github.run_number }})) \
+            -PversionName=0.1.${{ github.run_number }} \
+            -PgoogleWebClientId="$GOOGLE_WEB_CLIENT_ID"
+          cp app/build/outputs/apk/debug/app-debug.apk "feelivate-0.1.${{ github.run_number }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: feelivate-0.1.${{ github.run_number }}
+          path: android/feelivate-0.1.${{ github.run_number }}.apk
+          retention-days: 14
+
+      - id: gcp
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Send to phones (Firebase App Distribution)
+        env:
+          TOKEN: ${{ steps.gcp.outputs.access_token }}
+          APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          APK: feelivate-0.1.${{ github.run_number }}.apk
+          NOTES: ${{ github.event.head_commit.message || 'Manual build' }}
+        run: |
+          set -euo pipefail
+          API="https://firebaseappdistribution.googleapis.com"
+          APP="projects/$FIREBASE_PROJECT_NUMBER/apps/$APP_ID"
+
+          # 1. Upload the binary; the API answers with a long-running operation.
+          OP=$(curl -sS -X POST "$API/upload/v1/$APP/releases:upload" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "X-Goog-Upload-Protocol: raw" \
+            -H "X-Goog-Upload-File-Name: $APK" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@$APK" | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')
+          echo "operation: $OP"
+
+          # 2. Wait for processing to finish and pick up the release name.
+          for i in $(seq 1 60); do
+            BODY=$(curl -sS "$API/v1/$OP" -H "Authorization: Bearer $TOKEN")
+            if echo "$BODY" | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("done") else 1)'; then break; fi
+            sleep 5
+          done
+          echo "$BODY" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert "error" not in d, d'
+          RELEASE=$(echo "$BODY" | python3 -c 'import json,sys; print(json.load(sys.stdin)["response"]["release"]["name"])')
+          echo "release: $RELEASE"
+
+          # 3. Release notes = the commit message, then hand it to the testers group.
+          python3 -c 'import json,os; print(json.dumps({"releaseNotes": {"text": os.environ["NOTES"]}}))' > notes.json
+          curl -sS -o /dev/null -w "notes: %{http_code}\n" -X PATCH "$API/v1/$RELEASE?updateMask=releaseNotes.text" \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data @notes.json
+          curl -sS -o /dev/null -w "distribute: %{http_code}\n" -X POST "$API/v1/$RELEASE:distribute" \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            --data '{"groupAliases": ["testers"]}'
