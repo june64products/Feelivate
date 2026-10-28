@@ -14,4 +14,4 @@ app/release/
 secrets.properties
 google-services.json
 tools/shots/
-tools/shots/
+.kotlin/
