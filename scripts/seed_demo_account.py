@@ -18,6 +18,11 @@ DRY RUN BY DEFAULT. Review the summary, then re-run with --apply.
 
     python -m scripts.seed_demo_account                 # show what it would write
     python -m scripts.seed_demo_account --apply         # write it
+    python -m scripts.seed_demo_account --account ayush --apply   # the one-week Python account
+
+Two accounts are defined: "ro" (default), the 10-week guitar journey, and
+"ayush", a beginner-Python arc with a single archived week and week 2 in
+flight — the shape a brand-new user sees a few days after their first review.
 
 Writes to whatever DATABASE_URL points at — the local sqlite file unless that is
 set. Check which database you are pointed at before using --apply.
@@ -280,14 +285,74 @@ CHAT = [
 ]
 
 
+# ── Ayush: learning Python. Week 1 archived, week 2 live. ────────────────────
+PYTHON_WEEKS = [
+    {
+        "theme": "Make friends with the terminal",
+        "win": "Complete 4 of 6 practice days",
+        "days": [
+            "Evening — install Python 3 and open the REPL. Type 2 + 2 and print('hello'). That is the whole task.\nBare minimum: see the >>> prompt once.",
+            "Evening — 15 min in the REPL: numbers, strings, and what happens when you add them together.\nBare minimum: make one string and one number.",
+            "Evening — write your first file, hello.py, and run it from the terminal. 15 min.\nBare minimum: run one .py file.",
+            "Evening — variables. 15 min: store your name, your age and today's date, then print a sentence with them.\nBare minimum: one variable, one print.",
+            "Evening — if / else. 15 min: a script that asks for a number and says whether it is odd or even.\nBare minimum: one if statement that runs.",
+            "Rest day — let it settle. The habit is the point this week, not the syntax.\nBare minimum: rest is the task today.",
+            "Evening — 20 min: re-read everything you wrote this week and fix one thing you would do differently.\nBare minimum: open the files.",
+        ],
+        "journals": {
+            0: ("motivated", 8, "Got the >>> prompt. It felt like a door.", "Installed Python, opened the terminal, typed two plus two and it said four. Honestly I've put this off for a year and the first step took eight minutes."),
+            1: ("focused", 7, "Strings plus numbers don't mix — noted.", "Played in the REPL. Tried adding a string to a number and it threw an error, which actually taught me more than the tutorial did. Fifteen minutes went fast."),
+            2: ("proud", 7, "hello.py ran. From a file. That I wrote.", "Wrote my first actual file and ran it from the terminal. It printed hello. Small, but it's a real program on my real machine."),
+            4: ("motivated", 8, "The odd-or-even script worked first try.", "Wrote the if else thing for odd and even numbers. It worked on the first run and I'm slightly suspicious of that. Feeling like this might actually stick."),
+            6: ("content", 7, "Week one done, didn't quit.", "Went back through the week's files. Renamed some variables so they made sense. Week one finished and I showed up five days, which is five more than last time."),
+        },
+    },
+    # ── Week 2: the live week. Only the days up to today are logged. ──
+    {
+        "theme": "Loops, functions, and a script that does something",
+        "win": "Complete 4 of 6 practice days",
+        "days": [
+            "Evening — lists. 20 min: a list of five things you are learning, print each one on its own line.\nBare minimum: make one list.",
+            "Evening — for loops. 20 min: loop over your list and number each item.\nBare minimum: one loop that runs.",
+            "Evening — while loops. 20 min: a guessing game that keeps asking until the number is right.\nBare minimum: one while loop that ends.",
+            "Evening — functions. 20 min: wrap the odd-or-even check in a function and call it three times.\nBare minimum: define one function.",
+            "Evening — 20 min: a script that reads a to-do list from a file and prints it back, numbered.\nBare minimum: open one file from Python.",
+            "Rest day.\nBare minimum: rest is the task today.",
+            "Evening — 25 min: combine the week into one small tool — a to-do list you can add to from the terminal.\nBare minimum: add one item and print the list.",
+        ],
+        "journals": {
+            0: ("focused", 7, "Lists make sense. Counting from zero does not, yet.", "Made a list of things I'm learning and printed it. Got bitten by the zero index straight away. Fine. Good start to the week."),
+            1: ("motivated", 8, "The for loop clicked in ten minutes.", "Looped over my list with numbers next to each item. It clicked faster than I expected — the REPL week is paying off."),
+            2: ("frustrated", 5, "Infinite loop. Twice.", "Wrote the guessing game and locked my terminal with an infinite loop. Twice. Found ctrl-c. Eventually it worked, but that was humbling."),
+        },
+    },
+]
+
+PYTHON_CHAT = [
+    ("user", "I want to learn Python. I've started tutorials three times and never got past the first few videos."),
+    ("assistant", "Three starts tell me the tutorials weren't the problem — watching is passive, and nothing you watched became yours. So week one is tiny and all hands-on: open the REPL, type things, break things, run one file. Here's Week 1, built to be too small to quit."),
+    ("user", "Week one went better than I expected. What now — should I start a proper course?"),
+    ("assistant", "Not yet. A course would put you back in the audience. You've got the habit; week two gives it something to carry — lists, loops, a function, and by Sunday one small tool you actually use. Keep the sessions at 20 minutes. Here's Week 2."),
+]
+
+# Which account `--account` selects. Everything downstream reads from here.
+PROFILES = {
+    "ro": {"email": EMAIL, "password": PASSWORD, "name": NAME, "goal": GOAL,
+           "title": "Learn guitar", "weeks": WEEKS, "chat": CHAT},
+    "ayush": {"email": "ayush@ai.com", "password": "ayush1234", "name": "Ayush",
+              "goal": "I want to learn Python", "title": "Learn Python",
+              "weeks": PYTHON_WEEKS, "chat": PYTHON_CHAT},
+}
+
+
 def monday_of(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
 
-def build(today: date):
-    """Assemble every row from WEEKS. Returns a dict of lists, nothing persisted."""
-    live_monday = monday_of(today)               # week 11 starts this Monday
-    first_monday = live_monday - timedelta(weeks=len(WEEKS) - 1)
+def build(today: date, weeks=WEEKS):
+    """Assemble every row from `weeks`. Returns a dict of lists, nothing persisted."""
+    live_monday = monday_of(today)               # the last week starts this Monday
+    first_monday = live_monday - timedelta(weeks=len(weeks) - 1)
 
     user_id = str(uuid.uuid4())
     session_id = str(uuid.uuid4())
@@ -296,11 +361,11 @@ def build(today: date):
     done_dates = set()
     prev_stats = None
 
-    for idx, wk in enumerate(WEEKS):
+    for idx, wk in enumerate(weeks):
         week_no = idx + 1
         ws = first_monday + timedelta(weeks=idx)
         we = ws + timedelta(days=6)
-        is_live = week_no == len(WEEKS)
+        is_live = week_no == len(weeks)
 
         plan = {
             "week_number": week_no,
@@ -463,10 +528,15 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--apply", action="store_true", help="write the account (default: dry run)")
     ap.add_argument("--today", help="override today's date (YYYY-MM-DD), for testing")
+    ap.add_argument("--account", choices=sorted(PROFILES), default="ro", help="which demo account to seed")
     args = ap.parse_args()
 
+    P = PROFILES[args.account]
+    EMAIL, PASSWORD, NAME, GOAL, WEEKS, CHAT = (
+        P["email"], P["password"], P["name"], P["goal"], P["weeks"], P["chat"])
+
     today = date.fromisoformat(args.today) if args.today else date.today()
-    data = build(today)
+    data = build(today, WEEKS)
     live = data["plans"][-1]
 
     print(f"Demo account: {EMAIL}  (password: {PASSWORD})")
@@ -510,7 +580,7 @@ def main():
 
         db.add(Session(
             id=data["session_id"], user_id=data["user_id"],
-            title="Learn guitar", focus=GOAL,
+            title=P["title"], focus=GOAL,
             phase="active", current_week=len(WEEKS),
             plan_start_date=data["first_monday"].isoformat(),
             week_plan_json=json.dumps(data["plans"][-1]),
