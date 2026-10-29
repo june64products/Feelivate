@@ -28,6 +28,7 @@ from loguru import logger
 
 from .journal_text import said_verbatim, snippet, strongest_sentence
 from .email_copy import lang_for, pick_evening, pick_morning, pick_recovery, pick_review, recent_for, remember, short_task
+from .push_service import safe_send_to_user
 
 # ── Resend init ──────────────────────────────────────────────────────────────
 resend.api_key = os.getenv("RESEND_API_KEY", "")
@@ -1388,6 +1389,12 @@ def run_evening_reminders(now_utc: Optional[datetime] = None):
                     user.last_journal_reminder_date = today
                     remember(user, copy, today)
                     db.commit()
+                    safe_send_to_user(
+                        user.id,
+                        "Tonight's journal" if streak == 0 else f"Your {streak}-day streak ends tonight",
+                        "Sixty seconds on how today actually went.",
+                        {"view": "journey"}, channel="feelivate_evening",
+                    )
 
             except Exception as e:
                 logger.error(f"[Reminders] failed for user {user.id}: {e}")
@@ -1638,6 +1645,12 @@ def run_week_review_emails(now_utc: Optional[datetime] = None):
                             user.last_review_email_key = ",".join(sent_keys)
                             remember(user, copy, today_iso)
                             db.commit()
+                            safe_send_to_user(
+                                user.id,
+                                f"Your Week {wk} review is in",
+                                review_teaser(report, lang),
+                                {"view": "journey", "week": wk}, channel="feelivate_review",
+                            )
                             announced = True
                             break
                     if announced:
@@ -1943,6 +1956,12 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                     remember(user, m_copy, today_date_str)
                     db.commit()
                     sent_count += 1
+                    safe_send_to_user(
+                        user.id,
+                        f"{task_info['day_label']} — today's one thing",
+                        task_info["task_title"],
+                        {"view": "chat"}, channel="feelivate_daily",
+                    )
 
             except Exception as user_err:
                 logger.error(f"[Scheduler] Error for user {user.id}: {user_err}")

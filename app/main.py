@@ -4586,6 +4586,46 @@ FEEDBACK_FORMS: Dict[str, Dict[str, Any]] = {
 }
 
 
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  Push notifications — the phone's copy of the daily alerts    ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+class DeviceTokenRequest(BaseModel):
+    token: str
+    platform: str = "android"
+
+
+@app.post("/notifications/device", tags=["notifications"])
+async def register_device(
+    req: DeviceTokenRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    The app calls this after Android hands it an FCM token — on first launch,
+    on every sign-in, and whenever Google rotates the token.
+    """
+    from .push_service import register_token
+    token = (req.token or "").strip()
+    if len(token) < 20 or len(token) > 4096:
+        raise HTTPException(status_code=400, detail="Not a device token.")
+    platform = req.platform if req.platform in ("android", "ios") else "android"
+    register_token(db, current_user.id, token, platform)
+    return {"ok": True}
+
+
+@app.delete("/notifications/device", tags=["notifications"])
+async def forget_device(
+    req: DeviceTokenRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Logout: this phone should stop hearing from the account that left it."""
+    from .push_service import unregister_token
+    unregister_token(db, (req.token or "").strip())
+    return {"ok": True}
+
+
 class FeedbackRequest(BaseModel):
     kind: str = "full"
     answers: Dict[str, Any] = {}

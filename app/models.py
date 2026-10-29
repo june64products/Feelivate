@@ -332,3 +332,21 @@ class WeeklyReport(Base):
     created_at   = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")
+
+
+class DeviceToken(Base):
+    """
+    One row per phone that asked to be notified. Keyed by the FCM token rather
+    than the user, because a shared phone moves between accounts and only the
+    account that signed in last should hear from us on it.
+    """
+    __tablename__ = "device_tokens"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    user_id      = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    token        = Column(String, nullable=False, unique=True, index=True)
+    platform     = Column(String, default="android")   # android | ios
+    created_at   = Column(DateTime, default=datetime.utcnow)
+    last_seen_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
