@@ -69,6 +69,11 @@ class Prefs(context: Context) {
         getString("last_journal_date_${userId}_${sessionId ?: "none"}") == LocalDate.now().toString()
     fun lockJournalToday(userId: String?, sessionId: String?) = put("last_journal_date_${userId}_${sessionId ?: "none"}", LocalDate.now().toString())
 
+    // ── emotion orb position (emotion_orb_position) ──
+    fun orbX(): Float? = getString("emotion_orb_x")?.toFloatOrNull()
+    fun orbY(): Float? = getString("emotion_orb_y")?.toFloatOrNull()
+    fun saveOrb(x: Float, y: Float) { put("emotion_orb_x", x.toString()); put("emotion_orb_y", y.toString()) }
+
     // ── recovery card ──
     fun slipReason(dateIso: String): String? = getString("slip_reason_$dateIso")
     fun saveSlipReason(dateIso: String, reason: String) = put("slip_reason_$dateIso", reason)

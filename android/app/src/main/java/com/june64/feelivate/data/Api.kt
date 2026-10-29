@@ -54,6 +54,12 @@ interface FeelivateApi {
     @POST("recovery/motivation") suspend fun recoveryMotivation(@Body body: RecoveryRequest): RecoveryResponse
     // journal
     @GET("journal/{userId}/today-emotion") suspend fun todayEmotion(@Path("userId") userId: String, @Query("session_id") sessionId: String?, @Query("client_date") clientDate: String): TodayEmotion
+    @GET("journal/{userId}") suspend fun journals(@Path("userId") userId: String, @Query("session_id") sessionId: String?, @Query("limit") limit: Int = 30): List<JournalEntry>
+    @Multipart @POST("journal/voice") suspend fun voiceJournal(@Part audio: MultipartBody.Part, @Query("session_id") sessionId: String?, @Query("client_date") clientDate: String): JournalEntry
+    @Multipart @POST("mood/checkin") suspend fun moodCheckin(@Part audio: MultipartBody.Part): MoodCheckinResult
+    @GET("journal/{userId}/weekly-report") suspend fun weeklyReport(@Path("userId") userId: String, @Query("session_id") sessionId: String?, @Query("week_number") weekNumber: Int?, @Query("client_date") clientDate: String, @Query("force_refresh") forceRefresh: Boolean? = null): WeeklyReport
+    @GET("sessions/{sessionId}/week-info") suspend fun weekInfo(@Path("sessionId") sessionId: String, @Query("client_date") clientDate: String): WeekInfo
+    @GET("sessions/{sessionId}/reports") suspend fun archivedReports(@Path("sessionId") sessionId: String, @Query("client_date") clientDate: String): List<ArchivedReport>
     // notifications
     @GET("notifications/email/status") suspend fun emailStatus(@Query("user_id") userId: String): EmailStatus
     @POST("notifications/email/send-otp") suspend fun sendOtp(@Body body: SendOtpRequest): MessageResponse
@@ -65,6 +71,9 @@ interface FeelivateApi {
     @HTTP(method = "DELETE", path = "account", hasBody = true) suspend fun deleteAccount(@Body body: DeleteAccountRequest): DeleteAccountResult
     // voice
     @Multipart @POST("transcribe") suspend fun transcribe(@Part audio: MultipartBody.Part): TranscribeResponse
+    // site
+    @POST("contact") suspend fun contact(@Body body: ContactRequest): JsonObject
+    @GET("blog/posts") suspend fun blogPosts(@Query("category") category: String? = null): PublishedPosts
 }
 
 /** One client for the whole app; the bearer token is read from the secure store on every call. */

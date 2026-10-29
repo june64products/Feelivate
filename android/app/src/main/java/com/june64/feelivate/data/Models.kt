@@ -203,6 +203,151 @@ data class ArchivedWeekReport(
 @Serializable data class EmotionEntry(val id: Int = 0, val date: String = "", @SerialName("emotion_label") val emotionLabel: String = "", @SerialName("emotion_score") val emotionScore: Float = 0f, @SerialName("one_liner") val oneLiner: String = "")
 @Serializable data class TodayEmotion(@SerialName("has_entry") val hasEntry: Boolean = false, val entry: EmotionEntry? = null)
 
+/* ── journal & the weekly review (JourneyPage.tsx) ── */
+
+@Serializable
+data class JournalEntry(
+    val id: Int = 0,
+    val date: String = "",
+    val transcript: String = "",
+    @SerialName("emotion_label") val emotionLabel: String = "",
+    @SerialName("emotion_score") val emotionScore: Int = 0,
+    @SerialName("one_liner") val oneLiner: String = "",
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("recorded_today") val recordedToday: Boolean? = null,
+)
+
+@Serializable
+data class MoodCheckinResult(
+    @SerialName("emotion_label") val emotionLabel: String = "",
+    @SerialName("emotion_score") val emotionScore: Int = 0,
+    @SerialName("one_liner") val oneLiner: String = "",
+    @SerialName("mood_only") val moodOnly: Boolean = true,
+)
+
+@Serializable
+data class ReportDay(
+    val date: String = "",
+    @SerialName("day_label") val dayLabel: String = "",
+    @SerialName("planned_task") val plannedTask: String = "",
+    val emotion: String? = null,
+    val score: Int? = null,
+    @SerialName("one_liner") val oneLiner: String? = null,
+    /** done · skipped · missed · pending */
+    val checkin: String = "pending",
+    @SerialName("has_journal") val hasJournal: Boolean = false,
+    @SerialName("coaching_insight") val coachingInsight: String = "",
+    @SerialName("coaching_micro_action") val coachingMicroAction: String? = null,
+)
+
+@Serializable data class WeekBadge(val name: String = "", val reason: String = "")
+@Serializable data class WeekSummary(val wins: String = "", val dips: String = "", val pattern: String = "")
+@Serializable data class TriggerPattern(val pattern: String = "", val frequency: String = "", @SerialName("weeks_detected") val weeksDetected: List<Int> = emptyList())
+@Serializable data class PrevWeekStats(@SerialName("consistency_score") val consistencyScore: Int = 0, @SerialName("avg_score") val avgScore: Float = 0f, @SerialName("momentum_score") val momentumScore: Int = 0, @SerialName("days_done") val daysDone: Int = 0)
+@Serializable data class ReportPatterns(@SerialName("best_days") val bestDays: List<String> = emptyList(), @SerialName("worst_days") val worstDays: List<String> = emptyList(), @SerialName("mood_trend") val moodTrend: String = "", @SerialName("recurring_friction") val recurringFriction: List<String> = emptyList())
+
+@Serializable
+data class ReportData(
+    @SerialName("avg_score") val avgScore: Float = 0f,
+    @SerialName("consistency_score") val consistencyScore: Int = 0,
+    @SerialName("days_done") val daysDone: Int = 0,
+    @SerialName("days_missed") val daysMissed: Int = 0,
+    @SerialName("past_days_count") val pastDaysCount: Int = 0,
+    @SerialName("entry_count") val entryCount: Int = 0,
+    @SerialName("week_number") val weekNumber: Int = 1,
+    @SerialName("week_theme") val weekTheme: String = "",
+    @SerialName("momentum_score") val momentumScore: Int? = null,
+    @SerialName("momentum_label") val momentumLabel: String? = null,
+    @SerialName("peak_performance_days") val peakPerformanceDays: List<String> = emptyList(),
+    @SerialName("prev_week_stats") val prevWeekStats: PrevWeekStats? = null,
+    @SerialName("dominant_emotion") val dominantEmotion: String = "",
+    @SerialName("week_summary") val weekSummary: WeekSummary? = null,
+    @SerialName("week_badge") val weekBadge: WeekBadge? = null,
+    @SerialName("best_quote") val bestQuote: String? = null,
+    @SerialName("trigger_patterns") val triggerPatterns: List<TriggerPattern> = emptyList(),
+    @SerialName("hidden_insight") val hiddenInsight: String = "",
+    @SerialName("next_week_focus") val nextWeekFocus: String = "",
+    @SerialName("next_week_plan_context") val nextWeekPlanContext: String = "",
+    @SerialName("quiet_week") val quietWeek: Boolean = false,
+    @SerialName("best_days") val bestDays: List<String> = emptyList(),
+    @SerialName("worst_days") val worstDays: List<String> = emptyList(),
+    @SerialName("mood_trend") val moodTrend: String = "",
+    @SerialName("recurring_friction") val recurringFriction: List<String> = emptyList(),
+    val patterns: ReportPatterns? = null,
+    @SerialName("emotional_arc") val emotionalArc: String = "",
+    @SerialName("what_went_well") val whatWentWell: String = "",
+    @SerialName("where_you_slipped") val whereYouSlipped: String = "",
+    @SerialName("consistency_analysis") val consistencyAnalysis: String = "",
+    val days: List<ReportDay> = emptyList(),
+)
+
+@Serializable
+data class WeeklyReport(
+    /** generated · cached · no_data · waiting_for_sunday_entry · in_progress */
+    val status: String = "",
+    @SerialName("week_start") val weekStart: String = "",
+    @SerialName("week_end") val weekEnd: String = "",
+    val message: String? = null,
+    val report: ReportData? = null,
+)
+
+@Serializable
+data class WeekInfo(
+    @SerialName("has_plan") val hasPlan: Boolean = false,
+    @SerialName("current_week") val currentWeek: Int = 1,
+    @SerialName("plan_start_date") val planStartDate: String? = null,
+    @SerialName("week_start") val weekStart: String? = null,
+    @SerialName("week_end") val weekEnd: String? = null,
+    @SerialName("day_count") val dayCount: Int? = null,
+    @SerialName("is_week_complete") val isWeekComplete: Boolean = false,
+    @SerialName("is_completed") val isCompleted: Boolean = false,
+    @SerialName("has_report") val hasReport: Boolean = false,
+    @SerialName("has_next_plan") val hasNextPlan: Boolean = false,
+)
+
+/** The archive row's report is the same shape as a live one. */
+@Serializable
+data class ArchivedReport(
+    @SerialName("week_number") val weekNumber: Int,
+    @SerialName("week_start") val weekStart: String = "",
+    @SerialName("week_end") val weekEnd: String = "",
+    val report: ReportData? = null,
+)
+
+/* ── the site pages ── */
+
+@Serializable data class ContactRequest(val name: String, val email: String, val message: String)
+
+@Serializable
+data class BlogCard(
+    val id: Int = 0,
+    val slug: String = "",
+    val url: String = "",
+    val title: String = "",
+    val category: String = "",
+    val excerpt: String = "",
+    @SerialName("cover_image_url") val coverImageUrl: String? = null,
+    @SerialName("cover_alt") val coverAlt: String? = null,
+    val tags: List<String> = emptyList(),
+    val author: String = "",
+    @SerialName("reading_minutes") val readingMinutes: Int = 0,
+    @SerialName("published_at") val publishedAt: String? = null,
+)
+
+@Serializable data class PublishedPosts(val posts: List<BlogCard> = emptyList(), val categories: List<String> = emptyList())
+
+/** The legal documents ship as assets, in the same shape the web renders. */
+@Serializable
+data class LegalBlock(
+    val t: String,
+    val text: String? = null,
+    val items: List<String> = emptyList(),
+    val head: List<String> = emptyList(),
+    val rows: List<List<String>> = emptyList(),
+)
+@Serializable data class LegalSection(val id: String, val h: String, val blocks: List<LegalBlock> = emptyList())
+@Serializable data class LegalDocument(val version: String = "", val lastUpdated: String = "", val sections: List<LegalSection> = emptyList())
+
 @Serializable data class DeleteAccountRequest(val confirmation: String, val password: String? = null)
 @Serializable data class DeleteAccountResult(val status: String = "", val message: String = "", val deleted: JsonElement? = null, val incomplete: List<String> = emptyList())
 @Serializable data class TranscribeResponse(val text: String = "")

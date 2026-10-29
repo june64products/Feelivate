@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- The launch theme: the brand mark on the app background, handed to
+         MainActivity by the SplashScreen API. -->
+    <style name="Theme.Feelivate.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/feelivate_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Feelivate</item>
+    </style>
+
     <!-- Window-level theme only; the real design system lives in Compose (ui/theme). -->
     <style name="Theme.Feelivate" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/feelivate_bg</item>

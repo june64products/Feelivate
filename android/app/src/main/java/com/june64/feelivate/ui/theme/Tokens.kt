@@ -161,6 +161,13 @@ val LocalTokens = staticCompositionLocalOf { LightTokens }
 fun tokens(): Tokens = LocalTokens.current
 
 @Composable
-fun FeelivateTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalTokens provides if (darkTheme) DarkTokens else LightTokens, content = content)
+fun FeelivateTheme(themeStore: ThemeStore? = null, content: @Composable () -> Unit) {
+    val systemDark = isSystemInDarkTheme()
+    // The device decides until the user picks a side (hooks/useTheme.ts).
+    val dark = themeStore?.isDark(systemDark) ?: systemDark
+    CompositionLocalProvider(
+        LocalTokens provides if (dark) DarkTokens else LightTokens,
+        LocalThemeStore provides themeStore,
+        content = content,
+    )
 }

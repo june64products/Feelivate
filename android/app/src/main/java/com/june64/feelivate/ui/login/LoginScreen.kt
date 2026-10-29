@@ -66,19 +66,20 @@ import com.june64.feelivate.ui.theme.tokens
 
 /** pages/LoginPage.tsx, the phone layout: fixed BrandNav, the form, the ticker, the dark footer. */
 @Composable
-fun LoginScreen(onSignedIn: () -> Unit, vm: LoginViewModel = viewModel()) {
+fun LoginScreen(onSignedIn: () -> Unit, onOpenPage: (String) -> Unit, vm: LoginViewModel = viewModel()) {
     val t = tokens()
     val ui = vm.ui
     val context = LocalContext.current
     val density = LocalDensity.current
     LaunchedEffect(ui.signedIn) { if (ui.signedIn) onSignedIn() }
 
+    // The site pages are native now; mailto still hands off to the email app.
     val goLink: (String) -> Unit = { path ->
-        when (path) {
-            "/features" -> vm.showFeatures(true)
-            "/about" -> vm.showAbout(true)
-            "/contact" -> vm.showContact(true)
-            else -> openUrl(context, if (path.startsWith("mailto:")) path else webUrl(path))
+        val route = com.june64.feelivate.ui.Routes.forPath(path)
+        when {
+            route != null -> onOpenPage(route)
+            path.startsWith("mailto:") -> openUrl(context, path)
+            else -> openUrl(context, webUrl(path))
         }
     }
 

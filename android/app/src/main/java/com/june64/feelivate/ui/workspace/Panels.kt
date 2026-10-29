@@ -123,9 +123,13 @@ fun BoxScope.ConsentGate(vm: WorkspaceViewModel, onLogout: () -> Unit) {
 fun BoxScope.ProfileMenu(
     open: Boolean, onClose: () -> Unit, name: String, joined: String?,
     onReplayTour: () -> Unit, onDownload: () -> Unit, onDelete: () -> Unit, onLogout: () -> Unit,
+    onOpenPage: (String) -> Unit,
     modifier: Modifier = Modifier, exporting: Boolean = false, exportError: String? = null,
 ) {
     val t = tokens()
+    val themeStore = com.june64.feelivate.ui.theme.LocalThemeStore.current
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val isDark = themeStore?.isDark(systemDark) ?: systemDark
     val initials = name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.let { parts ->
         when { parts.isEmpty() -> "U"; parts.size == 1 -> parts[0].first().uppercase(); else -> (parts.first().first().toString() + parts.last().first()).uppercase() }
     }
@@ -148,10 +152,13 @@ fun BoxScope.ProfileMenu(
                 }
             }
             Hairline()
+            // Theme: the device decides until you pick a side here.
+            ProfileRow(if (isDark) R.drawable.lu_sun else R.drawable.lu_moon, if (isDark) "Light mode" else "Dark mode") { themeStore?.toggle(systemDark) }
             ProfileRow(R.drawable.lu_circle_help, "Replay tutorial") { onClose(); onReplayTour() }
             ProfileRow(if (exporting) R.drawable.lu_loader else R.drawable.lu_download, if (exporting) "Preparing…" else "Download my data", onClick = onDownload)
             exportError?.let { Text(it, style = satoshi(11f, 500, lineHeight = 1.5f), color = Status.Error, modifier = Modifier.padding(horizontal = 12.dp)) }
             ProfileRow(R.drawable.lu_trash, "Delete account") { onClose(); onDelete() }
+            ProfileRow(R.drawable.lu_file_text, "Privacy & terms") { onClose(); onOpenPage(com.june64.feelivate.ui.Routes.PRIVACY) }
             Box(Modifier.padding(8.dp)) {
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).border(1.dp, Status.Error.copy(alpha = 0.25f), RoundedCornerShape(10.dp)).tap { onClose(); onLogout() }.padding(horizontal = 12.dp, vertical = 10.dp),

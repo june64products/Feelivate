@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
  * the mentor drawer, and every overlay the web mounts at the page root.
  */
 @Composable
-fun WorkspaceScreen(onSignedOut: () -> Unit, vm: WorkspaceViewModel = viewModel()) {
+fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: WorkspaceViewModel = viewModel()) {
     val t = tokens()
     val ui = vm.ui
     val scope = rememberCoroutineScope()
@@ -66,6 +66,18 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, vm: WorkspaceViewModel = viewModel(
             .onSuccess { howToGuide = it }
             .onFailure { howToError = it.userMessage("Could not build the guide right now.") }
         howToLoading = false
+    }
+
+    // The Journey replaces the whole mission surface, exactly as the web's view swap does.
+    if (ui.journeyOpen) {
+        com.june64.feelivate.ui.journey.JourneyScreen(
+            sessionId = ui.activeSessionId,
+            initialTab = ui.journeyTab,
+            onClose = vm::closeJourney,
+            onJournalSaved = vm::onJournalSaved,
+            onPlanNextWeek = { week -> vm.closeJourney(); vm.askNextWeekStart(week) },
+        )
+        return
     }
 
     Box(Modifier.fillMaxSize().background(t.bgPrimary)) {
@@ -117,6 +129,9 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, vm: WorkspaceViewModel = viewModel(
             }
         }
 
+        // Today's mood, draggable anywhere once the evening note is in.
+        ui.todayEmotion?.let { e -> com.june64.feelivate.ui.journey.EmotionOrb(e, vm.prefs) { vm.openJourney() } }
+
         // ── anchored dropdowns ──
         GoalMenu(
             menuOpen, { menuOpen = false }, ui.sessions, ui.activeSessionId, ui.isPlanApproved,
@@ -132,7 +147,7 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, vm: WorkspaceViewModel = viewModel(
             ui.me?.createdAt?.let { joinedLabel(it) },
             onReplayTour = { vm.prefs.startDemo(ui.userId) },
             onDownload = { exportError = null; exporting = true; scope.launch { vm.downloadMyData().onFailure { exportError = "Export failed." }; exporting = false } },
-            onDelete = { showDelete = true }, onLogout = vm::logout,
+            onDelete = { showDelete = true }, onLogout = vm::logout, onOpenPage = onOpenPage,
             modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(end = 12.dp, top = 56.dp),
             exporting = exporting, exportError = exportError,
         )

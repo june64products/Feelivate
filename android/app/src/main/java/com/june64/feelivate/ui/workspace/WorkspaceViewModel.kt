@@ -287,6 +287,16 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** The Journey saved tonight's note: the orb lights up and the mic locks. */
+    fun onJournalSaved(entry: com.june64.feelivate.data.JournalEntry) {
+        prefs.lockJournalToday(ui.userId, ui.activeSessionId)
+        ui = ui.copy(
+            micLocked = true,
+            todayEmotion = EmotionEntry(entry.id, entry.date, entry.emotionLabel, entry.emotionScore.toFloat(), entry.oneLiner),
+        )
+        loadStreak()
+    }
+
     // ── journal / orb ──
     private fun loadTodayEmotion(sessionId: String?) {
         viewModelScope.launch {
