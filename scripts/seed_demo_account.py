@@ -529,6 +529,12 @@ def main():
     ap.add_argument("--apply", action="store_true", help="write the account (default: dry run)")
     ap.add_argument("--today", help="override today's date (YYYY-MM-DD), for testing")
     ap.add_argument("--account", choices=sorted(PROFILES), default="ro", help="which demo account to seed")
+    # The consent rows must carry the policy version the *running* backend
+    # checks against, which can trail this checkout — prod was still on
+    # 2026-09-28 when local code had moved to 2026-10-25, and the account
+    # landed behind a consent gate. Pass what prod actually uses.
+    ap.add_argument("--policy-version", default=CONSENT_POLICY_VERSION,
+                    help=f"consent policy version to record (default: {CONSENT_POLICY_VERSION})")
     args = ap.parse_args()
 
     P = PROFILES[args.account]
@@ -569,7 +575,7 @@ def main():
         for key in REQUIRED_CONSENTS:
             db.add(UserConsent(
                 user_id=data["user_id"], consent_type=key, granted=1,
-                policy_version=CONSENT_POLICY_VERSION,
+                policy_version=args.policy_version,
                 created_at=now - timedelta(weeks=len(WEEKS)),
             ))
         # Journals, check-ins and reports carry a raw session_id FK but no ORM
