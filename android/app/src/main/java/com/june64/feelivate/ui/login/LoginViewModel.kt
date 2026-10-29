@@ -30,9 +30,6 @@ data class LoginUi(
     val catalogue: List<ConsentItem> = emptyList(),
     val consents: Map<String, Boolean> = emptyMap(),
     val consentLoad: ConsentLoad = ConsentLoad.Loading,
-    val showFeatures: Boolean = false,
-    val showAbout: Boolean = false,
-    val showContact: Boolean = false,
     val signedIn: Boolean = false,
 ) {
     val consentsSatisfied: Boolean get() = catalogue.isNotEmpty() && catalogue.filter { it.required }.all { consents[it.key] == true }
@@ -53,11 +50,6 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
     fun setName(v: String) { ui = ui.copy(name = v) }
     fun setConsent(key: String, v: Boolean) { ui = ui.copy(consents = ui.consents + (key to v)) }
     fun toggleMode() { ui = ui.copy(isLogin = !ui.isLogin, error = "") }
-    fun showFeatures(v: Boolean) { ui = ui.copy(showFeatures = v) }
-    fun showAbout(v: Boolean) { ui = ui.copy(showAbout = v) }
-    fun showContact(v: Boolean) { ui = ui.copy(showContact = v) }
-    /** The modals' CTAs: close, switch to sign-up. */
-    fun startFromModal() { ui = ui.copy(showFeatures = false, showAbout = false, isLogin = false) }
 
     fun loadConsentCatalogue() {
         ui = ui.copy(consentLoad = ConsentLoad.Loading)
