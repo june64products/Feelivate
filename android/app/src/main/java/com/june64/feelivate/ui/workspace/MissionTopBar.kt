@@ -58,6 +58,8 @@ import com.june64.feelivate.ui.theme.clash
 import com.june64.feelivate.ui.theme.pressScale
 import com.june64.feelivate.ui.theme.satoshi
 import com.june64.feelivate.ui.theme.tokens
+import com.june64.feelivate.ui.tour.TourTarget
+import com.june64.feelivate.ui.tour.tourTarget
 
 /**
  * MissionTopBar.tsx, the phone branch: row 1 = goal pill · streak cluster · avatar,
@@ -90,7 +92,7 @@ fun MissionTopBar(
             // goal pill
             val chev by animateFloatAsState(if (menuOpen) 180f else 0f, tween(200), label = "chev")
             Row(
-                Modifier.widthIn(max = 160.dp).pressScale(0.97f).clip(CircleShape).background(t.cardBg).border(1.dp, t.borderMedium, CircleShape)
+                Modifier.widthIn(max = 160.dp).tourTarget(TourTarget.GOAL_PILL).pressScale(0.97f).clip(CircleShape).background(t.cardBg).border(1.dp, t.borderMedium, CircleShape)
                     .tap { onToggleMenu() }.padding(horizontal = 11.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -109,7 +111,7 @@ fun MissionTopBar(
                 val fs by inf.animateFloat(1f, 1f, infiniteRepeatable(keyframes { durationMillis = 2200; 1f at 0; 1.18f at 1100; 1f at 2200 }), label = "fs")
                 val fr by inf.animateFloat(0f, 0f, infiniteRepeatable(keyframes { durationMillis = 2200; 0f at 0; -3f at 733; 3f at 1466; 0f at 2200 }), label = "fr")
                 Row(
-                    Modifier.graphicsLayer { alpha = a; translationY = y * density }.pressScale(0.95f).clip(CircleShape).background(t.cardBg)
+                    Modifier.tourTarget(TourTarget.STREAK).graphicsLayer { alpha = a; translationY = y * density }.pressScale(0.95f).clip(CircleShape).background(t.cardBg)
                         .then(if (flameActive) Modifier.background(Brush.horizontalGradient(listOf(Status.FlameTo.copy(alpha = 0.094f), Color.Transparent))) else Modifier)
                         .border(1.dp, if (flameActive) Status.FlameTo.copy(alpha = 0.33f) else t.borderSubtle, CircleShape)
                         .tap { onToggleStreak() }.padding(horizontal = 13.dp, vertical = 7.dp),
@@ -128,25 +130,25 @@ fun MissionTopBar(
                 }
             }
             // avatar (.user-avatar)
-            Box(Modifier.size(32.dp).clip(CircleShape).background(t.accentWarm).tap { onToggleProfile() }, contentAlignment = Alignment.Center) {
+            Box(Modifier.tourTarget(TourTarget.PROFILE_MENU).size(32.dp).clip(CircleShape).background(t.accentWarm).tap { onToggleProfile() }, contentAlignment = Alignment.Center) {
                 Text(initials, style = satoshi(12f, 700), color = Color.White)
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (isPlanActive) LabeledTile(R.drawable.lu_layers, "Weeks", onOpenWeeks)
-            LabeledTile(R.drawable.lu_archive, "Reports", onOpenArchive)
-            LabeledTile(R.drawable.lu_bell, "Alerts", onOpenAlerts)
+            if (isPlanActive) LabeledTile(R.drawable.lu_layers, "Weeks", onOpenWeeks, TourTarget.WEEK_PILL)
+            LabeledTile(R.drawable.lu_archive, "Reports", onOpenArchive, TourTarget.REPORTS_BUTTON)
+            LabeledTile(R.drawable.lu_bell, "Alerts", onOpenAlerts, TourTarget.ALERTS_BUTTON)
             LabeledTile(R.drawable.lu_calendar, "Calendar", onOpenCalendar)
         }
     }
 }
 
 @Composable
-private fun RowScope.LabeledTile(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
+private fun RowScope.LabeledTile(@DrawableRes icon: Int, label: String, onClick: () -> Unit, tour: String? = null) {
     val t = tokens()
     val shape = RoundedCornerShape(14.dp)
     Column(
-        Modifier.weight(1f).clip(shape).background(t.cardBg).border(1.dp, t.borderSubtle, shape).tap(onClick = onClick).padding(horizontal = 6.dp, vertical = 9.dp),
+        Modifier.weight(1f).then(if (tour != null) Modifier.tourTarget(tour) else Modifier).clip(shape).background(t.cardBg).border(1.dp, t.borderSubtle, shape).tap(onClick = onClick).padding(horizontal = 6.dp, vertical = 9.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Lucide(icon, 16.dp, t.textSecondary)
@@ -188,15 +190,15 @@ fun BoxScope.GoalMenu(
             }
             Box(Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) { Hairline() }
             MenuRow(R.drawable.lu_archive, "Report archive", t.textSecondary, t.textSecondary) { onClose(); onOpenArchive() }
-            if (activeSessionId != null && isPlanActive) MenuRow(R.drawable.lu_stop_circle, "Finish this goal", t.accentWarm, t.accentWarm) { onClose(); onStopSession() }
+            if (activeSessionId != null && isPlanActive) MenuRow(R.drawable.lu_stop_circle, "Finish this goal", t.accentWarm, t.accentWarm, tour = TourTarget.FINISH_GOAL) { onClose(); onStopSession() }
         }
     }
 }
 
 @Composable
-private fun MenuRow(@DrawableRes icon: Int, label: String, color: Color, iconColor: Color, bold: Boolean = false, pad: androidx.compose.ui.unit.Dp = 9.dp, onClick: () -> Unit) {
+private fun MenuRow(@DrawableRes icon: Int, label: String, color: Color, iconColor: Color, bold: Boolean = false, pad: androidx.compose.ui.unit.Dp = 9.dp, tour: String? = null, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).tap(onClick = onClick).padding(horizontal = 12.dp, vertical = pad),
+        Modifier.fillMaxWidth().then(if (tour != null) Modifier.tourTarget(tour) else Modifier).clip(RoundedCornerShape(10.dp)).tap(onClick = onClick).padding(horizontal = 12.dp, vertical = pad),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Lucide(icon, if (bold) 15.dp else 14.dp, iconColor)

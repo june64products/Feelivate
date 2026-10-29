@@ -167,6 +167,8 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
     private var celebrateJob: Job? = null
     private var ceremonyJob: Job? = null
     private val tweakCount = HashMap<String, Int>()
+    /** The feedback engine, handed in by the screen; moments report to it. */
+    var feedback: com.june64.feelivate.ui.feedback.FeedbackState? = null
 
     val timezone: String get() = TimeZone.getDefault().id
     val tzShort: String get() = TimeZone.getDefault().getDisplayName(TimeZone.getDefault().inDaylightTime(java.util.Date()), TimeZone.SHORT)
@@ -250,7 +252,12 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         ui = ui.copy(activeSessionId = null, messages = emptyList(), activePlan = null, isPlanApproved = false, isSessionCompleted = false, planStartsOn = null, sessionFocus = "", planHistory = emptyList(), journeyOpen = false)
     }
 
-    fun logout() { store.clear(); signedOut = true }
+    fun logout() {
+        // A new user who has not been asked yet gets the feedback form first;
+        // "Not now" still logs out.
+        val proceed = { store.clear(); signedOut = true }
+        feedback?.requestLogout(proceed) ?: proceed()
+    }
 
     // ── streak (useStreak.ts) ──
     private fun loadStreak(backfill: Boolean = false) {
@@ -295,6 +302,20 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
             todayEmotion = EmotionEntry(entry.id, entry.date, entry.emotionLabel, entry.emotionScore.toFloat(), entry.oneLiner),
         )
         loadStreak()
+        // The note is in; while today is fresh, three taps on how the task was.
+        val task = WeekWindow.planEntryFor(ui.activePlan, ui.todayIso)
+        viewModelScope.launch {
+            delay(1800)
+            feedback?.askMoment(
+                com.june64.feelivate.ui.feedback.Trigger.AFTER_JOURNAL,
+                "after_journal:${ui.activeSessionId}:${ui.todayIso}",
+                com.june64.feelivate.ui.feedback.MomentDetails(
+                    sessionId = ui.activeSessionId,
+                    taskLabel = task?.let { "${it.day}: ${it.action}" },
+                    weekNumber = ui.activePlan?.weekNumber,
+                ),
+            )
+        }
     }
 
     // ── journal / orb ──
@@ -337,6 +358,8 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
                     loadSessions()
                 }
                 ui = ui.copy(messages = ui.messages + ChatMessage("assistant", res.reply, plan = res.plan, safety = res.safety, blocked = res.blocked), isLoading = false)
+                // Three exchanges in, a new user has a first impression worth asking for.
+                if (ui.messages.count { it.role == "assistant" } >= 3) feedback?.signal(com.june64.feelivate.ui.feedback.Trigger.FIRST_CHATS)
                 if (res.blocked != null) ui = ui.copy(blockedNotice = res.blocked)
                 if (!res.questions.isNullOrEmpty() && res.plan == null) ui = ui.copy(setupQuestions = res.questions)
                 if (res.plan != null) ui = ui.copy(activePlan = res.plan, isPlanApproved = false)
@@ -352,7 +375,18 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
     fun requestPlanChange(text: String) {
         sendMessage("I'd like to change some parts of this plan: $text")
         val sid = ui.activeSessionId ?: return
-        tweakCount[sid] = (tweakCount[sid] ?: 0) + 1
+        val n = (tweakCount[sid] ?: 0) + 1
+        tweakCount[sid] = n
+        // On the second one the mentor clearly hasn't landed it: a small
+        // "what's off?" question, asked once.
+        if (n == 2) viewModelScope.launch {
+            delay(1500)
+            feedback?.askMoment(
+                com.june64.feelivate.ui.feedback.Trigger.SECOND_TWEAK,
+                "second_tweak:$sid:${ui.activePlan?.weekNumber ?: 0}",
+                com.june64.feelivate.ui.feedback.MomentDetails(sessionId = sid, tweakCount = n, weekNumber = ui.activePlan?.weekNumber),
+            )
+        }
     }
 
     fun approvePlan(startDate: String?) {
@@ -362,7 +396,17 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
                 if (res.status == "approved") {
                     ceremonyJob?.cancel()
                     ui = ui.copy(isPlanApproved = true, planStartsOn = res.startsOn, mentorOpen = false, showCeremony = true)
-                    ceremonyJob = launch { delay(2300); ui = ui.copy(showCeremony = false) }
+                    ceremonyJob = launch {
+                        delay(2300)
+                        ui = ui.copy(showCeremony = false)
+                        // Asked once the ceremony has cleared the screen: one tap,
+                        // "does this plan feel right?" — once per locked week.
+                        feedback?.askMoment(
+                            com.june64.feelivate.ui.feedback.Trigger.FIRST_PLAN,
+                            "plan_fit:$sid:${res.week}",
+                            com.june64.feelivate.ui.feedback.MomentDetails(sessionId = sid, weekNumber = res.week),
+                        )
+                    }
                     runCatching { api.sessionDetail(sid) }.onSuccess { data ->
                         ui = ui.copy(messages = data.messages, activePlan = data.plan ?: ui.activePlan, planHistory = data.planHistory, planStartsOn = data.planStartsOn ?: ui.planStartsOn)
                     }

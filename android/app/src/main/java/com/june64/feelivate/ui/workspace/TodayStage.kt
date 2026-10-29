@@ -71,6 +71,8 @@ import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.june64.feelivate.ui.tour.TourTarget
+import com.june64.feelivate.ui.tour.tourTarget
 
 /** framer `initial → animate` on mount: opacity + y + scale. */
 @Composable
@@ -97,7 +99,7 @@ fun MissionCard(modifier: Modifier = Modifier, radius: androidx.compose.ui.unit.
 
 /** TodayCard.tsx (phone: radius 18, padding 18). */
 @Composable
-fun TodayCard(plan: Plan?, todayIso: String, todayStatus: String, checkinLoading: Boolean, justCelebrated: Boolean, onCheckin: (String) -> Unit, onAskMentor: () -> Unit, onHowTo: (HowToTarget) -> Unit) {
+fun TodayCard(plan: Plan?, todayIso: String, todayStatus: String, checkinLoading: Boolean, justCelebrated: Boolean, onCheckin: (String) -> Unit, onAskMentor: () -> Unit, onHowTo: (HowToTarget) -> Unit, demo: Boolean = false) {
     val t = tokens()
     val haptics = LocalHapticFeedback.current
     val entry = WeekWindow.planEntryFor(plan, todayIso)
@@ -105,7 +107,7 @@ fun TodayCard(plan: Plan?, todayIso: String, todayStatus: String, checkinLoading
     val dateLabel = LocalDate.parse(todayIso).format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.US))
     val isDone = todayStatus == "done"
     val isSkipped = todayStatus == "skipped"
-    Box(Modifier.mountRise(24f, 0.98f, 600)) {
+    Box(Modifier.tourTarget(TourTarget.TODAY_CARD).mountRise(24f, 0.98f, 600)) {
         MissionCard(radius = 18.dp, padding = androidx.compose.foundation.layout.PaddingValues(18.dp)) {
             Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("TODAY · WEEK $weekNum", style = satoshi(11f, 700, ls = 0.12f), color = t.accentPrimary)
@@ -118,9 +120,9 @@ fun TodayCard(plan: Plan?, todayIso: String, todayStatus: String, checkinLoading
                 if (todayStatus == "pending") {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Row(
-                            Modifier.alpha(if (checkinLoading) 0.6f else 1f).pressScale(0.96f).shadow(9.dp, CircleShape, ambientColor = Color(0x59FF5A36), spotColor = Color(0x59FF5A36)).clip(CircleShape)
+                            Modifier.tourTarget(TourTarget.DONE_BUTTON).alpha(if (checkinLoading) 0.6f else 1f).pressScale(0.96f).shadow(9.dp, CircleShape, ambientColor = Color(0x59FF5A36), spotColor = Color(0x59FF5A36)).clip(CircleShape)
                                 .background(Brush.linearGradient(listOf(Status.FlameFrom, Status.FlameTo)))
-                                .tap(!checkinLoading) { haptics.performHapticFeedback(HapticFeedbackType.LongPress); onCheckin("done") }
+                                .tap(!checkinLoading && !demo) { haptics.performHapticFeedback(HapticFeedbackType.LongPress); onCheckin("done") }
                                 .padding(horizontal = 28.dp, vertical = 13.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
@@ -169,7 +171,7 @@ fun PathRow(streak: Streak?, todayIso: String, currentWeek: Int, winCondition: S
         d.status == "skipped" || (d.date < todayIso && d.status == "pending") -> "skipped"
         else -> "upcoming"
     }
-    Box(Modifier.mountRise(16f, 1f, 550, 100)) {
+    Box(Modifier.tourTarget(TourTarget.WEEK_PANEL).mountRise(16f, 1f, 550, 100)) {
         MissionCard(radius = 18.dp, padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 16.dp)) {
             Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("YOUR PATH · WEEK $currentWeek", style = satoshi(11f, 700, ls = 0.1f), color = t.textMuted)
@@ -222,7 +224,7 @@ fun EntryTiles(micLocked: Boolean, hasEmotion: Boolean, onJournal: () -> Unit, o
     val t = tokens()
     val logged = micLocked || hasEmotion
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        EntryTile(onJournal, "Evening voice note", if (logged) "Logged for today" else "How did today actually go? 60 seconds.", leading = {
+        EntryTile(onJournal, "Evening voice note", sub = if (logged) "Logged for today" else "How did today actually go? 60 seconds.", tour = TourTarget.JOURNEY_NAV, leading = {
             Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(t.btnPrimaryBg), contentAlignment = Alignment.Center) { Lucide(R.drawable.lu_mic, 19.dp, t.btnPrimaryText) }
         }, accent = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.padding(end = 2.dp)) {
@@ -233,18 +235,18 @@ fun EntryTiles(micLocked: Boolean, hasEmotion: Boolean, onJournal: () -> Unit, o
                 }
             }
         })
-        EntryTile(onMentor, "Ask your mentor", "Stuck on today's task? Talk it out.", leading = {
+        EntryTile(onMentor, "Ask your mentor", "Stuck on today's task? Talk it out.", tour = TourTarget.MENTOR_CHIP, leading = {
             Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(t.glassHover).border(1.dp, t.borderMedium, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) { Lucide(R.drawable.lu_message_circle, 19.dp, t.accentPrimary) }
         })
     }
 }
 
 @Composable
-private fun EntryTile(onClick: () -> Unit, title: String, sub: String, leading: @Composable () -> Unit, accent: (@Composable () -> Unit)? = null) {
+private fun EntryTile(onClick: () -> Unit, title: String, sub: String, tour: String? = null, leading: @Composable () -> Unit, accent: (@Composable () -> Unit)? = null) {
     val t = tokens()
     val shape = RoundedCornerShape(18.dp)
     Row(
-        Modifier.fillMaxWidth().pressScale(0.98f).shadow(2.dp, shape, ambientColor = t.shadowColor.copy(alpha = 0.04f), spotColor = t.shadowColor.copy(alpha = 0.06f))
+        Modifier.fillMaxWidth().then(if (tour != null) Modifier.tourTarget(tour) else Modifier).pressScale(0.98f).shadow(2.dp, shape, ambientColor = t.shadowColor.copy(alpha = 0.04f), spotColor = t.shadowColor.copy(alpha = 0.06f))
             .clip(shape).background(t.cardBg).border(1.dp, t.borderSubtle, shape).tap(onClick = onClick).padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -311,7 +313,7 @@ fun WeekOverCard(weekNumber: Int, onSeeReport: () -> Unit, onPlanNext: () -> Uni
 fun FinishedStage(title: String, onTalk: () -> Unit, onArchive: () -> Unit, onNewGoal: () -> Unit) {
     val t = tokens()
     Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 26.dp, bottom = 60.dp).mountRise(8f, 1f, 400), contentAlignment = Alignment.TopCenter) {
-        MissionCard(Modifier.widthIn(max = 560.dp), padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 26.dp)) {
+        MissionCard(Modifier.widthIn(max = 560.dp).tourTarget(TourTarget.FINISHED_CARD), padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 26.dp)) {
             Row(Modifier.clip(CircleShape).background(t.accentGlow).padding(horizontal = 11.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Lucide(R.drawable.lu_check_circle, 13.dp, t.accentPrimary)
                 Text("GOAL FINISHED", style = satoshi(11f, 700, ls = 0.08f), color = t.accentPrimary)

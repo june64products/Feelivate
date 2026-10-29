@@ -62,6 +62,8 @@ import com.june64.feelivate.ui.theme.motionSpring
 import com.june64.feelivate.ui.theme.satoshi
 import com.june64.feelivate.ui.theme.tokens
 import kotlinx.coroutines.delay
+import com.june64.feelivate.ui.tour.TourTarget
+import com.june64.feelivate.ui.tour.tourTarget
 
 /** lib/useExpandableDay.ts */
 const val CLAMP_CHARS = 110
@@ -192,13 +194,13 @@ fun PlanCard(plan: Plan, isFirstPlan: Boolean, onApprove: (String) -> Unit, onRe
             }
             // Actions
             Hairline()
-            Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.fillMaxWidth().tourTarget(TourTarget.PLAN_ACTIONS).padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 PillButton(
                     if (lead > 0) "Lock it — start ${WeekWindow.formatDay(startDate).substringBefore(',')}" else "Let's go",
-                    Modifier.fillMaxWidth(), size = 12f, verticalPadding = 12.dp,
+                    Modifier.fillMaxWidth().tourTarget(TourTarget.LETS_GO), size = 12f, verticalPadding = 12.dp,
                     leading = { Lucide(R.drawable.lu_arrow_right, 14.dp, t.btnPrimaryText) },
                 ) { onDialog(if (isStale) PlanDialog.Stale(plan, planAge, windowLine, { onDialog(null); onRequestChange("it was built $planAge days ago and is out of date — please rebuild Week ${plan.weekNumber} from scratch for ${window.dayCount} days starting ${window.start}, based on where I am now.") }, { onDialog(null); doApprove() }) else PlanDialog.Commit(windowLine) { onDialog(null); doApprove() }) }
-                PillButton("Tweak", Modifier.fillMaxWidth(), filled = false, size = 12f, verticalPadding = 12.dp, borderColor = t.accentPrimary) { onRequestChange("I want to change something in this plan") }
+                PillButton("Tweak", Modifier.fillMaxWidth().tourTarget(TourTarget.TWEAK), filled = false, size = 12f, verticalPadding = 12.dp, borderColor = t.accentPrimary) { onRequestChange("I want to change something in this plan") }
             }
         }
         AnimatedVisibility(approveAnimation, enter = fadeIn(), exit = fadeOut()) {

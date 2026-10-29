@@ -84,6 +84,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import com.june64.feelivate.ui.tour.TourTarget
+import com.june64.feelivate.ui.tour.tourTarget
 
 /* ── ConsentGate.tsx — blocking, cannot be dismissed ── */
 @Composable
@@ -250,10 +252,13 @@ fun BoxScope.DeleteAccountModal(visible: Boolean, onClose: () -> Unit, onDeleted
 fun BoxScope.WeeksSheet(
     open: Boolean, onClose: () -> Unit, currentWeek: Int, micLocked: Boolean,
     activePlan: Plan?, planHistory: List<Plan>, reports: List<ArchivedWeekReport>,
+    /** The walkthrough holds one week's drawer open. */
+    demoSelectedWeek: Int? = null,
 ) {
     val t = tokens()
-    var selectedWeek by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(open) { if (!open) selectedWeek = null }
+    var picked by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(open) { if (!open) picked = null }
+    val selectedWeek = demoSelectedWeek ?: picked
     val weekNums = (planHistory.map { it.weekNumber } + reports.map { it.weekNumber }).toSortedSet().filter { it != currentWeek } + currentWeek
 
     AnimatedVisibility(open, modifier = Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
@@ -287,7 +292,7 @@ fun BoxScope.WeeksSheet(
                     val selected = selectedWeek == wn
                     Column(
                         Modifier.width(44.dp).clip(RoundedCornerShape(9.dp)).background(color.copy(alpha = if (selected) 0.16f else 0.07f)).border(1.dp, color.copy(alpha = if (selected) 0.55f else 0.3f), RoundedCornerShape(9.dp))
-                            .tap { selectedWeek = if (selected) null else wn }.padding(horizontal = 4.dp, vertical = 7.dp),
+                            .tap { picked = if (selected) null else wn }.padding(horizontal = 4.dp, vertical = 7.dp),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp),
                     ) {
                         when { isOngoing -> Lucide(R.drawable.lu_mic, 10.dp, color); isActiveCurrent -> Lucide(R.drawable.lu_play_fill, 10.dp, color); else -> Lucide(R.drawable.lu_lock, 10.dp, color) }
@@ -307,7 +312,7 @@ fun BoxScope.WeeksSheet(
         if (wn != null) {
             val report = reports.firstOrNull { it.weekNumber == wn }
             val plan = if (wn == currentWeek) activePlan else planHistory.firstOrNull { it.weekNumber == wn }
-            WeekDrawer(wn, report, wn == currentWeek, micLocked, plan) { selectedWeek = null }
+            WeekDrawer(wn, report, wn == currentWeek, micLocked, plan) { picked = null }
         }
     }
 }
@@ -319,7 +324,7 @@ private fun WeekDrawer(weekNumber: Int, report: ArchivedWeekReport?, isCurrent: 
     val r = report?.report
     var showReport by remember { mutableStateOf(false) }
     Column(
-        Modifier.width(minOf(conf.screenWidthDp * 0.85f, 340f).dp).heightIn(max = (conf.screenHeightDp * 0.82f).dp)
+        Modifier.tourTarget(TourTarget.WEEK_DRAWER).width(minOf(conf.screenWidthDp * 0.85f, 340f).dp).heightIn(max = (conf.screenHeightDp * 0.82f).dp)
             .shadow(24.dp, RoundedCornerShape(16.dp), ambientColor = t.shadowColor.copy(alpha = 0.18f), spotColor = t.shadowColor.copy(alpha = 0.18f))
             .clip(RoundedCornerShape(16.dp)).background(t.bgSurface).border(1.dp, t.borderMedium, RoundedCornerShape(16.dp)),
     ) {

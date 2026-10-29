@@ -319,6 +319,19 @@ data class ArchivedReport(
 @Serializable data class ContactRequest(val name: String, val email: String, val message: String)
 
 @Serializable
+data class FeedbackRequest(
+    val kind: String = "full",
+    val answers: JsonObject,
+    val comment: String? = null,
+    @SerialName("contact_ok") val contactOk: Boolean = false,
+    val email: String? = null,
+    val trigger: String = "side_tab",
+    val page: String? = null,
+    @SerialName("session_id") val sessionId: String? = null,
+)
+@Serializable data class FeedbackStatus(val count: Int = 0, @SerialName("last_at") val lastAt: String? = null)
+
+@Serializable
 data class BlogCard(
     val id: Int = 0,
     val slug: String = "",

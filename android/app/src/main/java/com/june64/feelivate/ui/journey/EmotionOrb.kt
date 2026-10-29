@@ -49,6 +49,8 @@ import com.june64.feelivate.ui.theme.satoshi
 import com.june64.feelivate.ui.theme.tokens
 import kotlin.math.roundToInt
 import androidx.compose.foundation.gestures.detectTapGestures
+import com.june64.feelivate.ui.tour.TourTarget
+import com.june64.feelivate.ui.tour.tourTarget
 
 /** JourneyPage/EmotionOrb's shared palette. */
 val EMOTION_COLORS = mapOf(
@@ -137,6 +139,7 @@ fun EmotionOrb(entry: EmotionEntry, prefs: Prefs, onClick: () -> Unit) {
 
     Column(
         Modifier
+            .tourTarget(TourTarget.EMOTION_ORB)
             .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
             .graphicsLayer { scaleX = appear; scaleY = appear; alpha = appear }
             .pointerInput(Unit) {

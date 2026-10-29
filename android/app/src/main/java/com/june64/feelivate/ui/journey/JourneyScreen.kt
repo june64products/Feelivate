@@ -88,6 +88,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import com.june64.feelivate.ui.components.ModalOverlay
 import com.june64.feelivate.ui.components.ModalCard
+import com.june64.feelivate.ui.tour.TourTarget
+import com.june64.feelivate.ui.tour.tourTarget
 
 /**
  * JourneyPage.tsx — the private space: the evening voice note, the week's
@@ -100,10 +102,15 @@ fun JourneyScreen(
     onClose: () -> Unit,
     onJournalSaved: (JournalEntry) -> Unit,
     onPlanNextWeek: (Int) -> Unit,
+    /* The walkthrough's scene, when it is running — the screen reads these instead of the account. */
+    demoBetweenWeeks: Boolean? = null,
+    demoArchive: List<com.june64.feelivate.data.ArchivedReport>? = null,
+    demoArchiveWeek: Int? = null,
     vm: JourneyViewModel = viewModel(),
 ) {
     val t = tokens()
     val ui = vm.ui
+    val demo = demoArchive != null
     val context = LocalContext.current
     val recorder = remember { VoiceRecorder(context) }
     var moodMode by remember { mutableStateOf(false) }
@@ -129,7 +136,10 @@ fun JourneyScreen(
     }
 
     val days = vm.weekDays()
-    val todayEntry = ui.journals.firstOrNull { it.date == ui.today }
+    val todayEntry = if (demo) null else ui.journals.firstOrNull { it.date == ui.today }
+    val noActiveWeek = demoBetweenWeeks ?: ui.noActiveWeek
+    val archive = demoArchive ?: ui.archive
+    val tab = if (!demoArchive.isNullOrEmpty() && demoArchiveWeek != null) "archive" else ui.tab
 
     Box(Modifier.fillMaxSize().background(t.bgPrimary)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -147,18 +157,19 @@ fun JourneyScreen(
                     Text("My Journey", style = clash(19f, 700, ls = -0.02f), color = t.textPrimary)
                 }
                 Row(Modifier.clip(CircleShape).background(t.bgSurface).border(1.dp, t.borderSubtle, CircleShape).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    listOf("overview", "archive").forEach { tab ->
-                        val active = ui.tab == tab
+                    listOf("overview", "archive").forEach { tb ->
+                        val active = tab == tb
                         Box(
-                            Modifier.clip(CircleShape).background(if (active) t.btnPrimaryBg else Color.Transparent).tap { vm.setTab(tab) }.padding(horizontal = 14.dp, vertical = 7.dp),
-                        ) { Text(tab.replaceFirstChar { it.uppercase() }, style = satoshi(12f, 700), color = if (active) t.btnPrimaryText else t.textMuted) }
+                            Modifier.then(if (tb == "archive") Modifier.tourTarget(TourTarget.ARCHIVE_TAB) else Modifier)
+                                .clip(CircleShape).background(if (active) t.btnPrimaryBg else Color.Transparent).tap { vm.setTab(tb) }.padding(horizontal = 14.dp, vertical = 7.dp),
+                        ) { Text(tb.replaceFirstChar { c -> c.uppercase() }, style = satoshi(12f, 700), color = if (active) t.btnPrimaryText else t.textMuted) }
                     }
                 }
             }
             Hairline()
 
             // ── body ──
-            AnimatedContent(ui.tab, transitionSpec = { (fadeIn(tween(200)) + slideInVertically { 8 }) togetherWith (fadeOut(tween(200)) + slideOutVertically { -8 }) }, label = "tab") { tab ->
+            AnimatedContent(tab, transitionSpec = { (fadeIn(tween(200)) + slideInVertically { 8 }) togetherWith (fadeOut(tween(200)) + slideOutVertically { -8 }) }, label = "tab") { tab ->
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()
                         .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 60.dp),
@@ -169,29 +180,29 @@ fun JourneyScreen(
                         MissionCard(radius = 24.dp, padding = PaddingValues(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 32.dp)) {
                             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    (if (ui.noActiveWeek) "Between weeks" else if (todayEntry != null) "Today logged" else "Tonight's ritual").uppercase(),
+                                    (if (noActiveWeek) "Between weeks" else if (todayEntry != null) "Today logged" else "Tonight's ritual").uppercase(),
                                     style = satoshi(10f, 700, ls = 0.14f), color = t.accentPrimary, modifier = Modifier.padding(bottom = 8.dp),
                                 )
                                 Text(
-                                    if (ui.noActiveWeek) "No active week right now"
+                                    if (noActiveWeek) "No active week right now"
                                     else if (todayEntry != null) "Feeling ${todayEntry.emotionLabel} — ${todayEntry.emotionScore}/10"
                                     else "How did today actually go?",
                                     style = clash(21f, 600, ls = -0.01f), color = t.textPrimary, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 6.dp),
                                 )
                                 Text(
-                                    if (ui.noActiveWeek) "Your journal is locked because no week is committed — it unlocks the moment your next week starts. Meanwhile the small mic below logs a quick mood: just for you, it joins no report."
+                                    if (noActiveWeek) "Your journal is locked because no week is committed — it unlocks the moment your next week starts. Meanwhile the small mic below logs a quick mood: just for you, it joins no report."
                                     else if (todayEntry != null) "Captured. Your mentor folds this into your week report."
                                     else "60 honest seconds. Your mentor listens, reads the mood, and shapes next week around it.",
                                     style = satoshi(13f, 500, lineHeight = 1.6f), color = t.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 460.dp).padding(bottom = 22.dp),
                                 )
                                 when {
-                                    ui.isUploading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    !demo && ui.isUploading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Spinner(16.dp, t.textSecondary); Text("Analyzing your mood...", style = satoshi(13f, 500), color = t.textSecondary)
                                     }
-                                    ui.isRecording -> RecordingButton(stopRecording)
-                                    ui.noActiveWeek -> BetweenWeeks { requestRecord(true) }
-                                    ui.notStartedYet -> LockedMic("Starts ${ui.weekInfo?.weekStart?.let { WeekWindow.formatDay(it) } ?: ""}")
-                                    ui.micLocked -> LockedMic("Recorded today")
+                                    !demo && ui.isRecording -> RecordingButton(stopRecording)
+                                    noActiveWeek -> BetweenWeeks { requestRecord(true) }
+                                    !demo && ui.notStartedYet -> LockedMic("Starts ${ui.weekInfo?.weekStart?.let { WeekWindow.formatDay(it) } ?: ""}")
+                                    !demo && ui.micLocked -> LockedMic("Recorded today")
                                     else -> RecordButton { requestRecord(false) }
                                 }
                                 ui.moodResult?.let { m ->
@@ -287,16 +298,16 @@ fun JourneyScreen(
                         // ── archive ──
                         Text("SESSION WEEKLY REPORTS", style = satoshi(10f, 700, ls = 0.08f), color = t.textMuted)
                         when {
-                            ui.loadingArchive -> Column(Modifier.fillMaxWidth().padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            !demo && ui.loadingArchive -> Column(Modifier.fillMaxWidth().padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Spinner(18.dp, t.textMuted)
                                 Text("Loading archive...", style = satoshi(13f, 500), color = t.textMuted, modifier = Modifier.padding(top = 10.dp))
                             }
-                            ui.archive.isEmpty() -> MissionCard(radius = 12.dp, padding = PaddingValues(40.dp)) {
+                            archive.isEmpty() -> MissionCard(radius = 12.dp, padding = PaddingValues(40.dp)) {
                                 Text("No weekly reports found for this session yet.", style = satoshi(13f, 500), color = t.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                             }
                             else -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                ui.archive.forEach { aw ->
-                                    val expanded = ui.expandedWeek == aw.weekNumber
+                                archive.forEach { aw ->
+                                    val expanded = (demoArchiveWeek ?: ui.expandedWeek) == aw.weekNumber
                                     val consistency = aw.report?.consistencyScore ?: 0
                                     Column(
                                         Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(t.cardBg)
@@ -352,7 +363,7 @@ private fun RecordButton(onClick: () -> Unit) {
             Box(Modifier.size(88.dp).graphicsLayer { scaleX = s; scaleY = s; alpha = a }.border(1.5.dp, t.accentPrimary, CircleShape))
         }
         Box(
-            Modifier.pressScale(0.94f).size(88.dp).shadow(24.dp, CircleShape, ambientColor = t.shadowColor.copy(alpha = 0.12f), spotColor = t.shadowColor.copy(alpha = 0.12f))
+            Modifier.tourTarget(TourTarget.JOURNEY_MIC).pressScale(0.94f).size(88.dp).shadow(24.dp, CircleShape, ambientColor = t.shadowColor.copy(alpha = 0.12f), spotColor = t.shadowColor.copy(alpha = 0.12f))
                 .clip(CircleShape).background(t.btnPrimaryBg).tap(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) { Lucide(R.drawable.lu_mic, 32.dp, t.btnPrimaryText) }
@@ -395,7 +406,7 @@ private fun BetweenWeeks(onMood: () -> Unit) {
         }
         Column(Modifier.width(150.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(
-                Modifier.pressScale(0.94f).size(72.dp).clip(CircleShape).background(t.glassHover).border(2.dp, t.accentPrimary, CircleShape).tap(onClick = onMood),
+                Modifier.tourTarget(TourTarget.MOOD_MIC).pressScale(0.94f).size(72.dp).clip(CircleShape).background(t.glassHover).border(2.dp, t.accentPrimary, CircleShape).tap(onClick = onMood),
                 contentAlignment = Alignment.Center,
             ) { Lucide(R.drawable.lu_mic, 26.dp, t.accentPrimary) }
             Text("Mood check-in — unlocked", style = satoshi(11f, 700, lineHeight = 1.5f), color = t.accentPrimary, textAlign = TextAlign.Center)

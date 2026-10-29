@@ -75,6 +75,8 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import com.june64.feelivate.ui.tour.TourTarget
+import com.june64.feelivate.ui.tour.tourTarget
 
 /* ── small type bits, mirroring WeekReviewDashboard's `lab` / `cap` / `body` ── */
 
@@ -127,7 +129,7 @@ fun SectionHead(n: String, title: String, meta: String? = null, right: (@Composa
 fun ViewButton(label: String, icon: Int, onClick: () -> Unit) {
     val t = tokens()
     Row(
-        Modifier.clip(CircleShape).background(t.cardBg).border(1.dp, t.borderMedium, CircleShape).tap(onClick = onClick).padding(horizontal = 10.dp, vertical = 5.dp),
+        Modifier.tourTarget(TourTarget.REVIEW_VIEW).clip(CircleShape).background(t.cardBg).border(1.dp, t.borderMedium, CircleShape).tap(onClick = onClick).padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Lucide(icon, 12.dp, t.textPrimary)

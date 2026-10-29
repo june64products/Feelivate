@@ -4,6 +4,10 @@ import android.content.Context
 import com.june64.feelivate.BuildConfig
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -74,6 +78,8 @@ interface FeelivateApi {
     // site
     @POST("contact") suspend fun contact(@Body body: ContactRequest): JsonObject
     @GET("blog/posts") suspend fun blogPosts(@Query("category") category: String? = null): PublishedPosts
+    @POST("feedback") suspend fun feedback(@Body body: FeedbackRequest): JsonObject
+    @GET("feedback/me") suspend fun myFeedbackStatus(): FeedbackStatus
 }
 
 /** One client for the whole app; the bearer token is read from the secure store on every call. */
@@ -81,6 +87,21 @@ object ApiClient {
     @Volatile private var api: FeelivateApi? = null
 
     val json = Json { ignoreUnknownKeys = true; explicitNulls = false; coerceInputValues = true; isLenient = true }
+
+    /** Feedback answers are free-form; this turns the form's map into the body the API stores. */
+    fun toJsonObject(map: Map<String, Any?>): JsonObject = buildJsonObject {
+        for ((k, v) in map) {
+            when (v) {
+                null -> {}
+                is String -> if (v.isNotBlank()) put(k, JsonPrimitive(v))
+                is Boolean -> put(k, JsonPrimitive(v))
+                is Number -> put(k, JsonPrimitive(v))
+                is List<*> -> if (v.isNotEmpty()) put(k, buildJsonArray { v.forEach { add(JsonPrimitive(it.toString())) } })
+                is Map<*, *> -> if (v.isNotEmpty()) put(k, toJsonObject(v.entries.associate { it.key.toString() to it.value }))
+                else -> put(k, JsonPrimitive(v.toString()))
+            }
+        }
+    }
 
     fun get(context: Context): FeelivateApi = api ?: synchronized(this) {
         api ?: build(context.applicationContext).also { api = it }

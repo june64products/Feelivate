@@ -73,6 +73,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
+import com.june64.feelivate.ui.tour.TourTarget
+import com.june64.feelivate.ui.tour.tourTarget
 
 /** Records to m4a and hands the file to POST /transcribe (the web sends webm/opus). */
 class VoiceRecorder(private val context: Context) {
@@ -161,7 +163,7 @@ fun RadiantPromptInput(
     }
 
     val canSend = value.isNotBlank() && !isRecording && !isTranscribing && !disabled
-    Column(modifier.fillMaxWidth().widthIn(max = 780.dp)) {
+    Column(modifier.fillMaxWidth().widthIn(max = 780.dp).tourTarget(TourTarget.CHAT_INPUT)) {
         val shape = RoundedCornerShape(16.dp)
         Row(
             Modifier.fillMaxWidth().clip(shape).background(t.bgSurface).border(1.dp, if (focused) t.inputBorderFocus else t.inputBorder, shape)
@@ -182,7 +184,7 @@ fun RadiantPromptInput(
                 },
             )
             Box(
-                Modifier.size(32.dp).clip(CircleShape).background(if (isRecording) Status.Error.copy(alpha = 0.1f) else Color.Transparent).tap(!disabled && !isTranscribing) { onMic() },
+                Modifier.tourTarget(TourTarget.MIC_BUTTON).size(32.dp).clip(CircleShape).background(if (isRecording) Status.Error.copy(alpha = 0.1f) else Color.Transparent).tap(!disabled && !isTranscribing) { onMic() },
                 contentAlignment = Alignment.Center,
             ) {
                 when {
