@@ -1,6 +1,6 @@
 name: Android
 
-# Every push to main that touches the app builds a debug APK in the cloud and
+# Every push to the android branch that touches the app builds a debug APK and
 # hands it to Firebase App Distribution, which notifies the testers' phones.
 #
 # Auth is keyless: GitHub's OIDC token is exchanged for a short-lived Google
@@ -8,7 +8,7 @@ name: Android
 # Firebase project), impersonating the project's Firebase service account.
 on:
   push:
-    branches: ["main"]
+    branches: ["android"]
     paths: ["android/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
@@ -49,7 +49,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.11.1"
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/android' }}
 
       # The same debug keystore as the dev Mac, so phones update in place and
       # the SHA-1 registered for Google Sign-In keeps matching.
