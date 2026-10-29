@@ -43,6 +43,13 @@ import com.june64.feelivate.ui.tour.LocalTourRegistry
 import com.june64.feelivate.ui.tour.TourRegistry
 import com.june64.feelivate.ui.tour.TourState
 import kotlinx.coroutines.launch
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.june64.feelivate.data.OpenIntent
+import com.june64.feelivate.data.Push
 
 /**
  * WorkspacePage.tsx — the mission surface on a phone: the top bar, one stage,
@@ -80,6 +87,35 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
     // Demo drawer rule: open while the scripted conversation is being built,
     // closed once the scene locks the plan or shows the finished goal.
     val uiMentorOpen = if (sc != null) (sc.view == "chat" && sc.messages.isNotEmpty() && !sc.planApproved && !sc.finished) else ui.mentorOpen
+
+    // ── push notifications ──
+    // Android 13+ needs the permission asked for; it is requested once the
+    // consent gate is out of the way, so two dialogs never stack.
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) Push.register(context)
+    }
+    LaunchedEffect(ui.consent.status, ui.userId) {
+        if (ui.consent.status != ConsentStatus.Clear || ui.userId.isBlank() || !Push.configured) return@LaunchedEffect
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            if (vm.prefs.notifAsked()) return@LaunchedEffect
+            vm.prefs.setNotifAsked()
+            notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            Push.register(context)
+        }
+    }
+
+    // A notification tap (or an email deep link) says where to land.
+    LaunchedEffect(ui.consent.status) {
+        if (ui.consent.status != ConsentStatus.Clear) return@LaunchedEffect
+        when (OpenIntent.take()) {
+            "journey" -> vm.openJourney()
+            "archive" -> vm.openJourney("archive")
+            else -> Unit
+        }
+    }
 
     // New accounts get the walkthrough once; "Replay tutorial" queues it again.
     LaunchedEffect(ui.consent.status, ui.userId) {

@@ -30,5 +30,20 @@
                 <data android:scheme="https" android:host="feelivate.com" android:pathPrefix="/app" />
             </intent-filter>
         </activity>
+
+        <!-- The pushes that go out with the morning, evening and review emails. -->
+        <service
+            android:name=".data.FeelivateMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="feelivate_default" />
     </application>
 </manifest>

@@ -63,12 +63,19 @@ jobs:
       - name: Build debug APK
         env:
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          # Push notifications. Both are embedded in any shipped APK anyway;
+          # they live in secrets so the repo doesn't carry project identifiers.
+          # Missing values just leave push off — the build still succeeds.
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
         run: |
           # Offset keeps cloud builds above any APK built by hand on the Mac (versionCode 1).
           gradle assembleDebug --no-daemon --console=plain \
             -PversionCode=$((100 + ${{ github.run_number }})) \
             -PversionName=0.1.${{ github.run_number }} \
-            -PgoogleWebClientId="$GOOGLE_WEB_CLIENT_ID"
+            -PgoogleWebClientId="$GOOGLE_WEB_CLIENT_ID" \
+            -PfirebaseAppId="$FIREBASE_APP_ID" \
+            -PfirebaseApiKey="$FIREBASE_API_KEY"
           cp app/build/outputs/apk/debug/app-debug.apk "feelivate-0.1.${{ github.run_number }}.apk"
 
       - uses: actions/upload-artifact@v4

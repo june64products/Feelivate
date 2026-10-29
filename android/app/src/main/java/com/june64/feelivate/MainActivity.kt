@@ -1,5 +1,6 @@
 package com.june64.feelivate
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +10,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
+import com.june64.feelivate.data.OpenIntent
+import com.june64.feelivate.data.Push
 import com.june64.feelivate.ui.AppNav
 import com.june64.feelivate.ui.theme.FeelivateTheme
 import com.june64.feelivate.ui.theme.ThemeStore
@@ -18,6 +21,8 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        readOpenTarget(intent)
+        Push.register(applicationContext)
         setContent {
             val themeStore = remember { ThemeStore(applicationContext) }
             val dark = themeStore.isDark(isSystemInDarkTheme())
@@ -31,5 +36,22 @@ class MainActivity : ComponentActivity() {
             }
             FeelivateTheme(themeStore) { AppNav() }
         }
+    }
+
+    /** A tap on the notification (or an email deep link) arrives here, not in onCreate. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        readOpenTarget(intent)
+    }
+
+    /**
+     * Both routes carry the same hint: the push puts it in an extra, the email
+     * deep link in ?open= on https://feelivate.com/app.
+     */
+    private fun readOpenTarget(intent: Intent?) {
+        val target = intent?.getStringExtra("open")
+            ?: intent?.data?.takeIf { it.path?.startsWith("/app") == true }?.getQueryParameter("open")
+        if (!target.isNullOrBlank()) OpenIntent.pending = target
     }
 }

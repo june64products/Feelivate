@@ -69,6 +69,10 @@ class Prefs(context: Context) {
         getString("last_journal_date_${userId}_${sessionId ?: "none"}") == LocalDate.now().toString()
     fun lockJournalToday(userId: String?, sessionId: String?) = put("last_journal_date_${userId}_${sessionId ?: "none"}", LocalDate.now().toString())
 
+    // ── notifications: ask for the permission once, not on every launch ──
+    fun notifAsked(): Boolean = getString("notif_permission_asked") == "1"
+    fun setNotifAsked() = put("notif_permission_asked", "1")
+
     // ── emotion orb position (emotion_orb_position) ──
     fun orbX(): Float? = getString("emotion_orb_x")?.toFloatOrNull()
     fun orbY(): Float? = getString("emotion_orb_y")?.toFloatOrNull()

@@ -32,6 +32,12 @@ android {
         buildConfigField("String", "API_BASE", "\"$apiBase\"")
         buildConfigField("String", "WEB_BASE", "\"https://feelivate.com\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${conf("googleWebClientId")}\"")
+        // Push: Firebase is configured from these rather than a google-services.json,
+        // so a checkout without Firebase values still builds — push is simply off.
+        buildConfigField("String", "FIREBASE_APP_ID", "\"${conf("firebaseAppId")}\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${conf("firebaseApiKey")}\"")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"${conf("firebaseSenderId", "980030853864")}\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${conf("firebaseProjectId", "feelivate")}\"")
     }
 
     buildTypes {
@@ -83,4 +89,9 @@ dependencies {
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    // Push notifications (FCM). No google-services plugin: Firebase is
+    // initialised in code from the build properties above.
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
 }

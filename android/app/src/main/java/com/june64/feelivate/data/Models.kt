@@ -364,3 +364,5 @@ data class LegalBlock(
 @Serializable data class DeleteAccountRequest(val confirmation: String, val password: String? = null)
 @Serializable data class DeleteAccountResult(val status: String = "", val message: String = "", val deleted: JsonElement? = null, val incomplete: List<String> = emptyList())
 @Serializable data class TranscribeResponse(val text: String = "")
+
+@Serializable data class DeviceTokenRequest(val token: String, val platform: String = "android")

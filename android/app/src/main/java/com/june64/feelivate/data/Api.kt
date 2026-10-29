@@ -70,6 +70,8 @@ interface FeelivateApi {
     @POST("notifications/email/verify-otp") suspend fun verifyOtp(@Body body: VerifyOtpRequest): MessageResponse
     @PUT("notifications/email/update-time") suspend fun updateTime(@Body body: UpdateTimeRequest): MessageResponse
     @POST("notifications/email/stop") suspend fun stopEmail(@Body body: UserIdRequest): MessageResponse
+    @POST("notifications/device") suspend fun registerDevice(@Body body: DeviceTokenRequest): JsonObject
+    @HTTP(method = "DELETE", path = "notifications/device", hasBody = true) suspend fun forgetDevice(@Body body: DeviceTokenRequest): JsonObject
     // account
     @GET("account/export") suspend fun export(): ResponseBody
     @HTTP(method = "DELETE", path = "account", hasBody = true) suspend fun deleteAccount(@Body body: DeleteAccountRequest): DeleteAccountResult

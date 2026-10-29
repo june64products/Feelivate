@@ -255,7 +255,11 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
     fun logout() {
         // A new user who has not been asked yet gets the feedback form first;
         // "Not now" still logs out.
-        val proceed = { store.clear(); signedOut = true }
+        val proceed = {
+            // Tell the backend first — after store.clear() there is no token to authenticate with.
+            com.june64.feelivate.data.Push.unregister(getApplication())
+            store.clear(); signedOut = true
+        }
         feedback?.requestLogout(proceed) ?: proceed()
     }
 
