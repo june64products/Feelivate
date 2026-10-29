@@ -64,7 +64,45 @@ export function completeOnboarding(userId: string | null | undefined) {
 
 /** True when this user should currently be shown the walkthrough. */
 export function isOnboardingActive(userId: string | null | undefined): boolean {
+    // A demo account is always "queued": every login and every open of the
+    // workspace starts the tour again, however many times it was finished.
+    if (isDemoAccount(userId)) return true;
     return getOnboardingState(userId)?.status === 'active';
+}
+
+/* ── Demo accounts ─────────────────────────────────────────────────────────
+ * The accounts used for live demos replay the walkthrough on every login and
+ * every open of the workspace, so a demo always starts from the tour. Flagged
+ * at login by email (the only place the email is known), kept per user id so
+ * another account in the same browser is unaffected. Web only — the Android
+ * app keeps the run-once behaviour on purpose. */
+
+const DEMO_ACCOUNT_EMAILS = new Set(['ayush@ai.com']);
+
+const demoKey = (userId: string) => `feelivate_demo_account_${userId}`;
+
+/** Called on login: remember whether this user is a demo account. */
+export function markDemoAccount(userId: string | null | undefined, email: string | null | undefined) {
+    if (!userId) return;
+    try {
+        if (DEMO_ACCOUNT_EMAILS.has((email || '').trim().toLowerCase())) {
+            localStorage.setItem(demoKey(userId), '1');
+        } else {
+            localStorage.removeItem(demoKey(userId));
+        }
+    } catch {
+        /* storage unavailable — the account just behaves like a normal one */
+    }
+}
+
+/** True for an account that replays the tour on every visit. */
+export function isDemoAccount(userId: string | null | undefined): boolean {
+    if (!userId) return false;
+    try {
+        return localStorage.getItem(demoKey(userId)) === '1';
+    } catch {
+        return false;
+    }
 }
 
 /* ── Guided demo aliases ───────────────────────────────────────────────────

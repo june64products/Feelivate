@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X } from 'lucide-react';
 import { login, signup, getGoogleLoginUrl, getConsentCatalogue, type ConsentItem } from '../api';
-import { startOnboarding } from '../lib/onboarding';
+import { startOnboarding, markDemoAccount } from '../lib/onboarding';
 import BrandNav from '../components/site/BrandNav';
 import { ConsentCheckbox } from '../components/legal/ConsentControls';
 import { allRequiredGranted } from '../lib/consent';
@@ -151,6 +151,8 @@ export default function LoginPage() {
         const res = await login({ email: formData.email, password: formData.password });
         localStorage.setItem('user_id', res.user_id);
         localStorage.setItem('user_name', res.name || res.full_name || formData.email.split('@')[0]);
+        // Demo accounts replay the walkthrough on every login (see lib/onboarding).
+        markDemoAccount(res.user_id, formData.email);
         navigate('/app');
       } else {
         const res = await signup({ email: formData.email, password: formData.password, name: formData.name, consents });
