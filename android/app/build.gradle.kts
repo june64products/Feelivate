@@ -40,10 +40,29 @@ android {
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${conf("firebaseProjectId", "feelivate")}\"")
     }
 
+    // Play upload signing. The keystore never lives in git: locally it is named
+    // in secrets.properties, and CI restores it from a secret before building.
+    // With no keystore configured the release build is simply left unsigned,
+    // so `assembleRelease` still works for a smoke test.
+    val storeFilePath = conf("releaseStoreFile")
+    val hasKeystore = storeFilePath.isNotBlank() && file(storeFilePath).exists()
+    signingConfigs {
+        if (hasKeystore) {
+            create("release") {
+                storeFile = file(storeFilePath)
+                storePassword = conf("releaseStorePassword")
+                keyAlias = conf("releaseKeyAlias", "feelivate")
+                keyPassword = conf("releaseKeyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasKeystore) signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
