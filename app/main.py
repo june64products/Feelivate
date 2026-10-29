@@ -2328,6 +2328,74 @@ async def google_login_callback(req: GoogleLoginCallbackRequest, db: DBSession =
     }
 
 
+class GoogleMobileRequest(BaseModel):
+    id_token: str
+
+
+@app.post("/auth/google/mobile", tags=["auth"])
+async def google_login_mobile(req: GoogleMobileRequest, db: DBSession = Depends(get_db)):
+    """
+    "Continue with Google" from the Android app.
+
+    Credential Manager hands the app an ID token rather than an OAuth code, so
+    there is nothing to exchange — the token is verified against Google's keys
+    here and then takes exactly the same find-or-create path as the web
+    callback above.
+    """
+    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    if not client_id:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured.")
+
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token as google_id_token
+
+        info = google_id_token.verify_oauth2_token(
+            req.id_token, google_requests.Request(), client_id
+        )
+    except Exception as e:
+        logger.warning(f"Google mobile sign-in rejected a token: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=401, detail="Google sign-in failed. Please try again.")
+
+    if info.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+        raise HTTPException(status_code=401, detail="Google sign-in failed. Please try again.")
+    # An unverified address could belong to someone else entirely.
+    if info.get("email_verified") is False:
+        raise HTTPException(status_code=401, detail="That Google address isn't verified yet.")
+
+    email = (info.get("email") or "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Google did not return an email address.")
+
+    user = db.query(User).filter(User.email == email).first()
+    is_new = False
+    if not user:
+        user = User(
+            id=str(uuid.uuid4()),
+            email=email,
+            password=get_password_hash(secrets.token_urlsafe(32)),
+            name=info.get("name") or email.split("@")[0],
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        is_new = True
+    elif not user.name and info.get("name"):
+        user.name = info.get("name")
+        db.commit()
+
+    access_token = create_access_token(data={"sub": user.id})
+    return {
+        "message": "Login successful",
+        "user_id": user.id,
+        "name": user.name,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "is_new_user": is_new,
+        "consent_required": missing_consents(db, user.id),
+    }
+
+
 # ============================================================
 # GOOGLE CALENDAR
 # ============================================================
