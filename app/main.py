@@ -4694,7 +4694,7 @@ def _push_status(db: DBSession, user: User) -> dict:
         "enabled": p["enabled"],
         "prefs": {k: p[k] for k in PUSH_KINDS},
         "has_device": has_device(db, user.id),
-        "configured": push_enabled(),
+        "configured": push_enabled(db),
         "preferred_time": user.preferred_notification_time or "08:00",
         "preferred_timezone": user.preferred_notification_timezone or "UTC",
     }
@@ -4730,6 +4730,49 @@ async def set_push_preferences(
     user.push_prefs = json.dumps(p)
     db.commit()
     return _push_status(db, user)
+
+
+class RelayedFcmToken(BaseModel):
+    access_token: str
+    expires_in: int = 3600
+
+
+_relay_attempts: list = []   # timestamps; a tiny in-process limiter
+
+
+@app.put("/internal/fcm-token", tags=["notifications"], include_in_schema=False)
+async def receive_fcm_token(req: RelayedFcmToken, db: DBSession = Depends(get_db)):
+    """
+    The GitHub Actions relay drops a one-hour FCM token here every twenty
+    minutes. There is no shared secret: the token is only kept if FCM itself
+    confirms it can act on our project, which nothing but the project's own
+    service account can produce.
+    """
+    import time as _time
+    from .push_service import store_relayed_token, verify_fcm_capability
+    now = _time.time()
+    _relay_attempts[:] = [t for t in _relay_attempts if now - t < 3600]
+    if len(_relay_attempts) >= 60:
+        raise HTTPException(status_code=429, detail="Too many attempts.")
+    _relay_attempts.append(now)
+    token = (req.access_token or "").strip()
+    if len(token) < 40 or len(token) > 4096:
+        raise HTTPException(status_code=400, detail="Not a token.")
+    if not verify_fcm_capability(token):
+        raise HTTPException(status_code=403, detail="FCM did not accept this token for the project.")
+    expires_at = store_relayed_token(db, token, req.expires_in)
+    return {"ok": True, "expires_at": int(expires_at)}
+
+
+@app.post("/notifications/push/test", tags=["notifications"])
+async def push_test(db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """One real notification to the caller's own phones, so the switch-on can be seen."""
+    from .push_service import push_enabled, send_to_user
+    if not push_enabled(db):
+        return {"sent": 0, "configured": False}
+    sent = send_to_user(db, current_user.id, "Feelivate is connected",
+                        "If you can read this, the day's notes will reach this phone.", {"view": "chat"})
+    return {"sent": sent, "configured": True}
 
 
 @app.delete("/notifications/device", tags=["notifications"])

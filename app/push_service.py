@@ -6,10 +6,19 @@ reason to send: the morning task, the evening journal nudge, "your review is
 in". This module only changes how it arrives, so the copy lives where the
 email copy lives and nothing new decides *when* to interrupt someone.
 
-FCM's HTTP v1 API wants an OAuth token minted from a Firebase service account.
-The key arrives as one environment variable, FCM_SERVICE_ACCOUNT_JSON, holding
-the key file's contents. When it is missing every send is a logged no-op — an
-environment with no push configured runs exactly as it did before.
+FCM's HTTP v1 API wants an OAuth token for a Firebase service account. Two
+ways to have one:
+
+  1. FCM_SERVICE_ACCOUNT_JSON — a key file's contents in the environment; the
+     token is minted here.
+  2. A relayed token — the GitHub Actions workflow that already holds keyless
+     (Workload Identity) access to the Firebase project mints a one-hour token
+     every twenty minutes and PUTs it to /internal/fcm-token. The server keeps
+     it in kv_settings and uses it until the next one arrives. This is the
+     route when the organisation's policy forbids service-account keys.
+
+With neither, every send is a logged no-op — an environment with no push
+configured runs exactly as it did before.
 """
 
 from __future__ import annotations
@@ -18,6 +27,7 @@ import json
 import os
 import re
 import threading
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -25,7 +35,7 @@ import requests
 from loguru import logger
 from sqlalchemy.orm import Session as DBSession
 
-from .models import DeviceToken
+from .models import DeviceToken, KvSetting
 
 # One kind per alert the emails already send; each has its own Android channel
 # so a person can silence, say, the evening nudge without losing the review.
@@ -40,6 +50,10 @@ CHANNELS = {
 
 FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
 FCM_TIMEOUT = 10          # seconds; the scheduler must not hang on Google
+# The Firebase project phones are registered with. A key file names its own
+# project; a relayed token says nothing, so this is where it is sent.
+FCM_PROJECT_ID = os.environ.get("FCM_PROJECT_ID", "feelivate")
+RELAY_KEY = "fcm_access_token"
 
 # One lock so several scheduler threads can't each mint their own token.
 _cred_lock = threading.Lock()
@@ -82,7 +96,8 @@ def _load_credentials():
         return None
 
 
-def _access_token() -> Optional[str]:
+def _minted_token() -> Optional[str]:
+    """Route 1: a token from the key file, refreshed when it expires."""
     creds = _load_credentials()
     if creds is None:
         return None
@@ -97,8 +112,94 @@ def _access_token() -> Optional[str]:
             return None
 
 
-def push_enabled() -> bool:
-    return _load_credentials() is not None
+# ── route 2: the relayed token ────────────────────────────────────────────
+
+_relay_lock = threading.Lock()
+_relay: dict = {"token": None, "expires_at": 0.0, "checked_at": 0.0}
+RELAY_RECHECK_SECONDS = 60      # how often a process re-reads the row
+
+
+def _read_relay(db: DBSession) -> None:
+    try:
+        row = db.query(KvSetting).filter(KvSetting.key == RELAY_KEY).first()
+        if row and row.value:
+            saved = json.loads(row.value)
+            _relay["token"] = saved.get("token")
+            _relay["expires_at"] = float(saved.get("expires_at") or 0)
+        else:
+            _relay["token"], _relay["expires_at"] = None, 0.0
+    except Exception as e:
+        logger.error(f"[Push] could not read the relayed token: {e}")
+    _relay["checked_at"] = time.time()
+
+
+def _relayed_token(db: Optional[DBSession]) -> Optional[str]:
+    """The relayed token when one is held and has over a minute left."""
+    with _relay_lock:
+        stale = time.time() - _relay["checked_at"] > RELAY_RECHECK_SECONDS
+        if stale and db is not None:
+            _read_relay(db)
+        elif stale:
+            from .database import SessionLocal
+            own = SessionLocal()
+            try:
+                _read_relay(own)
+            finally:
+                own.close()
+        if _relay["token"] and _relay["expires_at"] - time.time() > 60:
+            return _relay["token"]
+        return None
+
+
+def store_relayed_token(db: DBSession, token: str, expires_in: int) -> float:
+    """Called by /internal/fcm-token once the token has proved it can reach FCM."""
+    expires_at = time.time() + max(60, min(int(expires_in), 3600))
+    row = db.query(KvSetting).filter(KvSetting.key == RELAY_KEY).first()
+    value = json.dumps({"token": token, "expires_at": expires_at})
+    if row:
+        row.value = value
+    else:
+        db.add(KvSetting(key=RELAY_KEY, value=value))
+    db.commit()
+    with _relay_lock:
+        _relay.update(token=token, expires_at=expires_at, checked_at=time.time())
+    logger.info(f"[Push] relayed FCM token accepted, good for {int(expires_at - time.time())}s")
+    return expires_at
+
+
+def verify_fcm_capability(token: str) -> bool:
+    """
+    Proof that a token is worth keeping: FCM is asked to *validate* (not send)
+    a message to a made-up device for our project. A token that can act on the
+    project gets 400 for the bad device; one that can't gets 401/403.
+    """
+    try:
+        r = requests.post(
+            f"https://fcm.googleapis.com/v1/projects/{FCM_PROJECT_ID}/messages:send",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={"validate_only": True, "message": {"token": "not-a-real-device", "notification": {"title": "x", "body": "y"}}},
+            timeout=FCM_TIMEOUT,
+        )
+    except Exception as e:
+        logger.warning(f"[Push] capability check failed to reach FCM: {e}")
+        return False
+    if r.status_code in (200, 400):
+        return True
+    logger.warning(f"[Push] relayed token refused by FCM: {r.status_code} {(r.text or '')[:160]}")
+    return False
+
+
+def _access_token(db: Optional[DBSession] = None) -> Optional[str]:
+    return _minted_token() or _relayed_token(db)
+
+
+def project_id() -> str:
+    return _project_id or FCM_PROJECT_ID
+
+
+def push_enabled(db: Optional[DBSession] = None) -> bool:
+    """True when at least one route to FCM is open right now."""
+    return _load_credentials() is not None or _relayed_token(db) is not None
 
 
 # ── the device registry ────────────────────────────────────────────────────
@@ -180,8 +281,8 @@ def send_to_user(db: DBSession, user_id: str, title: str, body: str,
     Notify every device this user has registered. Returns how many got through.
     Never raises — a failed push must not stop the email that goes with it.
     """
-    access_token = _access_token()
-    if not access_token or not _project_id:
+    access_token = _access_token(db)
+    if not access_token:
         return 0
     try:
         rows = db.query(DeviceToken).filter(DeviceToken.user_id == user_id).all()
@@ -193,7 +294,7 @@ def send_to_user(db: DBSession, user_id: str, title: str, body: str,
 
     sent = 0
     for row in rows:
-        ok, err = _send_one(access_token, _project_id, row.token, title, body, data, channel)
+        ok, err = _send_one(access_token, project_id(), row.token, title, body, data, channel)
         if ok:
             sent += 1
         elif "UNREGISTERED" in err or "INVALID_ARGUMENT" in err or err.startswith("404"):
@@ -209,11 +310,11 @@ def safe_send_to_user(user_id: str, title: str, body: str, data: Optional[dict] 
     The version the email jobs call: opens its own session, swallows everything.
     The alert's whole value is that it is quiet about its own plumbing.
     """
-    if not push_enabled():
-        return 0
     from .database import SessionLocal
     db = SessionLocal()
     try:
+        if not push_enabled(db):
+            return 0
         return send_to_user(db, user_id, title, body, data, channel)
     except Exception as e:
         logger.error(f"[Push] send_to_user crashed for {user_id}: {e}")
@@ -257,7 +358,7 @@ def device_user_ids(db: DBSession) -> set:
     email subscribers. Empty when push isn't configured, so a backend without
     FCM credentials behaves exactly as it did before phones existed.
     """
-    if not push_enabled():
+    if not push_enabled(db):
         return set()
     try:
         return {row[0] for row in db.query(DeviceToken.user_id).distinct().all()}
