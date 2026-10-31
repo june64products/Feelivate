@@ -147,7 +147,7 @@ private fun InfoStrip(text: String, success: Boolean) {
     }
 }
 
-/* ── Alerts: on this phone, and by email ── */
+/* ── Alerts: the day's notes, on this phone (email alerts live on the website) ── */
 
 /** The five phone alerts — one switch each, the same five the emails send. */
 private val PUSH_ROWS = listOf(
@@ -189,7 +189,7 @@ private fun Toggle(on: Boolean) {
     }
 }
 
-/** The modal's first screen: the phone's switches, the shared morning time, the email line. */
+/** The modal's first screen: the phone's switches and the morning time. */
 @Composable
 private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) {
     val t = tokens()
@@ -200,12 +200,12 @@ private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) 
     val systemAllowed = Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
-    ModalHeader(R.drawable.lu_bell, "Alerts", "The same notes — on this phone, and by email.")
+    ModalHeader(R.drawable.lu_bell, "Alerts", "The day's notes, on this phone.")
 
     SectionLabel("ON THIS PHONE", top = 4.dp)
     when {
         !Push.configured || (p.loaded && !p.configured) -> Text(
-            "Phone alerts aren't switched on for this build yet. Email alerts below work today.",
+            "Phone alerts aren't switched on for this build yet.",
             style = satoshi(12.5f, 500, lineHeight = 1.55f), color = t.textSecondary,
         )
         !systemAllowed -> Column {
@@ -230,23 +230,12 @@ private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) 
     ) {
         Column(Modifier.weight(1f)) {
             Text("MORNING NOTE AT", style = clash(10f, 700, ls = 0.1f), color = t.textMuted, modifier = Modifier.padding(bottom = 2.dp))
-            Text("${e.subscribedTime} ${vm.tzShort}", style = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 18.sp, fontWeight = FontWeight.Bold), color = t.textPrimary)
+            Text(e.subscribedTime, style = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 20.sp, fontWeight = FontWeight.Bold), color = t.textPrimary)
+            Text("${vm.timezone} · ${vm.tzShort}", style = satoshi(11f, 500), color = t.textMuted)
         }
         PillButton("Change", filled = false, size = 11f, ls = 0.04f, horizontalPadding = 14.dp, verticalPadding = 6.dp, foreground = t.textSecondary, onClick = vm::emailChangeTime)
     }
 
-    SectionLabel("BY EMAIL")
-    if (e.enabled) {
-        Text(e.subscribedEmail.orEmpty(), style = satoshi(14f, 600), color = t.textPrimary, modifier = Modifier.padding(bottom = 4.dp))
-        Text("The same alerts, in your inbox.", style = satoshi(12f, 500), color = t.textMuted, modifier = Modifier.padding(bottom = 12.dp))
-        if (e.message.isNotEmpty()) InfoStrip(e.message, true)
-        if (e.error.isNotEmpty()) InfoStrip(e.error, false)
-        PillButton(if (e.loading) "Stopping..." else "Stop email alerts", Modifier.fillMaxWidth(), filled = false, enabled = !e.loading, size = 12f, ls = 0.04f, verticalPadding = 11.dp, foreground = Status.Error, borderColor = Status.Error.copy(alpha = 0.2f), leading = { if (e.loading) Spinner(14.dp, Status.Error) else Lucide(R.drawable.lu_bell_off, 14.dp, Status.Error) }, onClick = vm::stopEmail)
-    } else {
-        Text("Get the same notes in your inbox too — they reach you when the phone is off.", style = satoshi(12.5f, 500, lineHeight = 1.55f), color = t.textSecondary, modifier = Modifier.padding(bottom = 12.dp))
-        if (e.message.isNotEmpty()) InfoStrip(e.message, true)
-        PillButton("Set up email alerts", Modifier.fillMaxWidth(), filled = false, size = 12f, ls = 0.04f, verticalPadding = 11.dp, foreground = t.textPrimary, leading = { Lucide(R.drawable.lu_mail, 14.dp, t.textPrimary) }, onClick = vm::emailBackToEmail)
-    }
 }
 
 @Composable
@@ -259,45 +248,9 @@ fun BoxScope.AlertsModal(vm: WorkspaceViewModel, onRequestPermission: () -> Unit
             Column {
                 when (e.step) {
                     EmailStep.Home -> AlertsHome(vm, onRequestPermission)
-                    EmailStep.Email -> {
-                        Text("← Alerts", style = satoshi(12f, 600), color = t.textMuted, modifier = Modifier.tap(onClick = vm::emailHome).padding(bottom = 14.dp))
-                        ModalHeader(R.drawable.lu_bell, "Daily Task Alerts", "Get your daily tasks straight to your inbox")
-                        Text(
-                            buildAnnotatedString {
-                                append("Enter your email to receive a ")
-                                withStyle(SpanStyle(color = t.textPrimary, fontWeight = FontWeight.Bold)) { append("personalized daily task") }
-                                append(" from Monday to Sunday, along with an AI-written motivation message made just for you.")
-                            },
-                            style = satoshi(13f, 500, lineHeight = 1.6f), color = t.textSecondary, modifier = Modifier.padding(bottom = 20.dp),
-                        )
-                        Text("EMAIL ADDRESS", style = clash(10f, 700, ls = 0.1f), color = t.textPlaceholder, modifier = Modifier.padding(bottom = 6.dp))
-                        ModalField(e.email, vm::setNotifEmail, "you@example.com", icon = R.drawable.lu_mail, keyboardType = KeyboardType.Email)
-                        VSpace(16.dp)
-                        if (e.error.isNotEmpty()) InfoStrip(e.error, false)
-                        PillButton("Send Verification Code", Modifier.fillMaxWidth(), enabled = !e.loading && e.email.isNotBlank(), size = 12f, verticalPadding = 12.dp, background = if (e.loading || e.email.isBlank()) t.btnDisabledBg else null, leading = { if (e.loading) Spinner(15.dp, t.btnPrimaryText) else Lucide(R.drawable.lu_mail, 15.dp, t.btnPrimaryText) }, onClick = vm::sendOtp)
-                    }
-                    EmailStep.Otp -> {
-                        ModalHeader(R.drawable.lu_mail, "Verify Your Code", e.email)
-                        if (e.message.isNotEmpty()) InfoStrip(e.message, true)
-                        Text(
-                            buildAnnotatedString {
-                                append("We've sent a 6-digit code to ")
-                                withStyle(SpanStyle(color = t.textPrimary, fontWeight = FontWeight.Bold)) { append(e.email) }
-                                append(". Enter it below to activate your daily alerts.")
-                            },
-                            style = satoshi(13f, 500, lineHeight = 1.6f), color = t.textSecondary, modifier = Modifier.padding(bottom = 16.dp),
-                        )
-                        ModalField(e.otp, vm::setNotifOtp, "_ _ _ _ _ _", keyboardType = KeyboardType.NumberPassword, radius = 12, minHeight = 56, textAlign = TextAlign.Center, textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.em))
-                        VSpace(16.dp)
-                        if (e.error.isNotEmpty()) InfoStrip(e.error, false)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            PillButton("← Back", Modifier.weight(1f), filled = false, size = 12f, ls = 0.04f, verticalPadding = 11.dp, foreground = t.textSecondary, onClick = vm::emailBackToEmail)
-                            PillButton("Verify & Subscribe", Modifier.weight(2f), enabled = !e.loading && e.otp.length >= 6, size = 12f, ls = 0.04f, verticalPadding = 11.dp, background = if (e.loading || e.otp.length < 6) t.btnDisabledBg else null, leading = { if (e.loading) Spinner(14.dp, t.btnPrimaryText) else Lucide(R.drawable.lu_check_circle, 14.dp, t.btnPrimaryText) }, onClick = vm::verifyOtp)
-                        }
-                    }
                     EmailStep.Time -> {
                         Text("← Alerts", style = satoshi(12f, 600), color = t.textMuted, modifier = Modifier.tap(onClick = vm::emailHome).padding(bottom = 14.dp))
-                        ModalHeader(R.drawable.lu_clock, "Morning note — what time?", "Phone and email both use this.")
+                        ModalHeader(R.drawable.lu_clock, "Morning note — what time?", "When the day's one thing should arrive.")
                         Text(
                             buildAnnotatedString {
                                 append("Every day at this time, you'll receive your ")

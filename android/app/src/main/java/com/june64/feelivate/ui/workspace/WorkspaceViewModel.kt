@@ -44,7 +44,7 @@ import com.june64.feelivate.data.PushPrefsRequest
 /* ── State mirrors of WorkspacePage.tsx ── */
 
 enum class ConsentStatus { Checking, Blocking, Clear }
-enum class EmailStep { Home, Email, Otp, Time }
+enum class EmailStep { Home, Time }
 
 /** The alerts this phone can carry — one switch each, the same five the emails send. */
 val PUSH_KINDS = listOf("morning", "evening", "review", "recovery", "countdown")
@@ -500,7 +500,7 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
     }
     private fun email(f: (EmailUi) -> EmailUi) { ui = ui.copy(email = f(ui.email)) }
     fun openEmailModal() {
-        email { it.copy(error = "", message = "", otp = "", step = EmailStep.Home, email = if (it.enabled) it.email else "") }
+        email { it.copy(error = "", message = "", step = EmailStep.Home) }
         ui = ui.copy(showEmailModal = true)
         loadPushStatus()
     }
@@ -533,29 +533,8 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         savePush(enabled = true)
     }
     fun closeEmailModal() { ui = ui.copy(showEmailModal = false) }
-    fun setNotifEmail(v: String) = email { it.copy(email = v) }
-    fun setNotifOtp(v: String) = email { it.copy(otp = v.filter { c -> c.isDigit() }.take(6)) }
     fun setNotifTime(v: String) = email { it.copy(preferredTime = v) }
-    fun emailBackToEmail() = email { it.copy(step = EmailStep.Email, error = "", message = "") }
     fun emailChangeTime() = email { it.copy(step = EmailStep.Time, error = "") }
-    fun sendOtp() {
-        val e = ui.email; if (e.email.isBlank()) return
-        email { it.copy(loading = true, error = "", message = "") }
-        viewModelScope.launch {
-            runCatching { api.sendOtp(SendOtpRequest(ui.userId, e.email.trim())) }
-                .onSuccess { email { it.copy(loading = false, message = "Code sent — check your inbox.", step = EmailStep.Otp) } }
-                .onFailure { err -> email { it.copy(loading = false, error = err.userMessage("Couldn't send the code. Please try again.")) } }
-        }
-    }
-    fun verifyOtp() {
-        val e = ui.email; if (e.otp.isBlank()) return
-        email { it.copy(loading = true, error = "") }
-        viewModelScope.launch {
-            runCatching { api.verifyOtp(VerifyOtpRequest(ui.userId, e.email.trim(), e.otp.trim(), ui.activeSessionId, e.preferredTime, timezone)) }
-                .onSuccess { email { it.copy(loading = false, subscribedEmail = e.email.trim(), enabled = true, step = EmailStep.Time) } }
-                .onFailure { err -> email { it.copy(loading = false, error = err.userMessage("OTP is incorrect. Please check your email.")) } }
-        }
-    }
     fun saveTime() {
         email { it.copy(loading = true, error = "") }
         viewModelScope.launch {
@@ -563,14 +542,6 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
             runCatching { api.updateTime(UpdateTimeRequest(ui.userId, t, timezone)) }
                 .onSuccess { email { it.copy(loading = false, subscribedTime = t, message = "Morning alert set for $t $tzShort.", step = EmailStep.Home) } }
                 .onFailure { err -> email { it.copy(loading = false, error = err.userMessage("Failed to save time. Please try again.")) } }
-        }
-    }
-    fun stopEmail() {
-        email { it.copy(loading = true, error = "") }
-        viewModelScope.launch {
-            runCatching { api.stopEmail(UserIdRequest(ui.userId)) }
-                .onSuccess { email { it.copy(loading = false, enabled = false, subscribedEmail = null, step = EmailStep.Home, email = "", message = "Email alerts stopped.") } }
-                .onFailure { err -> email { it.copy(loading = false, error = err.userMessage("Couldn't turn off notifications. Please try again.")) } }
         }
     }
 
