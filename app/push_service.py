@@ -251,11 +251,9 @@ def _send_one(access_token: str, project_id: str, token: str, title: str, body: 
             "notification": {"title": title, "body": body},
             "android": {
                 "priority": "high",
-                "notification": {
-                    "channel_id": channel,
-                    # The app is the whole point of the tap, so always open it.
-                    "click_action": "FEELIVATE_OPEN",
-                },
+                # No click_action: with none set, a tap on a tray notification
+                # opens the launcher activity with the data keys as extras.
+                "notification": {"channel_id": channel},
             },
             "data": {k: str(v) for k, v in (data or {}).items()},
         }

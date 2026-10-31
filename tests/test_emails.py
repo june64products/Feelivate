@@ -693,3 +693,46 @@ def test_relayed_fcm_token_is_kept_only_when_fcm_vouches_for_it(client, monkeypa
     # an expired relay is as good as none
     ps._relay["expires_at"] = 0
     assert ps.push_enabled() is False
+
+
+def test_someone_with_the_app_gets_the_push_and_not_the_mail_unless_the_push_fails(client, monkeypatch):
+    import app.email_service as es
+    import app.push_service as ps
+    from app.database import SessionLocal
+    from app.models import DailyCheckin, DeviceToken, Session as UserSession, User, UserStreak
+
+    headers, uid = register(client, "both-channels@example.com")
+    start = monday_of(date.today())
+    days = [(start + timedelta(days=i)).strftime("%b %d (%a)") for i in range(7)]
+    plan = {"week_number": 1, "theme": "First Keys", "start_date": start.isoformat(), "days": [{"day": d, "action": f"Piano ({d})"} for d in days]}
+    db = SessionLocal()
+    u = db.query(User).filter(User.id == uid).first()
+    u.email_notifications_enabled = 1
+    u.notification_email = "both-channels@example.com"
+    u.preferred_notification_timezone = "UTC"
+    db.add(UserSession(id="s-both", user_id=uid, focus="learn the piano", phase="active", current_week=1,
+                       plan_start_date=start.isoformat(), week_plan_json=json.dumps(plan), result_json=json.dumps([plan])))
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    db.add(DailyCheckin(user_id=uid, session_id="s-both", date=yesterday, status="done"))
+    db.add(UserStreak(user_id=uid, current_streak=2, longest_streak=2, last_checkin=yesterday, total_done=2))
+    db.add(DeviceToken(user_id=uid, token="fcm-token-" + "w" * 40, platform="android"))
+    db.commit()
+    db.close()
+
+    mailed = []
+    outcome = {"sent": 1}
+    monkeypatch.setattr(ps, "push_enabled", lambda db=None: True)
+    monkeypatch.setattr(ps, "send_to_user", lambda db, user_id, *a, **k: outcome["sent"] if user_id == uid else 0)
+    monkeypatch.setattr(es, "send_evening_email", lambda to, *a, **k: mailed.append(to) or True)
+    at_2031 = datetime.combine(date.today(), datetime.min.time(), tzinfo=pytz.utc).replace(hour=20, minute=31)
+
+    es.run_evening_reminders(now_utc=at_2031)
+    assert "both-channels@example.com" not in mailed      # the phone took it: no mail
+
+    # The next evening the phone is unreachable: the mail steps in.
+    db = SessionLocal()
+    db.query(User).filter(User.id == uid).first().last_journal_reminder_date = None
+    db.commit(); db.close()
+    outcome["sent"] = 0
+    es.run_evening_reminders(now_utc=at_2031)
+    assert mailed.count("both-channels@example.com") == 1
