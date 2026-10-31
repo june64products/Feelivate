@@ -643,12 +643,14 @@ def test_a_phone_only_user_gets_the_evening_alert_as_a_push(client, monkeypatch)
     u = db.query(User).filter(User.id == uid).first()
     u.push_prefs = json.dumps({"enabled": True, "evening": False})
     u.last_journal_reminder_date = None
+    u.last_journal_push_date = None
     db.commit()
     db.close()
     es.run_evening_reminders(now_utc=at_2031)
     assert len(pushed()) == 1
     db = SessionLocal()
-    assert db.query(User).filter(User.id == uid).first().last_journal_reminder_date is None
+    marks = db.query(User).filter(User.id == uid).first()
+    assert marks.last_journal_reminder_date is None and marks.last_journal_push_date is None
     db.close()
 
 
@@ -695,7 +697,10 @@ def test_relayed_fcm_token_is_kept_only_when_fcm_vouches_for_it(client, monkeypa
     assert ps.push_enabled() is False
 
 
-def test_someone_with_the_app_gets_the_push_and_not_the_mail_unless_the_push_fails(client, monkeypatch):
+def test_web_alerts_and_phone_alerts_are_separate_systems(client, monkeypatch):
+    """Alerts switched on in the website go by email, alerts switched on in the
+    app go to the phone; both on means both arrive, and each keeps its own
+    once-a-day mark so one failing never silences the other."""
     import app.email_service as es
     import app.push_service as ps
     from app.database import SessionLocal
@@ -719,20 +724,27 @@ def test_someone_with_the_app_gets_the_push_and_not_the_mail_unless_the_push_fai
     db.commit()
     db.close()
 
-    mailed = []
-    outcome = {"sent": 1}
+    mailed, pushed = [], []
+    outcome = {"push": 1, "mail": True}
     monkeypatch.setattr(ps, "push_enabled", lambda db=None: True)
-    monkeypatch.setattr(ps, "send_to_user", lambda db, user_id, *a, **k: outcome["sent"] if user_id == uid else 0)
-    monkeypatch.setattr(es, "send_evening_email", lambda to, *a, **k: mailed.append(to) or True)
+    monkeypatch.setattr(ps, "send_to_user", lambda db, user_id, *a, **k: (pushed.append(user_id) or outcome["push"]) if user_id == uid else 0)
+    monkeypatch.setattr(es, "send_evening_email", lambda to, *a, **k: (mailed.append(to) or outcome["mail"]) if to == "both-channels@example.com" else True)
     at_2031 = datetime.combine(date.today(), datetime.min.time(), tzinfo=pytz.utc).replace(hour=20, minute=31)
 
     es.run_evening_reminders(now_utc=at_2031)
-    assert "both-channels@example.com" not in mailed      # the phone took it: no mail
+    assert mailed.count("both-channels@example.com") == 1 and pushed.count(uid) == 1   # both on → both arrive
+    es.run_evening_reminders(now_utc=at_2031.replace(minute=35))
+    assert mailed.count("both-channels@example.com") == 1 and pushed.count(uid) == 1   # once each
 
-    # The next evening the phone is unreachable: the mail steps in.
+    # Next evening the mail provider is down: the push still goes, and only
+    # the mail is retried on the following minute.
     db = SessionLocal()
-    db.query(User).filter(User.id == uid).first().last_journal_reminder_date = None
+    u = db.query(User).filter(User.id == uid).first()
+    u.last_journal_reminder_date = None; u.last_journal_push_date = None
     db.commit(); db.close()
-    outcome["sent"] = 0
+    outcome["mail"] = False
     es.run_evening_reminders(now_utc=at_2031)
-    assert mailed.count("both-channels@example.com") == 1
+    assert pushed.count(uid) == 2 and mailed.count("both-channels@example.com") == 2
+    outcome["mail"] = True
+    es.run_evening_reminders(now_utc=at_2031.replace(minute=35))
+    assert pushed.count(uid) == 2 and mailed.count("both-channels@example.com") == 3

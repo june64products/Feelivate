@@ -28,6 +28,9 @@ class User(Base):
     preferred_notification_time = Column(String, default="08:00")        # HH:MM in user's local timezone
     preferred_notification_timezone = Column(String, default="UTC")  # IANA timezone string (set from the user's browser on subscribe)
     push_prefs = Column(Text, nullable=True)  # JSON {"enabled", "morning", "evening", "review", "recovery", "countdown"}; absent = all on
+    last_daily_push_date = Column(String, nullable=True)     # the phone's own marks: email and push are separate systems
+    last_journal_push_date = Column(String, nullable=True)
+    last_review_push_key = Column(String, nullable=True)
     last_daily_email_date = Column(String, nullable=True)  # ISO date of last sent email
     # Evening nudges. Each stores the user's LOCAL date so a reminder goes out
     # at most once per their day, whatever the server's date happens to be.
