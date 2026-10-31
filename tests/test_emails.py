@@ -762,7 +762,9 @@ def test_google_mobile_browser_flow_hands_the_session_back_as_a_deep_link(client
     url = urlparse(r.headers["location"]); q = parse_qs(url.query)
     assert url.netloc == "accounts.google.com"
     assert q["redirect_uri"] == [main.GOOGLE_MOBILE_REDIRECT] and q["prompt"] == ["select_account"]
+    assert "feelivate" in main.GOOGLE_MOBILE_REDIRECT     # the site's page, which forwards to the API
     state = q["state"][0]
+    assert state.startswith("m.")                          # the marker the site's page looks for
 
     # a stale or forged state never reaches Google
     r = client.get("/auth/google/mobile/callback", params={"code": "x", "state": "forged"}, follow_redirects=False)
