@@ -84,6 +84,11 @@ import com.june64.feelivate.data.Push
 import androidx.compose.ui.unit.Dp
 import com.june64.feelivate.ui.components.Hairline
 import com.june64.feelivate.ui.components.bleed
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 
 /* ── small shared pieces ── */
 
@@ -221,14 +226,20 @@ private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) 
             )
             val onCount = PUSH_ROWS.count { p.prefs[it.first] != false }
             SwitchRow("Phone notifications", if (p.enabled) "On — $onCount of ${PUSH_ROWS.size} alerts" else "Off — nothing is sent to this phone", p.enabled, !p.saving) { vm.setPushEnabled(it) }
-            Hairline()
-            PUSH_ROWS.forEach { (kind, label, sub) ->
-                SwitchRow(label, sub, p.prefs[kind] != false, p.enabled && !p.saving) { vm.setPushPref(kind, it) }
+            // Off means off: the list folds away rather than sitting there greyed out.
+            AnimatedVisibility(p.enabled, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                Column {
+                    Hairline()
+                    PUSH_ROWS.forEach { (kind, label, sub) ->
+                        SwitchRow(label, sub, p.prefs[kind] != false, !p.saving) { vm.setPushPref(kind, it) }
+                    }
+                }
             }
-            Text(
-                if (p.saving) "Sending…" else "Send a test notification",
-                style = satoshi(12.5f, 700), color = t.textPrimary,
-                modifier = Modifier.padding(top = 10.dp).tap(!p.saving) { vm.sendTestPush() }.padding(vertical = 4.dp),
+            PillButton(
+                if (p.saving) "Sending…" else "Send test notification", Modifier.fillMaxWidth().padding(top = 14.dp),
+                filled = false, enabled = p.enabled && !p.saving, size = 12f, ls = 0.04f, verticalPadding = 11.dp, foreground = t.textPrimary,
+                leading = { if (p.saving) Spinner(14.dp, t.textPrimary) else Lucide(R.drawable.lu_bell, 14.dp, t.textPrimary) },
+                onClick = vm::sendTestPush,
             )
         }
     }

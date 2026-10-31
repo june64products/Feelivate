@@ -51,6 +51,9 @@ class MainActivity : ComponentActivity() {
      */
     private fun readOpenTarget(intent: Intent?) {
         val target = intent?.getStringExtra("open")
+            // A tap on a tray notification (app in the background): FCM puts the
+            // message's data keys straight on the launch intent.
+            ?: intent?.getStringExtra("view")?.let { v -> intent.getStringExtra("week")?.takeIf { it.isNotBlank() }?.let { "$v:$it" } ?: v }
             ?: intent?.data?.takeIf { it.path?.startsWith("/app") == true }?.getQueryParameter("open")
         if (!target.isNullOrBlank()) OpenIntent.pending = target
     }
