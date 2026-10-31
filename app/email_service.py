@@ -1245,7 +1245,11 @@ def _alert_users(db, push_ids):
 
 
 def _channels_for(user, push_ids):
-    """(email_on, recipient, push_on) — which channels this alert may use."""
+    """
+    (email_on, recipient, push_on) — which channels this alert may use. The
+    phone goes first; the email is sent only when no phone took the alert, so
+    someone with the app gets one notification, not a notification and a mail.
+    """
     recipient = _recipient_for(user) if user.email_notifications_enabled else ""
     return bool(recipient), recipient, user.id in push_ids
 
@@ -1404,13 +1408,13 @@ def run_evening_reminders(now_utc: Optional[datetime] = None):
                      "last_day": bool(task_info.get("day_index") and task_info.get("day_count") and task_info["day_index"] == task_info["day_count"])},
                     lang, recent_for(user), today,
                 )
-                mailed = email_on and send_evening_email(recipient, user.name, task_info["task_title"], streak=streak, streak_at_risk=streak > 0, copy=copy)
                 pushed = push_on and push_alert(
                     db, user, "evening",
                     "Tonight's journal" if streak == 0 else f"Your {streak}-day streak ends tonight",
                     "Sixty seconds on how today actually went.",
                     {"view": "journey"},
                 )
+                mailed = email_on and not pushed and send_evening_email(recipient, user.name, task_info["task_title"], streak=streak, streak_at_risk=streak > 0, copy=copy)
                 if mailed or pushed:
                     user.last_journal_reminder_date = today
                     remember(user, copy, today)
@@ -1661,12 +1665,12 @@ def run_week_review_emails(now_utc: Optional[datetime] = None):
                              "quiet": bool(report.get("quiet_week"))},
                             lang, recent_for(user), today_iso,
                         )
-                        mailed = email_on and send_week_review_email(recipient, user.name, report, wk, ws, we, has_next_plan=has_next, copy=copy)
                         pushed = push_on and push_alert(
                             db, user, "review",
                             f"Your Week {wk} review is in", review_teaser(report, lang),
                             {"view": "archive", "week": wk},
                         )
+                        mailed = email_on and not pushed and send_week_review_email(recipient, user.name, report, wk, ws, we, has_next_plan=has_next, copy=copy)
                         if mailed or pushed:
                             sent_keys = (sent_keys + [key])[-12:]
                             user.last_review_email_key = ",".join(sent_keys)
@@ -1828,7 +1832,12 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                 countdown = get_countdown_for_user(user, db, today_date_str)
                 if countdown:
                     note, cd_session = countdown
-                    mailed = email_on and send_countdown_email(
+                    pushed = push_on and push_alert(
+                        db, user, "countdown",
+                        f"Week {cd_session.current_week or 1} starts {countdown_when(cd_session.plan_starts_on, today_date_str)}",
+                        plain_text(note), {"view": "chat"},
+                    )
+                    mailed = email_on and not pushed and send_countdown_email(
                         to_email=recipient,
                         user_name=user.name or "there",
                         note=note,
@@ -1836,11 +1845,6 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                         week_number=cd_session.current_week or 1,
                         session_focus=cd_session.focus or "",
                         user_timezone=tz_str,
-                    )
-                    pushed = push_on and push_alert(
-                        db, user, "countdown",
-                        f"Week {cd_session.current_week or 1} starts {countdown_when(cd_session.plan_starts_on, today_date_str)}",
-                        plain_text(note), {"view": "chat"},
                     )
                     if mailed or pushed:
                         user.last_daily_email_date = today_date_str
@@ -1908,17 +1912,17 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                         {"name": user.name, "task_title": task_info["task_title"]},
                         lang_for(tz_str), recent_for(user), today_date_str,
                     )
-                    mailed = email_on and send_recovery_email(
+                    pushed = push_on and push_alert(
+                        db, user, "recovery",
+                        "Yesterday slipped. Today is still here.", task_info["task_title"], {"view": "chat"},
+                    )
+                    mailed = email_on and not pushed and send_recovery_email(
                         to_email=recipient,
                         user_name=user.name or "there",
                         task_title=task_info["task_title"],
                         commitment_why=task_info.get("commitment_why", ""),
                         checkin_url=checkin_url,
                         copy=r_copy,
-                    )
-                    pushed = push_on and push_alert(
-                        db, user, "recovery",
-                        "Yesterday slipped. Today is still here.", task_info["task_title"], {"view": "chat"},
                     )
                     if mailed or pushed:
                         remember(user, r_copy, today_date_str)
@@ -1953,7 +1957,11 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                     lang, recent_for(user), today_date_str,
                 )
 
-                mailed = email_on and send_daily_task_email(
+                pushed = push_on and push_alert(
+                    db, user, "morning",
+                    f"{task_info['day_label']} — today's one thing", task_info["task_title"], {"view": "chat"},
+                )
+                mailed = email_on and not pushed and send_daily_task_email(
                     to_email=recipient,
                     user_name=user.name or "there",
                     day_label=task_info["day_label"],
@@ -1974,10 +1982,6 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                     streak=streak_n,
                     yesterday=yesterday,
                     copy=m_copy,
-                )
-                pushed = push_on and push_alert(
-                    db, user, "morning",
-                    f"{task_info['day_label']} — today's one thing", task_info["task_title"], {"view": "chat"},
                 )
 
                 if mailed or pushed:
