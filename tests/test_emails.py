@@ -748,3 +748,34 @@ def test_web_alerts_and_phone_alerts_are_separate_systems(client, monkeypatch):
     outcome["mail"] = True
     es.run_evening_reminders(now_utc=at_2031.replace(minute=35))
     assert pushed.count(uid) == 2 and mailed.count("both-channels@example.com") == 3
+
+
+# ─── "Continue with Google" from the app, through the browser ────────────────
+def test_google_mobile_browser_flow_hands_the_session_back_as_a_deep_link(client, monkeypatch):
+    import app.main as main
+    from urllib.parse import parse_qs, urlparse
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "76659115539-test.apps.googleusercontent.com")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "not-a-real-secret")
+
+    r = client.get("/auth/google/mobile/start", follow_redirects=False)
+    assert r.status_code == 302
+    url = urlparse(r.headers["location"]); q = parse_qs(url.query)
+    assert url.netloc == "accounts.google.com"
+    assert q["redirect_uri"] == [main.GOOGLE_MOBILE_REDIRECT] and q["prompt"] == ["select_account"]
+    state = q["state"][0]
+
+    # a stale or forged state never reaches Google
+    r = client.get("/auth/google/mobile/callback", params={"code": "x", "state": "forged"}, follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"].startswith("feelivate://auth#error=")
+
+    monkeypatch.setattr(main, "_google_mobile_exchange", lambda code: {"email": "Browser.Login@Example.com", "name": "Browser Login", "email_verified": True})
+    r = client.get("/auth/google/mobile/callback", params={"code": "4/good", "state": state}, follow_redirects=False)
+    assert r.status_code == 302
+    frag = parse_qs(urlparse(r.headers["location"]).fragment)
+    assert frag["is_new_user"] == ["1"] and frag["name"] == ["Browser Login"] and frag["access_token"][0]
+    # the token is a real session: the API accepts it
+    me = client.get("/notifications/push/status", headers={"Authorization": "Bearer " + frag["access_token"][0]})
+    assert me.status_code == 200
+    # the same person again is not "new"
+    r = client.get("/auth/google/mobile/callback", params={"code": "4/again", "state": state}, follow_redirects=False)
+    assert parse_qs(urlparse(r.headers["location"]).fragment)["is_new_user"] == ["0"]
