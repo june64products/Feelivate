@@ -593,3 +593,73 @@ def test_deep_link_param_is_documented_in_the_frontend():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     src = open(os.path.join(root, "frontend", "src", "pages", "WorkspacePage.tsx"), encoding="utf-8").read()
     assert "open === 'archive'" in src, "the review email's /app?open=archive link must land on the archive"
+
+
+# ─── the same alerts, on a phone ─────────────────────────────────────────────
+def test_a_phone_only_user_gets_the_evening_alert_as_a_push(client, monkeypatch):
+    """No email subscription, one registered phone: the evening note arrives as
+    a push, once, honouring the user's own switches — and the email path is
+    never touched for them."""
+    import app.email_service as es
+    import app.push_service as ps
+    from app.database import SessionLocal
+    from app.models import DailyCheckin, DeviceToken, Session as UserSession, User, UserStreak
+
+    headers, uid = register(client, "phone-only@example.com")
+    start = monday_of(date.today())
+    days = [(start + timedelta(days=i)).strftime("%b %d (%a)") for i in range(7)]
+    plan = {"week_number": 1, "theme": "First Keys", "start_date": start.isoformat(), "days": [{"day": d, "action": f"Piano ({d})"} for d in days]}
+    db = SessionLocal()
+    u = db.query(User).filter(User.id == uid).first()
+    u.email_notifications_enabled = 0          # never subscribed to email
+    u.preferred_notification_timezone = "UTC"
+    db.add(UserSession(id="s-phone", user_id=uid, focus="learn the piano", phase="active", current_week=1,
+                       plan_start_date=start.isoformat(), week_plan_json=json.dumps(plan), result_json=json.dumps([plan])))
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    db.add(DailyCheckin(user_id=uid, session_id="s-phone", date=yesterday, status="done"))
+    db.add(UserStreak(user_id=uid, current_streak=3, longest_streak=3, last_checkin=yesterday, total_done=3))
+    db.add(DeviceToken(user_id=uid, token="fcm-token-" + "x" * 40, platform="android"))
+    db.commit()
+    db.close()
+
+    # Other tests' subscribers share this database, so everything is read per user.
+    all_pushed, all_mailed = [], []
+    monkeypatch.setattr(ps, "push_enabled", lambda: True)
+    monkeypatch.setattr(ps, "send_to_user", lambda db, user_id, title, body, data=None, channel="feelivate_default": all_pushed.append((user_id, title, body, data, channel)) or 1)
+    monkeypatch.setattr(es, "send_evening_email", lambda to, *a, **k: all_mailed.append(to) or True)
+    pushed = lambda: [p for p in all_pushed if p[0] == uid]
+
+    at_2031 = datetime.combine(date.today(), datetime.min.time(), tzinfo=pytz.utc).replace(hour=20, minute=31)
+    es.run_evening_reminders(now_utc=at_2031)
+    assert "phone-only@example.com" not in all_mailed
+    assert len(pushed()) == 1
+    user_id, title, body, data, channel = pushed()[0]
+    assert "3-day streak" in title and data == {"view": "journey"} and channel == "feelivate_evening"
+    es.run_evening_reminders(now_utc=at_2031.replace(minute=35))   # once an evening, like the email
+    assert len(pushed()) == 1
+
+    # The switch for this kind, off: nothing goes, and nothing is marked sent.
+    db = SessionLocal()
+    u = db.query(User).filter(User.id == uid).first()
+    u.push_prefs = json.dumps({"enabled": True, "evening": False})
+    u.last_journal_reminder_date = None
+    db.commit()
+    db.close()
+    es.run_evening_reminders(now_utc=at_2031)
+    assert len(pushed()) == 1
+    db = SessionLocal()
+    assert db.query(User).filter(User.id == uid).first().last_journal_reminder_date is None
+    db.close()
+
+
+def test_push_preferences_api_round_trips(client):
+    headers, uid = register(client, "prefs@example.com")
+    status = client.get("/notifications/push/status", headers=headers).json()
+    assert status["enabled"] is True and status["prefs"] == {k: True for k in ("morning", "evening", "review", "recovery", "countdown")}
+    assert status["has_device"] is False
+    out = client.put("/notifications/push/preferences", headers=headers, json={"prefs": {"review": False, "bogus": False}}).json()
+    assert out["prefs"]["review"] is False and out["prefs"]["morning"] is True and "bogus" not in out["prefs"]
+    out = client.put("/notifications/push/preferences", headers=headers, json={"enabled": False}).json()
+    assert out["enabled"] is False and out["prefs"]["review"] is False   # partial: the earlier switch survives
+    client.post("/notifications/device", headers=headers, json={"token": "fcm-token-" + "y" * 40})
+    assert client.get("/notifications/push/status", headers=headers).json()["has_device"] is True

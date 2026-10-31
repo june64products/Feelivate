@@ -4682,6 +4682,56 @@ async def register_device(
     return {"ok": True}
 
 
+class PushPrefsRequest(BaseModel):
+    enabled: Optional[bool] = None
+    prefs: Dict[str, bool] = {}
+
+
+def _push_status(db: DBSession, user: User) -> dict:
+    from .push_service import PUSH_KINDS, prefs_for, has_device, push_enabled
+    p = prefs_for(user)
+    return {
+        "enabled": p["enabled"],
+        "prefs": {k: p[k] for k in PUSH_KINDS},
+        "has_device": has_device(db, user.id),
+        "configured": push_enabled(),
+        "preferred_time": user.preferred_notification_time or "08:00",
+        "preferred_timezone": user.preferred_notification_timezone or "UTC",
+    }
+
+
+@app.get("/notifications/push/status", tags=["notifications"])
+async def push_status(db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """The phone's alert switches, plus whether this account has a phone at all."""
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return _push_status(db, user)
+
+
+@app.put("/notifications/push/preferences", tags=["notifications"])
+async def set_push_preferences(
+    req: PushPrefsRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Partial update: only the switches sent are changed. The morning time is
+    the same one the email uses — set it through /notifications/email/update-time."""
+    from .push_service import PUSH_KINDS, prefs_for
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    p = prefs_for(user)
+    if req.enabled is not None:
+        p["enabled"] = bool(req.enabled)
+    for k, v in (req.prefs or {}).items():
+        if k in PUSH_KINDS:
+            p[k] = bool(v)
+    user.push_prefs = json.dumps(p)
+    db.commit()
+    return _push_status(db, user)
+
+
 @app.delete("/notifications/device", tags=["notifications"])
 async def forget_device(
     req: DeviceTokenRequest,

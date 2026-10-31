@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 from datetime import datetime
 from typing import Optional
@@ -25,6 +26,17 @@ from loguru import logger
 from sqlalchemy.orm import Session as DBSession
 
 from .models import DeviceToken
+
+# One kind per alert the emails already send; each has its own Android channel
+# so a person can silence, say, the evening nudge without losing the review.
+PUSH_KINDS = ("morning", "evening", "review", "recovery", "countdown")
+CHANNELS = {
+    "morning": "feelivate_daily",
+    "evening": "feelivate_evening",
+    "review": "feelivate_review",
+    "recovery": "feelivate_daily",
+    "countdown": "feelivate_daily",
+}
 
 FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
 FCM_TIMEOUT = 10          # seconds; the scheduler must not hang on Google
@@ -208,3 +220,89 @@ def safe_send_to_user(user_id: str, title: str, body: str, data: Optional[dict] 
         return 0
     finally:
         db.close()
+
+
+# ── preferences ────────────────────────────────────────────────────────────
+
+def prefs_for(user) -> dict:
+    """The user's push switches, every kind on unless they turned it off."""
+    base = {"enabled": True, **{k: True for k in PUSH_KINDS}}
+    raw = getattr(user, "push_prefs", None)
+    if not raw:
+        return base
+    try:
+        saved = json.loads(raw)
+        if isinstance(saved, dict):
+            base.update({k: bool(v) for k, v in saved.items() if k == "enabled" or k in PUSH_KINDS})
+    except Exception:
+        pass
+    return base
+
+
+def wants(user, kind: str) -> bool:
+    p = prefs_for(user)
+    return bool(p["enabled"] and p.get(kind, True))
+
+
+def has_device(db: DBSession, user_id: str) -> bool:
+    try:
+        return db.query(DeviceToken.id).filter(DeviceToken.user_id == user_id).first() is not None
+    except Exception:
+        return False
+
+
+def device_user_ids(db: DBSession) -> set:
+    """
+    Everyone with a phone registered — the set the schedulers add to the
+    email subscribers. Empty when push isn't configured, so a backend without
+    FCM credentials behaves exactly as it did before phones existed.
+    """
+    if not push_enabled():
+        return set()
+    try:
+        return {row[0] for row in db.query(DeviceToken.user_id).distinct().all()}
+    except Exception as e:
+        logger.error(f"[Push] could not list device users: {e}")
+        return set()
+
+
+def push_alert(db: DBSession, user, kind: str, title: str, body: str, data: Optional[dict] = None) -> bool:
+    """
+    The schedulers' one call: honours the user's switches, picks the channel
+    for the kind, never raises. True when at least one phone took it.
+    """
+    try:
+        if kind not in PUSH_KINDS or not wants(user, kind):
+            return False
+        return send_to_user(db, user.id, title, body, data, channel=CHANNELS[kind]) > 0
+    except Exception as e:
+        logger.error(f"[Push] {kind} alert failed for {getattr(user, 'id', '?')}: {e}")
+        return False
+
+
+# ── copy helpers ───────────────────────────────────────────────────────────
+
+_TAGS = re.compile(r"<[^>]+>")
+
+
+def plain_text(s: Optional[str], limit: int = 140) -> str:
+    """Email copy can carry markup; a notification body cannot."""
+    t = _TAGS.sub("", s or "").replace("&nbsp;", " ").replace("&amp;", "&").strip()
+    t = " ".join(t.split())
+    return t if len(t) <= limit else t[: limit - 1].rstrip() + "…"
+
+
+def countdown_when(start_iso: Optional[str], today_iso: str) -> str:
+    """'tomorrow', 'on Monday', 'in 3 days' — how the title says when a week begins."""
+    try:
+        from datetime import date as _date
+        delta = (_date.fromisoformat(start_iso) - _date.fromisoformat(today_iso)).days
+        if delta <= 0:
+            return "today"
+        if delta == 1:
+            return "tomorrow"
+        if delta < 7:
+            return "on " + _date.fromisoformat(start_iso).strftime("%A")
+        return f"in {delta} days"
+    except Exception:
+        return "soon"
