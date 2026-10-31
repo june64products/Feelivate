@@ -44,6 +44,6 @@ object GoogleSignIn {
         if (cred is CustomCredential && cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             return GoogleIdTokenCredential.createFrom(cred.data).idToken
         }
-        throw Exception("Could not start Google sign-in. Please try again.")
+        throw Exception("Google returned something unexpected (${cred.type.substringAfterLast('.')}). Please try again.")
     }
 }

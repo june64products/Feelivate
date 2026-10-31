@@ -154,15 +154,6 @@ private fun InfoStrip(text: String, success: Boolean) {
 
 /* ── Alerts: the day's notes, on this phone (email alerts live on the website) ── */
 
-/** The five phone alerts — one switch each, the same five the emails send. */
-private val PUSH_ROWS = listOf(
-    Triple("morning", "Morning — today's one thing", "At your time, with last night's note answered."),
-    Triple("evening", "Evening journal nudge", "20:30, only when the day isn't logged yet."),
-    Triple("review", "Weekly review", "21:30, the evening a finished week's review is ready."),
-    Triple("recovery", "After a missed day", "The morning after a slip — the day's task, no lecture."),
-    Triple("countdown", "Week countdown", "The last days before a locked week begins."),
-)
-
 @Composable
 private fun SectionLabel(text: String, top: Dp = 22.dp) {
     Text(text, style = clash(10f, 700, ls = 0.1f), color = tokens().textMuted, modifier = Modifier.padding(top = top, bottom = 8.dp))
@@ -224,17 +215,12 @@ private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) 
                 "Delivery is being switched on — your choices below are saved and apply the moment it is.",
                 style = satoshi(12f, 500, lineHeight = 1.5f), color = t.textMuted, modifier = Modifier.padding(bottom = 8.dp),
             )
-            val onCount = PUSH_ROWS.count { p.prefs[it.first] != false }
-            SwitchRow("Phone notifications", if (p.enabled) "On — $onCount of ${PUSH_ROWS.size} alerts" else "Off — nothing is sent to this phone", p.enabled, !p.saving) { vm.setPushEnabled(it) }
-            // Off means off: the list folds away rather than sitting there greyed out.
-            AnimatedVisibility(p.enabled, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                Column {
-                    Hairline()
-                    PUSH_ROWS.forEach { (kind, label, sub) ->
-                        SwitchRow(label, sub, p.prefs[kind] != false, !p.saving) { vm.setPushPref(kind, it) }
-                    }
-                }
-            }
+            SwitchRow(
+                "Phone notifications",
+                if (p.enabled) "On — the morning task, the evening journal nudge, your weekly review and the week countdown come to this phone."
+                else "Off — nothing is sent to this phone.",
+                p.enabled, !p.saving,
+            ) { vm.setPushEnabled(it) }
             PillButton(
                 if (p.saving) "Sending…" else "Send test notification", Modifier.fillMaxWidth().padding(top = 14.dp),
                 filled = false, enabled = p.enabled && !p.saving, size = 12f, ls = 0.04f, verticalPadding = 11.dp, foreground = t.textPrimary,
