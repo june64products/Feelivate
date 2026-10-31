@@ -17,7 +17,7 @@ import com.june64.feelivate.BuildConfig
  * POST /auth/google/mobile exchanges it for the usual Feelivate session.
  */
 object GoogleSignIn {
-    class Cancelled : Exception("cancelled")
+    class Cancelled(detail: String?) : Exception(detail ?: "cancelled")
     class NotConfigured : Exception("Google sign-in isn't set up on this build yet.")
 
     suspend fun idToken(activity: Context): String {
@@ -30,7 +30,9 @@ object GoogleSignIn {
         val result = try {
             CredentialManager.create(activity).getCredential(activity, request)
         } catch (e: GetCredentialCancellationException) {
-            throw Cancelled()
+            // Not always the user: a blocked account or a mismatched client
+            // also ends here. Carry Google's own words so the screen can show them.
+            throw Cancelled(e.message)
         } catch (e: NoCredentialException) {
             // Credential Manager says this for two different things: no Google
             // account on the phone, and an OAuth client whose package/SHA-1

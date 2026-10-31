@@ -94,7 +94,10 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
                 if (res.isNewUser) prefs.startDemo(res.userId)
                 ui = ui.copy(signedIn = true)
             }.onFailure { e ->
-                ui = ui.copy(error = if (e is GoogleSignIn.Cancelled) "Google sign-in was closed before it finished — tap Continue with Google and pick your account again." else e.userMessage("Could not start Google sign-in. Please try again."))
+                ui = ui.copy(error = if (e is GoogleSignIn.Cancelled) {
+                    val why = e.message?.takeIf { it.isNotBlank() && it != "cancelled" }
+                    "Google sign-in was closed before it finished" + (why?.let { " ($it)" } ?: "") + ". If you picked a work account, try a Gmail one — or continue with email."
+                } else e.userMessage("Could not start Google sign-in. Please try again."))
             }
         }
     }
