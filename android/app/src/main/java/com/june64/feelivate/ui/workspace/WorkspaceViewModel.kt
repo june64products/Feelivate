@@ -40,6 +40,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.TimeZone
 import com.june64.feelivate.data.PushPrefsRequest
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.booleanOrNull
 
 /* ── State mirrors of WorkspacePage.tsx ── */
 
@@ -57,6 +60,7 @@ data class PushUi(
     val hasDevice: Boolean = false,
     val saving: Boolean = false,
     val error: String = "",
+    val message: String = "",
 )
 
 data class HowToTarget(val day: String, val action: String)
@@ -525,6 +529,20 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun setPushEnabled(v: Boolean) = savePush(enabled = v)
+    /** One real notification to this phone, so "on" can be seen rather than trusted. */
+    fun sendTestPush() {
+        ui = ui.copy(push = ui.push.copy(saving = true, error = "", message = ""))
+        viewModelScope.launch {
+            runCatching { api.pushTest() }
+                .onSuccess { r ->
+                    val sent = r["sent"]?.jsonPrimitive?.intOrNull ?: 0
+                    val configured = r["configured"]?.jsonPrimitive?.booleanOrNull ?: false
+                    ui = ui.copy(push = ui.push.copy(saving = false, configured = configured,
+                        message = when { !configured -> "Delivery isn't switched on yet."; sent == 0 -> "No phone is registered yet — reopen the app once, then try again."; else -> "Sent — check your notifications." }))
+                }
+                .onFailure { err -> ui = ui.copy(push = ui.push.copy(saving = false, error = err.userMessage("Couldn't send the test."))) }
+        }
+    }
     fun setPushPref(kind: String, v: Boolean) = savePush(prefs = mapOf(kind to v))
     /** The system permission just came through: register this phone and switch on. */
     fun pushPermissionGranted() {

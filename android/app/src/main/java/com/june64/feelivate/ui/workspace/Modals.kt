@@ -225,8 +225,14 @@ private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) 
             PUSH_ROWS.forEach { (kind, label, sub) ->
                 SwitchRow(label, sub, p.prefs[kind] != false, p.enabled && !p.saving) { vm.setPushPref(kind, it) }
             }
+            Text(
+                if (p.saving) "Sending…" else "Send a test notification",
+                style = satoshi(12.5f, 700), color = t.textPrimary,
+                modifier = Modifier.padding(top = 10.dp).tap(!p.saving) { vm.sendTestPush() }.padding(vertical = 4.dp),
+            )
         }
     }
+    if (p.message.isNotEmpty()) InfoStrip(p.message, true)
     if (p.error.isNotEmpty()) InfoStrip(p.error, false)
 
     // The morning time is one setting for both channels.

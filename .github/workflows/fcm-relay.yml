@@ -1,0 +1,53 @@
+name: FCM token relay
+
+# The organisation's policy forbids service-account keys, so the API can't
+# mint its own token for Firebase Cloud Messaging. This job can: it holds
+# keyless (Workload Identity) access to the Firebase project, mints a
+# one-hour token every twenty minutes and hands it to the API, which keeps
+# it only after FCM confirms it works for the project. Nothing secret is
+# stored in GitHub; nothing is pasted anywhere.
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: fcm-relay
+  cancel-in-progress: false
+
+env:
+  API_BASE: https://p01--emotion-time-travel--gtj4tlnzj5vy.code.run
+  WIF_PROVIDER: projects/980030853864/locations/global/workloadIdentityPools/github/providers/github
+  WIF_SERVICE_ACCOUNT: firebase-adminsdk-fbsvc@feelivate.iam.gserviceaccount.com
+
+jobs:
+  relay:
+    # The federation only trusts this repository; mirrors on other remotes skip the job.
+    if: github.repository == 'june64products/Feelivate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/firebase.messaging
+          access_token_lifetime: 3600s
+
+      - name: Hand the token to the API
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          body=$(jq -cn --arg t "$ACCESS_TOKEN" '{access_token: $t, expires_in: 3600}')
+          curl -fsS --max-time 30 -X PUT "$API_BASE/internal/fcm-token" \
+            -H 'Content-Type: application/json' -d "$body" \
+            | sed -E 's/"expires_at":[0-9]+/"expires_at":…/'
