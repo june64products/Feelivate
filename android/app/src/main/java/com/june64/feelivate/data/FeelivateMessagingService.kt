@@ -28,15 +28,17 @@ class FeelivateMessagingService : FirebaseMessagingService() {
         val body = n?.body ?: message.data["body"].orEmpty()
         val channel = n?.channelId ?: message.data["channel"] ?: "feelivate_default"
         val view = message.data["view"]
+        val week = message.data["week"]
+        val open = view?.let { if (week.isNullOrBlank()) it else "$it:$week" }
 
         Push.start(applicationContext)
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            if (view != null) putExtra("open", view)
+            if (open != null) putExtra("open", open)
         }
         val pending = PendingIntent.getActivity(
-            this, view?.hashCode() ?: 0, intent,
+            this, open?.hashCode() ?: 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -46,6 +48,8 @@ class FeelivateMessagingService : FirebaseMessagingService() {
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pending)
             .build()
 

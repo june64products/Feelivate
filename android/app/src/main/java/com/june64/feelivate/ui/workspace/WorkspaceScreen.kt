@@ -92,7 +92,7 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
     // Android 13+ needs the permission asked for; it is requested once the
     // consent gate is out of the way, so two dialogs never stack.
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) Push.register(context)
+        if (granted) vm.pushPermissionGranted()
     }
     LaunchedEffect(ui.consent.status, ui.userId) {
         if (ui.consent.status != ConsentStatus.Clear || ui.userId.isBlank() || !Push.configured) return@LaunchedEffect
@@ -110,10 +110,12 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
     // A notification tap (or an email deep link) says where to land.
     LaunchedEffect(ui.consent.status) {
         if (ui.consent.status != ConsentStatus.Clear) return@LaunchedEffect
-        when (OpenIntent.take()) {
+        // "chat", "journey", "archive" or "archive:<week>" — the review's tap opens its own week.
+        when (val target = OpenIntent.take()) {
+            null -> Unit
+            "chat" -> vm.closeJourney()
             "journey" -> vm.openJourney()
-            "archive" -> vm.openJourney("archive")
-            else -> Unit
+            else -> if (target.startsWith("archive")) vm.openJourney("archive", target.substringAfter(':', "").toIntOrNull())
         }
     }
 
@@ -171,6 +173,7 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
                     onClose = vm::closeJourney,
                     onJournalSaved = vm::onJournalSaved,
                     onPlanNextWeek = { week -> vm.closeJourney(); vm.askNextWeekStart(week) },
+                    focusWeek = ui.journeyWeek,
                     demoBetweenWeeks = sc?.betweenWeeks,
                     demoArchive = if (sc != null) DEMO_ARCHIVE else null,
                     demoArchiveWeek = sc?.archiveWeek,
@@ -269,7 +272,7 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
             SetupQuestionsModal(ui.setupQuestions, vm::submitSetupAnswers)
             NextWeekStartModal(ui.nextWeekAsk, vm::dismissNextWeekAsk, vm::confirmNextWeekStart)
             HowToModal(ui.howTo, howToGuide, howToLoading, howToError, { vm.openHowTo(null) }, vm::askMentorAboutHowTo)
-            EmailAlertsModal(vm)
+            AlertsModal(vm) { notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
             CalendarMaintenanceModal(ui.showCalendarMaintenance, { vm.setShowCalendarMaintenance(false) }, vm::openEmailModal)
             PlanInfoModal(ui.showPlanInfo) { vm.setShowPlanInfo(false) }
             BlockedDialog(ui.blockedNotice) { vm.setBlockedNotice(null) }

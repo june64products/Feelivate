@@ -173,6 +173,18 @@ data class VerifyOtpRequest(
 )
 @Serializable data class UpdateTimeRequest(@SerialName("user_id") val userId: String, @SerialName("preferred_time") val preferredTime: String, @SerialName("preferred_timezone") val preferredTimezone: String)
 @Serializable data class UserIdRequest(@SerialName("user_id") val userId: String)
+@Serializable
+data class PushStatus(
+    val enabled: Boolean = true,
+    val prefs: Map<String, Boolean> = emptyMap(),
+    @SerialName("has_device") val hasDevice: Boolean = false,
+    /** The backend has FCM credentials — without them no phone can be reached. */
+    val configured: Boolean = false,
+    @SerialName("preferred_time") val preferredTime: String? = null,
+    @SerialName("preferred_timezone") val preferredTimezone: String? = null,
+)
+/** Partial: only the switches sent are changed. */
+@Serializable data class PushPrefsRequest(val enabled: Boolean? = null, val prefs: Map<String, Boolean> = emptyMap())
 @Serializable data class MessageResponse(val message: String? = null, val status: String? = null)
 
 @Serializable data class HowToRequest(val action: String, @SerialName("day_label") val dayLabel: String? = null)

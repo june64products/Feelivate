@@ -102,6 +102,8 @@ fun JourneyScreen(
     onClose: () -> Unit,
     onJournalSaved: (JournalEntry) -> Unit,
     onPlanNextWeek: (Int) -> Unit,
+    /** A notification tap can land on one archived week, open. */
+    focusWeek: Int? = null,
     /* The walkthrough's scene, when it is running — the screen reads these instead of the account. */
     demoBetweenWeeks: Boolean? = null,
     demoArchive: List<com.june64.feelivate.data.ArchivedReport>? = null,
@@ -115,6 +117,7 @@ fun JourneyScreen(
     val recorder = remember { VoiceRecorder(context) }
     var moodMode by remember { mutableStateOf(false) }
     LaunchedEffect(sessionId, initialTab) { vm.start(sessionId, initialTab) }
+    LaunchedEffect(focusWeek) { if (focusWeek != null) vm.expandWeek(focusWeek) }
     DisposableEffect(Unit) { onDispose { recorder.cancel() } }
 
     val beginRecording: (Boolean) -> Unit = { mood ->

@@ -39,18 +39,32 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.TimeZone
+import com.june64.feelivate.data.PushPrefsRequest
 
 /* ── State mirrors of WorkspacePage.tsx ── */
 
 enum class ConsentStatus { Checking, Blocking, Clear }
-enum class EmailStep { Email, Otp, Time, Subscribed }
+enum class EmailStep { Home, Email, Otp, Time }
+
+/** The alerts this phone can carry — one switch each, the same five the emails send. */
+val PUSH_KINDS = listOf("morning", "evening", "review", "recovery", "countdown")
+
+data class PushUi(
+    val loaded: Boolean = false,
+    val configured: Boolean = false,
+    val enabled: Boolean = true,
+    val prefs: Map<String, Boolean> = PUSH_KINDS.associateWith { true },
+    val hasDevice: Boolean = false,
+    val saving: Boolean = false,
+    val error: String = "",
+)
 
 data class HowToTarget(val day: String, val action: String)
 data class NextWeekAsk(val week: Int, val earliest: String, val text: String)
 data class RecoveryInfo(val wasShielded: Boolean, val missCount: Int, val missedDateIso: String)
 
 data class EmailUi(
-    val step: EmailStep = EmailStep.Email,
+    val step: EmailStep = EmailStep.Home,
     val email: String = "",
     val otp: String = "",
     val preferredTime: String = "08:00",
@@ -110,6 +124,9 @@ data class WorkspaceUi(
     val weeksOpen: Boolean = false,
     val journeyOpen: Boolean = false,
     val journeyTab: String = "overview",
+    /** A notification tap can ask for one archived week to be open. */
+    val journeyWeek: Int? = null,
+    val push: PushUi = PushUi(),
     val lockError: String? = null,
     val email: EmailUi = EmailUi(),
     val consent: ConsentUi = ConsentUi(),
@@ -177,6 +194,7 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         loadConsent()
         loadSessions()
         loadEmailStatus()
+        loadPushStatus()
         loadTodayEmotion(ui.activeSessionId)
         ui = ui.copy(micLocked = prefs.journalLockedToday(ui.userId, ui.activeSessionId))
         viewModelScope.launch { runCatching { api.me() }.onSuccess { ui = ui.copy(me = it, userName = it.name?.takeIf { n -> n.isNotBlank() } ?: ui.userName) } }
@@ -442,8 +460,8 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
             runCatching { api.sessionReports(sid, WeekWindow.today()) }.onSuccess { ui = ui.copy(reports = it) }
         }
     }
-    fun openJourney(tab: String = "overview") { ui = ui.copy(journeyOpen = true, journeyTab = tab) }
-    fun closeJourney() { ui = ui.copy(journeyOpen = false, journeyTab = "overview") }
+    fun openJourney(tab: String = "overview", week: Int? = null) { ui = ui.copy(journeyOpen = true, journeyTab = tab, journeyWeek = week) }
+    fun closeJourney() { ui = ui.copy(journeyOpen = false, journeyTab = "overview", journeyWeek = null) }
 
     fun completeSession() {
         val sid = ui.activeSessionId ?: return
@@ -475,7 +493,6 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
             runCatching { api.emailStatus(ui.userId) }.onSuccess { res ->
                 var e = ui.email.copy(enabled = res.enabled, subscribedEmail = res.notificationEmail)
                 if (!res.preferredTime.isNullOrBlank()) e = e.copy(subscribedTime = res.preferredTime, preferredTime = res.preferredTime)
-                if (res.enabled) e = e.copy(step = EmailStep.Subscribed)
                 ui = ui.copy(email = e)
                 if (res.enabled && res.preferredTimezone != timezone) runCatching { api.updateTime(UpdateTimeRequest(ui.userId, res.preferredTime ?: "08:00", timezone)) }
             }
@@ -483,8 +500,37 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
     }
     private fun email(f: (EmailUi) -> EmailUi) { ui = ui.copy(email = f(ui.email)) }
     fun openEmailModal() {
-        email { it.copy(error = "", message = "", otp = "", step = if (it.enabled) EmailStep.Subscribed else EmailStep.Email, email = if (it.enabled) it.email else "") }
+        email { it.copy(error = "", message = "", otp = "", step = EmailStep.Home, email = if (it.enabled) it.email else "") }
         ui = ui.copy(showEmailModal = true)
+        loadPushStatus()
+    }
+    fun emailHome() = email { it.copy(step = EmailStep.Home, error = "", message = "") }
+
+    // ── phone alerts ──
+    private fun loadPushStatus() {
+        viewModelScope.launch {
+            runCatching { api.pushStatus() }.onSuccess { r ->
+                ui = ui.copy(push = ui.push.copy(loaded = true, configured = r.configured, enabled = r.enabled, prefs = PUSH_KINDS.associateWith { r.prefs[it] ?: true }, hasDevice = r.hasDevice))
+            }
+        }
+    }
+    private fun savePush(enabled: Boolean? = null, prefs: Map<String, Boolean> = emptyMap()) {
+        val before = ui.push
+        // Optimistic: the switch moves at once and comes back only if the save fails.
+        ui = ui.copy(push = before.copy(saving = true, error = "", enabled = enabled ?: before.enabled, prefs = before.prefs + prefs))
+        viewModelScope.launch {
+            runCatching { api.setPushPrefs(PushPrefsRequest(enabled, prefs)) }
+                .onSuccess { r -> ui = ui.copy(push = ui.push.copy(saving = false, loaded = true, enabled = r.enabled, prefs = PUSH_KINDS.associateWith { r.prefs[it] ?: true }, hasDevice = r.hasDevice || ui.push.hasDevice, configured = r.configured)) }
+                .onFailure { err -> ui = ui.copy(push = before.copy(saving = false, error = err.userMessage("Couldn't save that. Please try again."))) }
+        }
+    }
+    fun setPushEnabled(v: Boolean) = savePush(enabled = v)
+    fun setPushPref(kind: String, v: Boolean) = savePush(prefs = mapOf(kind to v))
+    /** The system permission just came through: register this phone and switch on. */
+    fun pushPermissionGranted() {
+        com.june64.feelivate.data.Push.register(getApplication())
+        ui = ui.copy(push = ui.push.copy(hasDevice = true))
+        savePush(enabled = true)
     }
     fun closeEmailModal() { ui = ui.copy(showEmailModal = false) }
     fun setNotifEmail(v: String) = email { it.copy(email = v) }
@@ -515,7 +561,7 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val t = ui.email.preferredTime
             runCatching { api.updateTime(UpdateTimeRequest(ui.userId, t, timezone)) }
-                .onSuccess { email { it.copy(loading = false, subscribedTime = t, message = "Daily alerts set for $t $tzShort every day!", step = EmailStep.Subscribed) } }
+                .onSuccess { email { it.copy(loading = false, subscribedTime = t, message = "Morning alert set for $t $tzShort.", step = EmailStep.Home) } }
                 .onFailure { err -> email { it.copy(loading = false, error = err.userMessage("Failed to save time. Please try again.")) } }
         }
     }
@@ -523,10 +569,7 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         email { it.copy(loading = true, error = "") }
         viewModelScope.launch {
             runCatching { api.stopEmail(UserIdRequest(ui.userId)) }
-                .onSuccess {
-                    email { it.copy(loading = false, enabled = false, subscribedEmail = null, step = EmailStep.Email, email = "", message = "") }
-                    delay(800); ui = ui.copy(showEmailModal = false)
-                }
+                .onSuccess { email { it.copy(loading = false, enabled = false, subscribedEmail = null, step = EmailStep.Home, email = "", message = "Email alerts stopped.") } }
                 .onFailure { err -> email { it.copy(loading = false, error = err.userMessage("Couldn't turn off notifications. Please try again.")) } }
         }
     }

@@ -82,6 +82,7 @@ class JourneyViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun toggleWeek(week: Int) { ui = ui.copy(expandedWeek = if (ui.expandedWeek == week) null else week) }
+    fun expandWeek(week: Int) { ui = ui.copy(tab = "archive", expandedWeek = week) }
     fun dismissCelebration() { ui = ui.copy(showWeekEndCelebration = false) }
     fun clearError() { ui = ui.copy(error = null) }
 

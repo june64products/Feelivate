@@ -51,6 +51,8 @@ import com.june64.feelivate.R
 import com.june64.feelivate.ui.theme.pressScale
 import com.june64.feelivate.ui.theme.satoshi
 import com.june64.feelivate.ui.theme.tokens
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 
 /** A lucide icon from the generated vector drawables (stroke 2, round caps — like the web). */
 @Composable
@@ -217,4 +219,23 @@ fun riseIn(from: Float, delayMs: Int = 0, durationMs: Int = 500, easing: android
     LaunchedEffect(Unit) { started = true }
     val y by animateFloatAsState(if (started) 0f else from, tween(durationMs, delayMs, easing), label = "rise")
     return y
+}
+
+
+/**
+ * Lets a child run past its parent's horizontal padding — the web's
+ * `margin: 0 -20px`. Compose's padding can't go negative (it throws), so the
+ * child is measured wider by twice the amount and placed back by it.
+ */
+fun Modifier.bleed(horizontal: Dp): Modifier = layout { measurable, constraints ->
+    val extra = (horizontal * 2).roundToPx()
+    val placeable = measurable.measure(
+        constraints.copy(
+            minWidth = if (constraints.minWidth == 0) 0 else constraints.minWidth + extra,
+            maxWidth = if (constraints.maxWidth == Constraints.Infinity) Constraints.Infinity else constraints.maxWidth + extra,
+        ),
+    )
+    layout((placeable.width - extra).coerceAtLeast(0), placeable.height) {
+        placeable.placeRelative(-horizontal.roundToPx(), 0)
+    }
 }

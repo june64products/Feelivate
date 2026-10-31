@@ -70,6 +70,20 @@ import com.june64.feelivate.ui.theme.clash
 import com.june64.feelivate.ui.theme.satoshi
 import com.june64.feelivate.ui.theme.tokens
 import kotlinx.coroutines.launch
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import android.os.Build
+import android.content.pm.PackageManager
+import com.june64.feelivate.data.Push
+import androidx.compose.ui.unit.Dp
+import com.june64.feelivate.ui.components.Hairline
+import com.june64.feelivate.ui.components.bleed
 
 /* ── small shared pieces ── */
 
@@ -133,18 +147,120 @@ private fun InfoStrip(text: String, success: Boolean) {
     }
 }
 
-/* ── Email alerts: the four steps ── */
+/* ── Alerts: on this phone, and by email ── */
+
+/** The five phone alerts — one switch each, the same five the emails send. */
+private val PUSH_ROWS = listOf(
+    Triple("morning", "Morning — today's one thing", "At your time, with last night's note answered."),
+    Triple("evening", "Evening journal nudge", "20:30, only when the day isn't logged yet."),
+    Triple("review", "Weekly review", "21:30, the evening a finished week's review is ready."),
+    Triple("recovery", "After a missed day", "The morning after a slip — the day's task, no lecture."),
+    Triple("countdown", "Week countdown", "The last days before a locked week begins."),
+)
 
 @Composable
-fun BoxScope.EmailAlertsModal(vm: WorkspaceViewModel) {
+private fun SectionLabel(text: String, top: Dp = 22.dp) {
+    Text(text, style = clash(10f, 700, ls = 0.1f), color = tokens().textMuted, modifier = Modifier.padding(top = top, bottom = 8.dp))
+}
+
+/** A label, a line under it, the toggle on the right. The whole row is the tap target. */
+@Composable
+private fun SwitchRow(label: String, sub: String?, checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val t = tokens()
+    Row(
+        Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.45f).tap(enabled) { onChange(!checked) }.padding(vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).padding(end = 14.dp)) {
+            Text(label, style = satoshi(13.5f, 600), color = t.textPrimary)
+            if (sub != null) Text(sub, style = satoshi(11.5f, 500, lineHeight = 1.45f), color = t.textMuted, modifier = Modifier.padding(top = 2.dp))
+        }
+        Toggle(checked)
+    }
+}
+
+@Composable
+private fun Toggle(on: Boolean) {
+    val t = tokens()
+    val track by animateColorAsState(if (on) t.btnPrimaryBg else t.borderMedium, tween(180), label = "track")
+    val x by animateFloatAsState(if (on) 1f else 0f, tween(180), label = "x")
+    Box(Modifier.width(40.dp).height(22.dp).clip(CircleShape).background(track).padding(3.dp)) {
+        Box(Modifier.offset { IntOffset((x * 18.dp.toPx()).roundToInt(), 0) }.size(16.dp).clip(CircleShape).background(Color.White))
+    }
+}
+
+/** The modal's first screen: the phone's switches, the shared morning time, the email line. */
+@Composable
+private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) {
+    val t = tokens()
+    val ui = vm.ui
+    val e = ui.email
+    val p = ui.push
+    val context = LocalContext.current
+    val systemAllowed = Build.VERSION.SDK_INT < 33 ||
+        ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    ModalHeader(R.drawable.lu_bell, "Alerts", "The same notes — on this phone, and by email.")
+
+    SectionLabel("ON THIS PHONE", top = 4.dp)
+    when {
+        !Push.configured || (p.loaded && !p.configured) -> Text(
+            "Phone alerts aren't switched on for this build yet. Email alerts below work today.",
+            style = satoshi(12.5f, 500, lineHeight = 1.55f), color = t.textSecondary,
+        )
+        !systemAllowed -> Column {
+            Text("Android is blocking Feelivate's notifications. Allow them to get the day's note on this phone.", style = satoshi(12.5f, 500, lineHeight = 1.55f), color = t.textSecondary, modifier = Modifier.padding(bottom = 12.dp))
+            PillButton("Allow notifications", Modifier.fillMaxWidth(), size = 12f, verticalPadding = 12.dp, leading = { Lucide(R.drawable.lu_bell, 15.dp, t.btnPrimaryText) }, onClick = onRequestPermission)
+        }
+        else -> Column {
+            val onCount = PUSH_ROWS.count { p.prefs[it.first] != false }
+            SwitchRow("Phone notifications", if (p.enabled) "On — $onCount of ${PUSH_ROWS.size} alerts" else "Off — nothing is sent to this phone", p.enabled, !p.saving) { vm.setPushEnabled(it) }
+            Hairline()
+            PUSH_ROWS.forEach { (kind, label, sub) ->
+                SwitchRow(label, sub, p.prefs[kind] != false, p.enabled && !p.saving) { vm.setPushPref(kind, it) }
+            }
+        }
+    }
+    if (p.error.isNotEmpty()) InfoStrip(p.error, false)
+
+    // The morning time is one setting for both channels.
+    Row(
+        Modifier.fillMaxWidth().padding(top = 14.dp).clip(RoundedCornerShape(12.dp)).background(t.glassSurface).border(1.dp, t.borderSubtle, RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("MORNING NOTE AT", style = clash(10f, 700, ls = 0.1f), color = t.textMuted, modifier = Modifier.padding(bottom = 2.dp))
+            Text("${e.subscribedTime} ${vm.tzShort}", style = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 18.sp, fontWeight = FontWeight.Bold), color = t.textPrimary)
+        }
+        PillButton("Change", filled = false, size = 11f, ls = 0.04f, horizontalPadding = 14.dp, verticalPadding = 6.dp, foreground = t.textSecondary, onClick = vm::emailChangeTime)
+    }
+
+    SectionLabel("BY EMAIL")
+    if (e.enabled) {
+        Text(e.subscribedEmail.orEmpty(), style = satoshi(14f, 600), color = t.textPrimary, modifier = Modifier.padding(bottom = 4.dp))
+        Text("The same alerts, in your inbox.", style = satoshi(12f, 500), color = t.textMuted, modifier = Modifier.padding(bottom = 12.dp))
+        if (e.message.isNotEmpty()) InfoStrip(e.message, true)
+        if (e.error.isNotEmpty()) InfoStrip(e.error, false)
+        PillButton(if (e.loading) "Stopping..." else "Stop email alerts", Modifier.fillMaxWidth(), filled = false, enabled = !e.loading, size = 12f, ls = 0.04f, verticalPadding = 11.dp, foreground = Status.Error, borderColor = Status.Error.copy(alpha = 0.2f), leading = { if (e.loading) Spinner(14.dp, Status.Error) else Lucide(R.drawable.lu_bell_off, 14.dp, Status.Error) }, onClick = vm::stopEmail)
+    } else {
+        Text("Get the same notes in your inbox too — they reach you when the phone is off.", style = satoshi(12.5f, 500, lineHeight = 1.55f), color = t.textSecondary, modifier = Modifier.padding(bottom = 12.dp))
+        if (e.message.isNotEmpty()) InfoStrip(e.message, true)
+        PillButton("Set up email alerts", Modifier.fillMaxWidth(), filled = false, size = 12f, ls = 0.04f, verticalPadding = 11.dp, foreground = t.textPrimary, leading = { Lucide(R.drawable.lu_mail, 14.dp, t.textPrimary) }, onClick = vm::emailBackToEmail)
+    }
+}
+
+@Composable
+fun BoxScope.AlertsModal(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) {
     val t = tokens()
     val ui = vm.ui
     val e = ui.email
     ModalOverlay(ui.showEmailModal, vm::closeEmailModal, stiffness = 300f, damping = 20f, fromScale = 0.9f, fromY = 20.dp) {
-        ModalCard(maxWidth = 400.dp, radius = 20.dp, padding = PaddingValues(28.dp)) {
+        ModalCard(maxWidth = 400.dp, radius = 20.dp, padding = PaddingValues(28.dp), maxHeightFraction = 0.9f) {
             Column {
                 when (e.step) {
+                    EmailStep.Home -> AlertsHome(vm, onRequestPermission)
                     EmailStep.Email -> {
+                        Text("← Alerts", style = satoshi(12f, 600), color = t.textMuted, modifier = Modifier.tap(onClick = vm::emailHome).padding(bottom = 14.dp))
                         ModalHeader(R.drawable.lu_bell, "Daily Task Alerts", "Get your daily tasks straight to your inbox")
                         Text(
                             buildAnnotatedString {
@@ -180,7 +296,8 @@ fun BoxScope.EmailAlertsModal(vm: WorkspaceViewModel) {
                         }
                     }
                     EmailStep.Time -> {
-                        ModalHeader(R.drawable.lu_clock, "Choose Your Alert Time", "When should we send your daily task?")
+                        Text("← Alerts", style = satoshi(12f, 600), color = t.textMuted, modifier = Modifier.tap(onClick = vm::emailHome).padding(bottom = 14.dp))
+                        ModalHeader(R.drawable.lu_clock, "Morning note — what time?", "Phone and email both use this.")
                         Text(
                             buildAnnotatedString {
                                 append("Every day at this time, you'll receive your ")
@@ -203,38 +320,9 @@ fun BoxScope.EmailAlertsModal(vm: WorkspaceViewModel) {
                         ModalField(e.preferredTime, { v -> vm.setNotifTime(v.filter { it.isDigit() || it == ':' }.take(5)) }, "08:00", keyboardType = KeyboardType.Number, textAlign = TextAlign.Center, textStyle = satoshi(20f, 700), minHeight = 46)
                         Text("${vm.timezone} · ${vm.tzShort}", style = satoshi(11f, 500), color = t.textMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 20.dp))
                         if (e.error.isNotEmpty()) InfoStrip(e.error, false)
-                        PillButton(if (e.loading) "Activating..." else "Activate at ${e.preferredTime} ${vm.tzShort}", Modifier.fillMaxWidth(), enabled = !e.loading, size = 12f, verticalPadding = 13.dp, leading = { if (e.loading) Spinner(15.dp, t.btnPrimaryText) else Lucide(R.drawable.lu_bell, 15.dp, t.btnPrimaryText) }, onClick = vm::saveTime)
+                        PillButton(if (e.loading) "Saving..." else "Save ${e.preferredTime} ${vm.tzShort}", Modifier.fillMaxWidth(), enabled = !e.loading, size = 12f, verticalPadding = 13.dp, leading = { if (e.loading) Spinner(15.dp, t.btnPrimaryText) else Lucide(R.drawable.lu_bell, 15.dp, t.btnPrimaryText) }, onClick = vm::saveTime)
                     }
-                    EmailStep.Subscribed -> {
-                        Column(Modifier.fillMaxWidth().padding(bottom = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            var s by remember { mutableStateOf(false) }
-                            LaunchedEffect(Unit) { s = true }
-                            val sc by animateFloatAsState(if (s) 1f else 0f, com.june64.feelivate.ui.theme.motionSpring(200f, 12f), label = "sc")
-                            Box(Modifier.size(56.dp).graphicsLayer { scaleX = sc; scaleY = sc }.clip(RoundedCornerShape(14.dp)).background(t.btnPrimaryBg), contentAlignment = Alignment.Center) { Lucide(R.drawable.lu_bell, 24.dp, t.btnPrimaryText) }
-                            Text("Daily Alerts Active!", style = clash(16f, 700), color = t.textPrimary, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
-                            Text("Your daily emails are now scheduled", style = satoshi(12f, 500), color = t.textMuted)
-                        }
-                        Column(Modifier.fillMaxWidth().padding(bottom = 14.dp).clip(RoundedCornerShape(12.dp)).background(t.glassSurface).border(1.dp, t.borderSubtle, RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 14.dp)) {
-                            Text("SUBSCRIBED EMAIL", style = clash(10f, 700, ls = 0.1f), color = t.textMuted, modifier = Modifier.padding(bottom = 8.dp))
-                            Text(e.subscribedEmail.orEmpty(), style = satoshi(14f, 600), color = t.textPrimary, modifier = Modifier.padding(bottom = 10.dp))
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("DAILY AT", style = clash(10f, 700, ls = 0.1f), color = t.textMuted, modifier = Modifier.padding(bottom = 2.dp))
-                                    Text("${e.subscribedTime} ${vm.tzShort}", style = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, fontSize = 18.sp, fontWeight = FontWeight.Bold), color = t.textPrimary)
-                                }
-                                PillButton("Change time", filled = false, size = 11f, ls = 0.04f, horizontalPadding = 14.dp, verticalPadding = 6.dp, foreground = t.textSecondary, onClick = vm::emailChangeTime)
-                            }
-                        }
-                        Column(Modifier.fillMaxWidth().padding(bottom = 16.dp).clip(RoundedCornerShape(10.dp)).background(t.glassSurface).padding(horizontal = 14.dp, vertical = 12.dp)) {
-                            Text("WHAT YOU'LL RECEIVE EACH DAY", style = clash(10f, 700, ls = 0.1f), color = t.textMuted, modifier = Modifier.padding(bottom = 8.dp))
-                            listOf("Your specific task for the day", "AI-written personalized guidance", "A motivational thought crafted just for you").forEach {
-                                Text("• $it", style = satoshi(12f, 500), color = t.textSecondary, modifier = Modifier.padding(vertical = 4.dp))
-                            }
-                        }
-                        if (e.message.isNotEmpty()) InfoStrip(e.message, true)
-                        if (e.error.isNotEmpty()) InfoStrip(e.error, false)
-                        PillButton(if (e.loading) "Unsubscribing..." else "Stop Notifications", Modifier.fillMaxWidth(), filled = false, enabled = !e.loading, size = 12f, ls = 0.04f, verticalPadding = 11.dp, foreground = Status.Error, borderColor = Status.Error.copy(alpha = 0.2f), leading = { if (e.loading) Spinner(14.dp, Status.Error) else Lucide(R.drawable.lu_bell_off, 14.dp, Status.Error) }, onClick = vm::stopEmail)
-                    }
+
                 }
             }
             CloseButton(vm::closeEmailModal, Modifier.align(Alignment.TopEnd), radius = 8.dp, iconSize = 14.dp)
@@ -330,7 +418,7 @@ fun BoxScope.NextWeekStartModal(ask: NextWeekAsk?, onClose: () -> Unit, onConfir
                     Text("Week ${ask.week}: when do you start?", style = clash(18f, 700, ls = -0.01f), color = t.textPrimary)
                 }
                 Text("Your mentor builds Week ${ask.week} for exactly these days, from the day you pick to its Sunday, with a task on each. Pick the day you'll actually be ready.", style = satoshi(13f, 500, lineHeight = 1.6f), color = t.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
-                Box(Modifier.padding(horizontal = (-20).dp)) { StartDatePicker(false, ask.earliest, startDate) { startDate = it } }
+                Box(Modifier.bleed(20.dp)) { StartDatePicker(false, ask.earliest, startDate) { startDate = it } }
                 Column(Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     PillButton("Build Week ${ask.week}", Modifier.fillMaxWidth(), size = 13f, ls = 0.04f, verticalPadding = 13.dp, trailing = { Lucide(R.drawable.lu_arrow_right, 14.dp, t.btnPrimaryText) }) { onConfirm(startDate) }
                     Text("Not now", style = satoshi(12.5f, 500), color = t.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().tap(onClick = onClose).padding(vertical = 10.dp))
@@ -376,7 +464,7 @@ fun BoxScope.SetupQuestionsModal(questions: List<SetupQuestion>?, onSubmit: (Str
                         Text("When do you start?", style = clash(18f, 700, ls = -0.01f), color = t.textPrimary)
                     }
                     Text("Your week runs from that day to its Sunday, with a real task on every day of it. Pick the day you'll actually be ready — not the day you wish you were.", style = satoshi(13f, 500, lineHeight = 1.6f), color = t.textSecondary, modifier = Modifier.padding(bottom = 6.dp))
-                    Box(Modifier.padding(horizontal = (-20).dp)) { StartDatePicker(true, null, startDate) { startDate = it } }
+                    Box(Modifier.bleed(20.dp)) { StartDatePicker(true, null, startDate) { startDate = it } }
                     PillButton("Build my plan", Modifier.fillMaxWidth().padding(top = 16.dp), size = 13f, ls = 0.04f, verticalPadding = 13.dp, trailing = { Lucide(R.drawable.lu_arrow_right, 14.dp, t.btnPrimaryText) }) {
                         val lines = questions.mapIndexed { i, q -> q to answers[i].trim() }.filter { it.second.isNotBlank() }.joinToString("\n\n") { "${it.first.label}\n→ ${it.second}" }
                         val startLine = if (startDate == WeekWindow.today()) "I start today." else "I start on ${WeekWindow.formatDay(startDate)} — build the week from that day through its Sunday."
