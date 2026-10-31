@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional, List, Union
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Depends, BackgroundTasks, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response, HTMLResponse
+from fastapi.responses import JSONResponse, Response, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from loguru import logger
@@ -2326,6 +2326,106 @@ async def google_login_callback(req: GoogleLoginCallbackRequest, db: DBSession =
         # users clear it on the consent screen straight after landing.
         "consent_required": missing_consents(db, user.id),
     }
+
+
+# ── "Continue with Google" from the Android app, through the browser ──────────
+# Credential Manager's native sheet proved unreliable on some phones, so the
+# app opens this flow in a browser tab instead: it is the website's own
+# Google sign-in, with the code coming back to the API rather than the site,
+# and the session handed to the app as a feelivate:// link. The web routes
+# above are untouched.
+GOOGLE_MOBILE_RETURN = "feelivate://auth"
+MOBILE_API_BASE = (os.getenv("API_BASE_URL") or "https://p01--emotion-time-travel--gtj4tlnzj5vy.code.run").rstrip("/")
+GOOGLE_MOBILE_REDIRECT = f"{MOBILE_API_BASE}/auth/google/mobile/callback"
+
+
+def _google_mobile_flow():
+    from google_auth_oauthlib.flow import Flow
+    from .google_login import LOGIN_SCOPES
+    flow = Flow.from_client_config(
+        {"web": {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }},
+        scopes=LOGIN_SCOPES,
+        redirect_uri=GOOGLE_MOBILE_REDIRECT,
+    )
+    flow.autogenerate_code_verifier = False
+    flow.code_verifier = None
+    return flow
+
+
+def _google_mobile_exchange(code: str) -> dict:
+    """The one-time code → Google's profile (email, name, verified)."""
+    import requests as _requests
+    from .google_login import USERINFO_URL
+    flow = _google_mobile_flow()
+    flow.fetch_token(code=code)
+    resp = _requests.get(USERINFO_URL, headers={"Authorization": f"Bearer {flow.credentials.token}"}, timeout=10)
+    resp.raise_for_status()
+    return resp.json()
+
+
+@app.get("/auth/google/mobile/start", tags=["auth"])
+async def google_mobile_start():
+    """The app opens this in a browser tab; it lands on Google's account picker."""
+    from datetime import timedelta as _td
+    if not os.getenv("GOOGLE_CLIENT_ID") or not os.getenv("GOOGLE_CLIENT_SECRET"):
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured.")
+    state = create_access_token({"purpose": "google_mobile"}, expires_delta=_td(minutes=10))
+    url, _ = _google_mobile_flow().authorization_url(
+        prompt="select_account", access_type="online", include_granted_scopes="true", state=state,
+    )
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/auth/google/mobile/callback", tags=["auth"], include_in_schema=False)
+async def google_mobile_callback(
+    code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None,
+    db: DBSession = Depends(get_db),
+):
+    """Google sends the code here; the session goes back to the app as a feelivate:// link."""
+    from urllib.parse import urlencode
+
+    def back(params: dict):
+        return RedirectResponse(GOOGLE_MOBILE_RETURN + "#" + urlencode(params), status_code=302)
+
+    payload = decode_access_token(state or "")
+    if not payload or payload.get("purpose") != "google_mobile":
+        return back({"error": "That sign-in link has expired. Please try again."})
+    if error or not code:
+        return back({"error": "Google sign-in was cancelled."})
+    try:
+        info = _google_mobile_exchange(code)
+    except Exception as e:
+        logger.exception(f"Google mobile (browser) sign-in failed | redirect_uri={GOOGLE_MOBILE_REDIRECT} | {type(e).__name__}: {e}")
+        return back({"error": "Google sign-in failed. Please try again."})
+    if info.get("email_verified") is False:
+        return back({"error": "That Google address isn't verified yet."})
+    email = (info.get("email") or "").lower().strip()
+    if not email:
+        return back({"error": "Google did not return an email address."})
+    user = db.query(User).filter(User.email == email).first()
+    is_new = False
+    if not user:
+        user = User(
+            id=str(uuid.uuid4()), email=email,
+            password=get_password_hash(secrets.token_urlsafe(32)),
+            name=info.get("name") or email.split("@")[0],
+        )
+        db.add(user); db.commit(); db.refresh(user)
+        is_new = True
+    elif not user.name and info.get("name"):
+        user.name = info.get("name"); db.commit()
+    return back({
+        "access_token": create_access_token(data={"sub": user.id}),
+        "user_id": user.id,
+        "name": user.name or "",
+        "is_new_user": "1" if is_new else "0",
+        "consent_required": ",".join(missing_consents(db, user.id)),
+    })
 
 
 class GoogleMobileRequest(BaseModel):
