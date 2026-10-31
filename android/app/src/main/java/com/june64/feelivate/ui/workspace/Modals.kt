@@ -204,7 +204,7 @@ private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) 
 
     SectionLabel("ON THIS PHONE", top = 4.dp)
     when {
-        !Push.configured || (p.loaded && !p.configured) -> Text(
+        !Push.configured -> Text(
             "Phone alerts aren't switched on for this build yet.",
             style = satoshi(12.5f, 500, lineHeight = 1.55f), color = t.textSecondary,
         )
@@ -213,6 +213,12 @@ private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) 
             PillButton("Allow notifications", Modifier.fillMaxWidth(), size = 12f, verticalPadding = 12.dp, leading = { Lucide(R.drawable.lu_bell, 15.dp, t.btnPrimaryText) }, onClick = onRequestPermission)
         }
         else -> Column {
+            // The server can't reach phones until its FCM credentials are in; the
+            // switches still save, so nothing chosen now is lost.
+            if (p.loaded && !p.configured) Text(
+                "Delivery is being switched on — your choices below are saved and apply the moment it is.",
+                style = satoshi(12f, 500, lineHeight = 1.5f), color = t.textMuted, modifier = Modifier.padding(bottom = 8.dp),
+            )
             val onCount = PUSH_ROWS.count { p.prefs[it.first] != false }
             SwitchRow("Phone notifications", if (p.enabled) "On — $onCount of ${PUSH_ROWS.size} alerts" else "Off — nothing is sent to this phone", p.enabled, !p.saving) { vm.setPushEnabled(it) }
             Hairline()
