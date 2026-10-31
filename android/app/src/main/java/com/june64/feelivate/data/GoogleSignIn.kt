@@ -33,7 +33,10 @@ object GoogleSignIn {
         } catch (e: GetCredentialCancellationException) {
             throw Cancelled()
         } catch (e: NoCredentialException) {
-            throw Exception("No Google account on this device. Add one in Settings, then try again.")
+            // Credential Manager says this for two different things: no Google
+            // account on the phone, and an OAuth client whose package/SHA-1
+            // doesn't match this build (or hasn't propagated yet). Say both.
+            throw Exception("Google sign-in isn't available on this phone right now. Check a Google account is added in Settings, try again in a few minutes, or continue with email.")
         }
         val cred = result.credential
         if (cred is CustomCredential && cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
