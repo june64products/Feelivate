@@ -624,7 +624,7 @@ def test_a_phone_only_user_gets_the_evening_alert_as_a_push(client, monkeypatch)
 
     # Other tests' subscribers share this database, so everything is read per user.
     all_pushed, all_mailed = [], []
-    monkeypatch.setattr(ps, "push_enabled", lambda: True)
+    monkeypatch.setattr(ps, "push_enabled", lambda db=None: True)
     monkeypatch.setattr(ps, "send_to_user", lambda db, user_id, title, body, data=None, channel="feelivate_default": all_pushed.append((user_id, title, body, data, channel)) or 1)
     monkeypatch.setattr(es, "send_evening_email", lambda to, *a, **k: all_mailed.append(to) or True)
     pushed = lambda: [p for p in all_pushed if p[0] == uid]
@@ -663,3 +663,33 @@ def test_push_preferences_api_round_trips(client):
     assert out["enabled"] is False and out["prefs"]["review"] is False   # partial: the earlier switch survives
     client.post("/notifications/device", headers=headers, json={"token": "fcm-token-" + "y" * 40})
     assert client.get("/notifications/push/status", headers=headers).json()["has_device"] is True
+
+
+# ─── the relayed FCM token ───────────────────────────────────────────────────
+def test_relayed_fcm_token_is_kept_only_when_fcm_vouches_for_it(client, monkeypatch):
+    import app.push_service as ps
+    headers, uid = register(client, "relay@example.com")
+    assert client.get("/notifications/push/status", headers=headers).json()["configured"] is False
+
+    monkeypatch.setattr(ps, "verify_fcm_capability", lambda token: False)
+    r = client.put("/internal/fcm-token", json={"access_token": "ya29." + "a" * 80, "expires_in": 3600})
+    assert r.status_code == 403
+    assert ps.push_enabled() is False
+
+    monkeypatch.setattr(ps, "verify_fcm_capability", lambda token: True)
+    r = client.put("/internal/fcm-token", json={"access_token": "ya29." + "b" * 80, "expires_in": 3600})
+    assert r.status_code == 200 and r.json()["ok"] is True
+    assert ps.push_enabled() is True
+    assert client.get("/notifications/push/status", headers=headers).json()["configured"] is True
+
+    # the relayed token is what sends go out with, to the configured project
+    seen = {}
+    monkeypatch.setattr(ps, "_send_one", lambda tok, proj, dev, title, body, data, channel: seen.update(tok=tok, proj=proj) or (True, ""))
+    client.post("/notifications/device", headers=headers, json={"token": "fcm-token-" + "z" * 40})
+    out = client.post("/notifications/push/test", headers=headers).json()
+    assert out == {"sent": 1, "configured": True}
+    assert seen["tok"] == "ya29." + "b" * 80 and seen["proj"] == ps.FCM_PROJECT_ID
+
+    # an expired relay is as good as none
+    ps._relay["expires_at"] = 0
+    assert ps.push_enabled() is False

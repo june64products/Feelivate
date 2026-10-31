@@ -351,3 +351,15 @@ class DeviceToken(Base):
     last_seen_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User")
+
+
+class KvSetting(Base):
+    """
+    Small runtime settings the server learns while running — the relayed FCM
+    token, for one — kept in the database so a restart doesn't lose them.
+    """
+    __tablename__ = "kv_settings"
+
+    key        = Column(String, primary_key=True)
+    value      = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
