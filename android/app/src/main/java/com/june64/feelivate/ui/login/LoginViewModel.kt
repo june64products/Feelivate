@@ -11,6 +11,7 @@ import com.june64.feelivate.data.ApiClient
 import com.june64.feelivate.data.ConsentItem
 import com.june64.feelivate.data.GoogleMobileRequest
 import com.june64.feelivate.data.GoogleSignIn
+import com.june64.feelivate.data.AuthResponse
 import com.june64.feelivate.data.LoginRequest
 import com.june64.feelivate.data.Prefs
 import com.june64.feelivate.data.SignupRequest
@@ -85,20 +86,16 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
     /** "Continue with Google" — Credential Manager, then the mobile exchange route. */
     fun googleLogin(activity: Context) {
         ui = ui.copy(error = "")
-        viewModelScope.launch {
-            runCatching {
-                val idToken = GoogleSignIn.idToken(activity)
-                api.googleMobile(GoogleMobileRequest(idToken))
-            }.onSuccess { res ->
-                store.signIn(res, res.name ?: "")
-                if (res.isNewUser) prefs.startDemo(res.userId)
-                ui = ui.copy(signedIn = true)
-            }.onFailure { e ->
-                ui = ui.copy(error = if (e is GoogleSignIn.Cancelled) {
-                    val why = e.message?.takeIf { it.isNotBlank() && it != "cancelled" }
-                    "Google sign-in was closed before it finished" + (why?.let { " ($it)" } ?: "") + ". If you picked a work account, try a Gmail one — or continue with email."
-                } else e.userMessage("Could not start Google sign-in. Please try again."))
-            }
-        }
+        runCatching { GoogleSignIn.start(activity) }
+            .onFailure { ui = ui.copy(error = "Couldn't open the browser for Google sign-in. Please try again or continue with email.") }
+    }
+
+    /** The feelivate://auth link came back: this is the same sign-in the website does. */
+    fun finishGoogle(result: Result<AuthResponse>) {
+        result.onSuccess { res ->
+            store.signIn(res, res.name ?: "")
+            if (res.isNewUser) prefs.startDemo(res.userId)
+            ui = ui.copy(signedIn = true, error = "")
+        }.onFailure { e -> ui = ui.copy(error = e.message ?: "Google sign-in failed. Please try again.") }
     }
 }

@@ -1,51 +1,46 @@
 package com.june64.feelivate.data
 
 import android.content.Context
-import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialCancellationException
-import androidx.credentials.exceptions.NoCredentialException
-import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
-import androidx.credentials.exceptions.GetCredentialException
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.runtime.mutableStateOf
 import com.june64.feelivate.BuildConfig
 
 /**
- * "Continue with Google" on Android: Credential Manager hands us a Google ID
- * token (audience = the same web client id the backend already trusts), and
- * POST /auth/google/mobile exchanges it for the usual Feelivate session.
+ * "Continue with Google" on Android — the website's own Google sign-in, in a
+ * browser tab. Google's native sheet kept closing itself on some phones, so
+ * the app sends the browser to the API, which sends it to Google's account
+ * picker; Google returns the code to the API; the API hands the session back
+ * as a `feelivate://auth` link that lands in MainActivity. No Android OAuth
+ * client, no signature matching, nothing that can drift from the website.
  */
 object GoogleSignIn {
-    class Cancelled(detail: String?) : Exception(detail ?: "cancelled")
-    class NotConfigured : Exception("Google sign-in isn't set up on this build yet.")
+    /** What the API wrote into the feelivate://auth link; the login screen consumes it. */
+    val result = mutableStateOf<Result<AuthResponse>?>(null)
 
-    suspend fun idToken(activity: Context): String {
-        val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
-        if (clientId.isBlank()) throw NotConfigured()
-        // The explicit-button flow: always shows Google's account chooser, and
-        // reports a configuration problem as such instead of "no credential".
-        val option = GetSignInWithGoogleOption.Builder(clientId).build()
-        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
-        val result = try {
-            CredentialManager.create(activity).getCredential(activity, request)
-        } catch (e: GetCredentialCancellationException) {
-            // Not always the user: a blocked account or a mismatched client
-            // also ends here. Carry Google's own words so the screen can show them.
-            throw Cancelled(e.message)
-        } catch (e: NoCredentialException) {
-            // Credential Manager says this for two different things: no Google
-            // account on the phone, and an OAuth client whose package/SHA-1
-            // doesn't match this build (or hasn't propagated yet). Say both.
-            throw Exception("Google sign-in isn't available on this phone right now. Check a Google account is added in Settings, try again in a few minutes, or continue with email.")
-        } catch (e: GetCredentialException) {
-            // Anything else is worth reading verbatim — it names the real cause.
-            throw Exception("Google sign-in failed: ${e.type.substringAfterLast('.')} — ${e.message ?: "no details"}")
-        }
-        val cred = result.credential
-        if (cred is CustomCredential && cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-            return GoogleIdTokenCredential.createFrom(cred.data).idToken
-        }
-        throw Exception("Google returned something unexpected (${cred.type.substringAfterLast('.')}). Please try again.")
+    fun start(context: Context) {
+        CustomTabsIntent.Builder().setShowTitle(false).build()
+            .launchUrl(context, Uri.parse(BuildConfig.API_BASE + "/auth/google/mobile/start"))
+    }
+
+    /** True when this intent is the API handing a session back. */
+    fun isReturn(uri: Uri?): Boolean = uri != null && uri.scheme == "feelivate" && uri.host == "auth"
+
+    /** The link carries everything in its fragment, so nothing lands in server logs. */
+    fun parse(uri: Uri): Result<AuthResponse> {
+        val params = (uri.fragment ?: "").split('&').mapNotNull { pair ->
+            val i = pair.indexOf('=')
+            if (i <= 0) null else Uri.decode(pair.substring(0, i)) to Uri.decode(pair.substring(i + 1).replace('+', ' '))
+        }.toMap()
+        params["error"]?.let { return Result.failure(Exception(it)) }
+        val token = params["access_token"]; val userId = params["user_id"]
+        if (token.isNullOrBlank() || userId.isNullOrBlank()) return Result.failure(Exception("Google sign-in returned without a session. Please try again."))
+        return Result.success(
+            AuthResponse(
+                userId = userId, name = params["name"]?.takeIf { it.isNotBlank() }, accessToken = token,
+                isNewUser = params["is_new_user"] == "1",
+                consentRequired = params["consent_required"].orEmpty().split(',').filter { it.isNotBlank() },
+            ),
+        )
     }
 }

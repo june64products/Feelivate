@@ -73,6 +73,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.june64.feelivate.R
 import com.june64.feelivate.ui.Routes
+import com.june64.feelivate.data.GoogleSignIn
 import com.june64.feelivate.ui.components.ConsentCheckbox
 import com.june64.feelivate.ui.components.ErrorBox
 import com.june64.feelivate.ui.components.FieldLabel
@@ -118,6 +119,11 @@ private fun Welcome(onSignedIn: () -> Unit, onOpenPage: (String) -> Unit, vm: Lo
     var sheet by remember { mutableStateOf(false) }
     LaunchedEffect(ui.signedIn) { if (ui.signedIn) onSignedIn() }
     BackHandler(sheet) { sheet = false }
+    // Google's answer arrives through MainActivity as a feelivate://auth link.
+    val googleResult by GoogleSignIn.result
+    LaunchedEffect(googleResult) {
+        googleResult?.let { vm.finishGoogle(it); GoogleSignIn.result.value = null }
+    }
 
     // The headline and buttons rise in once the screen is up, the way the web's hero does.
     val entered = remember { MutableTransitionState(false).apply { targetState = true } }

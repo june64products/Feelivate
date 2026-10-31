@@ -8,6 +8,7 @@ import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.android.gms.tasks.Tasks
 import com.june64.feelivate.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -98,18 +99,18 @@ object Push {
         }
     }
 
-    /** Logout: this phone should stop hearing from the account that left it. */
-    fun unregister(context: Context) {
+    /**
+     * Logout: this phone should stop hearing from the account that left it.
+     * Suspends until the server has been told — the caller clears the session
+     * only after, or the call would go out without a session to authenticate.
+     */
+    suspend fun unregister(context: Context) {
         if (!configured) return
         val app = context.applicationContext
-        runCatching {
-            FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-                scope.launch {
-                    runCatching { ApiClient.get(app).forgetDevice(DeviceTokenRequest(token)) }
-                    runCatching { FirebaseMessaging.getInstance().deleteToken() }
-                }
-            }
-        }
+        val token = runCatching { Tasks.await(FirebaseMessaging.getInstance().token) }.getOrNull() ?: return
+        runCatching { ApiClient.get(app).forgetDevice(DeviceTokenRequest(token)) }
+            .onFailure { Log.w(TAG, "could not forget this device on the server: ${it.message}") }
+        runCatching { FirebaseMessaging.getInstance().deleteToken() }
     }
 }
 

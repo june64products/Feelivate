@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import com.june64.feelivate.data.OpenIntent
+import com.june64.feelivate.data.GoogleSignIn
 import com.june64.feelivate.data.Push
 import com.june64.feelivate.ui.AppNav
 import com.june64.feelivate.ui.theme.FeelivateTheme
@@ -50,6 +51,11 @@ class MainActivity : ComponentActivity() {
      * deep link in ?open= on https://feelivate.com/app.
      */
     private fun readOpenTarget(intent: Intent?) {
+        val data = intent?.data
+        if (GoogleSignIn.isReturn(data)) {
+            GoogleSignIn.result.value = GoogleSignIn.parse(data!!)
+            return
+        }
         val target = intent?.getStringExtra("open")
             // A tap on a tray notification (app in the background): FCM puts the
             // message's data keys straight on the launch intent.

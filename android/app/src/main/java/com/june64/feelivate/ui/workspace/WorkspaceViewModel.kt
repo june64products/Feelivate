@@ -43,6 +43,8 @@ import com.june64.feelivate.data.PushPrefsRequest
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 /* ── State mirrors of WorkspacePage.tsx ── */
 
@@ -279,8 +281,11 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         // "Not now" still logs out.
         val proceed = {
             // Tell the backend first — after store.clear() there is no token to authenticate with.
-            com.june64.feelivate.data.Push.unregister(getApplication())
-            store.clear(); signedOut = true
+            viewModelScope.launch {
+                withContext(Dispatchers.IO) { com.june64.feelivate.data.Push.unregister(getApplication()) }
+                store.clear(); signedOut = true
+            }
+            Unit
         }
         feedback?.requestLogout(proceed) ?: proceed()
     }

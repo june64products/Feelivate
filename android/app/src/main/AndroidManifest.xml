@@ -16,6 +16,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|uiMode">
             <intent-filter>
@@ -28,6 +29,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="feelivate.com" android:pathPrefix="/app" />
+            </intent-filter>
+            <!-- Google sign-in comes back from the browser as feelivate://auth#… -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="feelivate" android:host="auth" />
             </intent-filter>
         </activity>
 
