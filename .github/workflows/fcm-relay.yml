@@ -3,9 +3,15 @@ name: FCM token relay
 # The organisation's policy forbids service-account keys, so the API can't
 # mint its own token for Firebase Cloud Messaging. This job can: it holds
 # keyless (Workload Identity) access to the Firebase project, mints a
-# one-hour token every twenty minutes and hands it to the API, which keeps
-# it only after FCM confirms it works for the project. Nothing secret is
-# stored in GitHub; nothing is pasted anywhere.
+# one-hour token and hands it to the API, which keeps it only after FCM
+# confirms it works for the project. Nothing secret is stored in GitHub;
+# nothing is pasted anywhere.
+#
+# Cadence: GitHub's cron is best-effort (it sat silent for an hour after
+# this file landed), so every run also re-dispatches itself after eighteen
+# minutes. The concurrency group keeps that to a single chain — a cron,
+# push or manual run simply replaces the sleeping one. The Android build
+# kicks the chain too, in case it ever dies.
 on:
   schedule:
     - cron: "*/20 * * * *"
@@ -17,10 +23,11 @@ on:
 permissions:
   contents: read
   id-token: write
+  actions: write     # to dispatch the next link of the chain
 
 concurrency:
   group: fcm-relay
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   API_BASE: https://p01--emotion-time-travel--gtj4tlnzj5vy.code.run
@@ -32,7 +39,7 @@ jobs:
     # The federation only trusts this repository; mirrors on other remotes skip the job.
     if: github.repository == 'june64products/Feelivate'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -54,3 +61,10 @@ jobs:
           curl -fsS --max-time 30 -X PUT "$API_BASE/internal/fcm-token" \
             -H 'Content-Type: application/json' -d "$body" \
             | sed -E 's/"expires_at":[0-9]+/"expires_at":…/'
+
+      - name: Come back in eighteen minutes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 1080
+          gh workflow run fcm-relay.yml --repo "$GITHUB_REPOSITORY" --ref "${GITHUB_REF_NAME}"
