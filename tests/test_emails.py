@@ -622,19 +622,21 @@ def test_a_phone_only_user_gets_the_evening_alert_as_a_push(client, monkeypatch)
     db.commit()
     db.close()
 
-    pushed, mailed = [], []
+    # Other tests' subscribers share this database, so everything is read per user.
+    all_pushed, all_mailed = [], []
     monkeypatch.setattr(ps, "push_enabled", lambda: True)
-    monkeypatch.setattr(ps, "send_to_user", lambda db, user_id, title, body, data=None, channel="feelivate_default": pushed.append((user_id, title, body, data, channel)) or 1)
-    monkeypatch.setattr(es, "send_evening_email", lambda *a, **k: mailed.append(a) or True)
+    monkeypatch.setattr(ps, "send_to_user", lambda db, user_id, title, body, data=None, channel="feelivate_default": all_pushed.append((user_id, title, body, data, channel)) or 1)
+    monkeypatch.setattr(es, "send_evening_email", lambda to, *a, **k: all_mailed.append(to) or True)
+    pushed = lambda: [p for p in all_pushed if p[0] == uid]
 
     at_2031 = datetime.combine(date.today(), datetime.min.time(), tzinfo=pytz.utc).replace(hour=20, minute=31)
     es.run_evening_reminders(now_utc=at_2031)
-    assert mailed == []
-    assert len(pushed) == 1
-    user_id, title, body, data, channel = pushed[0]
-    assert user_id == uid and "3-day streak" in title and data == {"view": "journey"} and channel == "feelivate_evening"
+    assert "phone-only@example.com" not in all_mailed
+    assert len(pushed()) == 1
+    user_id, title, body, data, channel = pushed()[0]
+    assert "3-day streak" in title and data == {"view": "journey"} and channel == "feelivate_evening"
     es.run_evening_reminders(now_utc=at_2031.replace(minute=35))   # once an evening, like the email
-    assert len(pushed) == 1
+    assert len(pushed()) == 1
 
     # The switch for this kind, off: nothing goes, and nothing is marked sent.
     db = SessionLocal()
@@ -644,7 +646,7 @@ def test_a_phone_only_user_gets_the_evening_alert_as_a_push(client, monkeypatch)
     db.commit()
     db.close()
     es.run_evening_reminders(now_utc=at_2031)
-    assert len(pushed) == 1
+    assert len(pushed()) == 1
     db = SessionLocal()
     assert db.query(User).filter(User.id == uid).first().last_journal_reminder_date is None
     db.close()
