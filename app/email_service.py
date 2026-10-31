@@ -28,7 +28,7 @@ from loguru import logger
 
 from .journal_text import said_verbatim, snippet, strongest_sentence
 from .email_copy import lang_for, pick_evening, pick_morning, pick_recovery, pick_review, recent_for, remember, short_task
-from .push_service import safe_send_to_user
+from .push_service import push_alert, device_user_ids, plain_text, countdown_when
 
 # ── Resend init ──────────────────────────────────────────────────────────────
 resend.api_key = os.getenv("RESEND_API_KEY", "")
@@ -1228,6 +1228,28 @@ def _recipient_for(user) -> str:
     return (user.notification_email or user.email or "").strip()
 
 
+def _alert_users(db, push_ids):
+    """
+    Everyone an alert can reach: email subscribers, plus anyone with a phone
+    registered. The email switch stays the consent record for email; a device
+    token is the same thing for push — the phone asked to be notified.
+    """
+    from .models import User
+    from sqlalchemy import or_
+    q = db.query(User)
+    if push_ids:
+        q = q.filter(or_(User.email_notifications_enabled == 1, User.id.in_(list(push_ids))))
+    else:
+        q = q.filter(User.email_notifications_enabled == 1)
+    return q.all()
+
+
+def _channels_for(user, push_ids):
+    """(email_on, recipient, push_on) — which channels this alert may use."""
+    recipient = _recipient_for(user) if user.email_notifications_enabled else ""
+    return bool(recipient), recipient, user.id in push_ids
+
+
 def _has_journal_today(db, user_id: str, local_date: str) -> bool:
     from .models import VoiceJournal
     return (
@@ -1343,11 +1365,8 @@ def run_evening_reminders(now_utc: Optional[datetime] = None):
     now_utc = now_utc or datetime.now(pytz.utc)
     db = SessionLocal()
     try:
-        users = (
-            db.query(User)
-            .filter(User.email_notifications_enabled == 1)
-            .all()
-        )
+        push_ids = device_user_ids(db)
+        users = _alert_users(db, push_ids)
         if not users:
             return
 
@@ -1367,8 +1386,8 @@ def run_evening_reminders(now_utc: Optional[datetime] = None):
                     continue
                 if user.last_journal_reminder_date == today:
                     continue
-                recipient = _recipient_for(user)
-                if not recipient:
+                email_on, recipient, push_on = _channels_for(user, push_ids)
+                if not email_on and not push_on:
                     continue
                 if not _has_active_plan(db, user.id):
                     continue
@@ -1385,16 +1404,17 @@ def run_evening_reminders(now_utc: Optional[datetime] = None):
                      "last_day": bool(task_info.get("day_index") and task_info.get("day_count") and task_info["day_index"] == task_info["day_count"])},
                     lang, recent_for(user), today,
                 )
-                if send_evening_email(recipient, user.name, task_info["task_title"], streak=streak, streak_at_risk=streak > 0, copy=copy):
+                mailed = email_on and send_evening_email(recipient, user.name, task_info["task_title"], streak=streak, streak_at_risk=streak > 0, copy=copy)
+                pushed = push_on and push_alert(
+                    db, user, "evening",
+                    "Tonight's journal" if streak == 0 else f"Your {streak}-day streak ends tonight",
+                    "Sixty seconds on how today actually went.",
+                    {"view": "journey"},
+                )
+                if mailed or pushed:
                     user.last_journal_reminder_date = today
                     remember(user, copy, today)
                     db.commit()
-                    safe_send_to_user(
-                        user.id,
-                        "Tonight's journal" if streak == 0 else f"Your {streak}-day streak ends tonight",
-                        "Sixty seconds on how today actually went.",
-                        {"view": "journey"}, channel="feelivate_evening",
-                    )
 
             except Exception as e:
                 logger.error(f"[Reminders] failed for user {user.id}: {e}")
@@ -1574,7 +1594,8 @@ def run_week_review_emails(now_utc: Optional[datetime] = None):
     now_utc = now_utc or datetime.now(pytz.utc)
     db = SessionLocal()
     try:
-        users = db.query(User).filter(User.email_notifications_enabled == 1).all()
+        push_ids = device_user_ids(db)
+        users = _alert_users(db, push_ids)
         for user in users:
             try:
                 tz_str = user.preferred_notification_timezone or "UTC"
@@ -1586,8 +1607,8 @@ def run_week_review_emails(now_utc: Optional[datetime] = None):
                 since = _minutes_since(now_local, REVIEW_EMAIL_TIME)
                 if since is None or not (0 <= since < SEND_GRACE_MINUTES):
                     continue
-                recipient = _recipient_for(user)
-                if not recipient:
+                email_on, recipient, push_on = _channels_for(user, push_ids)
+                if not email_on and not push_on:
                     continue
                 today = now_local.date()
                 today_iso = today.isoformat()
@@ -1640,17 +1661,17 @@ def run_week_review_emails(now_utc: Optional[datetime] = None):
                              "quiet": bool(report.get("quiet_week"))},
                             lang, recent_for(user), today_iso,
                         )
-                        if send_week_review_email(recipient, user.name, report, wk, ws, we, has_next_plan=has_next, copy=copy):
+                        mailed = email_on and send_week_review_email(recipient, user.name, report, wk, ws, we, has_next_plan=has_next, copy=copy)
+                        pushed = push_on and push_alert(
+                            db, user, "review",
+                            f"Your Week {wk} review is in", review_teaser(report, lang),
+                            {"view": "archive", "week": wk},
+                        )
+                        if mailed or pushed:
                             sent_keys = (sent_keys + [key])[-12:]
                             user.last_review_email_key = ",".join(sent_keys)
                             remember(user, copy, today_iso)
                             db.commit()
-                            safe_send_to_user(
-                                user.id,
-                                f"Your Week {wk} review is in",
-                                review_teaser(report, lang),
-                                {"view": "journey", "week": wk}, channel="feelivate_review",
-                            )
                             announced = True
                             break
                     if announced:
@@ -1759,15 +1780,9 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
 
     db = SessionLocal()
     try:
-        # Fetch ALL notification-enabled users (we check per-user timezone below)
-        users = (
-            db.query(User)
-            .filter(
-                User.email_notifications_enabled == 1,
-                User.preferred_notification_time.isnot(None),
-            )
-            .all()
-        )
+        # Everyone reachable by email or phone (we check per-user timezone below)
+        push_ids = device_user_ids(db)
+        users = [u for u in _alert_users(db, push_ids) if u.preferred_notification_time]
 
         if not users:
             return
@@ -1794,17 +1809,17 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                 if since is None or not (0 <= since < SEND_GRACE_MINUTES):
                     continue
 
-                recipient = _recipient_for(user)
-                if not recipient:
+                email_on, recipient, push_on = _channels_for(user, push_ids)
+                if not email_on and not push_on:
                     continue
 
                 # Already sent today (in user's local date)?
                 if user.last_daily_email_date == today_date_str:
-                    logger.info(f"[Scheduler] Already sent today ({today_date_str}) to {_mask_email(recipient)}")
+                    logger.info(f"[Scheduler] Already sent today ({today_date_str}) to {(_mask_email(recipient) if recipient else 'phone only')}")
                     continue
 
                 logger.info(
-                    f"[Scheduler] Sending to {_mask_email(recipient)} "
+                    f"[Scheduler] Sending to {(_mask_email(recipient) if recipient else 'phone only')} "
                     f"at {user_time_str} {tz_str}"
                 )
 
@@ -1813,7 +1828,7 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                 countdown = get_countdown_for_user(user, db, today_date_str)
                 if countdown:
                     note, cd_session = countdown
-                    if send_countdown_email(
+                    mailed = email_on and send_countdown_email(
                         to_email=recipient,
                         user_name=user.name or "there",
                         note=note,
@@ -1821,7 +1836,13 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                         week_number=cd_session.current_week or 1,
                         session_focus=cd_session.focus or "",
                         user_timezone=tz_str,
-                    ):
+                    )
+                    pushed = push_on and push_alert(
+                        db, user, "countdown",
+                        f"Week {cd_session.current_week or 1} starts {countdown_when(cd_session.plan_starts_on, today_date_str)}",
+                        plain_text(note), {"view": "chat"},
+                    )
+                    if mailed or pushed:
                         user.last_daily_email_date = today_date_str
                         db.commit()
                         sent_count += 1
@@ -1887,7 +1908,7 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                         {"name": user.name, "task_title": task_info["task_title"]},
                         lang_for(tz_str), recent_for(user), today_date_str,
                     )
-                    success = send_recovery_email(
+                    mailed = email_on and send_recovery_email(
                         to_email=recipient,
                         user_name=user.name or "there",
                         task_title=task_info["task_title"],
@@ -1895,7 +1916,11 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                         checkin_url=checkin_url,
                         copy=r_copy,
                     )
-                    if success:
+                    pushed = push_on and push_alert(
+                        db, user, "recovery",
+                        "Yesterday slipped. Today is still here.", task_info["task_title"], {"view": "chat"},
+                    )
+                    if mailed or pushed:
                         remember(user, r_copy, today_date_str)
                         user.last_recovery_email_date = today_date_str
                         user.last_daily_email_date = today_date_str
@@ -1928,7 +1953,7 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                     lang, recent_for(user), today_date_str,
                 )
 
-                success = send_daily_task_email(
+                mailed = email_on and send_daily_task_email(
                     to_email=recipient,
                     user_name=user.name or "there",
                     day_label=task_info["day_label"],
@@ -1950,18 +1975,16 @@ def run_daily_email_scheduler(now_utc: Optional[datetime] = None):
                     yesterday=yesterday,
                     copy=m_copy,
                 )
+                pushed = push_on and push_alert(
+                    db, user, "morning",
+                    f"{task_info['day_label']} — today's one thing", task_info["task_title"], {"view": "chat"},
+                )
 
-                if success:
+                if mailed or pushed:
                     user.last_daily_email_date = today_date_str
                     remember(user, m_copy, today_date_str)
                     db.commit()
                     sent_count += 1
-                    safe_send_to_user(
-                        user.id,
-                        f"{task_info['day_label']} — today's one thing",
-                        task_info["task_title"],
-                        {"view": "chat"}, channel="feelivate_daily",
-                    )
 
             except Exception as user_err:
                 logger.error(f"[Scheduler] Error for user {user.id}: {user_err}")
