@@ -63,6 +63,9 @@ jobs:
             | sed -E 's/"expires_at":[0-9]+/"expires_at":…/'
 
       - name: Come back in eighteen minutes
+        # Even when the hand-off failed (the API was mid-deploy, say) — a chain
+        # that dies on one bad minute leaves phones silent until someone notices.
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
