@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, X } from 'lucide-react';
 import { login, signup, getGoogleLoginUrl, getConsentCatalogue, type ConsentItem } from '../api';
 import { startOnboarding, markDemoAccount } from '../lib/onboarding';
+import { track } from '../lib/track';
 import BrandNav from '../components/site/BrandNav';
 import { ConsentCheckbox } from '../components/legal/ConsentControls';
 import { allRequiredGranted } from '../lib/consent';
@@ -153,6 +154,7 @@ export default function LoginPage() {
         localStorage.setItem('user_name', res.name || res.full_name || formData.email.split('@')[0]);
         // Demo accounts replay the walkthrough on every login (see lib/onboarding).
         markDemoAccount(res.user_id, formData.email);
+        track('login', { method: 'email' });
         navigate('/app');
       } else {
         const res = await signup({ email: formData.email, password: formData.password, name: formData.name, consents });
@@ -160,6 +162,7 @@ export default function LoginPage() {
         localStorage.setItem('user_name', formData.name || res.name || formData.email.split('@')[0]);
         // Brand-new account → queue the first-time walkthrough (runs once on /app).
         startOnboarding(res.user_id);
+        track('signup', { method: 'email' });
         navigate('/app');
       }
     } catch (err: any) {

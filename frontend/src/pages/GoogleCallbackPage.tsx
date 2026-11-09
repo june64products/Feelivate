@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Loader2, X } from 'lucide-react';
 import { googleLoginCallback, API_BASE_URL } from '../api';
 import { startOnboarding } from '../lib/onboarding';
+import { track } from '../lib/track';
 
 const clash = "'Clash Display', 'Inter', system-ui, sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -50,6 +51,7 @@ const GoogleCallbackPage: React.FC = () => {
                 localStorage.setItem('user_id', res.user_id);
                 localStorage.setItem('user_name', res.name || 'there');
                 if (res.is_new_user) startOnboarding(res.user_id);
+                track(res.is_new_user ? 'signup' : 'login', { method: 'google' });
                 navigate('/app', { replace: true });
             })
             .catch((err) => {

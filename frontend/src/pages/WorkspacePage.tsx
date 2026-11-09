@@ -44,6 +44,7 @@ import GuidedDemo, { type DemoHandles } from '../components/demo/GuidedDemo';
 import { useFeedback } from '../components/feedback/FeedbackContext';
 import { DEMO_PLAN, DEMO_EMOTION } from '../components/demo/demoScript';
 import { isDemoQueued, startDemo, completeDemo } from '../lib/onboarding';
+import { track } from '../lib/track';
 
 
 
@@ -539,6 +540,7 @@ export default function WorkspacePage() {
 
             if (res.plan) {
                 setActivePlan(res.plan);
+                track('plan_built', { week: res.plan.week_number ?? 1 });
                 setIsPlanApproved(false);
             }
         } catch (err) {
@@ -560,6 +562,7 @@ export default function WorkspacePage() {
             if (res.status === 'approved') {
                 setIsPlanApproved(true);
                 setPlanStartsOn(res.starts_on || null);
+                track('plan_committed', { week: res.week });
                 // Commitment gets a ceremony, not a toast. Drawer closes so the
                 // user lands on Today with the week sealed.
                 setMentorOpen(false);
