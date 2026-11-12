@@ -11,13 +11,24 @@ import java.time.LocalDate
  * Same facts the web app keeps in localStorage: access_token, user_id, user_name, active_session_id.
  */
 class TokenStore(context: Context) {
-    private val prefs: SharedPreferences = run {
-        val key = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
-        EncryptedSharedPreferences.create(
-            context, "feelivate_auth", key,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
+    private val prefs: SharedPreferences = shared(context.applicationContext)
+
+    companion object {
+        // Opening the encrypted store means a Keystore round-trip (tens of ms on
+        // the main thread). Every screen and the API client used to pay it on
+        // each `TokenStore(context)`; now the process opens it once.
+        @Volatile private var cached: SharedPreferences? = null
+
+        private fun shared(context: Context): SharedPreferences = cached ?: synchronized(this) {
+            cached ?: run {
+                val key = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+                EncryptedSharedPreferences.create(
+                    context, "feelivate_auth", key,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+                )
+            }.also { cached = it }
+        }
     }
 
     var token: String?

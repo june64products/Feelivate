@@ -1,7 +1,10 @@
 name: Android
 
-# Every push to the android branch that touches the app builds a debug APK and
-# hands it to Firebase App Distribution, which notifies the testers' phones.
+# Every push to the android branch that touches the app builds the optimised
+# release APK (signed with the shared debug key, so testers' phones update in
+# place) and hands it to Firebase App Distribution, which notifies the phones.
+# When the Play upload keystore is in the repo's secrets, the same run also
+# builds the signed App Bundle for the Play Console and keeps it as an artifact.
 #
 # Auth is keyless: GitHub's OIDC token is exchanged for a short-lived Google
 # access token through Workload Identity Federation (pool "github" on the
@@ -25,6 +28,8 @@ env:
   FIREBASE_PROJECT_NUMBER: "980030853864"
   WIF_PROVIDER: projects/980030853864/locations/global/workloadIdentityPools/github/providers/github
   WIF_SERVICE_ACCOUNT: firebase-adminsdk-fbsvc@feelivate.iam.gserviceaccount.com
+  # Play upload signing; empty until the secret exists, which skips the bundle steps.
+  RELEASE_KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
 
 jobs:
   build:
@@ -61,7 +66,7 @@ jobs:
           mkdir -p ~/.android
           printf '%s' "$DEBUG_KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
 
-      - name: Build debug APK
+      - name: Build release APK for testers (debug-signed)
         env:
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
           # Push notifications. Both are embedded in any shipped APK anyway;
@@ -71,19 +76,59 @@ jobs:
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
         run: |
           # Offset keeps cloud builds above any APK built by hand on the Mac (versionCode 1).
-          gradle assembleDebug --no-daemon --console=plain \
+          # No -PreleaseStoreFile here → the release build type signs with the debug key.
+          gradle assembleRelease --no-daemon --console=plain \
             -PversionCode=$((100 + ${{ github.run_number }})) \
-            -PversionName=0.1.${{ github.run_number }} \
+            -PversionName=1.0.${{ github.run_number }} \
             -PgoogleWebClientId="$GOOGLE_WEB_CLIENT_ID" \
             -PfirebaseAppId="$FIREBASE_APP_ID" \
             -PfirebaseApiKey="$FIREBASE_API_KEY"
-          cp app/build/outputs/apk/debug/app-debug.apk "feelivate-0.1.${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "feelivate-1.0.${{ github.run_number }}.apk"
+          cp app/build/outputs/mapping/release/mapping.txt "mapping-testers-1.0.${{ github.run_number }}.txt"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: feelivate-0.1.${{ github.run_number }}
-          path: android/feelivate-0.1.${{ github.run_number }}.apk
+          name: feelivate-1.0.${{ github.run_number }}
+          path: |
+            android/feelivate-1.0.${{ github.run_number }}.apk
+            android/mapping-testers-1.0.${{ github.run_number }}.txt
           retention-days: 14
+
+      # ── Play Store ──
+      # Only when the upload keystore is configured. The bundle is signed with
+      # it and kept as a 90-day artifact: download, then upload in Play Console.
+      - name: Build signed App Bundle for Play
+        if: env.RELEASE_KEYSTORE_B64 != ''
+        env:
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
+        run: |
+          printf '%s' "$RELEASE_KEYSTORE_B64" | base64 -d > "$HOME/feelivate-upload.jks"
+          gradle bundleRelease --no-daemon --console=plain \
+            -PversionCode=$((100 + ${{ github.run_number }})) \
+            -PversionName=1.0.${{ github.run_number }} \
+            -PgoogleWebClientId="$GOOGLE_WEB_CLIENT_ID" \
+            -PfirebaseAppId="$FIREBASE_APP_ID" \
+            -PfirebaseApiKey="$FIREBASE_API_KEY" \
+            -PreleaseStoreFile="$HOME/feelivate-upload.jks" \
+            -PreleaseStorePassword="$RELEASE_STORE_PASSWORD" \
+            -PreleaseKeyAlias=feelivate \
+            -PreleaseKeyPassword="$RELEASE_KEY_PASSWORD"
+          cp app/build/outputs/bundle/release/app-release.aab "feelivate-play-1.0.${{ github.run_number }}.aab"
+          cp app/build/outputs/mapping/release/mapping.txt "mapping-play-1.0.${{ github.run_number }}.txt"
+          rm -f "$HOME/feelivate-upload.jks"
+
+      - uses: actions/upload-artifact@v4
+        if: env.RELEASE_KEYSTORE_B64 != ''
+        with:
+          name: feelivate-play-1.0.${{ github.run_number }}
+          path: |
+            android/feelivate-play-1.0.${{ github.run_number }}.aab
+            android/mapping-play-1.0.${{ github.run_number }}.txt
+          retention-days: 90
 
       - id: gcp
         uses: google-github-actions/auth@v2
@@ -96,7 +141,7 @@ jobs:
         env:
           TOKEN: ${{ steps.gcp.outputs.access_token }}
           APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-          APK: feelivate-0.1.${{ github.run_number }}.apk
+          APK: feelivate-1.0.${{ github.run_number }}.apk
           NOTES: ${{ github.event.head_commit.message || 'Manual build' }}
         run: |
           set -euo pipefail

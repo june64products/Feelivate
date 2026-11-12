@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.june64.feelivate.data.Analytics
 import com.june64.feelivate.data.ApiClient
 import com.june64.feelivate.data.ConsentItem
 import com.june64.feelivate.data.GoogleMobileRequest
@@ -76,6 +77,7 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
             }.onSuccess { res ->
                 store.signIn(res, if (ui.isLogin) fallback else ui.name.ifBlank { res.name ?: fallback })
                 if (!ui.isLogin) prefs.startDemo(res.userId)   // brand-new account → queue the first-time walkthrough
+                Analytics.track(getApplication(), if (ui.isLogin) "login" else "signup", "method" to "email")
                 ui = ui.copy(loading = false, signedIn = true)
             }.onFailure { e ->
                 ui = ui.copy(loading = false, error = e.userMessage(if (ui.isLogin) "Login failed" else "Signup failed"))
@@ -95,6 +97,7 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
         result.onSuccess { res ->
             store.signIn(res, res.name ?: "")
             if (res.isNewUser) prefs.startDemo(res.userId)
+            Analytics.track(getApplication(), if (res.isNewUser) "signup" else "login", "method" to "google")
             ui = ui.copy(signedIn = true, error = "")
         }.onFailure { e -> ui = ui.copy(error = e.message ?: "Google sign-in failed. Please try again.") }
     }

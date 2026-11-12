@@ -86,6 +86,7 @@ import com.june64.feelivate.ui.workspace.mountRise
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.delay
 import com.june64.feelivate.ui.components.ModalOverlay
 import com.june64.feelivate.ui.components.ModalCard
 import com.june64.feelivate.ui.tour.TourTarget
@@ -102,6 +103,10 @@ fun JourneyScreen(
     onClose: () -> Unit,
     onJournalSaved: (JournalEntry) -> Unit,
     onPlanNextWeek: (Int) -> Unit,
+    /** A finished week's full review has been read for a few seconds (the feedback engine's moment). */
+    onReportSeen: (Int) -> Unit = {},
+    /** Changes when the day rolled over while the app was away: everything reloads. */
+    refreshKey: Int = 0,
     /** A notification tap can land on one archived week, open. */
     focusWeek: Int? = null,
     /* The walkthrough's scene, when it is running — the screen reads these instead of the account. */
@@ -116,9 +121,16 @@ fun JourneyScreen(
     val context = LocalContext.current
     val recorder = remember { VoiceRecorder(context) }
     var moodMode by remember { mutableStateOf(false) }
-    LaunchedEffect(sessionId, initialTab) { vm.start(sessionId, initialTab) }
+    LaunchedEffect(sessionId, initialTab, refreshKey) { vm.start(sessionId, initialTab) }
     LaunchedEffect(focusWeek) { if (focusWeek != null) vm.expandWeek(focusWeek) }
     DisposableEffect(Unit) { onDispose { recorder.cancel() } }
+
+    // JourneyPage.tsx's report-seen hook: a complete week's full review on screen for 4 s.
+    val weekComplete = ui.weekInfo?.weekEnd?.let { ui.today >= it } ?: (ui.weekInfo?.isWeekComplete == true)
+    val reviewOnScreen = if (demoArchive == null && ui.tab == "overview" && weekComplete && !ui.loadingReport) ui.reportData?.weekNumber else null
+    LaunchedEffect(reviewOnScreen) {
+        if (reviewOnScreen != null) { delay(4_000); onReportSeen(reviewOnScreen) }
+    }
 
     val beginRecording: (Boolean) -> Unit = { mood ->
         moodMode = mood

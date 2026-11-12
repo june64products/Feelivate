@@ -38,6 +38,9 @@ android {
         buildConfigField("String", "FIREBASE_API_KEY", "\"${conf("firebaseApiKey")}\"")
         buildConfigField("String", "FIREBASE_SENDER_ID", "\"${conf("firebaseSenderId", "980030853864")}\"")
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${conf("firebaseProjectId", "feelivate")}\"")
+        // Firebase Analytics finds the app through this resource (it does not
+        // read FirebaseApp's options). Blank → analytics stays off, build still fine.
+        resValue("string", "google_app_id", conf("firebaseAppId"))
     }
 
     // Play upload signing. The keystore never lives in git: locally it is named
@@ -62,7 +65,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            if (hasKeystore) signingConfig = signingConfigs.getByName("release")
+            // The Play bundle signs with the upload keystore. Every other release
+            // build (the testers' App Distribution APK, a local smoke test) signs
+            // with the debug key, so phones update in place and still get the
+            // optimised, shrunk build instead of a slow debug one.
+            signingConfig = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -90,6 +97,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("io.coil-kt:coil-compose:2.7.0")
@@ -113,4 +121,6 @@ dependencies {
     // initialised in code from the build properties above.
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-messaging")
+    // The website's four funnel events (lib/track.ts), counted on the same project.
+    implementation("com.google.firebase:firebase-analytics")
 }

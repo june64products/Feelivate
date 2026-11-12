@@ -82,12 +82,19 @@ object Push {
      */
     fun register(context: Context) {
         if (!configured) return
-        start(context)
-        val store = TokenStore(context)
-        if (!store.isSignedIn) return
-        FirebaseMessaging.getInstance().token
-            .addOnSuccessListener { token -> sendToken(context, token) }
-            .addOnFailureListener { Log.w(TAG, "no FCM token: ${it.message}") }
+        val app = context.applicationContext
+        // Off the main thread: Firebase's init and the first token fetch are
+        // not something the launch should wait for.
+        scope.launch {
+            start(app)
+            if (!TokenStore(app).isSignedIn) return@launch
+            runCatching { FirebaseMessaging.getInstance().token }
+                .onSuccess { task ->
+                    task.addOnSuccessListener { token -> sendToken(app, token) }
+                        .addOnFailureListener { Log.w(TAG, "no FCM token: ${it.message}") }
+                }
+                .onFailure { Log.w(TAG, "messaging unavailable: ${it.message}") }
+        }
     }
 
     fun sendToken(context: Context, token: String?) {

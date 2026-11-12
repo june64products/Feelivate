@@ -6,10 +6,12 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.june64.feelivate.data.Analytics
 import com.june64.feelivate.data.ApiClient
 import com.june64.feelivate.data.BlockedNotice
 import com.june64.feelivate.data.ChatMessage
@@ -53,6 +55,9 @@ enum class EmailStep { Home, Time }
 
 /** The alerts this phone can carry — one switch each, the same five the emails send. */
 val PUSH_KINDS = listOf("morning", "evening", "review", "recovery", "countdown")
+
+/** Away at least this long → the streak and today's mood are re-read on return. */
+private const val REFRESH_AFTER_MS = 30_000L
 
 data class PushUi(
     val loaded: Boolean = false,
@@ -187,9 +192,14 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var signedOut by mutableStateOf(false)
         private set
+    /** Bumped when "today" changed while the app was away; screens keyed on it reload. */
+    var refreshKey by mutableIntStateOf(0)
+        private set
     private var celebrateJob: Job? = null
     private var ceremonyJob: Job? = null
     private val tweakCount = HashMap<String, Int>()
+    private var loadedForDate: String = WeekWindow.today()
+    private var hiddenAt: Long = 0L
     /** The feedback engine, handed in by the screen; moments report to it. */
     var feedback: com.june64.feelivate.ui.feedback.FeedbackState? = null
 
@@ -205,6 +215,37 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
         ui = ui.copy(micLocked = prefs.journalLockedToday(ui.userId, ui.activeSessionId))
         viewModelScope.launch { runCatching { api.me() }.onSuccess { ui = ui.copy(me = it, userName = it.name?.takeIf { n -> n.isNotBlank() } ?: ui.userName) } }
         if (ui.activeSessionId != null) loadSession(ui.activeSessionId!!)
+    }
+
+    // ── coming back to the app ──
+    fun onHidden() { hiddenAt = System.currentTimeMillis() }
+
+    /**
+     * The app is in front again. The web reloads on every visit; here the
+     * account is re-read when the day rolled over (a new "today", the mic
+     * unlocks, the recovery card may be due) and the streak and mood are
+     * refreshed after any real absence (a Done tapped from the morning email,
+     * a note recorded on the website). Returns how long the app was away.
+     */
+    fun onShown(): Long {
+        val away = if (hiddenAt == 0L) 0L else System.currentTimeMillis() - hiddenAt
+        hiddenAt = 0L
+        val today = WeekWindow.today()
+        if (today != loadedForDate) {
+            loadedForDate = today
+            celebrateJob?.cancel()
+            ui = ui.copy(micLocked = prefs.journalLockedToday(ui.userId, ui.activeSessionId), justCelebrated = false, todayStatus = "pending")
+            refreshKey += 1
+            loadSessions()
+            loadTodayEmotion(ui.activeSessionId)
+            // A mentor reply still in flight keeps its thread; the session is re-read once it lands.
+            ui.activeSessionId?.let { if (!ui.isLoading) loadSession(it) else loadStreak(backfill = true) }
+        } else if (away >= REFRESH_AFTER_MS) {
+            loadSessions()
+            loadTodayEmotion(ui.activeSessionId)
+            if (ui.isPlanApproved) loadStreak(backfill = true)
+        }
+        return away
     }
 
     // ── consent gate (ConsentGate.tsx) ──
@@ -393,7 +434,10 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
                 if (ui.messages.count { it.role == "assistant" } >= 3) feedback?.signal(com.june64.feelivate.ui.feedback.Trigger.FIRST_CHATS)
                 if (res.blocked != null) ui = ui.copy(blockedNotice = res.blocked)
                 if (!res.questions.isNullOrEmpty() && res.plan == null) ui = ui.copy(setupQuestions = res.questions)
-                if (res.plan != null) ui = ui.copy(activePlan = res.plan, isPlanApproved = false)
+                if (res.plan != null) {
+                    ui = ui.copy(activePlan = res.plan, isPlanApproved = false)
+                    Analytics.track(getApplication(), "plan_built", "week" to res.plan.weekNumber)
+                }
             }.onFailure { e ->
                 if (e.isConsentRequired()) consentRequired()
                 ui = ui.copy(messages = ui.messages + ChatMessage("assistant", "I'm sorry, I encountered an issue. Let's try that again."), isLoading = false)
@@ -426,6 +470,7 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
             runCatching { api.approvePlan(sid, WeekWindow.today(), startDate) }.onSuccess { res ->
                 if (res.status == "approved") {
                     ceremonyJob?.cancel()
+                    Analytics.track(getApplication(), "plan_committed", "week" to res.week)
                     ui = ui.copy(isPlanApproved = true, planStartsOn = res.startsOn, mentorOpen = false, showCeremony = true)
                     ceremonyJob = launch {
                         delay(2300)
@@ -471,6 +516,20 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun openJourney(tab: String = "overview", week: Int? = null) { ui = ui.copy(journeyOpen = true, journeyTab = tab, journeyWeek = week) }
     fun closeJourney() { ui = ui.copy(journeyOpen = false, journeyTab = "overview", journeyWeek = null) }
+
+    /**
+     * A finished week's full review has been on screen a while: the honest
+     * one-week question, asked once per week. It waits for the Journey to close
+     * (the engine never interrupts a page the person is reading or recording on).
+     */
+    fun onReportSeen(week: Int) {
+        val sid = ui.activeSessionId ?: return
+        feedback?.askMoment(
+            com.june64.feelivate.ui.feedback.Trigger.WEEKLY_REPORT,
+            "weekly_report:$sid:$week",
+            com.june64.feelivate.ui.feedback.MomentDetails(sessionId = sid, weekNumber = week),
+        )
+    }
 
     fun completeSession() {
         val sid = ui.activeSessionId ?: return

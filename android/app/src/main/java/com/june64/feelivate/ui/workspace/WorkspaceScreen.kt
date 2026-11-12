@@ -48,8 +48,14 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.june64.feelivate.data.OpenIntent
 import com.june64.feelivate.data.Push
+
+/** FeedbackContext.tsx's tab-return rule: hidden at least this long counts as having left. */
+private const val TAB_RETURN_AFTER_MS = 10_000L
 
 /**
  * WorkspacePage.tsx — the mission surface on a phone: the top bar, one stage,
@@ -71,6 +77,22 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
 
     LaunchedEffect(vm.signedOut) { if (vm.signedOut) onSignedOut() }
     LaunchedEffect(Unit) { vm.feedback = feedback; feedback.loadEligibility(); feedback.startTimer() }
+
+    // The web reloads on every visit; a phone keeps the app alive for days.
+    // Coming back to the foreground re-reads what may have changed meanwhile,
+    // and a return after a real absence is the web's "tab return" moment.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> vm.onHidden()
+                Lifecycle.Event.ON_START -> { if (vm.onShown() >= TAB_RETURN_AFTER_MS) feedback.onReturnedAfterAway() }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // ── the walkthrough's mirrors ──
     val sc = if (tour.active) tour.scene else null
@@ -173,6 +195,8 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
                     onClose = vm::closeJourney,
                     onJournalSaved = vm::onJournalSaved,
                     onPlanNextWeek = { week -> vm.closeJourney(); vm.askNextWeekStart(week) },
+                    onReportSeen = vm::onReportSeen,
+                    refreshKey = vm.refreshKey,
                     focusWeek = ui.journeyWeek,
                     demoBetweenWeeks = sc?.betweenWeeks,
                     demoArchive = if (sc != null) DEMO_ARCHIVE else null,
