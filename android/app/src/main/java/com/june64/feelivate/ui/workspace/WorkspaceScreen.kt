@@ -280,7 +280,8 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
             ConfirmDialog(ui.lockError != null, "Couldn't lock the plan", ui.lockError.orEmpty(), "Got it", "Close", onConfirm = vm::dismissLockError, onCancel = vm::dismissLockError)
             DeleteAccountModal(showDelete, { showDelete = false }) { showDelete = false; vm.logout() }
             ConsentGate(vm, vm::logout)
-            FeedbackTab(feedback)
+            // The corner pill would float over the mentor card; it waits until the mentor is closed.
+            if (!uiMentorOpen) FeedbackTab(feedback)
             FeedbackModal(feedback, ui.activeSessionId)
             GuidedTour(tour)
         }

@@ -49,6 +49,7 @@ import com.june64.feelivate.ui.theme.satoshi
 import com.june64.feelivate.ui.theme.tokens
 import com.june64.feelivate.ui.workspace.ModalField
 import kotlinx.coroutines.launch
+import com.june64.feelivate.data.userMessage
 
 /* ── the option sets, from feedbackApi.ts ── */
 
@@ -246,9 +247,10 @@ fun BoxScope.FeedbackModal(state: FeedbackState, sessionId: String?) {
                         sending = true; error = null
                         scope.launch {
                             val answers: Map<String, Any?> = when (kind) {
-                                "plan_fit" -> mapOf("plan_fit" to fit, "note" to note, "week_number" to state.details.weekNumber)
-                                "task_day" -> mapOf("task_quality" to quality, "task_clear" to clarity, "task_time" to timeTaken, "note" to note, "task_label" to state.details.taskLabel)
-                                "tweaks" -> mapOf("tweak_reason" to reason, "note" to note, "tweak_count" to state.details.tweakCount)
+                                // Keys are the API's form spec (FEEDBACK_FORMS), the same ones the website sends.
+                                "plan_fit" -> mapOf("fit" to fit, "note" to note)
+                                "task_day" -> mapOf("quality" to quality, "clarity" to clarity, "time" to timeTaken, "note" to note)
+                                "tweaks" -> mapOf("reason" to reason, "note" to note, "tweak_count" to (state.details.tweakCount ?: 2))
                                 else -> mapOf(
                                     "upset" to upset, "upset_reason" to upsetReason, "liked_most" to likedMost,
                                     "confusing" to confusing, "quit_reason" to quitReason,
@@ -257,7 +259,7 @@ fun BoxScope.FeedbackModal(state: FeedbackState, sessionId: String?) {
                             }
                             state.submit(answers, note.takeIf { kind == "full" }, contactOk, email, state.details.sessionId ?: sessionId)
                                 .onSuccess { sending = false; done = true }
-                                .onFailure { sending = false; error = "Could not send your feedback right now." }
+                                .onFailure { sending = false; error = it.userMessage("Could not send your feedback right now.") }
                         }
                     }
                 }

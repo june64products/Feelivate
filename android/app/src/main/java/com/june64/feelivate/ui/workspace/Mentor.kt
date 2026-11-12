@@ -70,6 +70,10 @@ import com.june64.feelivate.ui.theme.pressScale
 import com.june64.feelivate.ui.theme.satoshi
 import com.june64.feelivate.ui.theme.tokens
 import kotlinx.coroutines.delay
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.layout.onSizeChanged
 
 /**
  * MentorDrawer.tsx — a centered panel (min(720px,100%) × min(84vh,100%), radius 24)
@@ -91,17 +95,23 @@ fun BoxScope.MentorDrawer(
 ) {
     val t = tokens()
     val screenH = LocalConfiguration.current.screenHeightDp.dp
+    // Only the X closes the mentor: the scrim swallows taps so nothing under it
+    // reacts, and the system back is consumed the same way.
+    BackHandler(open) { }
     AnimatedVisibility(open, modifier = Modifier.matchParentSize(), enter = fadeIn(tween(250)), exit = fadeOut(tween(250))) {
-        Box(Modifier.fillMaxSize().background(t.modalOverlay).tap(onClick = onClose))
+        Box(Modifier.fillMaxSize().background(t.modalOverlay).pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } })
     }
     AnimatedVisibility(open, modifier = Modifier.matchParentSize(), enter = fadeIn(tween(150)), exit = fadeOut(tween(200))) {
         var shown by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { shown = true }
         val s by animateFloatAsState(if (shown) 1f else 0.92f, motionSpring(300f, 30f), label = "s")
         val y by animateFloatAsState(if (shown) 0f else 24f, motionSpring(300f, 30f), label = "y")
-        Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(14.dp), contentAlignment = Alignment.Center) {
+        // The keyboard takes its space from the card itself (imePadding on the
+        // frame), so the header stays put and the chat scrolls — nothing is
+        // pushed off the top or squeezed.
+        Box(Modifier.fillMaxSize().statusBarsPadding().imePadding().navigationBarsPadding().padding(14.dp), contentAlignment = Alignment.Center) {
             Column(
-                Modifier.fillMaxWidth().widthIn(max = 720.dp).height(minOf(screenH * 0.84f, screenH))
+                Modifier.fillMaxWidth().widthIn(max = 720.dp).heightIn(max = screenH * 0.84f).fillMaxHeight()
                     .graphicsLayer { scaleX = s; scaleY = s; translationY = y * density }
                     .shadow(24.dp, RoundedCornerShape(24.dp), ambientColor = t.shadowColor.copy(alpha = 0.12f), spotColor = t.shadowColor.copy(alpha = 0.12f))
                     .clip(RoundedCornerShape(24.dp)).background(t.bgPrimary).border(1.dp, t.borderMedium, RoundedCornerShape(24.dp)),
@@ -118,7 +128,7 @@ fun BoxScope.MentorDrawer(
                     ) { Lucide(R.drawable.lu_x, 15.dp, t.textSecondary) }
                 }
                 Hairline()
-                Column(Modifier.weight(1f).imePadding()) {
+                Column(Modifier.weight(1f)) {
                     ChatWindow(Modifier.weight(1f), messages, isLoading, isPlanApproved, isFirstPlan, onApprovePlan, onRequestPlanChange, onPlanDialog)
                     var draft by remember { mutableStateOf("") }
                     Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 14.dp)) {
@@ -158,11 +168,13 @@ fun ChatWindow(
         return
     }
     val listState = rememberLazyListState()
-    LaunchedEffect(messages.size, isLoading, messages.lastOrNull()?.content?.length) {
+    // The list also shrinks when the keyboard rises; the newest message stays in view either way.
+    var viewportH by remember { mutableStateOf(0) }
+    LaunchedEffect(messages.size, isLoading, messages.lastOrNull()?.content?.length, viewportH) {
         val n = messages.size + if (isLoading) 1 else 0
         if (n > 0) listState.animateScrollToItem(n - 1)
     }
-    LazyColumn(modifier.fillMaxWidth(), state = listState, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 20.dp)) {
+    LazyColumn(modifier.fillMaxWidth().onSizeChanged { viewportH = it.height }, state = listState, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 20.dp)) {
         items(messages.size) { idx ->
             val msg = messages[idx]
             val isUser = msg.role == "user"
