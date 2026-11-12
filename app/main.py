@@ -2331,12 +2331,14 @@ async def google_login_callback(req: GoogleLoginCallbackRequest, db: DBSession =
 # ── "Continue with Google" from the Android app, through the browser ──────────
 # Credential Manager's native sheet proved unreliable on some phones, so the
 # app opens this flow in a browser tab instead: it is the website's own
-# Google sign-in, with the code coming back to the API rather than the site,
-# and the session handed to the app as a feelivate:// link. The web routes
-# above are untouched.
+# Google sign-in. Google will only return the code to an address on
+# feelivate.com, so it lands on the site's /google-callback page as usual;
+# that page sees the app's marker on the state ("m."), forwards the code to
+# /auth/google/mobile/callback here, and the session goes back to the app as
+# a feelivate:// link. The web routes above are untouched.
 GOOGLE_MOBILE_RETURN = "feelivate://auth"
-MOBILE_API_BASE = (os.getenv("API_BASE_URL") or "https://p01--emotion-time-travel--gtj4tlnzj5vy.code.run").rstrip("/")
-GOOGLE_MOBILE_REDIRECT = f"{MOBILE_API_BASE}/auth/google/mobile/callback"
+GOOGLE_MOBILE_REDIRECT = google_login_service.redirect_uri     # the site's own, already authorised
+GOOGLE_MOBILE_STATE_PREFIX = "m."
 
 
 def _google_mobile_flow():
@@ -2374,7 +2376,7 @@ async def google_mobile_start():
     from datetime import timedelta as _td
     if not os.getenv("GOOGLE_CLIENT_ID") or not os.getenv("GOOGLE_CLIENT_SECRET"):
         raise HTTPException(status_code=503, detail="Google sign-in is not configured.")
-    state = create_access_token({"purpose": "google_mobile"}, expires_delta=_td(minutes=10))
+    state = GOOGLE_MOBILE_STATE_PREFIX + create_access_token({"purpose": "google_mobile"}, expires_delta=_td(minutes=10))
     url, _ = _google_mobile_flow().authorization_url(
         prompt="select_account", access_type="online", include_granted_scopes="true", state=state,
     )
@@ -2392,7 +2394,8 @@ async def google_mobile_callback(
     def back(params: dict):
         return RedirectResponse(GOOGLE_MOBILE_RETURN + "#" + urlencode(params), status_code=302)
 
-    payload = decode_access_token(state or "")
+    state = state or ""
+    payload = decode_access_token(state[len(GOOGLE_MOBILE_STATE_PREFIX):]) if state.startswith(GOOGLE_MOBILE_STATE_PREFIX) else None
     if not payload or payload.get("purpose") != "google_mobile":
         return back({"error": "That sign-in link has expired. Please try again."})
     if error or not code:

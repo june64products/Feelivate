@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, X } from 'lucide-react';
-import { googleLoginCallback } from '../api';
+import { googleLoginCallback, API_BASE_URL } from '../api';
 import { startOnboarding } from '../lib/onboarding';
+import { track } from '../lib/track';
 
 const clash = "'Clash Display', 'Inter', system-ui, sans-serif";
 const satoshi = "'Satoshi', 'Inter', system-ui, sans-serif";
@@ -25,6 +26,20 @@ const GoogleCallbackPage: React.FC = () => {
         const code = searchParams.get('code');
         const error = searchParams.get('error');
 
+        // The Android app signs in through this same page — Google will only
+        // send the code to an address on feelivate.com. The app's requests
+        // carry a marker on the state; for those, hand the code to the API,
+        // which returns the session to the app. Nothing else here runs.
+        const state = searchParams.get('state');
+        if (state && state.startsWith('m.')) {
+            const q = new URLSearchParams({ state });
+            if (code) q.set('code', code);
+            if (error) q.set('error', error);
+            setMessage('Returning to the Feelivate app…');
+            window.location.replace(`${API_BASE_URL}/auth/google/mobile/callback?${q.toString()}`);
+            return;
+        }
+
         if (error || !code) {
             setStatus('error');
             setMessage('Google sign-in was cancelled or failed.');
@@ -36,6 +51,7 @@ const GoogleCallbackPage: React.FC = () => {
                 localStorage.setItem('user_id', res.user_id);
                 localStorage.setItem('user_name', res.name || 'there');
                 if (res.is_new_user) startOnboarding(res.user_id);
+                track(res.is_new_user ? 'signup' : 'login', { method: 'google' });
                 navigate('/app', { replace: true });
             })
             .catch((err) => {
