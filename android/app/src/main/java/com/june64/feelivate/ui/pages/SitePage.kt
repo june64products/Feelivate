@@ -48,6 +48,7 @@ import com.june64.feelivate.ui.components.tap
 import com.june64.feelivate.ui.theme.clash
 import com.june64.feelivate.ui.theme.satoshi
 import com.june64.feelivate.ui.theme.tokens
+import androidx.compose.foundation.layout.imePadding
 
 /**
  * site/ui.tsx + PageShell — the shared chrome for every marketing/legal page,
@@ -72,7 +73,7 @@ fun SitePage(
             Text(title, style = satoshi(13f, 700), color = t.textPrimary)
         }
         Hairline()
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().navigationBarsPadding()) {
             // PageHero — the hairline lead-in, kicker, display heading, subtitle
             Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 52.dp, bottom = 44.dp)) {
                 Box(Modifier.width(1.dp).height(36.dp).background(t.borderMedium).padding(bottom = 20.dp))

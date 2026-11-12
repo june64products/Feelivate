@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.june64.feelivate.R
 import com.june64.feelivate.ui.theme.motionSpring
 import com.june64.feelivate.ui.theme.tokens
+import androidx.compose.foundation.layout.imePadding
 
 /**
  * The web's modal pattern: a fixed overlay (`--modal-overlay`, backdrop blur)
@@ -65,7 +66,10 @@ fun BoxScope.ModalOverlay(
         LaunchedEffect(Unit) { shown = true }
         val s by animateFloatAsState(if (shown) 1f else fromScale, motionSpring(stiffness, damping), label = "s")
         val y by animateFloatAsState(if (shown) 0f else fromY.value, motionSpring(stiffness, damping), label = "y")
-        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = alignment) {
+        // The keyboard takes its space from the frame, so every card shrinks above
+        // it and its ModalCard scroll reaches the fields underneath — no modal can
+        // have an answer box the keyboard hides.
+        Box(Modifier.fillMaxSize().imePadding().padding(padding), contentAlignment = alignment) {
             Box(modifier.graphicsLayer { scaleX = s; scaleY = s; translationY = y * density }) { content() }
         }
     }

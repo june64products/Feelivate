@@ -4,7 +4,7 @@
          MainActivity by the SplashScreen API. -->
     <style name="Theme.Feelivate.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/feelivate_bg</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
         <item name="postSplashScreenTheme">@style/Theme.Feelivate</item>
     </style>
 

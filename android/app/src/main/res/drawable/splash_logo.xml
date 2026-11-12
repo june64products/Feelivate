@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Feelivate mark, traced from the site's favicon, so the splash is crisp at any size. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp" android:height="240dp"
+    android:viewportWidth="600" android:viewportHeight="600">
+    <path android:fillColor="#111111" android:fillType="evenOdd" android:pathData="M225.5,245.5 L300.5,158.5 L370.5,239.5 L374.5,247.5 L361.5,260.5 L300.5,188.5 L238.5,261.5 Z M249.5,272.5 L300.5,214.5 L351.5,274.5 L337.5,288.5 L300.5,244.5 L262.5,288.5 L249.5,275.5 Z M178.5,300.5 L215.5,256.5 L219.5,254.5 L265.5,309.5 L299.5,269.5 L327.5,302.5 L335.5,308.5 L382.5,254.5 L421.5,299.5 L421.5,329.5 L382.5,284.5 L347.5,325.5 L421.5,410.5 L421.5,440.5 L303.5,302.5 L298.5,300.5 L178.5,441.5 L179.5,409.5 L252.5,325.5 L219.5,284.5 L215.5,286.5 L179.5,329.5 Z M178.5,355.5 L219.5,307.5 L232.5,320.5 L232.5,323.5 L179.5,385.5 Z M367.5,321.5 L380.5,307.5 L419.5,352.5 L421.5,355.5 L421.5,385.5 Z M250.5,382.5 L300.5,325.5 L350.5,384.5 L324.5,384.5 L300.5,355.5 L275.5,384.5 L250.5,384.5 Z"/>
+</vector>
