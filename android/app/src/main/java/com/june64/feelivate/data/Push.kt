@@ -48,7 +48,19 @@ object Push {
         if (started || !configured) return
         started = true
         runCatching {
-            if (FirebaseApp.getApps(context).isEmpty()) {
+            // Firebase's init provider may already have built the default app
+            // from the string resources. If that app is missing the sender id
+            // or API key (a build with partial resources), it can never fetch
+            // a token: replace it with one built from the full config.
+            val existing = FirebaseApp.getApps(context).firstOrNull { it.name == FirebaseApp.DEFAULT_APP_NAME }
+            val usable = existing != null &&
+                !existing.options.gcmSenderId.isNullOrBlank() &&
+                !existing.options.apiKey.isNullOrBlank()
+            if (existing != null && !usable) {
+                Log.w(TAG, "default FirebaseApp lacks sender id / api key — re-initialising")
+                runCatching { existing.delete() }
+            }
+            if (existing == null || !usable) {
                 FirebaseApp.initializeApp(
                     context,
                     FirebaseOptions.Builder()

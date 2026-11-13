@@ -36,11 +36,23 @@ android {
         // so a checkout without Firebase values still builds — push is simply off.
         buildConfigField("String", "FIREBASE_APP_ID", "\"${conf("firebaseAppId")}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${conf("firebaseApiKey")}\"")
-        buildConfigField("String", "FIREBASE_SENDER_ID", "\"${conf("firebaseSenderId", "980030853864")}\"")
-        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${conf("firebaseProjectId", "feelivate")}\"")
-        // Firebase Analytics finds the app through this resource (it does not
-        // read FirebaseApp's options). Blank → analytics stays off, build still fine.
-        resValue("string", "google_app_id", conf("firebaseAppId"))
+        val firebaseSenderId = conf("firebaseSenderId", "980030853864")
+        val firebaseProjectId = conf("firebaseProjectId", "feelivate")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"$firebaseSenderId\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"$firebaseProjectId\"")
+        // The same four values as string resources — what google-services.json
+        // would have generated. Firebase's own init provider reads these at
+        // start-up: with only `google_app_id` present (what Analytics needs) it
+        // created a default app with no API key or sender id, which then
+        // silently blocked FCM token fetches, so all four go in together, or
+        // none (no app id → no auto-init, push and analytics simply off).
+        val firebaseAppId = conf("firebaseAppId")
+        if (firebaseAppId.isNotBlank()) {
+            resValue("string", "google_app_id", firebaseAppId)
+            resValue("string", "google_api_key", conf("firebaseApiKey"))
+            resValue("string", "gcm_defaultSenderId", firebaseSenderId)
+            resValue("string", "project_id", firebaseProjectId)
+        }
     }
 
     // Play upload signing. The keystore never lives in git: locally it is named
