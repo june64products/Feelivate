@@ -1,7 +1,9 @@
 package com.june64.feelivate.ui.tour
 
 import com.june64.feelivate.data.ChatMessage
+import com.june64.feelivate.data.DayStatus
 import com.june64.feelivate.data.EmotionEntry
+import com.june64.feelivate.data.SessionSummary
 import com.june64.feelivate.data.Plan
 import com.june64.feelivate.data.PlanDay
 import com.june64.feelivate.data.ReportData
@@ -100,7 +102,35 @@ val DEMO_PLAN = Plan(
 
 val DEMO_STREAK = Streak(currentStreak = 5, longestStreak = 9, totalDone = 23, shieldsLeft = 1)
 
+/**
+ * The streak as the path shows it: this week's earlier days done, one of them
+ * shielded, today still open. Built against today's date so the tour reads the
+ * same on any day of the week.
+ */
+fun demoStreak(todayIso: String): Streak {
+    val today = java.time.LocalDate.parse(todayIso)
+    val monday = today.minusDays(((today.dayOfWeek.value + 6) % 7).toLong())
+    val days = (0 until 7).map { i ->
+        val d = monday.plusDays(i.toLong())
+        val status = when {
+            d.isBefore(today) -> if (d == today.minusDays(2)) "shielded" else "done"
+            else -> "pending"
+        }
+        DayStatus(d.toString(), status)
+    }
+    return DEMO_STREAK.copy(daysThisWeek = days)
+}
+
 val DEMO_EMOTION = EmotionEntry(date = "", emotionLabel = "motivated", emotionScore = 8f, oneLiner = "You sounded energized and focused today.")
+
+/**
+ * The goal the tour pretends the account has (WorkspacePage.tsx's
+ * `demo-session`), so the pill, the goal menu and "Finish this goal" all show
+ * the scripted goal and never the person's real ones.
+ */
+const val DEMO_SESSION_ID = "demo-session"
+const val DEMO_GOAL_LABEL = "Run a 5K in a month"
+val DEMO_SESSIONS = listOf(SessionSummary(id = DEMO_SESSION_ID, title = DEMO_GOAL_LABEL, currentWeek = 1, phase = "active"))
 
 /** Two example past-week reports for the Archive tab. */
 val DEMO_ARCHIVE = listOf(

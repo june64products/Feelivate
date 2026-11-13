@@ -121,7 +121,9 @@ fun JourneyScreen(
     val context = LocalContext.current
     val recorder = remember { VoiceRecorder(context) }
     var moodMode by remember { mutableStateOf(false) }
-    LaunchedEffect(sessionId, initialTab, refreshKey) { vm.start(sessionId, initialTab) }
+    // JourneyPage.tsx: in the guided demo nothing is fetched — the empty Journey
+    // plus the canned archive is what the tour points at, never the real account.
+    LaunchedEffect(sessionId, initialTab, refreshKey, demo) { if (demo) vm.setTab(initialTab) else vm.start(sessionId, initialTab) }
     LaunchedEffect(focusWeek) { if (focusWeek != null) vm.expandWeek(focusWeek) }
     DisposableEffect(Unit) { onDispose { recorder.cancel() } }
 
@@ -150,11 +152,17 @@ fun JourneyScreen(
         if (f != null) { if (moodMode) vm.uploadMood(f) else vm.uploadJournal(f, onJournalSaved) }
     }
 
-    val days = vm.weekDays()
+    val days = if (demo) emptyWeek(ui.today) else vm.weekDays()
     val todayEntry = if (demo) null else ui.journals.firstOrNull { it.date == ui.today }
     val noActiveWeek = demoBetweenWeeks ?: ui.noActiveWeek
     val archive = demoArchive ?: ui.archive
     val tab = if (!demoArchive.isNullOrEmpty() && demoArchiveWeek != null) "archive" else ui.tab
+    // What the week card and the review read: the account's, or nothing in the demo.
+    val weekInfo = if (demo) null else ui.weekInfo
+    val report = if (demo) null else ui.report
+    val loadingReport = !demo && ui.loadingReport
+    val goalFinished = !demo && ui.goalFinished
+    val notStartedYet = !demo && ui.notStartedYet
 
     Box(Modifier.fillMaxSize().background(t.bgPrimary)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -216,11 +224,11 @@ fun JourneyScreen(
                                     }
                                     !demo && ui.isRecording -> RecordingButton(stopRecording)
                                     noActiveWeek -> BetweenWeeks { requestRecord(true) }
-                                    !demo && ui.notStartedYet -> LockedMic("Starts ${ui.weekInfo?.weekStart?.let { WeekWindow.formatDay(it) } ?: ""}")
+                                    notStartedYet -> LockedMic("Starts ${weekInfo?.weekStart?.let { WeekWindow.formatDay(it) } ?: ""}")
                                     !demo && ui.micLocked -> LockedMic("Recorded today")
                                     else -> RecordButton { requestRecord(false) }
                                 }
-                                ui.moodResult?.let { m ->
+                                if (!demo) ui.moodResult?.let { m ->
                                     Column(
                                         Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(12.dp)).background(t.glassHover).border(1.dp, t.borderSubtle, RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp),
                                     ) {
@@ -234,7 +242,7 @@ fun JourneyScreen(
                                         Text("Just for you — this joins no report. Your journal unlocks when the next week is committed.", style = satoshi(11f, 500), color = t.textMuted, modifier = Modifier.padding(top = 4.dp))
                                     }
                                 }
-                                ui.justSaved?.let { j ->
+                                if (!demo) ui.justSaved?.let { j ->
                                     val c = emotionColor(j.emotionLabel)
                                     Box(
                                         Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(10.dp)).background(c.copy(alpha = 0.06f)).border(1.dp, c.copy(alpha = 0.19f), RoundedCornerShape(10.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
@@ -248,7 +256,7 @@ fun JourneyScreen(
                                         )
                                     }
                                 }
-                                ui.error?.let { Text(it, style = satoshi(12f, 500), color = Status.Error, modifier = Modifier.padding(top = 12.dp)) }
+                                if (!demo) ui.error?.let { Text(it, style = satoshi(12f, 500), color = Status.Error, modifier = Modifier.padding(top = 12.dp)) }
                             }
                         }
 
@@ -256,20 +264,20 @@ fun JourneyScreen(
                         MissionCard(radius = 20.dp, padding = PaddingValues(horizontal = 20.dp, vertical = 20.dp)) {
                             Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    (if (ui.weekInfo?.hasPlan == true) "Your week · Week ${ui.weekInfo?.currentWeek}" else "This week").uppercase(),
+                                    (if (weekInfo?.hasPlan == true) "Your week · Week ${weekInfo.currentWeek}" else "This week").uppercase(),
                                     style = satoshi(10f, 700, ls = 0.14f), color = t.accentPrimary, modifier = Modifier.weight(1f),
                                 )
-                                val wi = ui.weekInfo
+                                val wi = weekInfo
                                 if (wi?.hasPlan == true && wi.weekStart != null && wi.weekEnd != null) Text("${wi.weekStart} – ${wi.weekEnd}", style = satoshi(10f, 500), color = t.textMuted)
                             }
-                            WeekCalendar(days, ui.today, ui.weekInfo?.weekStart ?: ui.weekInfo?.planStartDate)
+                            WeekCalendar(days, ui.today, weekInfo?.weekStart ?: weekInfo?.planStartDate)
                             FlowRow(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 LegendDot(Color(0xFF10B981), "Logged", filled = true)
                                 LegendDot(Status.Error, "Missed", filled = false)
                                 LegendDot(t.textMuted, "Upcoming", filled = false)
                             }
-                            val wi = ui.weekInfo
-                            if (wi?.hasPlan == true && wi.isWeekComplete && wi.hasReport && !wi.hasNextPlan && !ui.goalFinished) {
+                            val wi = weekInfo
+                            if (wi?.hasPlan == true && wi.isWeekComplete && wi.hasReport && !wi.hasNextPlan && !goalFinished) {
                                 Box(Modifier.fillMaxWidth().padding(top = 10.dp), contentAlignment = Alignment.Center) {
                                     PillButton("Plan Week ${wi.currentWeek + 1}", size = 12f, ls = 0.04f, horizontalPadding = 20.dp, verticalPadding = 8.dp) { onPlanNextWeek(wi.currentWeek + 1) }
                                 }
@@ -277,36 +285,36 @@ fun JourneyScreen(
                         }
 
                         // ── the review ──
-                        val wi = ui.weekInfo
+                        val wi = weekInfo
                         val isWeekComplete = wi?.weekEnd?.let { ui.today >= it } ?: (wi?.isWeekComplete == true)
-                        if (!isWeekComplete && !ui.goalFinished && days.any { it.hasJournal }) {
+                        if (!isWeekComplete && !goalFinished && days.any { it.hasJournal }) {
                             MissionCard(radius = 18.dp, padding = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
                                 Text("Great start! Keep logging each day.", style = satoshi(13f, 500, lineHeight = 1.6f), color = t.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                                 Text("Your full AI week review will appear after ${wi?.weekEnd ?: "the last day"}.", style = satoshi(11f, 500), color = t.textMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
                             }
                         }
                         when {
-                            ui.loadingReport -> MissionCard(radius = 18.dp, padding = PaddingValues(32.dp)) {
+                            loadingReport -> MissionCard(radius = 18.dp, padding = PaddingValues(32.dp)) {
                                 Text("Generating week report...", style = satoshi(13f, 500), color = t.textMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                             }
                             !isWeekComplete -> {}
-                            ui.report?.status == "no_data" -> MissionCard(radius = 18.dp, padding = PaddingValues(28.dp)) {
+                            report?.status == "no_data" -> MissionCard(radius = 18.dp, padding = PaddingValues(28.dp)) {
                                 Text(
-                                    if (ui.goalFinished) "This goal is finished — no new review is written for it.\nReviews from before you finished are in the archive below."
+                                    if (goalFinished) "This goal is finished — no new review is written for it.\nReviews from before you finished are in the archive below."
                                     else "Record voice journals across the week.\nAt the end of the week, your AI performance review will appear here.",
                                     style = satoshi(13f, 500, lineHeight = 1.6f), color = t.textMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
                                 )
                             }
-                            ui.report?.status == "in_progress" || ui.report?.status == "waiting_for_sunday_entry" -> MissionCard(radius = 18.dp, padding = PaddingValues(28.dp)) {
+                            report?.status == "in_progress" || report?.status == "waiting_for_sunday_entry" -> MissionCard(radius = 18.dp, padding = PaddingValues(28.dp)) {
                                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text("🎯", style = satoshi(20f, 500), modifier = Modifier.padding(bottom = 8.dp))
                                     Text("Week complete! One last step.", style = satoshi(13f, 700), color = t.textPrimary, modifier = Modifier.padding(bottom = 4.dp))
                                     Text("Record today's voice journal to unlock your weekly review.", style = satoshi(12f, 500), color = t.textSecondary, textAlign = TextAlign.Center)
                                 }
                             }
-                            ui.reportData != null -> WeekReview(
-                                ui.reportData!!, days, ui.report?.weekStart, ui.report?.weekEnd,
-                                onPlanNext = if (wi?.hasNextPlan != true && !ui.goalFinished) ({ onPlanNextWeek((ui.reportData!!.weekNumber) + 1) }) else null,
+                            report?.report != null -> WeekReview(
+                                report.report, days, report.weekStart, report.weekEnd,
+                                onPlanNext = if (wi?.hasNextPlan != true && !goalFinished) ({ onPlanNextWeek(report.report.weekNumber + 1) }) else null,
                             )
                         }
                     } else {
@@ -364,6 +372,16 @@ fun JourneyScreen(
 
         // ── Sunday night: the week's review is in ──
         WeekEndCelebration(vm, days) { onPlanNextWeek(it) }
+    }
+}
+
+/** JourneyPage.tsx's demo week: this week's seven days with nothing logged. */
+private fun emptyWeek(todayIso: String): List<ReportDay> {
+    val today = LocalDate.parse(todayIso)
+    val monday = today.minusDays(((today.dayOfWeek.value + 6) % 7).toLong())
+    return (0 until 7).map { i ->
+        val iso = monday.plusDays(i.toLong()).toString()
+        ReportDay(date = iso, checkin = if (iso < todayIso) "missed" else "pending")
     }
 }
 

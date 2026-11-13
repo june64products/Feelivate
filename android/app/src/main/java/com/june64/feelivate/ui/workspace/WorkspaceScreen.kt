@@ -36,8 +36,11 @@ import com.june64.feelivate.ui.journey.JourneyScreen
 import com.june64.feelivate.ui.theme.tokens
 import com.june64.feelivate.ui.tour.DEMO_ARCHIVE
 import com.june64.feelivate.ui.tour.DEMO_EMOTION
+import com.june64.feelivate.ui.tour.DEMO_GOAL_LABEL
 import com.june64.feelivate.ui.tour.DEMO_PLAN
-import com.june64.feelivate.ui.tour.DEMO_STREAK
+import com.june64.feelivate.ui.tour.DEMO_SESSIONS
+import com.june64.feelivate.ui.tour.DEMO_SESSION_ID
+import com.june64.feelivate.ui.tour.demoStreak
 import com.june64.feelivate.ui.tour.GuidedTour
 import com.june64.feelivate.ui.tour.LocalTourRegistry
 import com.june64.feelivate.ui.tour.TourRegistry
@@ -100,12 +103,22 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
     val uiLoading = if (sc != null) tour.typing else ui.isLoading
     val uiPlanApproved = sc?.planApproved ?: ui.isPlanApproved
     val uiPlan = if (sc != null) DEMO_PLAN else ui.activePlan
-    val uiStreak = if (sc != null) DEMO_STREAK else ui.streak
+    val uiStreak = if (sc != null) demoStreak(ui.todayIso) else ui.streak
     val uiFinished = sc?.finished ?: ui.isFinishedStage
     val uiEmotion = if (sc != null) (if (sc.emotion) DEMO_EMOTION else null) else ui.todayEmotion
     val uiJourneyOpen = if (sc != null) sc.view == "journey" else ui.journeyOpen
     val uiEmpty = uiMessages.isEmpty() && !uiLoading
     val uiPlanning = !uiPlanApproved && uiPlan != null && !uiEmpty && !uiFinished
+    // The rest of the account's facts the walkthrough must not show: the real
+    // goal, today's real check-in, the real goal list, tonight's real note.
+    val uiGoalLabel = if (sc != null) DEMO_GOAL_LABEL else ui.goalLabelRaw
+    val uiSessions = if (sc != null) DEMO_SESSIONS else ui.sessions
+    val uiSessionId = if (sc != null) DEMO_SESSION_ID else ui.activeSessionId
+    val uiTodayStatus = if (sc != null) "pending" else ui.todayStatus
+    val uiCheckinLoading = sc == null && ui.checkinLoading
+    val uiCelebrated = sc == null && ui.justCelebrated
+    val uiMicLocked = sc == null && ui.micLocked
+    val uiFirstPlan = sc != null || ui.isFirstPlan
     // Demo drawer rule: open while the scripted conversation is being built,
     // closed once the scene locks the plan or shows the finished goal.
     val uiMentorOpen = if (sc != null) (sc.view == "chat" && sc.messages.isNotEmpty() && !sc.planApproved && !sc.finished) else ui.mentorOpen
@@ -190,7 +203,7 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
             // The Journey replaces the whole mission surface, as the web's view swap does.
             if (uiJourneyOpen) {
                 JourneyScreen(
-                    sessionId = ui.activeSessionId,
+                    sessionId = uiSessionId,
                     initialTab = if (sc != null) sc.journeyTab else ui.journeyTab,
                     onClose = vm::closeJourney,
                     onJournalSaved = vm::onJournalSaved,
@@ -205,7 +218,7 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
             } else {
                 Column(Modifier.fillMaxSize().statusBarsPadding()) {
                     MissionTopBar(
-                        goalLabel = ui.goalLabelRaw,
+                        goalLabel = uiGoalLabel,
                         menuOpen = uiGoalMenuOpen, onToggleMenu = { menuOpen = !menuOpen; streakOpen = false; profileOpen = false },
                         streak = uiStreak, isPlanActive = uiPlanApproved,
                         streakOpen = streakOpen, onToggleStreak = { streakOpen = !streakOpen; menuOpen = false; profileOpen = false },
@@ -227,7 +240,7 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
                                 )
 
                             uiPlanning ->
-                                CommitStage(uiPlan!!, ui.isFirstPlan, { vm.approvePlan(it) }, vm::requestPlanChange, { vm.setMentorOpen(true) }, { planDialog = it })
+                                CommitStage(uiPlan!!, uiFirstPlan, { vm.approvePlan(it) }, vm::requestPlanChange, { vm.setMentorOpen(true) }, { planDialog = it })
 
                             uiPlanApproved ->
                                 Column(
@@ -236,14 +249,14 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
                                 ) {
                                     val rec = if (sc == null) ui.recoveryInfo else null
                                     if (!ui.weekOver && rec != null) RecoveryCard(vm, rec, ui.commitmentWhy, ui.sessionFocus)
-                                    StreakStrip(uiStreak, ui.todayStatus == "done")
+                                    StreakStrip(uiStreak, uiTodayStatus == "done")
                                     when {
                                         sc == null && ui.notStartedYet -> NotStartedCard(ui.activePlan, ui.planStartsOn!!, ui.daysUntilStart, { vm.openJourney() }, { vm.setMentorOpen(true) })
                                         sc == null && ui.weekOver -> WeekOverCard(ui.activePlan?.weekNumber ?: 1, { vm.openJourney() }, { vm.askNextWeekStart((ui.activePlan?.weekNumber ?: 1) + 1) })
-                                        else -> TodayCard(uiPlan, ui.todayIso, ui.todayStatus, ui.checkinLoading, ui.justCelebrated, vm::checkin, { vm.setMentorOpen(true) }, vm::openHowTo, demo = sc != null)
+                                        else -> TodayCard(uiPlan, ui.todayIso, uiTodayStatus, uiCheckinLoading, uiCelebrated, vm::checkin, { vm.setMentorOpen(true) }, vm::openHowTo, demo = sc != null)
                                     }
                                     PathRow(uiStreak, ui.todayIso, uiPlan?.weekNumber ?: 1, uiPlan?.winCondition) { vm.openJourney() }
-                                    EntryTiles(ui.micLocked, uiEmotion != null, { vm.openJourney() }, { vm.setMentorOpen(true) })
+                                    EntryTiles(uiMicLocked, uiEmotion != null, { vm.openJourney() }, { vm.setMentorOpen(true) })
                                 }
 
                             else -> DiscoveryStage { vm.setMentorOpen(true) }
@@ -257,12 +270,12 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
 
             // ── anchored dropdowns ──
             GoalMenu(
-                uiGoalMenuOpen, { menuOpen = false }, ui.sessions, ui.activeSessionId, uiPlanApproved,
+                uiGoalMenuOpen, { menuOpen = false }, uiSessions, uiSessionId, uiPlanApproved,
                 onNewGoal = vm::newGoal, onSelect = vm::selectSession, onOpenArchive = { vm.openJourney("archive") }, onStopSession = { vm.setShowCompleteModal(true) },
                 modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 12.dp, top = 56.dp),
             )
             StreakPanel(
-                streakOpen, { streakOpen = false }, uiStreak, ui.todayIso, ui.todayStatus == "done",
+                streakOpen, { streakOpen = false }, uiStreak, ui.todayIso, uiTodayStatus == "done",
                 modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(end = 12.dp, top = 56.dp),
             )
             ProfileMenu(
@@ -277,13 +290,13 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
 
             // ── mentor + overlays ──
             MentorDrawer(
-                uiMentorOpen, { if (sc == null) vm.setMentorOpen(false) }, uiMessages, uiLoading, uiPlanApproved, ui.isFirstPlan,
+                uiMentorOpen, { if (sc == null) vm.setMentorOpen(false) }, uiMessages, uiLoading, uiPlanApproved, uiFirstPlan,
                 inputDisabled = uiLoading || sc != null, onSend = { vm.sendMessage(it) }, onApprovePlan = { vm.approvePlan(it) },
                 onRequestPlanChange = vm::requestPlanChange, onPlanDialog = { planDialog = it },
             )
             CeremonyOverlay(ui.showCeremony, ui.activePlan?.weekNumber ?: 1)
             WeeksSheet(
-                uiWeeksOpen, { vm.setWeeksOpen(false) }, uiPlan?.weekNumber ?: 1, ui.micLocked,
+                uiWeeksOpen, { vm.setWeeksOpen(false) }, uiPlan?.weekNumber ?: 1, uiMicLocked,
                 uiPlan, if (sc != null) emptyList() else ui.planHistory, if (sc != null) emptyList() else ui.reports,
                 demoSelectedWeek = sc?.selectedWeek,
             )

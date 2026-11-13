@@ -139,8 +139,9 @@ fun EmotionOrb(entry: EmotionEntry, prefs: Prefs, onClick: () -> Unit) {
 
     Column(
         Modifier
-            .tourTarget(TourTarget.EMOTION_ORB)
             .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
+            // After the offset, so the walkthrough's ring lands where the orb actually is.
+            .tourTarget(TourTarget.EMOTION_ORB)
             .graphicsLayer { scaleX = appear; scaleY = appear; alpha = appear }
             .pointerInput(Unit) {
                 detectDragGestures(
