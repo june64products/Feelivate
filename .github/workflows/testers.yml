@@ -1,0 +1,62 @@
+name: Testers
+
+# Who receives the app. Run it by hand (Actions → Testers → Run workflow) to
+# see every tester Firebase App Distribution has for this project and which
+# groups they are in — the "testers" group is the one the Android build
+# distributes to. Read-only; it sends nothing to anybody.
+#
+# Auth is the same keyless route the Android build uses: GitHub's OIDC token
+# exchanged through Workload Identity Federation, no service-account key.
+on: workflow_dispatch
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  list:
+    if: github.repository == 'june64products/Feelivate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - id: gcp
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/980030853864/locations/global/workloadIdentityPools/github/providers/github
+          service_account: firebase-adminsdk-fbsvc@feelivate.iam.gserviceaccount.com
+          token_format: access_token
+
+      - name: Testers and groups
+        env:
+          TOKEN: ${{ steps.gcp.outputs.access_token }}
+        run: |
+          set -uo pipefail
+          API="https://firebaseappdistribution.googleapis.com/v1/projects/980030853864"
+          curl -sS "$API/groups?pageSize=100" -H "Authorization: Bearer $TOKEN" > groups.json
+          curl -sS "$API/testers?pageSize=200" -H "Authorization: Bearer $TOKEN" > testers.json
+          python3 - <<'PY'
+          import json
+
+          def load(name):
+              with open(name) as f:
+                  d = json.load(f)
+              if "error" in d:
+                  print(f"  {name}: {d['error'].get('status')} — {d['error'].get('message')}")
+                  return {}
+              return d
+
+          groups = load("groups.json").get("groups", [])
+          testers = load("testers.json").get("testers", [])
+
+          print(f"GROUPS ({len(groups)})")
+          for g in groups:
+              print(f"  {g.get('displayName','?')}  [{g.get('name','').rsplit('/',1)[-1]}]"
+                    f"  testers={g.get('testerCount',0)}  releases={g.get('releaseCount',0)}")
+
+          print(f"\nTESTERS ({len(testers)})")
+          for t in testers:
+              email = t.get("name", "").rsplit("/", 1)[-1]
+              who = t.get("displayName") or ""
+              grp = ", ".join(g.rsplit("/", 1)[-1] for g in t.get("groups", [])) or "— no group —"
+              print(f"  {email:40s} {who:18s} {grp}")
+          PY
