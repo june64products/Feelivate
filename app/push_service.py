@@ -273,6 +273,51 @@ def _send_one(access_token: str, project_id: str, token: str, title: str, body: 
     return False, f"{r.status_code} {detail}"
 
 
+def test_send(db: DBSession, user_id: str, title: str, body: str,
+              data: Optional[dict] = None) -> dict:
+    """
+    The "send test notification" button's own path: it reports what happened.
+    A silent failure is the one thing a test must never do, so this returns
+    how many phones were on record, how many took it, and what FCM said about
+    the rest — the app shows that text instead of a shrug.
+    """
+    access_token = _access_token(db)
+    if not access_token:
+        return {"sent": 0, "devices": 0, "configured": False, "errors": ["The server has no FCM credentials right now."]}
+    try:
+        rows = db.query(DeviceToken).filter(DeviceToken.user_id == user_id).all()
+    except Exception as e:
+        return {"sent": 0, "devices": 0, "configured": True, "errors": [f"Could not read this account's phones: {e}"]}
+
+    sent, errors = 0, []
+    for row in rows:
+        ok, err = _send_one(access_token, project_id(), row.token, title, body, data, "feelivate_default")
+        if ok:
+            sent += 1
+            continue
+        errors.append(_readable(err))
+        if "UNREGISTERED" in err or "INVALID_ARGUMENT" in err or err.startswith("404"):
+            _drop(db, row.token, err[:60])
+    return {"sent": sent, "devices": len(rows), "configured": True, "errors": errors}
+
+
+def _readable(err: str) -> str:
+    """FCM's error bodies are JSON; the app only needs the sentence."""
+    if "UNREGISTERED" in err or err.startswith("404"):
+        return "This phone's token is no longer valid — the app will register a fresh one next time it opens."
+    if "INVALID_ARGUMENT" in err:
+        return "FCM rejected this phone's token as malformed."
+    if "SENDER_ID_MISMATCH" in err:
+        return "This phone was registered against a different Firebase project (SENDER_ID_MISMATCH)."
+    if "THIRD_PARTY_AUTH_ERROR" in err or err.startswith("401") or err.startswith("403"):
+        return "FCM refused the server's credentials."
+    if "QUOTA" in err or err.startswith("429"):
+        return "FCM is rate-limiting this project right now."
+    if err.startswith("network:"):
+        return "The server could not reach FCM."
+    return f"FCM said: {err[:120]}"
+
+
 def send_to_user(db: DBSession, user_id: str, title: str, body: str,
                  data: Optional[dict] = None, channel: str = "feelivate_default") -> int:
     """

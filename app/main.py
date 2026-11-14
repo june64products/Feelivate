@@ -4870,12 +4870,12 @@ async def receive_fcm_token(req: RelayedFcmToken, db: DBSession = Depends(get_db
 @app.post("/notifications/push/test", tags=["notifications"])
 async def push_test(db: DBSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """One real notification to the caller's own phones, so the switch-on can be seen."""
-    from .push_service import push_enabled, send_to_user
+    from .push_service import push_enabled, test_send
     if not push_enabled(db):
-        return {"sent": 0, "configured": False}
-    sent = send_to_user(db, current_user.id, "Feelivate is connected",
-                        "If you can read this, the day's notes will reach this phone.", {"view": "chat"})
-    return {"sent": sent, "configured": True}
+        return {"sent": 0, "devices": 0, "configured": False,
+                "errors": ["Phone delivery is not switched on for the server yet."]}
+    return test_send(db, current_user.id, "Feelivate is connected",
+                     "If you can read this, the day's notes will reach this phone.", {"view": "chat"})
 
 
 @app.delete("/notifications/device", tags=["notifications"])

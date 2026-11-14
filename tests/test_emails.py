@@ -689,12 +689,40 @@ def test_relayed_fcm_token_is_kept_only_when_fcm_vouches_for_it(client, monkeypa
     monkeypatch.setattr(ps, "_send_one", lambda tok, proj, dev, title, body, data, channel: seen.update(tok=tok, proj=proj) or (True, ""))
     client.post("/notifications/device", headers=headers, json={"token": "fcm-token-" + "z" * 40})
     out = client.post("/notifications/push/test", headers=headers).json()
-    assert out == {"sent": 1, "configured": True}
+    assert out == {"sent": 1, "devices": 1, "configured": True, "errors": []}
     assert seen["tok"] == "ya29." + "b" * 80 and seen["proj"] == ps.FCM_PROJECT_ID
 
     # an expired relay is as good as none
     ps._relay["expires_at"] = 0
     assert ps.push_enabled() is False
+
+
+def test_the_test_push_says_why_it_failed(client, monkeypatch):
+    """
+    A test notification that quietly does nothing is worse than none: the app
+    shows what comes back here, so each failure has to name itself — no phone
+    on record, or whatever FCM said about the one that is.
+    """
+    import app.push_service as ps
+    headers, uid = register(client, "whytest@example.com")
+    monkeypatch.setattr(ps, "verify_fcm_capability", lambda token: True)
+    client.put("/internal/fcm-token", json={"access_token": "ya29." + "c" * 80, "expires_in": 3600})
+
+    # No phone registered at all.
+    out = client.post("/notifications/push/test", headers=headers).json()
+    assert out["sent"] == 0 and out["devices"] == 0 and out["configured"] is True
+
+    # A phone whose token FCM has retired: the reason is readable, and the
+    # dead token is dropped so the next launch registers a fresh one.
+    client.post("/notifications/device", headers=headers, json={"token": "stale-" + "y" * 40})
+    monkeypatch.setattr(
+        ps, "_send_one",
+        lambda tok, proj, dev, title, body, data, channel: (False, '404 {"error":{"status":"UNREGISTERED"}}'),
+    )
+    out = client.post("/notifications/push/test", headers=headers).json()
+    assert out["sent"] == 0 and out["devices"] == 1
+    assert out["errors"] and "no longer valid" in out["errors"][0]
+    assert client.get("/notifications/push/status", headers=headers).json()["has_device"] is False
 
 
 def test_web_alerts_and_phone_alerts_are_separate_systems(client, monkeypatch):
