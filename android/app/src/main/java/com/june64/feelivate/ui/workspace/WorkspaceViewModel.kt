@@ -43,6 +43,8 @@ import kotlinx.coroutines.launch
 import java.util.TimeZone
 import com.june64.feelivate.data.PushPrefsRequest
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.coroutines.withContext
@@ -68,6 +70,10 @@ data class PushUi(
     val saving: Boolean = false,
     val error: String = "",
     val message: String = "",
+    /** A registration attempt is running (the Alerts screen's own button). */
+    val registering: Boolean = false,
+    /** Why this phone could not be registered, in words the person can report. */
+    val regError: String = "",
 )
 
 data class HowToTarget(val day: String, val action: String)
@@ -578,8 +584,26 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
     private fun loadPushStatus() {
         viewModelScope.launch {
             runCatching { api.pushStatus() }.onSuccess { r ->
-                ui = ui.copy(push = ui.push.copy(loaded = true, configured = r.configured, enabled = r.enabled, prefs = PUSH_KINDS.associateWith { r.prefs[it] ?: true }, hasDevice = r.hasDevice))
+                // No phone on record: say why the last attempt failed, if it did.
+                val why = if (r.hasDevice) "" else prefs.pushRegReason().orEmpty()
+                ui = ui.copy(push = ui.push.copy(loaded = true, configured = r.configured, enabled = r.enabled, prefs = PUSH_KINDS.associateWith { r.prefs[it] ?: true }, hasDevice = r.hasDevice, regError = why))
             }
+        }
+    }
+
+    /**
+     * "Register this phone" — the same work the launch does, but in the
+     * foreground, with the outcome said out loud. A phone the server does not
+     * know about can never be sent anything, and that used to be invisible.
+     */
+    fun registerThisPhone() {
+        if (ui.push.registering) return
+        ui = ui.copy(push = ui.push.copy(registering = true, error = "", message = "", regError = ""))
+        viewModelScope.launch {
+            com.june64.feelivate.data.Push.registerNow(getApplication())
+                .onSuccess { ui = ui.copy(push = ui.push.copy(registering = false, hasDevice = true, message = "This phone is registered for alerts.")) }
+                .onFailure { ui = ui.copy(push = ui.push.copy(registering = false, regError = it.message ?: "Could not register this phone.")) }
+            loadPushStatus()
         }
     }
     private fun savePush(enabled: Boolean? = null, prefs: Map<String, Boolean> = emptyMap()) {
@@ -600,9 +624,21 @@ class WorkspaceViewModel(app: Application) : AndroidViewModel(app) {
             runCatching { api.pushTest() }
                 .onSuccess { r ->
                     val sent = r["sent"]?.jsonPrimitive?.intOrNull ?: 0
+                    val devices = r["devices"]?.jsonPrimitive?.intOrNull ?: -1
                     val configured = r["configured"]?.jsonPrimitive?.booleanOrNull ?: false
-                    ui = ui.copy(push = ui.push.copy(saving = false, configured = configured,
-                        message = when { !configured -> "Delivery isn't switched on yet."; sent == 0 -> "No phone is registered yet — reopen the app once, then try again."; else -> "Sent — check your notifications." }))
+                    // The server now says what FCM said, so a failed test names its reason.
+                    val reason = runCatching { r["errors"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.contentOrNull }.getOrNull()
+                    val ok = sent > 0
+                    ui = ui.copy(push = ui.push.copy(
+                        saving = false, configured = configured,
+                        hasDevice = if (devices >= 0) devices > 0 else ui.push.hasDevice,
+                        message = if (ok) "Sent — check your notifications." else "",
+                        error = when {
+                            ok -> ""
+                            devices == 0 -> "This phone isn't registered yet — tap “Register this phone” above."
+                            else -> reason ?: "The test could not be delivered."
+                        },
+                    ))
                 }
                 .onFailure { err -> ui = ui.copy(push = ui.push.copy(saving = false, error = err.userMessage("Couldn't send the test."))) }
         }

@@ -89,7 +89,12 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_STOP -> vm.onHidden()
-                Lifecycle.Event.ON_START -> { if (vm.onShown() >= TAB_RETURN_AFTER_MS) feedback.onReturnedAfterAway() }
+                Lifecycle.Event.ON_START -> {
+                    // Tokens rotate and a failed registration should not stick:
+                    // every return to the app is another chance to be reachable.
+                    Push.register(context)
+                    if (vm.onShown() >= TAB_RETURN_AFTER_MS) feedback.onReturnedAfterAway()
+                }
                 else -> Unit
             }
         }
@@ -131,14 +136,17 @@ fun WorkspaceScreen(onSignedOut: () -> Unit, onOpenPage: (String) -> Unit, vm: W
     }
     LaunchedEffect(ui.consent.status, ui.userId) {
         if (ui.consent.status != ConsentStatus.Clear || ui.userId.isBlank() || !Push.configured) return@LaunchedEffect
+        // The token does not need the notification permission — registering is
+        // what makes this phone reachable at all. It used to be skipped
+        // whenever the permission had already been asked for and refused,
+        // which left the phone unknown to the server for good.
+        Push.register(context)
         if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            !vm.prefs.notifAsked()
         ) {
-            if (vm.prefs.notifAsked()) return@LaunchedEffect
             vm.prefs.setNotifAsked()
             notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            Push.register(context)
         }
     }
 

@@ -84,6 +84,13 @@ class Prefs(context: Context) {
     fun notifAsked(): Boolean = getString("notif_permission_asked") == "1"
     fun setNotifAsked() = put("notif_permission_asked", "1")
 
+    // ── push registration: why this phone is (not) reachable ──
+    fun pushRegReason(): String? = getString("push_reg_reason")?.takeIf { it.isNotBlank() }
+    fun savePushReg(ok: Boolean, reason: String) {
+        put("push_reg_ok", if (ok) "1" else "0")
+        put("push_reg_reason", reason.ifBlank { null })
+    }
+
     // ── emotion orb position (emotion_orb_position) ──
     fun orbX(): Float? = getString("emotion_orb_x")?.toFloatOrNull()
     fun orbY(): Float? = getString("emotion_orb_y")?.toFloatOrNull()

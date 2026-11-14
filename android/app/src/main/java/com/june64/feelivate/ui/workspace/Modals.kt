@@ -154,6 +154,17 @@ private fun InfoStrip(text: String, success: Boolean) {
 
 /* ── Alerts: the day's notes, on this phone (email alerts live on the website) ── */
 
+/** This app's notification screen in Android settings, where a refusal can be undone. */
+private fun openNotificationSettings(context: android.content.Context) {
+    val app = android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    val details = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        .setData(android.net.Uri.fromParts("package", context.packageName, null))
+        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(app) }.onFailure { runCatching { context.startActivity(details) } }
+}
+
 @Composable
 private fun SectionLabel(text: String, top: Dp = 22.dp) {
     Text(text, style = clash(10f, 700, ls = 0.1f), color = tokens().textMuted, modifier = Modifier.padding(top = top, bottom = 8.dp))
@@ -207,6 +218,12 @@ private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) 
         !systemAllowed -> Column {
             Text("Android is blocking Feelivate's notifications. Allow them to get the day's note on this phone.", style = satoshi(12.5f, 500, lineHeight = 1.55f), color = t.textSecondary, modifier = Modifier.padding(bottom = 12.dp))
             PillButton("Allow notifications", Modifier.fillMaxWidth(), size = 12f, verticalPadding = 12.dp, leading = { Lucide(R.drawable.lu_bell, 15.dp, t.btnPrimaryText) }, onClick = onRequestPermission)
+            // Android stops asking after two refusals; from then on the switch
+            // lives in system settings, so offer the way there.
+            PillButton(
+                "Open notification settings", Modifier.fillMaxWidth().padding(top = 8.dp), filled = false,
+                size = 12f, verticalPadding = 11.dp, foreground = t.textPrimary,
+            ) { openNotificationSettings(context) }
         }
         else -> Column {
             // The server can't reach phones until its FCM credentials are in; the
@@ -221,6 +238,27 @@ private fun AlertsHome(vm: WorkspaceViewModel, onRequestPermission: () -> Unit) 
                 else "Off — nothing is sent to this phone.",
                 p.enabled, !p.saving,
             ) { vm.setPushEnabled(it) }
+            // Nothing can be delivered to a phone the server has never been
+            // told about, and that was silent until now.
+            if (p.loaded && !p.hasDevice) {
+                Column(
+                    Modifier.fillMaxWidth().padding(top = 14.dp).clip(RoundedCornerShape(12.dp))
+                        .background(Status.Warning.copy(alpha = 0.07f)).border(1.dp, Status.Warning.copy(alpha = 0.22f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                ) {
+                    Text("This phone isn't registered yet", style = satoshi(12.5f, 700), color = t.textPrimary)
+                    Text(
+                        p.regError.ifBlank { "Until it is, nothing can be delivered here. Tap below to register it." },
+                        style = satoshi(11.5f, 500, lineHeight = 1.5f), color = t.textSecondary, modifier = Modifier.padding(top = 4.dp),
+                    )
+                    PillButton(
+                        if (p.registering) "Registering…" else "Register this phone", Modifier.fillMaxWidth().padding(top = 10.dp),
+                        enabled = !p.registering, size = 12f, ls = 0.04f, verticalPadding = 11.dp,
+                        leading = { if (p.registering) Spinner(14.dp, t.btnPrimaryText) else Lucide(R.drawable.lu_bell, 14.dp, t.btnPrimaryText) },
+                        onClick = vm::registerThisPhone,
+                    )
+                }
+            }
             PillButton(
                 if (p.saving) "Sending…" else "Send test notification", Modifier.fillMaxWidth().padding(top = 14.dp),
                 filled = false, enabled = p.enabled && !p.saving, size = 12f, ls = 0.04f, verticalPadding = 11.dp, foreground = t.textPrimary,

@@ -15,6 +15,7 @@ import com.june64.feelivate.data.GoogleSignIn
 import com.june64.feelivate.data.AuthResponse
 import com.june64.feelivate.data.LoginRequest
 import com.june64.feelivate.data.Prefs
+import com.june64.feelivate.data.Push
 import com.june64.feelivate.data.SignupRequest
 import com.june64.feelivate.data.TokenStore
 import com.june64.feelivate.data.userMessage
@@ -78,6 +79,8 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
                 store.signIn(res, if (ui.isLogin) fallback else ui.name.ifBlank { res.name ?: fallback })
                 if (!ui.isLogin) prefs.startDemo(res.userId)   // brand-new account → queue the first-time walkthrough
                 Analytics.track(getApplication(), if (ui.isLogin) "login" else "signup", "method" to "email")
+                // There is a session now, so this phone can be registered for alerts.
+                Push.register(getApplication())
                 ui = ui.copy(loading = false, signedIn = true)
             }.onFailure { e ->
                 ui = ui.copy(loading = false, error = e.userMessage(if (ui.isLogin) "Login failed" else "Signup failed"))
@@ -98,6 +101,7 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
             store.signIn(res, res.name ?: "")
             if (res.isNewUser) prefs.startDemo(res.userId)
             Analytics.track(getApplication(), if (res.isNewUser) "signup" else "login", "method" to "google")
+            Push.register(getApplication())
             ui = ui.copy(signedIn = true, error = "")
         }.onFailure { e -> ui = ui.copy(error = e.message ?: "Google sign-in failed. Please try again.") }
     }
